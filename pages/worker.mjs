@@ -1,4 +1,5 @@
 import { sourceDownload } from "../server/cloudflare/source-download.mjs";
+import { mapTile } from "../server/map-tiles.mjs";
 
 export default {
   async fetch(request, env) {
@@ -13,6 +14,7 @@ export default {
         },
       );
     }
+    if (url.pathname.startsWith("/basemap/")) return mapTile(request);
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       return env.ORION_API.fetch(request);
     }

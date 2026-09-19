@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { formatMN95 } from "../shared/coordinates";
+import { api } from "./api";
 import {
   MousePointer2,
   Ruler,
@@ -50,7 +51,24 @@ export function MapView({
   const [tool, setTool] = useState<Tool>("select"),
     [points, setPoints] = useState<[number, number][]>([]),
     [coords, setCoords] = useState(formatMN95(46.185, 6.14)),
-    [tileError, setTileError] = useState(false);
+    [tileError, setTileError] = useState(false),
+    [onlineAvailable, setOnlineAvailable] = useState(false),
+    [online, setOnline] = useState(false),
+    [fallback, setFallback] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api<{ mapOnline: boolean }>("/config")
+      .then((config) => {
+        if (active) {
+          setOnlineAvailable(config.mapOnline);
+          setOnline(config.mapOnline);
+        }
+      })
+      .catch(() => {}); // Keep the bundled map usable if configuration cannot be reached.
+    return () => {
+      active = false;
+    };
+  }, []);
   const callbacks = useRef({ onAdd, onSelect, tool });
   callbacks.current = { onAdd, onSelect, tool };
   useEffect(() => {
@@ -59,7 +77,7 @@ export function MapView({
       center: [46.185, 6.14],
       zoom: 14,
       minZoom: 11,
-      maxZoom: 16,
+      maxZoom: 14,
       zoomControl: false,
       attributionControl: true,
       maxBounds: [
@@ -96,25 +114,46 @@ export function MapView({
   }, []);
   useEffect(() => {
     if (!map.current) return;
+    base.current?.off();
     base.current?.remove();
     setTileError(false);
     const mode = background === "dark" ? "gray" : background;
-    base.current = L.tileLayer(`/tiles/${mode}/{z}/{x}/{y}.jpeg`, {
-      minZoom: 11,
-      maxNativeZoom: 14,
-      maxZoom: 16,
-      noWrap: true,
-      bounds: [
-        [46.1, 5.9],
-        [46.4, 6.35],
-      ],
-      attribution:
-        '© <a href="https://www.swisstopo.admin.ch/" target="_blank" rel="noreferrer">swisstopo</a> · cache local 18.09.2026',
-      className: background === "dark" ? "map-dark" : "",
-    }).addTo(map.current);
-    base.current.on("tileerror", () => setTileError(true));
+    const maxZoom = online ? (mode === "aerial" ? 19 : 18) : 14;
+    const retina = online && L.Browser.retina;
+    map.current.setMaxZoom(maxZoom);
+    const layer = L.tileLayer(
+      `/${online ? "basemap" : "tiles"}/${mode}/{z}/{x}/{y}.jpeg`,
+      {
+        minZoom: 11,
+        maxNativeZoom: maxZoom,
+        maxZoom,
+        tileSize: retina ? 128 : 256,
+        zoomOffset: retina ? 1 : 0,
+        noWrap: true,
+        bounds: [
+          [46.1, 5.9],
+          [46.4, 6.35],
+        ],
+        attribution:
+          '© <a href="https://www.swisstopo.admin.ch/" target="_blank" rel="noreferrer">swisstopo</a>' +
+          (online ? " · haute définition" : " · cache local 18.09.2026"),
+        className: background === "dark" ? "map-dark" : "",
+      },
+    ).addTo(map.current);
+    base.current = layer;
+    layer.on("tileerror", () => {
+      if (base.current !== layer) return;
+      if (online) {
+        setFallback(true);
+        setOnline(false);
+      } else setTileError(true);
+    });
     localStorage.setItem("orion.map.background", background);
-  }, [background]);
+    return () => {
+      layer.off();
+      layer.remove();
+    };
+  }, [background, online]);
   useEffect(() => {
     const group = objects.current;
     if (!group) return;
@@ -212,6 +251,23 @@ export function MapView({
             ))}
           </select>
         </label>
+        {onlineAvailable && (
+          <button
+            className={online ? "active" : ""}
+            aria-pressed={online}
+            title={
+              online
+                ? "Haute définition swisstopo. Passer au cache local."
+                : "Activer les détails haute définition swisstopo."
+            }
+            onClick={() => {
+              setFallback(false);
+              setOnline((value) => !value);
+            }}
+          >
+            {online ? "HD" : "Activer HD"}
+          </button>
+        )}
         {!compact && (
           <>
             <button
@@ -296,10 +352,16 @@ export function MapView({
           consultables.
         </div>
       )}
+      {fallback && !tileError && (
+        <div className="map-warning" role="status">
+          Fond HD indisponible : cache local affiché, zoom limité. Utilisez «
+          Activer HD » pour réessayer.
+        </div>
+      )}
       <div className="map-coordinates">
         <span>MN95 ≈</span>
         {coords}
-        <span>Genève · cache local</span>
+        <span>{online ? "Genève · HD" : "Genève · cache local"}</span>
       </div>
     </div>
   );

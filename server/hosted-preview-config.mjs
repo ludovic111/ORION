@@ -24,6 +24,7 @@ export function hostedPreviewConfig(env = process.env, now = Date.now()) {
   return {
     preview: true,
     hostedPreview: true,
+    mapOnline: true,
     demo: false,
     production: false,
     realOperationsEnabled: false,

@@ -9,7 +9,7 @@ flowchart LR
   DB --> BK[Sauvegardes institutionnelles]
 ```
 
-L’application ne dispose d’aucun accès réseau sortant métier. Seule la préparation explicite des ressources contacte l’OFPP et swisstopo. Le fond de carte n’envoie pas les coordonnées consultées à un service tiers. L’architecture autorise une exploitation sur le réseau privé de l’institution, sans service d’IA.
+En mode institutionnel par défaut, l’application ne dispose d’aucun accès réseau sortant métier ; le fond local ne transmet pas les secteurs consultés. Le relais HD optionnel (`MAP_ONLINE=true`, actif dans la démonstration) contacte uniquement le WMTS officiel swisstopo, sans copier les identifiants applicatifs ni les objets opérationnels. Cloudflare peut ajouter des métadonnées réseau ; le relais de démonstration ne garantit pas l’anonymat du visiteur. Les indices des tuiles révèlent cependant le secteur demandé au fournisseur. La préparation explicite des ressources contacte aussi l’OFPP et swisstopo. L’architecture autorise une exploitation sur le réseau privé de l’institution, sans service d’IA.
 
 ## Modèle et frontières
 

@@ -5,6 +5,7 @@ await cp("dist", "dist-pages", { recursive: true });
 await mkdir("dist-pages/_worker.js/pages", { recursive: true });
 await mkdir("dist-pages/_worker.js/server/cloudflare", { recursive: true });
 await cp("pages/worker.mjs", "dist-pages/_worker.js/pages/worker.mjs");
+await cp("server/map-tiles.mjs", "dist-pages/_worker.js/server/map-tiles.mjs");
 await cp(
   "server/cloudflare/source-download.mjs",
   "dist-pages/_worker.js/server/cloudflare/source-download.mjs",

@@ -54,6 +54,9 @@ export async function loadConfig() {
   }
   return {
     production,
+    mapOnline:
+      process.env.MAP_ONLINE === "true" ||
+      ((demo || preview) && process.env.MAP_ONLINE !== "false"),
     preview,
     previewControlKey: process.env.PREVIEW_CONTROL_KEY,
     previewExpiresAt: process.env.PREVIEW_EXPIRES_AT,

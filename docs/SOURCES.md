@@ -24,7 +24,7 @@ L’application préserve la palette des SVG. Les catégories de calques ORION n
 - [FAQ des géodonnées gratuites swisstopo](https://www.swisstopo.admin.ch/fr/faq-geodonnees-gratuites) : usages, y compris commerciaux, et attribution de source.
 - [Conditions générales IFDG](https://www.geo.admin.ch/fr/conditions-generales-utilisation-ifdg/) : conditions des géoservices et modalités d’exploitation.
 
-Fonds utilisés : `ch.swisstopo.pixelkarte-farbe`, `ch.swisstopo.pixelkarte-grau`, `ch.swisstopo.swissimage`. L’affichage sombre est un traitement visuel du fond gris, jamais des signes. Les contrôles de zoom 15–16 agrandissent des tuiles de niveau 14 ; ils ne promettent pas une meilleure résolution.
+Fonds utilisés : `ch.swisstopo.pixelkarte-farbe`, `ch.swisstopo.pixelkarte-grau`, `ch.swisstopo.swissimage`. L’affichage sombre est un traitement visuel du fond gris, jamais des signes. Les capacités officielles EPSG:3857, vérifiées le 19 septembre 2026, publient les cartes jusqu’au niveau 19 et SWISSIMAGE jusqu’au niveau 20. ORION affiche au maximum le zoom 18 (cartes) ou 19 (aérien), en réservant un niveau supplémentaire aux écrans Retina. Le cache local reste limité au zoom natif 14, sans agrandissement artificiel.
 
 ## Compléments 0.2 — consultés le 19 septembre 2026
 

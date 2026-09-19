@@ -7,6 +7,7 @@ import { hostedPreviewConfig } from "../hosted-preview-config.mjs";
 import { sqliteDatabase } from "./database.mjs";
 import { sourceDownload } from "./source-download.mjs";
 import { rateLimitStore } from "./rate-limit.mjs";
+import { mapTile } from "../map-tiles.mjs";
 import schema from "./schema.sql";
 import symbolCatalog from "../../public/symbols/catalog.json";
 
@@ -38,6 +39,7 @@ export class OrionDemo extends DurableObject {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/basemap/")) return mapTile(request);
     if (url.pathname.startsWith("/api/")) {
       const headers = new Headers(request.headers);
       headers.set(

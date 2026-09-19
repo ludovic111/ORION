@@ -2,7 +2,7 @@
 
 ORION est une application web en français pour les aides à la conduite de la protection civile : centraliser les renseignements, tenir une carte de situation, suivre les moyens, documenter les décisions et préparer les rapports. L’interface reprend le design ORION fourni, avec un poste de travail sombre et des vues métier cohérentes.
 
-**Version 0.3.0 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
+**Version 0.3.1 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
 
 Le logiciel peut être exploité dans l’infrastructure de l’institution, avec **son propre serveur PostgreSQL**. Aucun abonnement cloud, service d’IA ou service cartographique externe n’est requis à l’exécution. Le code est sous **AGPL-3.0-only** ; la visibilité privée de ce dépôt ne change pas sa licence.
 
@@ -99,7 +99,7 @@ Le sélecteur **Fond de carte** propose :
 - **Sombre** : traitement visuel du fond gris, sans altération des couleurs des signes.
 - **Vue aérienne** : SWISSIMAGE.
 
-Le dépôt inclut **1 830 tuiles locales** sur trois couches sources. Le périmètre couvre le canton de Genève, Céligny compris, et ses environs : latitude 46.10–46.40, longitude 5.90–6.35. Les niveaux natifs sont 11–14 ; les niveaux 15–16 agrandissent ces images, sans détail cartographique supplémentaire. Les coordonnées saisies et affichées sont en WGS84.
+Le dépôt inclut **1 830 tuiles locales** sur trois couches sources. Le périmètre couvre le canton de Genève, Céligny compris, et ses environs : latitude 46.10–46.40, longitude 5.90–6.35. Le cache local fournit les niveaux natifs 11–14. Le mode HD charge à la demande les niveaux plus détaillés, sans agrandir les anciennes tuiles. Les coordonnées saisies et affichées sont en WGS84.
 
 Les cartes sont servies par ORION : le navigateur ne transmet pas les positions opérationnelles à swisstopo. La préférence d’affichage est conservée dans le navigateur ; les données opérationnelles ne le sont pas. Le cache initial date du **18 septembre 2026** et ne constitue ni une carte de danger ni un flux temps réel.
 
@@ -290,3 +290,7 @@ Pour contribuer, créer une branche, limiter la modification au besoin visé, ex
 | [Pilote institutionnel](docs/PILOTE-INSTITUTIONNEL.md) | Présentation commerciale et étapes de réception                 |
 | [Validation](docs/VERIFICATION.md)                     | Essais exécutés et limites de leur portée                       |
 | [Ressources tierces](THIRD_PARTY_NOTICES.md)           | Provenance, attributions et conditions de réutilisation         |
+
+### Cartographie haute définition
+
+La démonstration charge les tuiles officielles swisstopo à la demande via le serveur ORION : zoom 18 pour la carte, 19 pour la vue aérienne, avec un niveau de détail supplémentaire sur écran Retina. Le bouton **HD** permet de basculer vers le cache local. En cas de panne du fournisseur, la carte revient au cache et limite le zoom à sa résolution native. Les signes OFPP ne sont pas modifiés. En mode institutionnel, les requêtes externes sont désactivées par défaut ; voir `MAP_ONLINE` dans la documentation de déploiement.
