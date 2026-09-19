@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# Preserve official assets byte-for-byte, including their source line endings.
+public/symbols/*.svg -text -diff
+public/symbols/display/*.svg -text -diff
+public/tiles/** -text -diff
+public/fonts/** -text -diff
+docs/licenses/** -text -diff

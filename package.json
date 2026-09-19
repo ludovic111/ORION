@@ -1,0 +1,50 @@
+{
+  "name": "orion-pci",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env server/index.mjs",
+    "build": "vite build",
+    "start": "node --env-file-if-exists=.env server/index.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "check": "tsc --noEmit",
+    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap.mjs",
+    "assets": "python3 scripts/prepare-assets.py",
+    "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "prebuild": "node scripts/source-archive.mjs",
+    "format": "prettier --write src server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
+    "format:check": "prettier --check src server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
+    "test:postgres": "node scripts/test-postgres.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.468.0",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.20",
+    "@types/node": "^24.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "prettier": "^3.9.8",
+    "sharp": "^0.35.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0"
+  }
+}

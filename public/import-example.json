@@ -1,0 +1,1 @@
+{"records":[{"kind":"resource","data":{"name":"DIP 5","organization":"PCi","specialty":"Pionniers","personnel":12,"status":"Disponible","location":"Dépôt exercice","contact":"","eta":""}},{"kind":"stock","data":{"name":"Lits de camp","total":40,"available":40,"location":"Dépôt exercice"}}]}

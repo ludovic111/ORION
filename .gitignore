@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.data/
+.env
+.env.*
+!.env.example
+reference/
+artifacts/
+public/source/
+.DS_Store
+*.log
+coverage/
+__pycache__/
+*.pyc
+
+# Original bundled design: local reference, not application source.
+/ORION*.html
