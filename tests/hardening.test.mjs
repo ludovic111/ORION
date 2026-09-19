@@ -7,7 +7,7 @@ import { schemas } from "../server/validation.mjs";
 import { governanceReady } from "../server/governance.mjs";
 import { seedDemo } from "../server/seed.mjs";
 
-async function fixture(t, preview = false) {
+async function fixture(t, preview = false, hosted = false) {
   const db = await openDatabase({ path: "memory://" });
   await seedDemo(db);
   const config = {
@@ -15,6 +15,7 @@ async function fixture(t, preview = false) {
     key: randomBytes(32).toString("hex"),
     demo: !preview,
     preview,
+    hostedPreview: hosted,
     previewControlKey: randomBytes(32).toString("hex"),
     previewExpiresAt: new Date(Date.now() + 3600000).toISOString(),
   };
@@ -370,4 +371,28 @@ test("OIMDE requires five complete sections and an order; governance expires on 
   };
   assert.equal(governanceReady(row, "2026-09-20"), true);
   assert.equal(governanceReady(row, "2026-09-21"), false);
+});
+
+test("Hosted invitations can last seven days, remain capped by instance expiry, and preserve access checks", async (t) => {
+  const { call, config } = await fixture(t, true, true);
+  const created = await call(
+    "/preview/manage/invitations",
+    "POST",
+    { label: "Hébergé fictif", hours: 168, role: "viewer" },
+    undefined,
+    { "X-Orion-Preview-Control": config.previewControlKey },
+  );
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.expiresAt, config.previewExpiresAt);
+  const login = await call("/preview/enter", "POST", {
+    token: new URL(created.data.url).hash.slice(12),
+    syntheticOnly: true,
+  });
+  assert.equal(login.status, 200);
+  const client = { cookie: login.cookie, csrf: login.data.csrf };
+  assert.equal(
+    (await call("/admin/users", "GET", undefined, client)).status,
+    403,
+  );
+  assert.equal((await call("/config")).data.hostedPreview, true);
 });

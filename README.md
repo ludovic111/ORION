@@ -2,7 +2,7 @@
 
 ORION est une application web en français pour les aides à la conduite de la protection civile : centraliser les renseignements, tenir une carte de situation, suivre les moyens, documenter les décisions et préparer les rapports. L’interface reprend le design ORION fourni, avec un poste de travail sombre et des vues métier cohérentes.
 
-**Version 0.2 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
+**Version 0.2.1 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
 
 Le logiciel peut être exploité dans l’infrastructure de l’institution, avec **son propre serveur PostgreSQL**. Aucun abonnement cloud, service d’IA ou service cartographique externe n’est requis à l’exécution. Le code est sous **AGPL-3.0-only** ; la visibilité privée de ce dépôt ne change pas sa licence.
 
@@ -48,6 +48,8 @@ Le scénario « EX ORION-26 · Crue de l’Arve » est créé automatiquement da
 Arrêter le serveur avec `Ctrl+C`. Relancer `npm start` pour retrouver les données. Il n’existe aucune commande de remise à zéro automatique : préserver les données utiles avant toute suppression manuelle.
 
 ## Démonstration partageable et cadre institutionnel
+
+Pour un accès indépendant du Mac, utiliser le [service de démonstration hébergé](docs/HOSTED-DEMO.md) : stockage persistant, invitations de sept jours et origine HTTPS stable.
 
 La version 0.2 ajoute des **invitations temporaires avec exercices isolés**, un **Cadre du dossier** validé avant les écritures réelles, des exports motivés et un audit de consultation. Les engagements réels exigent une activation explicite de l’exploitant (`REAL_OPERATIONS_ENABLED=true`) ; les démonstrations restent limitées aux exercices.
 

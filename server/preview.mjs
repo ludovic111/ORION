@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { audit, digest, hashPassword } from "./security.mjs";
+import { audit, digest } from "./security.mjs";
 import { HttpError } from "./validation.mjs";
 
 export function registerPreview(app, db, config, issueSession, limiter) {
@@ -47,7 +47,11 @@ export function registerPreview(app, db, config, issueSession, limiter) {
       const input = z
         .object({
           label: z.string().trim().min(2).max(80),
-          hours: z.number().int().min(1).max(72),
+          hours: z
+            .number()
+            .int()
+            .min(1)
+            .max(config.hostedPreview ? 168 : 72),
           role: z.enum(["command", "operator", "viewer"]),
         })
         .strict()
@@ -62,7 +66,7 @@ export function registerPreview(app, db, config, issueSession, limiter) {
           new Date(config.previewExpiresAt).getTime(),
         ),
       ).toISOString();
-      const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+      const passwordHash = "invitation-only";
       await db.transaction(async (tx) => {
         await tx.query("SELECT id FROM audit_lock WHERE id=1 FOR UPDATE");
         if (

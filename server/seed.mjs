@@ -1,14 +1,19 @@
 import { randomUUID, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { hashPassword, audit } from "./security.mjs";
-export async function seedDemo(db) {
+export async function seedDemo(
+  db,
+  { symbolCatalog, invitationOnly = false } = {},
+) {
   if ((await db.query("SELECT id FROM users LIMIT 1")).rows.length) return;
-  const catalog = JSON.parse(
-    await readFile(
-      new URL("../public/symbols/catalog.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const catalog =
+    symbolCatalog ??
+    JSON.parse(
+      await readFile(
+        new URL("../public/symbols/catalog.json", import.meta.url),
+        "utf8",
+      ),
+    );
   const symbol = (name) =>
     catalog.find((s) => s.name.toLowerCase().includes(name))?.id ??
     catalog[0].id;
@@ -22,7 +27,9 @@ export async function seedDemo(db) {
         "demo@orion.local",
         "Cap C. Meyer",
         "admin",
-        await hashPassword(randomBytes(32).toString("hex")),
+        invitationOnly
+          ? "invitation-only"
+          : await hashPassword(randomBytes(32).toString("hex")),
       ],
     );
     await tx.query(

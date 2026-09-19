@@ -19,6 +19,7 @@ export function Login({
 }) {
   const [demo, setDemo] = useState(false),
     [preview, setPreview] = useState(false),
+    [hostedPreview, setHostedPreview] = useState(false),
     [previewExpiry, setPreviewExpiry] = useState(""),
     [invitation, setInvitation] = useState(() =>
       location.hash.startsWith("#invitation=") ? location.hash.slice(12) : "",
@@ -36,12 +37,16 @@ export function Login({
   useEffect(() => {
     if (location.hash.startsWith("#invitation="))
       history.replaceState(null, "", location.pathname + location.search);
-    api<{ demo: boolean; preview: boolean; previewExpiresAt?: string }>(
-      "/config",
-    )
+    api<{
+      demo: boolean;
+      preview: boolean;
+      hostedPreview?: boolean;
+      previewExpiresAt?: string;
+    }>("/config")
       .then((c) => {
         setDemo(c.demo);
         setPreview(c.preview);
+        setHostedPreview(!!c.hostedPreview);
         setPreviewExpiry(c.previewExpiresAt ?? "");
       })
       .catch(() => setError("Le serveur est indisponible."));
@@ -154,8 +159,9 @@ export function Login({
               }}
             >
               <div className="invitation-notice">
-                Démonstration temporaire sur le poste de présentation, via
-                Cloudflare. Ce relais n’est pas l’hébergement de l’État.
+                {hostedPreview
+                  ? "Démonstration hébergée sur un serveur indépendant du poste de présentation. Cet hébergement n’est pas celui de l’État."
+                  : "Démonstration temporaire sur le poste de présentation, via Cloudflare. Ce relais n’est pas l’hébergement de l’État."}
                 N’inscrivez aucune donnée réelle ou personnelle.
                 {previewExpiry && (
                   <p>

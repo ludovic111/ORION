@@ -1,5 +1,7 @@
 # Faire tester ORION dans un navigateur
 
+Pour une démonstration accessible **Mac éteint**, suivre [le déploiement hébergé](HOSTED-DEMO.md). Le tunnel décrit plus bas dépend du Mac.
+
 ## Sur ce Mac
 
 ```sh

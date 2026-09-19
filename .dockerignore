@@ -10,3 +10,7 @@ reference
 artifacts
 *.html
 !index.html
+
+.wrangler
+.dev.vars*
+worker-configuration.d.ts

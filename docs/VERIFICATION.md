@@ -39,3 +39,14 @@ Dans Brave : connexion à l’exercice local, contrôle visuel du tableau de bor
 Par requêtes HTTPS sur le tunnel réellement lancé : accès anonyme aux dossiers rejeté (401), connexion par invitation, lecture du seul exercice affecté, fiches chargées, cookies Secure/HttpOnly/SameSite Strict, déconnexion puis rejet de l’ancienne session. Les chemins de secrets ne renvoient aucun fichier secret (le fallback SPA renvoie uniquement la page publique). Quatre invitations distinctes ont été préparées localement, sans envoi à des tiers.
 
 Les tests du cadre et des invitations s’exécutent sur PGlite ; les 17 scénarios API existants sont également rejoués sur PostgreSQL natif. Le rôle SQL institutionnel a accès à la nouvelle table de gouvernance, mais ne peut pas lire la table d’invitations de démonstration. Les essais automatisés d’isolation et de révocation ne constituent pas un test de pénétration externe.
+
+## Démonstration Cloudflare 0.2.1 — 19 septembre 2026
+
+- 37 tests Node réussis ; 17 scénarios API et protections TLS/audit rejoués sur PostgreSQL natif 18.4.
+- Tests supplémentaires dans le moteur Cloudflare `workerd` : invitations, consentement, cookies sécurisés, isolation des exercices, rôles, CSRF/origine, conflits concurrents (200/409), import atomique, export et révocation. Arrêt du processus puis redémarrage avec le même stockage : objet d’exercice, invitation et session conservés.
+- Même parcours API réussi sur `https://orion-pci-demo.tradispo-monitor.workers.dev`, réellement déployé dans le compte du présentateur. Aucun serveur Railway utilisé.
+- Brave : nouvelle invitation, consentement, connexion, tableau de bord, carte swisstopo sombre et signes OFPP visibles. Menu couleur/noir et blanc/aérien présent. Le changement vers couleur n’a pas été exécuté jusqu’au bout, le navigateur ayant été repris par l’utilisateur.
+- Téléchargement public de l’archive source complète : empreinte SHA-256 identique à l’archive locale, malgré son découpage en ressources de moins de 25 Mio.
+- TypeScript, formatage, build frontend/Cloudflare et audit npm production réussis ; aucune vulnérabilité connue signalée par npm.
+
+La démonstration Cloudflare utilise SQLite et des comptes sur invitation, sans mot de passe. Elle ne revendique ni la résidence suisse ni la conformité d’un hébergement institutionnel. Aucun test de charge ou audit externe n’est inclus dans ces vérifications. Les ressources ORION provisoirement créées sur Railway ont été supprimées ; le déploiement Ondera existant n’a pas changé.

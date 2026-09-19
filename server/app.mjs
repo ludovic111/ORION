@@ -6,7 +6,7 @@ import {
 import { registerPreview } from "./preview.mjs";
 import express from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -52,8 +52,10 @@ export async function createApp(db, config) {
       !origin.startsWith("https://") ||
       !/^[a-f\d]{64}$/i.test(config.previewControlKey ?? "") ||
       !Number.isFinite(Date.parse(config.previewExpiresAt ?? "")) ||
-      Date.parse(config.previewExpiresAt) <= Date.now() ||
-      Date.parse(config.previewExpiresAt) > Date.now() + 72 * 3600000)
+      (!config.hostedPreview &&
+        Date.parse(config.previewExpiresAt) <= Date.now()) ||
+      Date.parse(config.previewExpiresAt) >
+        Date.now() + (config.hostedPreview ? 30 * 86400000 : 72 * 3600000))
   )
     throw new Error("Configuration de démonstration partagée invalide.");
   app.disable("x-powered-by");
@@ -100,6 +102,13 @@ export async function createApp(db, config) {
       limit: 600,
       standardHeaders: "draft-8",
       legacyHeaders: false,
+      ...(config.rateLimitStore ? { store: config.rateLimitStore("api") } : {}),
+      ...(config.clientIpHeader
+        ? {
+            keyGenerator: (req) =>
+              ipKeyGenerator(req.get(config.clientIpHeader) || req.ip),
+          }
+        : {}),
     }),
   );
   app.use("/api", (req, res, next) => {
@@ -117,13 +126,17 @@ export async function createApp(db, config) {
     path: "/",
     maxAge: 8 * 3600 * 1000,
   };
-  const dummyHash = await hashPassword(randomBytes(32).toString("hex"));
-  const catalog = JSON.parse(
-    await readFile(
-      new URL("../public/symbols/catalog.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const dummyHash = preview
+    ? "invitation-only"
+    : await hashPassword(randomBytes(32).toString("hex"));
+  const catalog =
+    config.symbolCatalog ??
+    JSON.parse(
+      await readFile(
+        new URL("../public/symbols/catalog.json", import.meta.url),
+        "utf8",
+      ),
+    );
   const symbolIds = new Set(
     catalog.filter((s) => !/exemple/i.test(s.name)).map((s) => s.id),
   );
@@ -201,8 +214,9 @@ export async function createApp(db, config) {
       demo,
       preview,
       previewExpiresAt: preview ? config.previewExpiresAt : undefined,
+      hostedPreview: preview && !!config.hostedPreview,
       realOperationsEnabled: !!config.realOperationsEnabled,
-      version: "0.2.0",
+      version: "0.2.1",
     }),
   );
   app.use("/api", (req, res, next) => {
@@ -219,6 +233,13 @@ export async function createApp(db, config) {
     standardHeaders: "draft-8",
     legacyHeaders: false,
     message: { error: "Trop de tentatives. Réessayez dans 15 minutes." },
+    ...(config.rateLimitStore ? { store: config.rateLimitStore("login") } : {}),
+    ...(config.clientIpHeader
+      ? {
+          keyGenerator: (req) =>
+            ipKeyGenerator(req.get(config.clientIpHeader) || req.ip),
+        }
+      : {}),
   });
   registerPreview(app, db, config, issueSession, loginLimiter);
   app.post("/api/login", loginLimiter, async (req, res) => {
@@ -678,7 +699,7 @@ export async function createApp(db, config) {
       sessionIdleMinutes: 30,
       audit: "Ajout seul · chaîne SHA-256",
       externalConnectors: [],
-      version: "0.2.0",
+      version: "0.2.1",
     });
   });
   app.get("/api/admin/users", async (req, res) => {
