@@ -31,3 +31,9 @@ Fonds utilisés : `ch.swisstopo.pixelkarte-farbe`, `ch.swisstopo.pixelkarte-grau
 - [Formulaire OIMDE OFPP](https://www.babs.admin.ch/dam/fr/sd-web/a2VQyjrJLQbX/FiBS_HiForm_Auftrag_OAABS-fr.docx) : les cinq rubriques structurent les ordres ORION ; aucun automatisme de transmission.
 - [Formules approchées swisstopo, décembre 2016](https://www.swisstopo.admin.ch/dam/fr/sd-web/KLRCX9XIdXDu/ch1903wgs84-FR.pdf) : conversion MN95/WGS84 pour navigation, avec exemples numériques indépendants dans les tests.
 - [Matrice juridique et sources cantonales/fédérales](COMPLIANCE.md) : champ d’application, LIPAD/RIPAD, PFPDT, PPDT et OFCS ; décisions institutionnelles à documenter.
+
+## Suivi des missions et relève (0.3)
+
+- [OFPP — Documents de formation](https://www.babs.admin.ch/fr/documents-de-formation), rubriques MCP19.4 « Missions / points en suspens » et MCP71.3 « Contrôle de la mission », consultées le 19 septembre 2026.
+- [Formulaire MCP71.3](https://www.babs.admin.ch/dam/fr/sd-web/NUjEjuiNvShh/FiBS_71_3_Auftragskontrolle-fr.docx) : mission attribuée, responsable, contrôle, écart et mesures correctives. ORION fournit un suivi numérique des missions existantes ; il ne prétend pas reproduire toutes les rubriques ni remplacer ce formulaire officiel.
+- La fenêtre « Dans l’heure » et la synthèse de relève sont des aides propres à ORION, pas de nouvelles conventions OFPP. Les signes cartographiques officiels restent inchangés. La relève est un brouillon daté qui conserve les incertitudes et les références des objets, à vérifier et valider par le commandement.

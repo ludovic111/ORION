@@ -1,6 +1,6 @@
 {
   "name": "orion-pci",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -17,15 +17,17 @@
     "assets": "python3 scripts/prepare-assets.py",
     "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "prebuild": "node scripts/source-archive.mjs",
-    "format": "prettier --write src shared server scripts/*.mjs tests *.json *.md compose.yaml wrangler.jsonc .github/workflows/*.yml docs/*.md",
-    "format:check": "prettier --check src shared server scripts/*.mjs tests *.json *.md compose.yaml wrangler.jsonc .github/workflows/*.yml docs/*.md",
+    "format": "prettier --write src shared server scripts/*.mjs tests *.json *.md compose.yaml wrangler.jsonc .github/workflows/*.yml docs/*.md pages",
+    "format:check": "prettier --check src shared server scripts/*.mjs tests *.json *.md compose.yaml wrangler.jsonc .github/workflows/*.yml docs/*.md pages",
     "test:postgres": "node scripts/test-postgres.mjs",
     "preview": "node scripts/preview.mjs",
     "preview:invite": "node scripts/preview-access.mjs invite",
     "preview:revoke": "node scripts/preview-access.mjs revoke",
     "build:cloudflare": "npm run build && node scripts/cloudflare-assets.mjs",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
-    "test:cloudflare": "node scripts/test-cloudflare-local.mjs"
+    "test:cloudflare": "node scripts/test-cloudflare-local.mjs",
+    "build:pages": "npm run build:cloudflare && node scripts/pages-assets.mjs",
+    "deploy:pages": "npm run build:pages && wrangler pages deploy --cwd pages --branch main"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",

@@ -28,7 +28,8 @@ jobs:
       - run: npm test
         env:
           TEST_DATABASE_URL: postgresql://orion_test:test-only-local-ci@127.0.0.1:5432/orion_test
-      - run: npm run build:cloudflare
+      - run: npm run build:pages
+      - run: npx wrangler pages functions build --cwd pages --build-output-directory ../dist-pages --outdir ../.data/pages-check
       - run: npm run test:cloudflare
       - run: npx wrangler deploy --dry-run
       - run: npm audit --omit=dev --audit-level=high

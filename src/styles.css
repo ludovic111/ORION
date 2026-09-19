@@ -2569,3 +2569,87 @@ h3 {
   flex-wrap: wrap;
   text-align: left;
 }
+
+.conduite-stat {
+  text-align: left;
+  display: block;
+  cursor: pointer;
+}
+.conduite-stat.selected {
+  outline: 1px solid var(--blue);
+}
+.conduite-table {
+  overflow-x: auto;
+}
+.conduite-table table {
+  min-width: 720px;
+}
+.conduite-reference {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+}
+.conduite-note {
+  padding: 4px 18px 14px;
+  font-size: 12px;
+}
+.conduite-pending {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+.conduite-item {
+  justify-content: flex-start;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  text-align: left;
+  background: transparent;
+}
+.conduite-item span {
+  min-width: 0;
+}
+.conduite-item strong,
+.conduite-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.conduite-item small {
+  margin-top: 6px;
+  color: var(--muted);
+}
+@media (max-width: 800px) {
+  .conduite-pending {
+    grid-template-columns: 1fr;
+  }
+}
+
+.conduite-table td {
+  overflow-wrap: anywhere;
+  max-width: 320px;
+}
+.conduite-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 78px;
+}
+.conduite-stat:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

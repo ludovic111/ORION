@@ -19,3 +19,5 @@ __pycache__/
 .wrangler/
 .dev.vars*
 worker-configuration.d.ts
+
+dist-pages/

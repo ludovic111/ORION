@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LayoutGrid,
+  ClipboardList,
   BookOpen,
   Map,
   Truck,
@@ -38,6 +39,7 @@ import { Login } from "./Login";
 import { MapView } from "./MapView";
 import { RecordForm, kindNames } from "./RecordForm";
 import { OperationForm } from "./OperationForm";
+import { Conduite } from "./Conduite";
 import { Governance } from "./Governance";
 import { ExportForm } from "./ExportForm";
 import { Admin } from "./Admin";
@@ -53,6 +55,7 @@ import {
 } from "./Views";
 const pages = [
   ["situation", "Situation générale", LayoutGrid],
+  ["conduite", "Suivi de conduite", ClipboardList],
   ["journal", "Journal d’intervention", BookOpen],
   ["map", "Carte de conduite", Map],
   ["resources", "Moyens et partenaires", Truck],
@@ -652,6 +655,8 @@ export default function App() {
               operation={props.operation}
               role={session.user.role}
             />
+          ) : page === "conduite" ? (
+            <Conduite key={opId} {...props} now={now} />
           ) : page === "journal" ? (
             <Journal {...props} />
           ) : page === "resources" ? (
@@ -763,7 +768,7 @@ export default function App() {
           )}
         </main>
         <footer className="app-footer">
-          <span>ORION 0.2 · Projet indépendant pour l’aide à la conduite</span>
+          <span>ORION 0.3 · Projet indépendant pour l’aide à la conduite</span>
           <span>
             {session.demo
               ? session.preview

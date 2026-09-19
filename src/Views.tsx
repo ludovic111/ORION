@@ -209,7 +209,7 @@ export function Journal(p: ViewProps) {
     .sort((a, b) =>
       a.data.oimde!.deadline.localeCompare(b.data.oimde!.deadline),
     );
-  const current = entries.find((r) => r.id === selected) ?? filtered[0];
+  const current = filtered.find((r) => r.id === selected) ?? filtered[0];
   return (
     <>
       <div className="page-toolbar">
@@ -290,15 +290,25 @@ export function Journal(p: ViewProps) {
               <button
                 key={r.id}
                 className="text-button"
-                onClick={() => setSelected(r.id)}
+                onClick={() => {
+                  setSelected(r.id);
+                  setType("Tous");
+                  setPriority("Toutes");
+                  setStatus("Tous");
+                  setSearch("");
+                }}
               >
-                <Status
-                  value={
+                <Badge
+                  tone={
                     new Date(r.data.oimde!.deadline).getTime() < Date.now()
-                      ? "P1"
-                      : "P3"
+                      ? "red"
+                      : "muted"
                   }
-                />
+                >
+                  {new Date(r.data.oimde!.deadline).getTime() < Date.now()
+                    ? "Échéance dépassée"
+                    : "À venir"}
+                </Badge>
                 <span>
                   {r.data.title} · {r.data.assignee || "Responsable à préciser"}
                 </span>

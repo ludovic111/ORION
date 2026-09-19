@@ -216,7 +216,7 @@ export async function createApp(db, config) {
       previewExpiresAt: preview ? config.previewExpiresAt : undefined,
       hostedPreview: preview && !!config.hostedPreview,
       realOperationsEnabled: !!config.realOperationsEnabled,
-      version: "0.2.1",
+      version: "0.3.0",
     }),
   );
   app.use("/api", (req, res, next) => {
@@ -699,7 +699,7 @@ export async function createApp(db, config) {
       sessionIdleMinutes: 30,
       audit: "Ajout seul · chaîne SHA-256",
       externalConnectors: [],
-      version: "0.2.1",
+      version: "0.3.0",
     });
   });
   app.get("/api/admin/users", async (req, res) => {

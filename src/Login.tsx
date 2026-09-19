@@ -128,7 +128,7 @@ export function Login({
           </ul>
         </div>
         <div className="login-foot">
-          ORION 0.2 · Logiciel libre AGPL-3.0 · Projet indépendant
+          ORION 0.3 · Logiciel libre AGPL-3.0 · Projet indépendant
         </div>
       </section>
       <section className="login-form">
