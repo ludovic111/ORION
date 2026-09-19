@@ -74,7 +74,7 @@ test("relay strips identifying headers and query, restricts redirects, validates
     async (url, options) => {
       assert.equal(url, tileSource(path));
       assert.equal(options.headers, undefined);
-      assert.equal(options.redirect, "error");
+      assert.equal(options.redirect, "manual");
       assert.equal(options.cf.cacheTtl, 3600);
       return new Response(new Uint8Array([255, 216, 255, 0]), {
         headers: { "Content-Type": "image/jpeg", "Set-Cookie": "upstream" },
@@ -89,6 +89,10 @@ test("relay strips identifying headers and query, restricts redirects, validates
 test("upstream failure, HTML, forged MIME and oversized bodies fail closed without caching errors", async () => {
   for (const response of [
     new Response("unavailable", { status: 503 }),
+    new Response(null, {
+      status: 302,
+      headers: { Location: "https://untrusted.invalid" },
+    }),
     new Response("<html>"),
     new Response("not jpeg", { headers: { "Content-Type": "image/jpeg" } }),
     new Response(new Uint8Array(1_048_577), {

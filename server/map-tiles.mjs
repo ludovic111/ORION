@@ -28,10 +28,10 @@ export function tileSource(path) {
     return null;
   return `https://wmts.geo.admin.ch/1.0.0/${layer.name}/default/current/3857/${z}/${x}/${y}.jpeg`;
 }
-const unavailable = () =>
+const unavailable = (reason = "invalid-image") =>
   new Response("Fond cartographique indisponible", {
     status: 503,
-    headers: { "Cache-Control": "no-store" },
+    headers: { "Cache-Control": "no-store", "X-Orion-Map-Status": reason },
   });
 export async function mapTile(request, fetchTile = fetch) {
   if (!["GET", "HEAD"].includes(request.method))
@@ -41,7 +41,7 @@ export async function mapTile(request, fetchTile = fetch) {
   try {
     // Reconstruct a fixed official URL without copying request headers or query parameters.
     const response = await fetchTile(source, {
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(8000),
       cf: { cacheEverything: true, cacheTtl: 3600 },
     });
@@ -50,7 +50,7 @@ export async function mapTile(request, fetchTile = fetch) {
       !response.headers.get("content-type")?.startsWith("image/jpeg")
     ) {
       await response.body?.cancel();
-      return unavailable();
+      return unavailable(`upstream-${response.status}`);
     }
     const reader = response.body.getReader(),
       chunks = [];
@@ -82,7 +82,9 @@ export async function mapTile(request, fetchTile = fetch) {
         "Referrer-Policy": "no-referrer",
       },
     });
-  } catch {
-    return unavailable();
+  } catch (error) {
+    return unavailable(
+      error.name === "TimeoutError" ? "timeout" : "network-error",
+    );
   }
 }

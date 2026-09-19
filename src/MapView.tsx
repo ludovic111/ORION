@@ -114,7 +114,7 @@ export function MapView({
   }, []);
   useEffect(() => {
     if (!map.current) return;
-    base.current?.off();
+    base.current?.off("tileerror");
     base.current?.remove();
     setTileError(false);
     const mode = background === "dark" ? "gray" : background;
@@ -150,7 +150,7 @@ export function MapView({
     });
     localStorage.setItem("orion.map.background", background);
     return () => {
-      layer.off();
+      layer.off("tileerror");
       layer.remove();
     };
   }, [background, online]);
