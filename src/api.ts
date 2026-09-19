@@ -18,14 +18,21 @@ export async function api<T>(
   });
   const data = await response.json();
   if (!response.ok) {
-    if (response.status === 401)
+    if (response.status === 401 || response.status === 410)
       window.dispatchEvent(new Event("orion:expired"));
     throw new Error(data.error ?? "La requête a échoué.");
   }
   return data;
 }
-export async function downloadExport(operationId: string) {
-  const data = await api<unknown>(`/operations/${operationId}/export`);
+export async function downloadExport(
+  operationId: string,
+  purpose: string,
+  recipient: string,
+) {
+  const data = await api<unknown>(`/operations/${operationId}/export`, "POST", {
+    purpose,
+    recipient,
+  });
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
   );

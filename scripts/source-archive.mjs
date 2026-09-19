@@ -9,6 +9,7 @@ execFileSync(
     "public/source/orion-source.tar.gz",
     "--exclude=__pycache__",
     "src",
+    "shared",
     "server",
     "scripts",
     "tests",

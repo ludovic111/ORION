@@ -18,6 +18,12 @@ export function Login({
   session: Session | null;
 }) {
   const [demo, setDemo] = useState(false),
+    [preview, setPreview] = useState(false),
+    [previewExpiry, setPreviewExpiry] = useState(""),
+    [invitation, setInvitation] = useState(() =>
+      location.hash.startsWith("#invitation=") ? location.hash.slice(12) : "",
+    ),
+    [syntheticOnly, setSyntheticOnly] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [email, setEmail] = useState(""),
@@ -28,8 +34,16 @@ export function Login({
     ),
     [qr, setQr] = useState("");
   useEffect(() => {
-    api<{ demo: boolean }>("/config")
-      .then((c) => setDemo(c.demo))
+    if (location.hash.startsWith("#invitation="))
+      history.replaceState(null, "", location.pathname + location.search);
+    api<{ demo: boolean; preview: boolean; previewExpiresAt?: string }>(
+      "/config",
+    )
+      .then((c) => {
+        setDemo(c.demo);
+        setPreview(c.preview);
+        setPreviewExpiry(c.previewExpiresAt ?? "");
+      })
       .catch(() => setError("Le serveur est indisponible."));
   }, []);
   async function run(action: () => Promise<Session>) {
@@ -40,6 +54,10 @@ export function Login({
       setCsrf(s.csrf);
       setPassword("");
       setCode("");
+      if (preview) {
+        setInvitation("");
+        location.hash = "situation";
+      }
       onLogin(s);
     } catch (e) {
       setError((e as Error).message);
@@ -94,7 +112,9 @@ export function Login({
             </li>
             <li>
               <ShieldCheck size={18} />
-              Second facteur · droits par rôle · modifications historisées
+              {preview
+                ? "Invitation individuelle · exercices isolés · accès expirant"
+                : "Second facteur · droits par rôle · modifications historisées"}
             </li>
             <li>
               <LockKeyhole size={18} />
@@ -103,19 +123,77 @@ export function Login({
           </ul>
         </div>
         <div className="login-foot">
-          ORION 0.1 · Logiciel libre AGPL-3.0 · Projet indépendant
+          ORION 0.2 · Logiciel libre AGPL-3.0 · Projet indépendant
         </div>
       </section>
       <section className="login-form">
         <div className="login-card">
           <img className="login-mark" src="/orion.svg" alt="ORION" />
-          <h2>{session ? "Sécuriser votre compte" : "Connexion"}</h2>
+          <h2>
+            {preview
+              ? "Essayer ORION sur invitation"
+              : session
+                ? "Sécuriser votre compte"
+                : "Connexion"}
+          </h2>
           <p className="muted">
             {session
               ? "Activez votre application d’authentification pour accéder aux dossiers."
               : "Accès réservé au personnel autorisé."}
           </p>
-          {session && !setup ? (
+          {preview ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void run(() =>
+                  api<Session>("/preview/enter", "POST", {
+                    token: invitation,
+                    syntheticOnly,
+                  }),
+                );
+              }}
+            >
+              <div className="invitation-notice">
+                Démonstration temporaire sur le poste de présentation, via
+                Cloudflare. Ce relais n’est pas l’hébergement de l’État.
+                N’inscrivez aucune donnée réelle ou personnelle.
+                {previewExpiry && (
+                  <p>
+                    Fin de l’essai :{" "}
+                    {new Date(previewExpiry).toLocaleString("fr-CH")}
+                  </p>
+                )}
+              </div>
+              <Field label="Code d’invitation">
+                <input
+                  required
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={43}
+                  minLength={43}
+                  value={invitation}
+                  onChange={(e) => setInvitation(e.target.value.trim())}
+                />
+              </Field>
+              <label className="check">
+                <input
+                  required
+                  type="checkbox"
+                  checked={syntheticOnly}
+                  onChange={(e) => setSyntheticOnly(e.target.checked)}
+                />
+                Je testerai uniquement avec des informations fictives.
+              </label>
+              <button
+                className="primary full-width"
+                disabled={busy || !syntheticOnly}
+              >
+                {busy ? "Ouverture…" : "Ouvrir mon exercice"}
+                <ArrowRight size={16} />
+              </button>
+            </form>
+          ) : session && !setup ? (
             <button className="primary" onClick={enroll}>
               Configurer le second facteur
             </button>

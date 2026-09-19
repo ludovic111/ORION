@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
+import { formatMN95 } from "../shared/coordinates";
 import {
   MousePointer2,
   Ruler,
@@ -48,7 +49,7 @@ export function MapView({
   );
   const [tool, setTool] = useState<Tool>("select"),
     [points, setPoints] = useState<[number, number][]>([]),
-    [coords, setCoords] = useState("46.18500° N · 6.14000° E"),
+    [coords, setCoords] = useState(formatMN95(46.185, 6.14)),
     [tileError, setTileError] = useState(false);
   const callbacks = useRef({ onAdd, onSelect, tool });
   callbacks.current = { onAdd, onSelect, tool };
@@ -72,11 +73,7 @@ export function MapView({
     L.control.scale({ imperial: false, position: "bottomleft" }).addTo(m);
     objects.current = L.layerGroup().addTo(m);
     sketch.current = L.layerGroup().addTo(m);
-    m.on("mousemove", (e) =>
-      setCoords(
-        `${e.latlng.lat.toFixed(5)}° N · ${e.latlng.lng.toFixed(5)}° E`,
-      ),
-    );
+    m.on("mousemove", (e) => setCoords(formatMN95(e.latlng.lat, e.latlng.lng)));
     m.on("click", (e) => {
       const current = callbacks.current;
       if (current.tool === "point")
@@ -300,7 +297,7 @@ export function MapView({
         </div>
       )}
       <div className="map-coordinates">
-        <span>WGS84</span>
+        <span>MN95 ≈</span>
         {coords}
         <span>Genève · cache local</span>
       </div>

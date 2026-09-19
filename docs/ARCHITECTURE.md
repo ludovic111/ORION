@@ -1,4 +1,4 @@
-# Architecture ORION 0.1
+# Architecture ORION 0.2
 
 ```mermaid
 flowchart LR
@@ -39,7 +39,7 @@ Un changement de droits ou une suspension révoque les sessions. Verrouillage du
 
 ## Audit
 
-Chaque mutation métier, modification des accès, authentification et export produit une entrée. Les modifications incluent les valeurs avant/après. Une chaîne SHA-256 canonique est sérialisée par verrou transactionnel ; les `UPDATE`, `DELETE` et `TRUNCATE` sont bloqués par déclencheur et les droits du rôle applicatif de production.
+Chaque mutation métier, modification des accès, authentification et export produit une entrée. Les consultations des fiches sont également journalisées. Les nouvelles modifications de fiches incluent les noms des champs et des empreintes avant/après ; les valeurs historiques 0.1 restent inchangées. Une chaîne SHA-256 canonique est sérialisée par verrou transactionnel ; les `UPDATE`, `DELETE` et `TRUNCATE` sont bloqués par déclencheur et les droits du rôle applicatif de production.
 
 Ce mécanisme **n’est pas un stockage WORM**, et ne protège pas contre un administrateur de base malveillant qui pourrait réécrire la chaîne entière. Le pilote doit ancrer périodiquement l’empreinte de tête dans un stockage indépendant et définir une collecte SIEM. La politique de conservation reste à arrêter par l’institution ; aucune durée de 10 ans n’est présumée.
 
@@ -51,3 +51,7 @@ Ce mécanisme **n’est pas un stockage WORM**, et ne protège pas contre un adm
 - Pas de connecteur annuaire/SSO ni de réseau radio ; imports locaux JSON uniquement.
 - Pas de collecte d’AVS, données médicales, reconnaissance faciale ou surveillance de personnes.
 - Fond local borné à la zone livrée ; pas de garantie de fraîcheur ou de précision terrain des placements utilisateurs.
+
+## Gouvernance et démonstration partagée
+
+`operation_governance` conserve le cadre, sa version et la validation humaine. Son écriture prend le même verrou de dossier que les mutations métier et les exports pour sérialiser le retrait de validation. `preview_invitations` ne sert qu’au mode de démonstration partagé : empreinte de jeton, expiration et révocation. Les comptes invités ont une date limite vérifiée à chaque requête. Le lanceur ouvre une base distincte sans lire la configuration institutionnelle et clone uniquement le scénario fictif préparé.

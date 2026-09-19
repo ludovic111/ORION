@@ -1,3 +1,4 @@
+import { toMN95, fromMN95, formatMN95 } from "../shared/coordinates";
 import { useState, type FormEvent } from "react";
 import type { Data, Kind, RecordItem, SymbolItem } from "./types";
 import { recordTitle, resourceStatuses, journalStatuses } from "./types";
@@ -33,6 +34,7 @@ export function RecordForm({
   const defaults: Record<Kind, Data> = {
     journal: {
       title: "",
+      observedAt: new Date().toISOString(),
       type: "Rapport",
       priority: "P3",
       source: "",
@@ -92,6 +94,18 @@ export function RecordForm({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
+  const [mnEast, setMnEast] = useState(() =>
+    String(Math.round(toMN95(data.lat ?? 46.185, data.lng ?? 6.14).east)),
+  );
+  const [mnNorth, setMnNorth] = useState(() =>
+    String(Math.round(toMN95(data.lat ?? 46.185, data.lng ?? 6.14).north)),
+  );
+  const localTime = (iso: string) => {
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  };
   const set = (key: keyof Data, value: unknown) =>
     setData((d) => ({ ...d, [key]: value }));
   const input = (
@@ -126,7 +140,15 @@ export function RecordForm({
     <Field label={label}>
       <select
         value={String(data[key] ?? "")}
-        onChange={(e) => set(key, e.target.value)}
+        onChange={(e) =>
+          key === "type"
+            ? setData((d) => ({
+                ...d,
+                type: e.target.value,
+                oimde: e.target.value === "Ordre" ? d.oimde : undefined,
+              }))
+            : set(key, e.target.value)
+        }
       >
         {values.map((v) => (
           <option key={v}>{v}</option>
@@ -172,6 +194,102 @@ export function RecordForm({
               )}
               {select("priority", "Priorité", ["P1", "P2", "P3", "P4"])}
               {input("source", "Émetteur", true)}
+              <Field label="Heure de l’observation / du renseignement">
+                <input
+                  type="datetime-local"
+                  value={data.observedAt ? localTime(data.observedAt) : ""}
+                  onChange={(e) =>
+                    set(
+                      "observedAt",
+                      e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : undefined,
+                    )
+                  }
+                />
+              </Field>
+              {data.type === "Ordre" && (
+                <fieldset className="mission-fields full">
+                  <legend>Mission selon OIMDE · OFPP</legend>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={!!data.oimde}
+                      onChange={(e) =>
+                        set(
+                          "oimde",
+                          e.target.checked
+                            ? {
+                                orientation: "",
+                                intention: "",
+                                mission: "",
+                                dispositions: "",
+                                emplacement: "",
+                                deadline: new Date(
+                                  Date.now() + 3600000,
+                                ).toISOString(),
+                              }
+                            : undefined,
+                        )
+                      }
+                    />
+                    Structurer cet ordre selon OIMDE
+                  </label>
+                  {data.oimde && (
+                    <div className="form-grid">
+                      {(
+                        [
+                          ["orientation", "1. Orientation"],
+                          ["intention", "2. Intention"],
+                          [
+                            "mission",
+                            "3. Mission · qui fait quoi, quand et où",
+                          ],
+                          ["dispositions", "4. Dispositions particulières"],
+                          ["emplacement", "5. Emplacements du donneur d’ordre"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <Field key={key} label={label} wide>
+                          <textarea
+                            required
+                            maxLength={key === "emplacement" ? 2000 : 5000}
+                            rows={2}
+                            value={data.oimde![key]}
+                            onChange={(e) =>
+                              set("oimde", {
+                                ...data.oimde!,
+                                [key]: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      ))}
+                      <Field label="Échéance / prochain contrôle">
+                        <input
+                          type="datetime-local"
+                          required
+                          value={localTime(data.oimde.deadline)}
+                          onChange={(e) => {
+                            if (e.target.value)
+                              set("oimde", {
+                                ...data.oimde!,
+                                deadline: new Date(
+                                  e.target.value,
+                                ).toISOString(),
+                              });
+                          }}
+                        />
+                      </Field>
+                      <p className="help full">
+                        Le modèle suit les rubriques du formulaire OFPP. La
+                        conduite reste responsable du contenu et de la
+                        transmission de l’ordre.
+                      </p>
+                    </div>
+                  )}
+                </fieldset>
+              )}
+
               {input("location", "Localisation")}
               {select("reliability", "Fiabilité", [
                 "Non confirmé",
@@ -286,6 +404,69 @@ export function RecordForm({
                   onChange={(e) => set("lng", Number(e.target.value))}
                 />
               </Field>
+              <div className="full">
+                <p className="mono">
+                  MN95 ≈{" "}
+                  {data.lat &&
+                  data.lat >= 45 &&
+                  data.lat <= 48 &&
+                  data.lng &&
+                  data.lng >= 5 &&
+                  data.lng <= 11
+                    ? formatMN95(data.lat, data.lng)
+                    : "Position à compléter"}
+                </p>
+                <details>
+                  <summary>Saisir des coordonnées suisses MN95</summary>
+                  <div className="form-grid">
+                    <Field label="Est MN95">
+                      <input
+                        type="number"
+                        value={mnEast}
+                        onChange={(e) => setMnEast(e.target.value)}
+                      />
+                    </Field>
+                    <Field label="Nord MN95">
+                      <input
+                        type="number"
+                        value={mnNorth}
+                        onChange={(e) => setMnNorth(e.target.value)}
+                      />
+                    </Field>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const p = fromMN95(Number(mnEast), Number(mnNorth));
+                          if (
+                            p.lat < 45.8 ||
+                            p.lat > 46.6 ||
+                            p.lng < 5.7 ||
+                            p.lng > 6.7
+                          )
+                            throw new Error(
+                              "Position hors du périmètre genevois pris en charge.",
+                            );
+                          setData((d) => ({
+                            ...d,
+                            lat: Number(p.lat.toFixed(6)),
+                            lng: Number(p.lng.toFixed(6)),
+                          }));
+                          setError("");
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }}
+                    >
+                      Appliquer la position
+                    </button>
+                    <p className="help full">
+                      Conversion approchée swisstopo pour la navigation, pas
+                      pour la mensuration officielle.
+                    </p>
+                  </div>
+                </details>
+              </div>
               {select("category", "Calque opérationnel", [
                 "Effets",
                 "Moyens",
@@ -301,6 +482,7 @@ export function RecordForm({
               </Field>
               <div className="symbol-picker full">
                 {symbols
+                  .filter((s) => !/exemple/i.test(s.name))
                   .filter((s) =>
                     `${s.name} ${s.group}`
                       .toLowerCase()

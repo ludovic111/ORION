@@ -2519,3 +2519,53 @@ h3 {
 .panel-body dd {
   overflow-wrap: anywhere;
 }
+
+.governance-page {
+  display: grid;
+  gap: 16px;
+  max-width: 1080px;
+}
+.policy-intro,
+.policy-form {
+  padding: 20px;
+}
+.policy-intro p {
+  max-width: 85ch;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.policy-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.mission-fields {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+.mission-fields legend {
+  padding: 0 8px;
+  color: var(--blue);
+  font-weight: 600;
+}
+.invitation-notice {
+  border-left: 2px solid #d2a35a;
+  padding: 12px;
+  margin: 16px 0;
+  line-height: 1.6;
+  color: #b6becb;
+}
+
+.mission-followup {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+.mission-followup button {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  text-align: left;
+}

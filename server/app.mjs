@@ -1,3 +1,9 @@
+import {
+  registerGovernance,
+  requireOperationalGovernance,
+  changeEvidence,
+} from "./governance.mjs";
+import { registerPreview } from "./preview.mjs";
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -31,6 +37,7 @@ export async function createApp(db, config) {
   const {
     production = false,
     demo = false,
+    preview = false,
     origin = "http://127.0.0.1:4311",
     key,
   } = config;
@@ -38,7 +45,27 @@ export async function createApp(db, config) {
     throw new Error("APP_KEY doit contenir 32 octets hexadécimaux.");
   if (production && (demo || !origin.startsWith("https://")))
     throw new Error("Production : HTTPS requis, démonstration interdite.");
+  if (
+    preview &&
+    (production ||
+      demo ||
+      !origin.startsWith("https://") ||
+      !/^[a-f\d]{64}$/i.test(config.previewControlKey ?? "") ||
+      !Number.isFinite(Date.parse(config.previewExpiresAt ?? "")) ||
+      Date.parse(config.previewExpiresAt) <= Date.now() ||
+      Date.parse(config.previewExpiresAt) > Date.now() + 72 * 3600000)
+  )
+    throw new Error("Configuration de démonstration partagée invalide.");
   app.disable("x-powered-by");
+  app.use((req, res, next) => {
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+    res.setHeader(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=()",
+    );
+    next();
+  });
   if (config.trustedProxies?.length)
     app.set("trust proxy", config.trustedProxies);
   app.use(
@@ -53,10 +80,11 @@ export async function createApp(db, config) {
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
           frameAncestors: ["'none'"],
-          upgradeInsecureRequests: production ? [] : null,
+          upgradeInsecureRequests: production || preview ? [] : null,
         },
       },
-      hsts: production ? { maxAge: 31536000 } : false,
+      referrerPolicy: { policy: "no-referrer" },
+      hsts: production || preview ? { maxAge: 31536000 } : false,
     }),
   );
   app.use(express.json({ limit: "256kb" }));
@@ -84,7 +112,7 @@ export async function createApp(db, config) {
   });
   const cookie = {
     httpOnly: true,
-    secure: production,
+    secure: production || preview,
     sameSite: "strict",
     path: "/",
     maxAge: 8 * 3600 * 1000,
@@ -96,13 +124,15 @@ export async function createApp(db, config) {
       "utf8",
     ),
   );
-  const symbolIds = new Set(catalog.map((s) => s.id));
+  const symbolIds = new Set(
+    catalog.filter((s) => !/exemple/i.test(s.name)).map((s) => s.id),
+  );
   async function session(req, res, next) {
     const hash = digest(req.cookies.orion_session ?? "");
     const row = (
       await db.query(
         `SELECT u.id,u.email,u.name,u.role,u.mfa_enabled,s.csrf,s.authenticated,s.token_hash FROM sessions s JOIN users u ON u.id=s.user_id
-      WHERE s.token_hash=$1 AND u.active=TRUE AND s.expires_at>CURRENT_TIMESTAMP AND s.last_seen>CURRENT_TIMESTAMP-INTERVAL '30 minutes'`,
+      WHERE s.token_hash=$1 AND u.active=TRUE AND (u.access_expires_at IS NULL OR u.access_expires_at>CURRENT_TIMESTAMP) AND s.expires_at>CURRENT_TIMESTAMP AND s.last_seen>CURRENT_TIMESTAMP-INTERVAL '30 minutes'`,
         [hash],
       )
     ).rows[0];
@@ -138,8 +168,20 @@ export async function createApp(db, config) {
       "INSERT INTO sessions(token_hash,user_id,csrf,authenticated,expires_at) VALUES($1,$2,$3,$4,$5)",
       [digest(token), user.id, csrf, full, new Date(Date.now() + 8 * 3600000)],
     );
+    if (user.access_expires_at)
+      await tx.query(
+        "UPDATE sessions SET expires_at=LEAST(expires_at,$2) WHERE token_hash=$1",
+        [digest(token), user.access_expires_at],
+      );
     res.cookie("orion_session", token, cookie);
-    return { user: publicUser(user), csrf, authenticated: full, demo };
+    return {
+      user: publicUser(user),
+      csrf,
+      authenticated: full,
+      demo: demo || preview,
+      preview,
+      realOperationsEnabled: !!config.realOperationsEnabled,
+    };
   }
   function publicUser(u) {
     return {
@@ -154,7 +196,23 @@ export async function createApp(db, config) {
     await db.query("SELECT 1");
     res.json({ status: "ok" });
   });
-  app.get("/api/config", (req, res) => res.json({ demo, version: "0.1.0" }));
+  app.get("/api/config", (req, res) =>
+    res.json({
+      demo,
+      preview,
+      previewExpiresAt: preview ? config.previewExpiresAt : undefined,
+      realOperationsEnabled: !!config.realOperationsEnabled,
+      version: "0.2.0",
+    }),
+  );
+  app.use("/api", (req, res, next) => {
+    if (preview && Date.now() >= Date.parse(config.previewExpiresAt))
+      throw new HttpError(
+        410,
+        "Cette démonstration a expiré. Demandez une nouvelle invitation.",
+      );
+    next();
+  });
   const loginLimiter = rateLimit({
     windowMs: 15 * 60000,
     limit: 20,
@@ -162,7 +220,10 @@ export async function createApp(db, config) {
     legacyHeaders: false,
     message: { error: "Trop de tentatives. Réessayez dans 15 minutes." },
   });
+  registerPreview(app, db, config, issueSession, loginLimiter);
   app.post("/api/login", loginLimiter, async (req, res) => {
+    if (preview)
+      throw new HttpError(403, "Utilisez votre invitation de démonstration.");
     const input = loginSchema.parse(req.body);
     const result = await db.transaction(async (tx) => {
       const user = (
@@ -229,7 +290,9 @@ export async function createApp(db, config) {
       user: publicUser(req.user),
       csrf: req.user.csrf,
       authenticated: req.user.authenticated,
-      demo,
+      demo: demo || preview,
+      preview,
+      realOperationsEnabled: !!config.realOperationsEnabled,
     }),
   );
   app.post("/api/logout", session, async (req, res) => {
@@ -310,13 +373,34 @@ export async function createApp(db, config) {
   app.post("/api/operations", async (req, res) => {
     requireRole(req.user, ["admin", "command", "chief"]);
     const input = operationSchema.parse(req.body);
-    if (demo && input.mode === "real")
+    if (input.mode === "real" && !config.realOperationsEnabled)
+      throw new HttpError(
+        403,
+        "Les engagements réels ne sont pas activés par l’exploitant.",
+      );
+    if ((demo || preview) && input.mode === "real")
       throw new HttpError(
         400,
         "Le mode démonstration accepte uniquement les exercices.",
       );
     const id = randomUUID();
     await db.transaction(async (tx) => {
+      if (preview) {
+        await tx.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
+          req.user.id,
+        ]);
+        if (
+          Number(
+            (
+              await tx.query(
+                "SELECT COUNT(*) AS n FROM memberships WHERE user_id=$1",
+                [req.user.id],
+              )
+            ).rows[0].n,
+          ) >= 3
+        )
+          throw new HttpError(409, "Trois dossiers maximum par invitation.");
+      }
       await tx.query(
         "INSERT INTO operations(id,name,mode,nature,level,location,commander,phase) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
         [
@@ -349,6 +433,7 @@ export async function createApp(db, config) {
     req.operation = operation;
     next();
   }
+  registerGovernance(app, db, operationAccess);
   app.patch("/api/operations/:op", operationAccess, async (req, res) => {
     requireRole(req.user, ["admin", "command"]);
     const data = z
@@ -379,27 +464,46 @@ export async function createApp(db, config) {
     });
     res.json({ ok: true });
   });
-  app.get("/api/operations/:op/records", operationAccess, async (req, res) =>
-    res.json(
-      (
-        await db.query(
+  app.get("/api/operations/:op/records", operationAccess, async (req, res) => {
+    const rows = await db.transaction(async (tx) => {
+      const rows = (
+        await tx.query(
           "SELECT * FROM records WHERE operation_id=$1 ORDER BY created_at DESC,id",
           [req.operation.id],
         )
-      ).rows,
-    ),
-  );
+      ).rows;
+      await audit(tx, req.user.id, "records.read", req.operation.id, null, {
+        count: rows.length,
+      });
+      return rows;
+    });
+    res.json(rows);
+  });
   async function writeRecord(req, tx, id, version, input, kind) {
     const op = (
       await tx.query("SELECT status FROM operations WHERE id=$1 FOR UPDATE", [
         req.operation.id,
       ])
     ).rows[0];
+    await requireOperationalGovernance(tx, req.operation);
     if (op.status === "closed")
       throw new HttpError(409, "Ce dossier est clôturé.");
     requireRole(req.user, ["admin", "command", "chief", "operator"]);
     if (!schemas[kind]) throw new HttpError(400, "Type inconnu.");
     const data = schemas[kind].parse(input);
+    if (
+      preview &&
+      !id &&
+      Number(
+        (
+          await tx.query(
+            "SELECT COUNT(*) AS n FROM records WHERE operation_id=$1",
+            [req.operation.id],
+          )
+        ).rows[0].n,
+      ) >= 1000
+    )
+      throw new HttpError(409, "Limite du dossier de démonstration atteinte.");
     const before = id
       ? (
           await tx.query(
@@ -457,7 +561,7 @@ export async function createApp(db, config) {
       `${kind}.${before ? "updated" : "created"}`,
       req.operation.id,
       recordId,
-      { before: before?.data ?? null, after: data },
+      changeEvidence(before?.data, data),
     );
     return { id: recordId };
   }
@@ -521,15 +625,27 @@ export async function createApp(db, config) {
     });
     res.status(201).json({ imported: ids.length });
   });
-  app.get("/api/operations/:op/export", operationAccess, async (req, res) => {
+  app.post("/api/operations/:op/export", operationAccess, async (req, res) => {
+    const disclosure = z
+      .object({
+        purpose: z.string().trim().min(5).max(500),
+        recipient: z.string().trim().min(3).max(200),
+      })
+      .strict()
+      .parse(req.body);
     requireRole(req.user, ["admin", "command", "chief"]);
     const records = await db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM operations WHERE id=$1 FOR UPDATE", [
+        req.operation.id,
+      ]);
+      await requireOperationalGovernance(tx, req.operation);
       await audit(
         tx,
         req.user.id,
         "operation.exported",
         req.operation.id,
         req.operation.id,
+        disclosure,
       );
       return (
         await tx.query(
@@ -562,7 +678,7 @@ export async function createApp(db, config) {
       sessionIdleMinutes: 30,
       audit: "Ajout seul · chaîne SHA-256",
       externalConnectors: [],
-      version: "0.1.0",
+      version: "0.2.0",
     });
   });
   app.get("/api/admin/users", async (req, res) => {

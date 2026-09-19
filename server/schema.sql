@@ -40,3 +40,17 @@ CREATE OR REPLACE FUNCTION reject_audit_mutation() RETURNS trigger LANGUAGE plpg
 BEGIN RAISE EXCEPTION 'Audit records are append-only'; END; $$;
 DROP TRIGGER IF EXISTS audit_append_only ON audit;
 CREATE TRIGGER audit_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON audit FOR EACH STATEMENT EXECUTE FUNCTION reject_audit_mutation();
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS access_expires_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS operation_governance (
+ operation_id TEXT PRIMARY KEY REFERENCES operations(id),
+ data JSONB NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+ reviewed_by TEXT REFERENCES users(id), reviewed_at TIMESTAMPTZ,
+ updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS preview_invitations (
+ id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
+ user_id TEXT NOT NULL REFERENCES users(id), label TEXT NOT NULL,
+ expires_at TIMESTAMPTZ NOT NULL, revoked BOOLEAN NOT NULL DEFAULT FALSE,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

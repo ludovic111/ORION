@@ -110,6 +110,11 @@ try {
     app.query("ALTER TABLE audit DISABLE TRIGGER audit_append_only"),
     /must be owner/,
   );
+  await app.query("SELECT * FROM operation_governance LIMIT 1");
+  await assert.rejects(
+    app.query("SELECT * FROM preview_invitations"),
+    /permission denied/,
+  );
   await app.close();
   await assert.rejects(
     openDatabase({ url, production: true, caFile: join(dir, "server.crt") }),

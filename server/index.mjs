@@ -7,7 +7,7 @@ import { createApp } from "./app.mjs";
 import { seedDemo } from "./seed.mjs";
 const config = await loadConfig();
 const db = await openDatabase(config);
-if (config.demo) await seedDemo(db);
+if (config.demo || config.preview) await seedDemo(db);
 const app = await createApp(db, config);
 // Serve only the production bundle. Source files, secrets and the original design stay private.
 if (!existsSync("dist/index.html"))
@@ -20,7 +20,7 @@ app.get("/{*path}", (req, res) =>
 );
 const server = app.listen(config.port, config.host, () =>
   console.log(
-    `ORION : ${config.origin} · ${config.demo ? "exercice local" : "institution"}`,
+    `ORION : ${config.origin} · ${config.preview ? "démonstration partagée" : config.demo ? "exercice local" : "institution"}`,
   ),
 );
 for (const signal of ["SIGINT", "SIGTERM"])

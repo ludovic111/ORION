@@ -25,3 +25,9 @@ L’application préserve la palette des SVG. Les catégories de calques ORION n
 - [Conditions générales IFDG](https://www.geo.admin.ch/fr/conditions-generales-utilisation-ifdg/) : conditions des géoservices et modalités d’exploitation.
 
 Fonds utilisés : `ch.swisstopo.pixelkarte-farbe`, `ch.swisstopo.pixelkarte-grau`, `ch.swisstopo.swissimage`. L’affichage sombre est un traitement visuel du fond gris, jamais des signes. Les contrôles de zoom 15–16 agrandissent des tuiles de niveau 14 ; ils ne promettent pas une meilleure résolution.
+
+## Compléments 0.2 — consultés le 19 septembre 2026
+
+- [Formulaire OIMDE OFPP](https://www.babs.admin.ch/dam/fr/sd-web/a2VQyjrJLQbX/FiBS_HiForm_Auftrag_OAABS-fr.docx) : les cinq rubriques structurent les ordres ORION ; aucun automatisme de transmission.
+- [Formules approchées swisstopo, décembre 2016](https://www.swisstopo.admin.ch/dam/fr/sd-web/KLRCX9XIdXDu/ch1903wgs84-FR.pdf) : conversion MN95/WGS84 pour navigation, avec exemples numériques indépendants dans les tests.
+- [Matrice juridique et sources cantonales/fédérales](COMPLIANCE.md) : champ d’application, LIPAD/RIPAD, PFPDT, PPDT et OFCS ; décisions institutionnelles à documenter.

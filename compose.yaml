@@ -5,6 +5,7 @@ services:
     environment:
       NODE_ENV: production
       APP_MODE: institution
+      REAL_OPERATIONS_ENABLED: ${REAL_OPERATIONS_ENABLED:-false}
       HOST: 0.0.0.0
       APP_ORIGIN: ${APP_ORIGIN:?Set the institution HTTPS origin}
       DATABASE_URL: ${DATABASE_URL:?Set the institution PostgreSQL application connection}

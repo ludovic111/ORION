@@ -13,6 +13,8 @@ export type Session = {
   csrf: string;
   authenticated: boolean;
   demo: boolean;
+  preview?: boolean;
+  realOperationsEnabled?: boolean;
 };
 export type Operation = {
   id: string;
@@ -29,7 +31,17 @@ export type Operation = {
 };
 export type Kind =
   "journal" | "resource" | "map" | "link" | "transmission" | "report" | "stock";
+export type Oimde = {
+  orientation: string;
+  intention: string;
+  mission: string;
+  dispositions: string;
+  emplacement: string;
+  deadline: string;
+};
 export type Data = {
+  observedAt?: string;
+  oimde?: Oimde;
   title?: string;
   name?: string;
   type?: string;

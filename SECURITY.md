@@ -1,6 +1,6 @@
 # Sécurité
 
-ORION 0.1 est une base de pilote institutionnel vérifiable. Ce dépôt n’est ni une certification de conformité, ni une autorisation d’utiliser le produit pour une intervention réelle.
+ORION 0.2 est une base de pilote institutionnel vérifiable. Ce dépôt n’est ni une certification de conformité, ni une autorisation d’utiliser le produit pour une intervention réelle.
 
 ## Protections implémentées
 
@@ -21,7 +21,7 @@ Le chiffrement du disque, des sauvegardes, le certificat HTTPS, les accès rése
 
 Les comptes SQL de migration et de service doivent être distincts. Restreindre les sorties réseau du conteneur au serveur PostgreSQL ; les actifs cartographiques sont préparés séparément. Les comptes et affectations font l’objet de revues périodiques. Le service doit être placé derrière un reverse proxy avec limitation de débit adaptée, sauvegardes et supervision.
 
-Le journal contient des valeurs métier avant/après et nécessite donc la même protection que les dossiers. La base opérationnelle, l’audit et les fichiers exportés sont soumis à la politique de conservation de l’institution. La minimisation, les bases légales, l’évaluation des risques et une éventuelle AIPD doivent être déterminées avec les responsables compétents.
+Les nouvelles traces de modification contiennent les champs modifiés et des empreintes avant/après, sans recopier le contenu des fiches. Des métadonnées de dossier, d’administration et de diffusion restent présentes ; les traces historiques 0.1 peuvent contenir les valeurs métier. Le journal nécessite donc la même protection que les dossiers. La base opérationnelle, l’audit et les fichiers exportés sont soumis à la politique de conservation de l’institution. La minimisation, les bases légales, l’évaluation des risques et une éventuelle AIPD doivent être déterminées avec les responsables compétents.
 
 ## Signalement
 
@@ -30,3 +30,7 @@ Ne publier aucun secret, dossier opérationnel ou exploitation détaillée dans 
 ## Risques résiduels connus
 
 Pas encore d’audit externe, de test de pénétration, de preuve de montée en charge, de restauration d’une infrastructure cantonale ou de recette métier genevoise. La chaîne d’audit ne protège pas contre un administrateur SQL compromis disposant de privilèges suffisants. La disponibilité du réseau, les postes clients et la correction des informations saisies restent essentiels.
+
+## Démonstration temporaire
+
+Le mode `preview` est distinct de la production et de la démonstration locale sans authentification. Invitations aléatoires de 256 bits, empreintes en base, consentement aux données fictives, cookies Secure, expiration maximale de 72 heures (48 heures par le lanceur), révocation et exercices séparés. Aucun compte administrateur n’est délivré aux invités. Le secret de gestion reste dans un fichier local privé. Le tunnel Cloudflare ne constitue pas un hébergement institutionnel suisse. Voir [la procédure](docs/DEMONSTRATION.md) et [le cadre de conformité](docs/COMPLIANCE.md).

@@ -202,6 +202,13 @@ export function Journal(p: ViewProps) {
           .toLowerCase()
           .includes(search.toLowerCase()),
     );
+  const missions = entries
+    .filter(
+      (r) => r.data.oimde && !["Traité", "Clos"].includes(r.data.status ?? ""),
+    )
+    .sort((a, b) =>
+      a.data.oimde!.deadline.localeCompare(b.data.oimde!.deadline),
+    );
   const current = entries.find((r) => r.id === selected) ?? filtered[0];
   return (
     <>
@@ -276,6 +283,33 @@ export function Journal(p: ViewProps) {
           Réinitialiser
         </button>
       </div>
+      {missions.length > 0 && (
+        <Panel title="Suivi des missions · OIMDE">
+          <div className="mission-followup">
+            {missions.map((r) => (
+              <button
+                key={r.id}
+                className="text-button"
+                onClick={() => setSelected(r.id)}
+              >
+                <Status
+                  value={
+                    new Date(r.data.oimde!.deadline).getTime() < Date.now()
+                      ? "P1"
+                      : "P3"
+                  }
+                />
+                <span>
+                  {r.data.title} · {r.data.assignee || "Responsable à préciser"}
+                </span>
+                <span className="mono">
+                  Échéance {dateTime(r.data.oimde!.deadline)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      )}
       <div className="split-view">
         <Panel className="table-panel">
           <table>
@@ -355,6 +389,33 @@ export function Journal(p: ViewProps) {
                 <Status value={current.data.reliability ?? ""} />
               </dd>
             </dl>
+            {current.data.observedAt && (
+              <p className="muted">
+                Observation : {dateTime(current.data.observedAt)}
+              </p>
+            )}
+            {current.data.oimde && (
+              <section>
+                <h4>Ordre OIMDE</h4>
+                <dl>
+                  {(
+                    [
+                      ["orientation", "Orientation"],
+                      ["intention", "Intention"],
+                      ["mission", "Mission"],
+                      ["dispositions", "Dispositions particulières"],
+                      ["emplacement", "Emplacements"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <div key={key}>
+                      <dt>{label}</dt>
+                      <dd className="pre-wrap">{current.data.oimde![key]}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p>Échéance : {dateTime(current.data.oimde.deadline)}</p>
+              </section>
+            )}
             <h4>Décision / suite à donner</h4>
             <p className="pre-wrap">
               {current.data.decision || "Aucune décision consignée."}
@@ -973,9 +1034,11 @@ export function Symbols({
   canWrite: boolean;
 }) {
   const [query, setQuery] = useState(""),
-    [group, setGroup] = useState("Tous");
+    [group, setGroup] = useState("Tous"),
+    [examples, setExamples] = useState(false);
   const filtered = symbols.filter(
     (s) =>
+      (examples || !/exemple/i.test(s.name)) &&
       (group === "Tous" || s.group === group) &&
       s.name.toLowerCase().includes(query.toLowerCase()),
   );
@@ -1011,9 +1074,17 @@ export function Symbols({
           ))}
         </select>
         <span className="muted">
-          {filtered.length} signes / {symbols.length}
+          {filtered.length} fichiers / {symbols.length}
         </span>
       </div>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={examples}
+          onChange={(e) => setExamples(e.target.checked)}
+        />
+        Afficher aussi les exemples de référence (non plaçables)
+      </label>
       <div className="symbol-grid">
         {filtered.map((s) => (
           <div className="symbol-card" key={s.id}>
@@ -1022,7 +1093,7 @@ export function Symbols({
             </div>
             <strong>{s.name}</strong>
             <small>{s.group}</small>
-            {canWrite && (
+            {canWrite && !/exemple/i.test(s.name) && (
               <button className="text-button" onClick={() => onUse(s)}>
                 <Plus size={13} />
                 Placer sur la carte

@@ -1,11 +1,11 @@
 {
   "name": "orion-pci",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env server/index.mjs",
@@ -17,9 +17,12 @@
     "assets": "python3 scripts/prepare-assets.py",
     "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "prebuild": "node scripts/source-archive.mjs",
-    "format": "prettier --write src server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
-    "format:check": "prettier --check src server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
-    "test:postgres": "node scripts/test-postgres.mjs"
+    "format": "prettier --write src shared server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
+    "format:check": "prettier --check src shared server scripts/*.mjs tests *.json *.md compose.yaml .github/workflows/*.yml docs/*.md",
+    "test:postgres": "node scripts/test-postgres.mjs",
+    "preview": "node scripts/preview.mjs",
+    "preview:invite": "node scripts/preview-access.mjs invite",
+    "preview:revoke": "node scripts/preview-access.mjs revoke"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",

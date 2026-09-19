@@ -31,7 +31,25 @@ export const schemas = {
       reliability: z.enum(["Non confirmé", "Probable", "Confirmé"]),
       validated: z.boolean().default(false),
     })
-    .strict(),
+    .extend({
+      observedAt: z.iso.datetime({ offset: true }).optional(),
+      oimde: z
+        .object({
+          orientation: text(5000),
+          intention: text(5000),
+          mission: text(5000),
+          dispositions: text(5000),
+          emplacement: text(2000),
+          deadline: z.iso.datetime({ offset: true }),
+        })
+        .strict()
+        .optional(),
+    })
+    .strict()
+    .refine(
+      (v) => !v.oimde || v.type === "Ordre",
+      "OIMDE est réservé aux ordres.",
+    ),
   resource: z
     .object({
       name: text(),

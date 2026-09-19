@@ -21,6 +21,7 @@ import {
   Archive,
   ArrowUpRight,
   Edit3,
+  ShieldCheck,
 } from "lucide-react";
 import { api, downloadExport, setCsrf } from "./api";
 import type {
@@ -37,6 +38,8 @@ import { Login } from "./Login";
 import { MapView } from "./MapView";
 import { RecordForm, kindNames } from "./RecordForm";
 import { OperationForm } from "./OperationForm";
+import { Governance } from "./Governance";
+import { ExportForm } from "./ExportForm";
 import { Admin } from "./Admin";
 import {
   Dashboard,
@@ -56,6 +59,7 @@ const pages = [
   ["links", "Analyse des liaisons", Network],
   ["transmissions", "Transmissions", Radio],
   ["reports", "Rapports", FileText],
+  ["governance", "Cadre du dossier", ShieldCheck],
   ["admin", "Administration", Settings],
 ] as const;
 const dataLabels: Record<string, string> = {
@@ -87,6 +91,8 @@ const dataLabels: Record<string, string> = {
   actions: "Actions",
   needs: "Besoins",
   outlook: "Évolution",
+  oimde: "Mission OIMDE",
+  observedAt: "Heure de l’observation",
   total: "Total",
   available: "Disponible",
 };
@@ -110,6 +116,7 @@ export default function App() {
     [readItem, setReadItem] = useState<RecordItem | null>(null),
     [newOperation, setNewOperation] = useState(false),
     [closing, setClosing] = useState(false),
+    [exporting, setExporting] = useState(false),
     [mapSelected, setMapSelected] = useState<RecordItem | null>(null),
     [categories, setCategories] = useState([
       "Effets",
@@ -167,6 +174,8 @@ export default function App() {
       setRecords([]);
       setOperations([]);
       setForm(null);
+      setExporting(false);
+      setNewOperation(false);
       setReadItem(null);
       setMapSelected(null);
       setCsrf("");
@@ -239,6 +248,7 @@ export default function App() {
     setOpId(id);
     setRecords([]);
     setMapSelected(null);
+    setExporting(false);
     setSearch("");
   }
   async function logout() {
@@ -251,6 +261,8 @@ export default function App() {
       setRecords([]);
       setOperations([]);
       setForm(null);
+      setExporting(false);
+      setNewOperation(false);
       setReadItem(null);
       setMapSelected(null);
       setCsrf("");
@@ -290,13 +302,9 @@ export default function App() {
       setToast("Objet enregistré dans le dossier.");
     }
   }
-  async function exportData() {
-    try {
-      await downloadExport(opId);
-      setToast("Export du dossier téléchargé et journalisé.");
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  async function exportData(purpose: string, recipient: string) {
+    await downloadExport(opId, purpose, recipient);
+    setToast("Export du dossier téléchargé et journalisé.");
   }
   async function changeStatus() {
     if (!operation) return;
@@ -476,7 +484,11 @@ export default function App() {
               <strong>{session.user.name}</strong>
               <small>
                 {roleLabels[session.user.role]} ·{" "}
-                {session.demo ? "Exercice local" : "ORION"}
+                {session.preview
+                  ? "Exercice sur invitation"
+                  : session.demo
+                    ? "Exercice local"
+                    : "ORION"}
               </small>
             </div>
           </div>
@@ -585,7 +597,11 @@ export default function App() {
           {session.demo && (
             <div className="exercise-note">
               <span>EXERCICE · Données fictives</span>
-              <span>Aucune alerte réelle ni transmission automatique.</span>
+              <span>
+                {session.preview
+                  ? "Essai privé · aucune donnée réelle autorisée."
+                  : "Aucune alerte réelle ni transmission automatique."}
+              </span>
               <span className="sync-indicator">
                 <i className={error ? "offline" : ""} />
                 {synced
@@ -630,6 +646,12 @@ export default function App() {
                   : "Aucun dossier accessible. Créez un événement ou demandez une affectation à votre administrateur."}
               </Empty>
             </Panel>
+          ) : page === "governance" ? (
+            <Governance
+              key={opId}
+              operation={props.operation}
+              role={session.user.role}
+            />
           ) : page === "journal" ? (
             <Journal {...props} />
           ) : page === "resources" ? (
@@ -639,7 +661,7 @@ export default function App() {
           ) : page === "transmissions" ? (
             <Transmissions {...props} />
           ) : page === "reports" ? (
-            <Reports {...props} onExport={exportData} />
+            <Reports {...props} onExport={() => setExporting(true)} />
           ) : page === "map" ? (
             <div className="full-map-layout">
               <Panel className="full-map-panel">
@@ -741,10 +763,12 @@ export default function App() {
           )}
         </main>
         <footer className="app-footer">
-          <span>ORION 0.1 · Projet indépendant pour l’aide à la conduite</span>
+          <span>ORION 0.2 · Projet indépendant pour l’aide à la conduite</span>
           <span>
             {session.demo
-              ? "Démonstration locale"
+              ? session.preview
+                ? "Démonstration sur invitation"
+                : "Démonstration locale"
               : "Instance institutionnelle"}{" "}
             ·{" "}
             <a href="/source/orion-source.tar.gz" download>
@@ -759,6 +783,9 @@ export default function App() {
           {toast}
         </div>
       )}
+      {exporting && (
+        <ExportForm onClose={() => setExporting(false)} onExport={exportData} />
+      )}
       {form && (
         <RecordForm
           {...form}
@@ -771,7 +798,7 @@ export default function App() {
       )}{" "}
       {newOperation && (
         <OperationForm
-          demo={session.demo}
+          demo={!session.realOperationsEnabled}
           onClose={() => setNewOperation(false)}
           onCreated={(id) => {
             changeOperation(id);
@@ -790,7 +817,7 @@ export default function App() {
             <h3>{recordTitle(readItem)}</h3>
             <dl>
               {Object.entries(readItem.data)
-                .filter(([k]) => dataLabels[k])
+                .filter(([k]) => dataLabels[k] && k !== "oimde")
                 .map(([k, v]) => (
                   <div key={k}>
                     <dt>{dataLabels[k]}</dt>
@@ -804,6 +831,30 @@ export default function App() {
                   </div>
                 ))}
             </dl>
+            {readItem.data.oimde && (
+              <div className="mission-fields">
+                <h3>Mission OIMDE</h3>
+                {(
+                  [
+                    ["Orientation", "orientation"],
+                    ["Intention", "intention"],
+                    ["Mission", "mission"],
+                    ["Dispositions particulières", "dispositions"],
+                    ["Emplacements", "emplacement"],
+                    ["Échéance", "deadline"],
+                  ] as const
+                ).map(([label, key]) => (
+                  <section key={key}>
+                    <h4>{label}</h4>
+                    <p className="pre-wrap">
+                      {key === "deadline"
+                        ? dateTime(readItem.data.oimde![key])
+                        : readItem.data.oimde![key]}
+                    </p>
+                  </section>
+                ))}
+              </div>
+            )}
           </div>
         </Modal>
       )}

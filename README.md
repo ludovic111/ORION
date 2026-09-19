@@ -2,7 +2,7 @@
 
 ORION est une application web en français pour les aides à la conduite de la protection civile : centraliser les renseignements, tenir une carte de situation, suivre les moyens, documenter les décisions et préparer les rapports. L’interface reprend le design ORION fourni, avec un poste de travail sombre et des vues métier cohérentes.
 
-**Version 0.1 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
+**Version 0.2 — démonstration fonctionnelle et préparation d’un pilote institutionnel.** Projet indépendant, sans affiliation, homologation ou approbation de l’État de Genève ou de l’OFPP. Les scénarios livrés sont fictifs.
 
 Le logiciel peut être exploité dans l’infrastructure de l’institution, avec **son propre serveur PostgreSQL**. Aucun abonnement cloud, service d’IA ou service cartographique externe n’est requis à l’exécution. Le code est sous **AGPL-3.0-only** ; la visibilité privée de ce dépôt ne change pas sa licence.
 
@@ -29,7 +29,7 @@ Le logiciel peut être exploité dans l’infrastructure de l’institution, ave
 ### Prérequis
 
 - Accès au dépôt GitHub privé et Git installé.
-- **Node.js 24 recommandé**, minimum 22.12, avec npm.
+- **Node.js 24 recommandé**, minimum 22.18, avec npm.
 - Aucun serveur PostgreSQL ni Docker nécessaire pour la démonstration.
 - Python 3 et `curl` seulement pour régénérer les ressources officielles ; OpenSSL pour le test PostgreSQL natif.
 
@@ -47,6 +47,15 @@ Le scénario « EX ORION-26 · Crue de l’Arve » est créé automatiquement da
 
 Arrêter le serveur avec `Ctrl+C`. Relancer `npm start` pour retrouver les données. Il n’existe aucune commande de remise à zéro automatique : préserver les données utiles avant toute suppression manuelle.
 
+## Démonstration partageable et cadre institutionnel
+
+La version 0.2 ajoute des **invitations temporaires avec exercices isolés**, un **Cadre du dossier** validé avant les écritures réelles, des exports motivés et un audit de consultation. Les engagements réels exigent une activation explicite de l’exploitant (`REAL_OPERATIONS_ENABLED=true`) ; les démonstrations restent limitées aux exercices.
+
+Les ordres disposent d’un formulaire **OIMDE OFPP**, d’un suivi des échéances et d’une heure d’observation distincte de l’enregistrement. La carte affiche les coordonnées suisses **MN95 approchées** ; les exemples de la collection OFPP sont séparés des signes plaçables.
+
+- [Faire tester ORION dans Brave ou à distance](docs/DEMONSTRATION.md) : lancement, invitations, révocation et limites du tunnel temporaire.
+- [Cadre de conformité Genève / Confédération](docs/COMPLIANCE.md) : références officielles, contrôles effectifs, migration 0.1 et décisions restant à l’institution.
+
 ## Fonctionnalités
 
 | Vue                   | Fonctions disponibles                                                                                    |
@@ -59,6 +68,7 @@ Arrêter le serveur avec `Ctrl+C`. Relancer `npm start` pour retrouver les donn�
 | Analyse des liaisons  | Relations explicites entre objets et graphe interactif ; aucune inférence automatique de causalité       |
 | Transmissions         | Registre radio/téléphone, destinataires, priorités et accusés de réception                               |
 | Rapports              | Synthèse préremplie à relire, rédaction, validation humaine, impression PDF via le navigateur            |
+| Cadre du dossier      | Finalité, base légale, responsable, destinataires, conservation, archives, AIPD, revue et validation     |
 | Administration        | Comptes, rôles, affectations, suspension, import JSON, état de la base et vérification de l’audit        |
 
 Les données sont réellement enregistrées côté serveur. Les partenaires sont des objets métier : leur création ne leur ouvre pas de compte. Le registre des transmissions ne réalise aucun envoi sur POLYCOM, par téléphone ou par e-mail.
@@ -148,21 +158,22 @@ Le chiffrement des disques et sauvegardes, la disponibilité et la sécurité du
 
 Sans fichier `.env`, `npm start` utilise la démonstration locale. Pour personnaliser le développement, copier `.env.example` vers `.env` et adapter les valeurs. Les scripts de démarrage chargent ce fichier s’il existe.
 
-| Variable                                                  | Usage                                                                            |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                | `production` active les exigences institutionnelles ; absent en démonstration    |
-| `APP_MODE`                                                | `demo` ou `institution` ; démonstration interdite en production                  |
-| `HOST`                                                    | Adresse d’écoute, `127.0.0.1` par défaut ; loopback obligatoire en démonstration |
-| `PORT`                                                    | Port HTTP, `4311` par défaut                                                     |
-| `APP_ORIGIN`                                              | Origine exacte du navigateur, HTTPS obligatoire en production                    |
-| `DATA_DIR`                                                | Chemin de la base PGlite, `.data/orion` par défaut                               |
-| `DATABASE_URL`                                            | Connexion du compte PostgreSQL applicatif ; obligatoire en production            |
-| `DATABASE_CA_FILE`                                        | Chemin de la CA pour vérifier le certificat PostgreSQL                           |
-| `APP_KEY`                                                 | Clé MFA de 32 octets aléatoires, encodée en 64 caractères hexadécimaux           |
-| `TRUSTED_PROXIES`                                         | Adresses ou réseaux des reverse proxies maîtrisés, séparés par des virgules      |
-| `MIGRATION_DATABASE_URL`                                  | Compte propriétaire utilisé exclusivement par le script de migration             |
-| `BOOTSTRAP_EMAIL`, `BOOTSTRAP_NAME`, `BOOTSTRAP_PASSWORD` | Création du premier administrateur ; mot de passe de 14–128 caractères           |
-| `TEST_DATABASE_URL`                                       | Base PostgreSQL de test vide et jetable, jamais une base utilisateur             |
+| Variable                                                  | Usage                                                                                                 |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                | `production` active les exigences institutionnelles ; absent en démonstration                         |
+| `APP_MODE`                                                | `demo`, `preview` ou `institution` ; démonstrations interdites en production                          |
+| `REAL_OPERATIONS_ENABLED`                                 | `false` par défaut ; `true` après recette institutionnelle pour autoriser les nouveaux dossiers réels |
+| `HOST`                                                    | Adresse d’écoute, `127.0.0.1` par défaut ; loopback obligatoire en démonstration                      |
+| `PORT`                                                    | Port HTTP, `4311` par défaut                                                                          |
+| `APP_ORIGIN`                                              | Origine exacte du navigateur, HTTPS obligatoire en production                                         |
+| `DATA_DIR`                                                | Chemin de la base PGlite, `.data/orion` par défaut                                                    |
+| `DATABASE_URL`                                            | Connexion du compte PostgreSQL applicatif ; obligatoire en production                                 |
+| `DATABASE_CA_FILE`                                        | Chemin de la CA pour vérifier le certificat PostgreSQL                                                |
+| `APP_KEY`                                                 | Clé MFA de 32 octets aléatoires, encodée en 64 caractères hexadécimaux                                |
+| `TRUSTED_PROXIES`                                         | Adresses ou réseaux des reverse proxies maîtrisés, séparés par des virgules                           |
+| `MIGRATION_DATABASE_URL`                                  | Compte propriétaire utilisé exclusivement par le script de migration                                  |
+| `BOOTSTRAP_EMAIL`, `BOOTSTRAP_NAME`, `BOOTSTRAP_PASSWORD` | Création du premier administrateur ; mot de passe de 14–128 caractères                                |
+| `TEST_DATABASE_URL`                                       | Base PostgreSQL de test vide et jetable, jamais une base utilisateur                                  |
 
 Injecter les secrets de production depuis le coffre institutionnel. Ne pas mettre de paramètre SSL dans `DATABASE_URL` : ORION configure explicitement TLS. La perte ou une rotation non préparée de `APP_KEY` empêche de déchiffrer les secrets MFA.
 

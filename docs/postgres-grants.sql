@@ -8,3 +8,5 @@ GRANT SELECT, INSERT ON audit TO orion_app;
 GRANT SELECT, UPDATE ON audit_lock TO orion_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO orion_app;
 -- Do not grant schema ownership, CREATE, TRUNCATE, SUPERUSER or trigger privileges.
+
+GRANT SELECT, INSERT, UPDATE ON operation_governance TO orion_app;

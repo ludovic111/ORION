@@ -254,7 +254,14 @@ test("Read-only users cannot write or access administration", async () => {
     403,
   );
   assert.equal(
-    (await call(`/operations/${opA}/export`, "GET", undefined, viewer)).status,
+    (
+      await call(
+        `/operations/${opA}/export`,
+        "POST",
+        { purpose: "Exercice de test", recipient: "Conduite" },
+        viewer,
+      )
+    ).status,
     403,
   );
 });
@@ -445,8 +452,8 @@ test("Audit chain verifies; direct UPDATE DELETE and TRUNCATE fail", async () =>
 test("Exports are authenticated, scoped, and audited", async () => {
   const result = await call(
     `/operations/${opA}/export`,
-    "GET",
-    undefined,
+    "POST",
+    { purpose: "Exercice de test", recipient: "Conduite" },
     admin,
   );
   assert.equal(result.status, 200);
