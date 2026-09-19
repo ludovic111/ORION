@@ -699,7 +699,8 @@ export async function createApp(db, config) {
       mfaRequired: !demo,
       sessionIdleMinutes: 30,
       audit: "Ajout seul · chaîne SHA-256",
-      externalConnectors: [],
+      mapOnline: !!config.mapOnline,
+      externalConnectors: config.mapOnline ? ["swisstopo WMTS"] : [],
       version: "0.3.1",
     });
   });

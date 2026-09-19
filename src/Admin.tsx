@@ -21,6 +21,7 @@ type Status = {
   sessionIdleMinutes: number;
   audit: string;
   version: string;
+  mapOnline: boolean;
 };
 type ImportRow = { kind: string; data: Record<string, unknown> };
 export function Admin({
@@ -229,17 +230,19 @@ export function Admin({
             <div className="two-columns">
               <Panel title="Cartographie officielle">
                 <div className="panel-body">
-                  <h3>swisstopo · fonds locaux</h3>
+                  <h3>
+                    swisstopo ·{" "}
+                    {status?.mapOnline ? "haute définition" : "fonds locaux"}
+                  </h3>
                   <p>
                     Carte nationale couleur, noir et blanc, affichage sombre et
                     SWISSIMAGE.
                   </p>
                   <Badge tone="green">Servis par votre instance</Badge>
                   <p className="help">
-                    Cache initial : canton de Genève et Céligny, niveaux 11 à
-                    14. Les positions opérationnelles restent sur votre serveur.
-                    Le périmètre et les mises à jour se gèrent dans le script de
-                    préparation des fonds.
+                    {status?.mapOnline
+                      ? "Relais HD activé : les tuiles officielles sont chargées à la demande. Le fournisseur peut connaître le secteur consulté et des métadonnées réseau, mais ne reçoit pas les objets opérationnels. Le cache local reste disponible en secours."
+                      : "Cache local : canton de Genève et Céligny, niveaux 11 à 14. Aucun secteur consulté n’est transmis au fournisseur. Le périmètre et les mises à jour se gèrent dans le script de préparation des fonds."}
                   </p>
                   <a
                     href="https://docs.geo.admin.ch/visualize-data/xyz.html"
