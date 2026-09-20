@@ -69,6 +69,15 @@ after(async () => {
 test("Unauthenticated access and demo bypass are rejected", async () => {
   assert.equal((await call("/operations")).status, 401);
   assert.equal((await call("/demo", "POST", {})).status, 404);
+  assert.equal(
+    (
+      await call("/preview/start", "POST", {
+        name: "Alex",
+        syntheticOnly: true,
+      })
+    ).status,
+    401,
+  );
 });
 test("Origin enforcement, CSP and secret-free error responses", async () => {
   const response = await call(

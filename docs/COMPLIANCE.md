@@ -1,6 +1,6 @@
-# Cadre de conformité et dossier de pilote — ORION 0.2
+# Cadre de conformité et dossier de pilote — ORION 0.3
 
-État des sources vérifiées : 19 septembre 2026. ORION fournit des contrôles techniques et un support documentaire ; il n’est pas homologué par la Confédération, l’OFPP ou l’État de Genève. Une fiche approuvée dans le logiciel ne constitue pas un avis juridique ou une autorisation institutionnelle.
+État des sources vérifiées : 20 septembre 2026. ORION fournit des contrôles techniques et un support documentaire ; il n’est pas homologué par la Confédération, l’OFPP ou l’État de Genève. Une fiche approuvée dans le logiciel ne constitue pas un avis juridique ou une autorisation institutionnelle.
 
 ## Droit applicable et responsabilités
 
@@ -58,3 +58,11 @@ Identifier l’heure de découverte, préserver les éléments de preuve, limite
 Les ordres structurés reprennent **Orientation, Intention, Mission, Dispositions particulières, Emplacements** du formulaire OIMDE OFPP. L’échéance et le responsable servent au suivi interne, sans déclencher une transmission radio. Les signes sont les SVG officiels ; les fichiers nommés « exemple » restent consultables comme références mais ne sont pas utilisables comme signes autonomes. Les coordonnées MN95 utilisent les formules approchées swisstopo pour la navigation, pas une transformation cadastrale de précision. La validation terrain reste nécessaire.
 
 Sources : [aide à la conduite OFPP](https://www.babs.admin.ch/fr/aide-a-la-conduite-de-la-protection-civile), [documents de formation](https://www.babs.admin.ch/fr/documents-de-formation), [formulaire OIMDE](https://www.babs.admin.ch/dam/fr/sd-web/a2VQyjrJLQbX/FiBS_HiForm_Auftrag_OAABS-fr.docx), [formules swisstopo](https://www.swisstopo.admin.ch/dam/fr/sd-web/KLRCX9XIdXDu/ch1903wgs84-FR.pdf).
+
+## Réexamen du parcours de test — 20 septembre 2026
+
+Les pages officielles LIPAD (art. 35–37), RIPAD (art. 13 et 13A), OFPP « Aide à la conduite » et « Documents de formation » ont été consultées de nouveau. Les outils journal, carte de conduite, aperçu des moyens et rapports correspondent aux instruments décrits par l’OFPP. Les cinq rubriques OIMDE et le contrôle humain restent présents. Cette correspondance documentaire ne démontre ni l’adéquation aux procédures internes d’une ORPC particulière ni une homologation.
+
+L’accès par prénom ou pseudonyme est exclusivement un parcours de démonstration. Le prénom peut lui-même constituer une donnée personnelle : un pseudonyme suffit, aucun nom complet n’est demandé et la notice précise l’enregistrement des saisies, l’hébergement Cloudflare, l’expiration et l’absence de purge automatique. Un nom saisi ne prouve aucune identité. Aucun compte institutionnel, dossier d’un autre testeur ou engagement réel n’est accessible par ce mécanisme.
+
+Pour la présentation, utiliser uniquement des événements, personnes, ressources et transmissions fictifs. L’audit porte sur un compte de test, pas sur une identité professionnelle vérifiée. Les essais techniques ne remplacent pas une recette métier avec le commandement, la validation LIPAD par le responsable compétent, les contrats d’hébergement/sous-traitance et un audit de sécurité indépendant avant tout usage réel.

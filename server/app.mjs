@@ -224,7 +224,7 @@ export async function createApp(db, config) {
     if (preview && Date.now() >= Date.parse(config.previewExpiresAt))
       throw new HttpError(
         410,
-        "Cette démonstration a expiré. Demandez une nouvelle invitation.",
+        "Cette démonstration a expiré. Contactez la personne qui présente ORION.",
       );
     next();
   });
@@ -245,7 +245,10 @@ export async function createApp(db, config) {
   registerPreview(app, db, config, issueSession, loginLimiter);
   app.post("/api/login", loginLimiter, async (req, res) => {
     if (preview)
-      throw new HttpError(403, "Utilisez votre invitation de démonstration.");
+      throw new HttpError(
+        403,
+        "Ouvrez un espace de test depuis la page d’accueil.",
+      );
     const input = loginSchema.parse(req.body);
     const result = await db.transaction(async (tx) => {
       const user = (
@@ -421,7 +424,10 @@ export async function createApp(db, config) {
             ).rows[0].n,
           ) >= 3
         )
-          throw new HttpError(409, "Trois dossiers maximum par invitation.");
+          throw new HttpError(
+            409,
+            "Trois dossiers maximum par espace de test.",
+          );
       }
       await tx.query(
         "INSERT INTO operations(id,name,mode,nature,level,location,commander,phase) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",

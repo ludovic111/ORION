@@ -174,6 +174,7 @@ export default function App() {
       currentOp.current = "";
       setOpId("");
       setSession(null);
+      setSynced(null);
       setRecords([]);
       setOperations([]);
       setForm(null);
@@ -249,6 +250,7 @@ export default function App() {
     ++refreshGeneration.current;
     currentOp.current = id;
     setOpId(id);
+    setSynced(null);
     setRecords([]);
     setMapSelected(null);
     setExporting(false);
@@ -261,6 +263,7 @@ export default function App() {
       currentOp.current = "";
       setOpId("");
       setSession(null);
+      setSynced(null);
       setRecords([]);
       setOperations([]);
       setForm(null);
@@ -488,7 +491,7 @@ export default function App() {
               <small>
                 {roleLabels[session.user.role]} ·{" "}
                 {session.preview
-                  ? "Exercice sur invitation"
+                  ? "Espace de test"
                   : session.demo
                     ? "Exercice local"
                     : "ORION"}
@@ -563,7 +566,7 @@ export default function App() {
                   onClick={() => setNewOperation(true)}
                 >
                   <Plus size={15} />
-                  Nouvel événement
+                  Nouveau dossier
                 </button>
               )}
               {page === "situation" && operation && (
@@ -602,7 +605,7 @@ export default function App() {
               <span>EXERCICE · Données fictives</span>
               <span>
                 {session.preview
-                  ? "Essai privé · aucune donnée réelle autorisée."
+                  ? "Votre exercice · aucune donnée d’intervention réelle."
                   : "Aucune alerte réelle ni transmission automatique."}
               </span>
               <span className="sync-indicator">
@@ -641,12 +644,12 @@ export default function App() {
                 edit("map", undefined, { symbol: s.id, name: s.name })
               }
             />
-          ) : !props ? (
+          ) : !props || !synced ? (
             <Panel>
               <Empty>
-                {operations.length
+                {!synced || operations.length
                   ? "Chargement du dossier…"
-                  : "Aucun dossier accessible. Créez un événement ou demandez une affectation à votre administrateur."}
+                  : "Aucun dossier accessible. Créez un dossier ou demandez une affectation à votre administrateur."}
               </Empty>
             </Panel>
           ) : page === "governance" ? (
@@ -772,7 +775,7 @@ export default function App() {
           <span>
             {session.demo
               ? session.preview
-                ? "Démonstration sur invitation"
+                ? "Démonstration · exercices isolés"
                 : "Démonstration locale"
               : "Instance institutionnelle"}{" "}
             ·{" "}

@@ -46,8 +46,16 @@ if (process.argv.includes("--persistence")) {
     syntheticOnly: true,
   });
   assert.equal(login.status, 200);
+  const namedRecords = await call(
+    `/operations/${old.namedOp}/records`,
+    "GET",
+    undefined,
+    old.namedClient,
+  );
+  assert.equal(namedRecords.status, 200);
+  assert(namedRecords.data.some((x) => x.id === old.namedRecord));
   console.log(
-    "Persistence verified: exercise record, invitation and session survived restart/redeploy.",
+    "Persistence verified: named exercise, records, invitation and sessions survived restart/redeploy.",
   );
   process.exit(0);
 }
@@ -87,6 +95,50 @@ async function invite(role, label) {
     client: { cookie: login.cookie, csrf: login.data.csrf },
   };
 }
+const namedEntries = await Promise.all(
+  [1, 2].map(() =>
+    call("/preview/start", "POST", {
+      name: "Test présentation",
+      syntheticOnly: true,
+    }),
+  ),
+);
+for (const entry of namedEntries) {
+  assert.equal(entry.status, 201, JSON.stringify(entry.data));
+  assert.equal(entry.data.user.role, "command");
+}
+assert.notEqual(namedEntries[0].data.user.id, namedEntries[1].data.user.id);
+const namedClient = {
+  cookie: namedEntries[0].cookie,
+  csrf: namedEntries[0].data.csrf,
+};
+const otherClient = {
+  cookie: namedEntries[1].cookie,
+  csrf: namedEntries[1].data.csrf,
+};
+const namedOp = (await call("/operations", "GET", undefined, namedClient))
+  .data[0].id;
+assert.equal(
+  (await call(`/operations/${namedOp}/records`, "GET", undefined, otherClient))
+    .status,
+  404,
+);
+const namedRecords = (
+  await call(`/operations/${namedOp}/records`, "GET", undefined, namedClient)
+).data;
+assert(namedRecords.length > 15);
+const namedStock = namedRecords.find((x) => x.kind === "stock");
+const namedWrite = await call(
+  `/operations/${namedOp}/records`,
+  "POST",
+  {
+    kind: "stock",
+    data: { ...namedStock.data, name: "Stock essai sans invitation" },
+  },
+  namedClient,
+);
+assert.equal(namedWrite.status, 201, JSON.stringify(namedWrite.data));
+const namedRecord = namedWrite.data.id;
 const first = await invite("command", "Vérification technique Cloudflare");
 const viewer = await invite("viewer", "Vérification lecture Cloudflare");
 const client = first.client;
@@ -205,6 +257,9 @@ assert.equal(
 await writeFile(
   saved,
   JSON.stringify({
+    namedClient,
+    namedOp,
+    namedRecord,
     op,
     record: created.data.id,
     client,
@@ -214,5 +269,5 @@ await writeFile(
   { mode: 0o600 },
 );
 console.log(
-  "Cloudflare checks passed: anonymous denial, consent, secure cookie, isolated exercises, roles, CSRF/origin, concurrent edits, atomic rollback, export and revocation.",
+  "Cloudflare checks passed: name-only entry, homonym isolation, anonymous denial, consent, secure cookie, isolated exercises, roles, CSRF/origin, concurrent edits, atomic rollback, export and revocation.",
 );

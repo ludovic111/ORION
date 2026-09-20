@@ -24,7 +24,8 @@ export function Login({
     [invitation, setInvitation] = useState(() =>
       location.hash.startsWith("#invitation=") ? location.hash.slice(12) : "",
     ),
-    [syntheticOnly, setSyntheticOnly] = useState(false),
+    [name, setName] = useState(""),
+    [loaded, setLoaded] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [email, setEmail] = useState(""),
@@ -48,6 +49,7 @@ export function Login({
         setPreview(c.preview);
         setHostedPreview(!!c.hostedPreview);
         setPreviewExpiry(c.previewExpiresAt ?? "");
+        setLoaded(true);
       })
       .catch(() => setError("Le serveur est indisponible."));
   }, []);
@@ -113,12 +115,14 @@ export function Login({
           <ul>
             <li>
               <Database size={18} />
-              Hébergement autonome · vos données, votre infrastructure
+              {preview
+                ? "Espace de test · scénario fictif prêt à utiliser"
+                : "Hébergement autonome · vos données, votre infrastructure"}
             </li>
             <li>
               <ShieldCheck size={18} />
               {preview
-                ? "Invitation individuelle · exercices isolés · accès expirant"
+                ? "Un prénom suffit · chaque testeur a son exercice"
                 : "Second facteur · droits par rôle · modifications historisées"}
             </li>
             <li>
@@ -136,64 +140,102 @@ export function Login({
           <img className="login-mark" src="/orion.svg" alt="ORION" />
           <h2>
             {preview
-              ? "Essayer ORION sur invitation"
+              ? "Essayer ORION"
               : session
                 ? "Sécuriser votre compte"
                 : "Connexion"}
           </h2>
           <p className="muted">
-            {session
-              ? "Activez votre application d’authentification pour accéder aux dossiers."
-              : "Accès réservé au personnel autorisé."}
+            {preview
+              ? "Ouvrez votre exercice Crue de l’Arve en un clic. Vous pourrez aussi créer un dossier d’engagement."
+              : session
+                ? "Activez votre application d’authentification pour accéder aux dossiers."
+                : "Accès réservé au personnel autorisé."}
           </p>
-          {preview ? (
+          {!loaded ? (
+            <p className="muted" role="status">
+              {error
+                ? "Rechargez la page pour réessayer."
+                : "Connexion au serveur…"}
+            </p>
+          ) : preview ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void run(() =>
-                  api<Session>("/preview/enter", "POST", {
-                    token: invitation,
-                    syntheticOnly,
-                  }),
+                  api<Session>(
+                    invitation ? "/preview/enter" : "/preview/start",
+                    "POST",
+                    invitation
+                      ? { token: invitation, syntheticOnly: true }
+                      : { name: name.trim(), syntheticOnly: true },
+                  ),
                 );
               }}
             >
+              {!invitation && (
+                <Field label="Prénom ou pseudonyme">
+                  <input
+                    required
+                    name="displayName"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={80}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex. Alex"
+                    aria-describedby="test-access-help"
+                  />
+                </Field>
+              )}
+              <p className="help" id="test-access-help">
+                {invitation
+                  ? "Votre lien personnel ouvre votre exercice existant."
+                  : "Un pseudonyme suffit. Votre nom sert uniquement à identifier vos saisies dans cet espace de test."}
+              </p>
               <div className="invitation-notice">
-                {hostedPreview
-                  ? "Démonstration hébergée sur un serveur indépendant du poste de présentation. Cet hébergement n’est pas celui de l’État."
-                  : "Démonstration temporaire sur le poste de présentation, via Cloudflare. Ce relais n’est pas l’hébergement de l’État."}
-                N’inscrivez aucune donnée réelle ou personnelle.
-                {previewExpiry && (
+                <strong>
+                  Exercice uniquement · aucune donnée d’intervention réelle
+                </strong>
+                <p>
+                  En ouvrant l’exercice, vous confirmez utiliser uniquement des
+                  informations fictives.
+                </p>
+                <details>
+                  <summary>À propos de cet essai</summary>
                   <p>
-                    Fin de l’essai :{" "}
-                    {new Date(previewExpiry).toLocaleString("fr-CH")}
+                    {hostedPreview
+                      ? "Démonstration hébergée par Cloudflare, indépendante du poste de présentation."
+                      : "Démonstration temporaire via Cloudflare, disponible tant que le poste de présentation reste connecté."}{" "}
+                    Cet hébergement n’est pas celui de l’État et ne garantit pas
+                    une résidence des données en Suisse.
                   </p>
-                )}
+                  <p>
+                    Le prénom ou pseudonyme et les saisies sont enregistrés pour
+                    cet essai. Aucun nom complet n’est nécessaire. Les données
+                    ne sont pas effacées automatiquement à l’expiration ;
+                    adressez toute demande à la personne qui présente ORION.
+                  </p>
+                  <p>
+                    Votre session reste disponible dans ce navigateur pendant 8
+                    heures au maximum, avec expiration après 30 minutes sans
+                    activité. Après déconnexion, saisir à nouveau un nom crée un
+                    nouvel exercice.
+                  </p>
+                  {previewExpiry && (
+                    <p>
+                      Fin de l’essai :{" "}
+                      {new Date(previewExpiry).toLocaleString("fr-CH", {
+                        timeZone: "Europe/Zurich",
+                      })}{" "}
+                      (heure suisse).
+                    </p>
+                  )}
+                </details>
               </div>
-              <Field label="Code d’invitation">
-                <input
-                  required
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  maxLength={43}
-                  minLength={43}
-                  value={invitation}
-                  onChange={(e) => setInvitation(e.target.value.trim())}
-                />
-              </Field>
-              <label className="check">
-                <input
-                  required
-                  type="checkbox"
-                  checked={syntheticOnly}
-                  onChange={(e) => setSyntheticOnly(e.target.checked)}
-                />
-                Je testerai uniquement avec des informations fictives.
-              </label>
               <button
                 className="primary full-width"
-                disabled={busy || !syntheticOnly}
+                disabled={busy || (!invitation && !name.trim())}
               >
                 {busy ? "Ouverture…" : "Ouvrir mon exercice"}
                 <ArrowRight size={16} />
@@ -272,7 +314,7 @@ export function Login({
               {error}
             </p>
           )}
-          {demo && !session && (
+          {demo && !preview && !session && (
             <div className="demo-login">
               <div>
                 <TriangleAlert size={16} />
@@ -288,7 +330,9 @@ export function Login({
             </div>
           )}
           <p className="login-support">
-            Accès perdu ? Contactez l’administrateur de votre organisation.
+            {preview
+              ? "Projet indépendant · aucune affiliation ou homologation officielle."
+              : "Accès perdu ? Contactez l’administrateur de votre organisation."}
           </p>
           {session && (
             <button

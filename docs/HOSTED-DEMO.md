@@ -2,7 +2,17 @@
 
 ORION utilise le **projet Pages dédié `orion-conduite`** à l’adresse **https://orion-conduite.pages.dev**. Une liaison privée vers le Worker `orion-pci-demo` donne accès à sa base SQLite persistante dans un Durable Object. Le Worker ne possède aucune route publique `workers.dev` ni URL de prévisualisation. Les alias de déploiement Pages sont refusés avant tout accès au serveur. Le navigateur accède directement à Cloudflare ; le Mac du présentateur et le tunnel temporaire ne sont pas nécessaires. Aucun service Railway n’est utilisé.
 
-Cette variante est exclusivement une démonstration sur invitation avec données fictives. Le déploiement institutionnel reste le serveur Node/PostgreSQL avec MFA décrit dans `DEPLOYMENT.md`. La version Cloudflare n’est pas une certification cantonale ni une garantie de résidence suisse.
+Cette variante est exclusivement une démonstration avec accès par prénom ou pseudonyme et données fictives. Le déploiement institutionnel reste le serveur Node/PostgreSQL avec MFA décrit dans `DEPLOYMENT.md`. La version Cloudflare n’est pas une certification cantonale ni une garantie de résidence suisse.
+
+## Accès des testeurs — présentation du 21 septembre 2026
+
+Ouvrir [ORION](https://orion-conduite.pages.dev), saisir un prénom ou pseudonyme puis choisir **Ouvrir mon exercice**. Aucun code, mot de passe ni case à cocher. La notice visible réserve les saisies aux informations fictives ; le bouton enregistre cette prise de connaissance.
+
+Chaque ouverture sans session crée un compte de test au rôle Commandement et une copie indépendante de « Crue de l’Arve ». Deux personnes du même nom ne partagent jamais de dossier. Le nom n’est ni une identité vérifiée ni une clé permettant de récupérer un ancien exercice. Les liens historiques restent utilisables pour les exercices auxquels ils donnaient accès.
+
+Le cookie de session permet de retrouver l’exercice après rechargement. Expiration après 30 minutes sans activité, huit heures au maximum, plafonnée par la fin de l’instance. Une déconnexion suivie d’une nouvelle entrée par nom crée un autre espace. Les données et l’audit ne sont pas effacés automatiquement à cette échéance : une demande de retrait doit passer par l’organisateur, sans promettre une purge automatique.
+
+Le parcours **Nouveau dossier** crée un exercice vide, limité à trois dossiers par espace. Le serveur refuse le mode réel, les accès aux autres espaces et l’administration. Les inscriptions publiques sont bloquées dès que 100 comptes de démonstration existent (y compris les comptes historiques) ; elles partagent la limite de 20 tentatives en 15 minutes par adresse IP avec les accès par invitation. Prévoir ce plafond pour une grande salle partageant la même connexion. Les invitations administrées restent limitées à 30.
 
 ## Déployer
 
@@ -27,7 +37,7 @@ La configuration versionnée impose `APP_MODE=hosted-preview` et `DEMO_DATA_ACK=
 
 Le premier déploiement initialise un scénario fictif. Le stockage SQLite demeure attaché au même Durable Object lors des déploiements suivants. Ne pas changer le nom du Worker, de la classe ou de l’instance `demo-v1`, ni supprimer son stockage pour une simple mise à jour.
 
-## Invitations et révocation
+## Invitations historiques et accès administrés (facultatifs) et révocation
 
 Créer `.data/hosted-preview/control.json`, avec permissions `0600`, contenant `local` et `origin` égaux à l’origine HTTPS du projet Pages, `controlKey` égal au secret de gestion et `hosted: true`.
 
@@ -37,9 +47,9 @@ ORION_PREVIEW_CONTROL_FILE=.data/hosted-preview/control.json npm run preview:inv
 ORION_PREVIEW_CONTROL_FILE=.data/hosted-preview/control.json npm run preview:revoke -- IDENTIFIANT
 ```
 
-Les liens privés sont enregistrés dans `.data/hosted-preview/INVITATIONS.md`. Chaque invitation dure au maximum sept jours, sans dépasser l’expiration du service. Un redémarrage conserve les comptes, sessions valides et exercices ; il ne renouvelle aucune date d’expiration. L’accès arrivé à échéance renvoie 410, tandis que le contrôle de santé reste disponible. Le mot de passe des comptes de présentation est désactivé : seule leur invitation peut ouvrir une session. Le compte administrateur du scénario initial n’est pas accessible.
+Les liens privés sont enregistrés dans `.data/hosted-preview/INVITATIONS.md`. Chaque invitation dure au maximum sept jours, sans dépasser l’expiration du service. Un redémarrage conserve les comptes, sessions valides et exercices ; il ne renouvelle aucune date d’expiration. L’accès arrivé à échéance renvoie 410, tandis que le contrôle de santé reste disponible. Le mot de passe des comptes de présentation est désactivé : les liens historiques et l’entrée par nom utilisent des sessions de démonstration dédiées. Le compte administrateur du scénario initial n’est pas accessible.
 
-Chaque invité reçoit son propre exercice. Limites : 30 invitations, trois dossiers par invité, 1 000 objets par dossier. Les contrôles de rôle, d’origine, CSRF, de version et de révocation sont communs au serveur principal. Les limitations de requêtes sont persistantes et stockent une empreinte de l’adresse IP plutôt que l’adresse brute. Les requêtes concurrentes utilisent des transactions SQLite ; les audits ne peuvent être modifiés ou supprimés par une requête applicative.
+Chaque testeur reçoit son propre exercice. Limites : trois dossiers par espace et 1 000 objets par dossier. Les contrôles de rôle, d’origine, CSRF, de version et de révocation sont communs au serveur principal. Les limitations de requêtes sont persistantes et stockent une empreinte de l’adresse IP plutôt que l’adresse brute. Les requêtes concurrentes utilisent des transactions SQLite ; les audits ne peuvent être modifiés ou supprimés par une requête applicative.
 
 ## Offre gratuite et limites
 
@@ -47,7 +57,7 @@ Workers et les Durable Objects SQLite sont disponibles dans l’offre gratuite. 
 
 Les fichiers de carte, signes, fontes et interface sont servis par Pages après vérification de l’adresse canonique ; chaque requête traverse la fonction de passerelle. Cela consomme le quota de requêtes de fonctions, y compris pour les tuiles. L’archive source AGPL dépasse la limite de 25 Mio par ressource : elle est découpée lors du build, puis reconstituée en flux sur son URL habituelle. Le téléchargement reste complet sans charger toute l’archive en mémoire.
 
-Un seul objet coordonne cette petite instance de démonstration et sa chaîne d’audit, plafonnée à 30 invitations. Ce n’est pas l’architecture à reprendre pour un déploiement institutionnel ou à grande échelle. Les journaux de requêtes Cloudflare persistants sont désactivés dans la configuration ORION. L’audit applicatif demeure actif.
+Un seul objet coordonne cette petite instance de démonstration et sa chaîne d’audit, avec création publique plafonnée à 100 comptes de démonstration. Ce n’est pas l’architecture à reprendre pour un déploiement institutionnel ou à grande échelle. Les journaux de requêtes Cloudflare persistants sont désactivés dans la configuration ORION. L’audit applicatif demeure actif.
 
 ## Vérifications
 
@@ -66,7 +76,7 @@ ORION_TEST_URL=https://orion-conduite.pages.dev node scripts/test-cloudflare.mjs
 ORION_TEST_URL=https://orion-conduite.pages.dev node scripts/test-cloudflare.mjs --persistence
 ```
 
-Ces vérifications distantes créent deux invitations techniques, comptabilisées dans la limite de 30. L’une est révoquée pendant le test ; révoquer aussi l’autre après la vérification de persistance. Les sessions techniques restent dans un fichier local privé ignoré par Git.
+Ces vérifications distantes créent deux espaces par nom et deux invitations techniques, comptabilisées dans les limites de démonstration. L’une est révoquée pendant le test ; révoquer aussi l’autre après la vérification de persistance. Les sessions techniques restent dans un fichier local privé ignoré par Git.
 
 Les anciens liens `trycloudflare.com` ne migrent pas : utiliser les nouvelles invitations. Aucun dossier local existant n’est transféré automatiquement.
 

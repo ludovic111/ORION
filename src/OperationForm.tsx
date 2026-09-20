@@ -43,7 +43,7 @@ export function OperationForm({
   }
   return (
     <Modal
-      title="Nouvel événement"
+      title="Nouveau dossier d’engagement"
       subtitle="Ouvrez un dossier d’engagement : journal, carte, moyens et rapports lui seront rattachés."
       onClose={onClose}
       wide
@@ -161,9 +161,10 @@ export function OperationForm({
               <p>Commandement : {data.commander}</p>
               <p>{data.phase}</p>
               <p className="help">
-                Le dossier sera créé vide. Les accès se configurent dans
-                Administration → Utilisateurs. Aucune alerte externe n’est
-                envoyée.
+                {demo
+                  ? "Un exercice vide sera ajouté à votre espace. Vous pourrez revenir au scénario initial avec le sélecteur de dossier."
+                  : "Le dossier sera créé vide. Les accès se configurent dans Administration → Utilisateurs."}{" "}
+                Aucune alerte externe n’est envoyée.
               </p>
             </div>
           )}

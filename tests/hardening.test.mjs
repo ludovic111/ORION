@@ -396,3 +396,167 @@ test("Hosted invitations can last seven days, remain capped by instance expiry, 
   );
   assert.equal((await call("/config")).data.hostedPreview, true);
 });
+
+test("Name-only preview creates independent command exercises, with session persistence and no identity lookup", async (t) => {
+  const { db, call, config } = await fixture(t, true, true);
+  const start = () =>
+    call("/preview/start", "POST", { name: "  Alex  ", syntheticOnly: true });
+  const [a, b] = await Promise.all([start(), start()]);
+  for (const login of [a, b]) {
+    assert.equal(login.status, 201, JSON.stringify(login.data));
+    assert.equal(login.data.user.name, "Alex");
+    assert.equal(login.data.user.role, "command");
+    for (const flag of ["HttpOnly", "Secure", "SameSite=Strict"])
+      assert.ok(login.headers.get("set-cookie").includes(flag));
+  }
+  assert.notEqual(a.data.user.id, b.data.user.id);
+  const ca = { cookie: a.cookie, csrf: a.data.csrf };
+  const cb = { cookie: b.cookie, csrf: b.data.csrf };
+  const oa = (await call("/operations", "GET", undefined, ca)).data;
+  const ob = (await call("/operations", "GET", undefined, cb)).data;
+  assert.equal(oa.length, 1);
+  assert.equal(ob.length, 1);
+  assert.equal(oa[0].mode, "exercise");
+  assert.notEqual(oa[0].id, ob[0].id);
+  const root = `/operations/${oa[0].id}`;
+  const records = (await call(`${root}/records`, "GET", undefined, ca)).data;
+  assert.ok(records.length > 15);
+  const ids = new Set(records.map((r) => r.id));
+  for (const link of records.filter((r) => r.kind === "link")) {
+    assert.ok(ids.has(link.data.source));
+    assert.ok(ids.has(link.data.target));
+  }
+  assert.ok(
+    records.every((r) => Date.parse(r.created_at) > Date.now() - 86400000),
+  );
+  assert.equal(
+    (await call(`${root}/records`, "GET", undefined, cb)).status,
+    404,
+  );
+  assert.equal((await call("/admin/users", "GET", undefined, ca)).status, 403);
+  const body = { kind: "journal", data: journal };
+  assert.equal(
+    (await call(`${root}/records`, "POST", body, { ...ca, csrf: "wrong" }))
+      .status,
+    403,
+  );
+  const written = await call(`${root}/records`, "POST", body, ca);
+  assert.equal(written.status, 201);
+  assert.ok(
+    (await call(`${root}/records`, "GET", undefined, ca)).data.some(
+      (r) => r.id === written.data.id,
+    ),
+  );
+  const draft = {
+    name: "EX nouveau dossier",
+    mode: "exercise",
+    nature: "Inondation",
+    level: 2,
+    location: "Genève",
+    commander: "Conduite fictive",
+    phase: "Évaluation initiale",
+  };
+  assert.equal(
+    (await call("/operations", "POST", { ...draft, mode: "real" }, ca)).status,
+    403,
+  );
+  const empty = await call("/operations", "POST", draft, ca);
+  assert.equal(empty.status, 201);
+  assert.deepEqual(
+    (await call(`/operations/${empty.data.id}/records`, "GET", undefined, ca))
+      .data,
+    [],
+  );
+  assert.equal((await call("/operations", "POST", draft, ca)).status, 201);
+  assert.equal((await call("/operations", "POST", draft, ca)).status, 409);
+  const expiry = (
+    await db.query("SELECT access_expires_at FROM users WHERE id=$1", [
+      a.data.user.id,
+    ])
+  ).rows[0].access_expires_at;
+  assert.equal(new Date(expiry).toISOString(), config.previewExpiresAt);
+  await call("/logout", "POST", {}, ca);
+  assert.equal((await call("/operations", "GET", undefined, ca)).status, 401);
+  const fresh = await start();
+  assert.equal(fresh.status, 201);
+  assert.notEqual(fresh.data.user.id, a.data.user.id);
+});
+
+test("Name-only entry validates scope, name, origin, expiry, capacity and rate limits", async (t) => {
+  const { db, call, config } = await fixture(t, true, true);
+  const valid = { name: "É", syntheticOnly: true };
+  for (const body of [
+    { ...valid, name: "   " },
+    { ...valid, name: "a".repeat(81) },
+    { ...valid, name: "Alex\u0000test" },
+    { ...valid, name: "Alex\u202Etest" },
+    { ...valid, syntheticOnly: false },
+    { name: "Alex" },
+    { ...valid, role: "admin" },
+  ])
+    assert.equal((await call("/preview/start", "POST", body)).status, 400);
+  assert.equal(
+    (
+      await call("/preview/start", "POST", valid, undefined, {
+        Origin: "https://other.invalid",
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    Number(
+      (
+        await db.query(
+          "SELECT COUNT(*) AS count FROM users WHERE access_expires_at IS NOT NULL",
+        )
+      ).rows[0].count,
+    ),
+    0,
+  );
+  for (let i = 0; i < 99; i++)
+    await db.query(
+      "INSERT INTO users(id,email,name,role,password_hash,access_expires_at) VALUES($1,$2,$3,$4,$5,$6)",
+      [
+        crypto.randomUUID(),
+        `capacity-${i}@preview.invalid`,
+        "Capacité",
+        "command",
+        "invitation-only",
+        config.previewExpiresAt,
+      ],
+    );
+  const concurrent = await Promise.all([
+    call("/preview/start", "POST", valid),
+    call("/preview/start", "POST", valid),
+  ]);
+  assert.deepEqual(concurrent.map((r) => r.status).sort(), [201, 409]);
+  assert.equal(
+    Number(
+      (
+        await db.query(
+          "SELECT COUNT(*) AS count FROM users WHERE access_expires_at IS NOT NULL",
+        )
+      ).rows[0].count,
+    ),
+    100,
+  );
+  let limited;
+  for (let i = 0; i < 12; i++)
+    limited = await call("/preview/start", "POST", valid);
+  assert.equal(limited.status, 429);
+  config.previewExpiresAt = new Date(Date.now() - 1000).toISOString();
+  assert.equal((await call("/preview/start", "POST", valid)).status, 410);
+});
+
+test("Name-only preview is unavailable in the local administrator demo", async (t) => {
+  const { call } = await fixture(t);
+  assert.equal(
+    (
+      await call("/preview/start", "POST", {
+        name: "Alex",
+        syntheticOnly: true,
+      })
+    ).status,
+    401,
+  );
+});

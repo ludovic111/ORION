@@ -49,9 +49,11 @@ Arrêter le serveur avec `Ctrl+C`. Relancer `npm start` pour retrouver les donn�
 
 ## Démonstration partageable et cadre institutionnel
 
-Pour un accès indépendant du Mac, utiliser le [service de démonstration hébergé](docs/HOSTED-DEMO.md) : stockage persistant, invitations de sept jours et origine HTTPS stable.
+Pour un accès indépendant du Mac, utiliser le [service de démonstration hébergé](docs/HOSTED-DEMO.md) : stockage persistant, accès par prénom ou pseudonyme et origine HTTPS stable.
 
-La version 0.3 ajoute un **suivi de conduite** (missions OIMDE, échéances, responsabilités, demandes et transmissions en attente) et une **synthèse de relève** datée, traçable et soumise à validation humaine. Les délais ne modifient jamais les priorités saisies. La démonstration dispose de son propre projet Cloudflare Pages : **https://orion-conduite.pages.dev**, accessible sur invitation et indépendant du Mac.
+Pour la présentation : ouvrir le site, saisir un **prénom ou pseudonyme**, puis **Ouvrir mon exercice**. Un scénario « Crue de l’Arve » indépendant est créé automatiquement. **Nouveau dossier** permet de créer un exercice vide. Le nom n’est pas un identifiant de récupération : après déconnexion ou expiration, une nouvelle entrée crée un autre espace. Les essais restent fictifs et les engagements réels sont bloqués.
+
+La version 0.3 ajoute un **suivi de conduite** (missions OIMDE, échéances, responsabilités, demandes et transmissions en attente) et une **synthèse de relève** datée, traçable et soumise à validation humaine. Les délais ne modifient jamais les priorités saisies. La démonstration dispose de son propre projet Cloudflare Pages : **https://orion-conduite.pages.dev**, accessible sans code d’invitation et indépendant du Mac.
 
 La version 0.2 ajoute des **invitations temporaires avec exercices isolés**, un **Cadre du dossier** validé avant les écritures réelles, des exports motivés et un audit de consultation. Les engagements réels exigent une activation explicite de l’exploitant (`REAL_OPERATIONS_ENABLED=true`) ; les démonstrations restent limitées aux exercices.
 
