@@ -1,44 +1,71 @@
-import express from "express";
-import { existsSync } from "node:fs";
-import path from "node:path";
-import { loadConfig } from "./config.mjs";
-import { openDatabase } from "./db.mjs";
-import { createApp } from "./app.mjs";
-import { seedDemo } from "./seed.mjs";
-import { mapTile } from "./map-tiles.mjs";
-const config = await loadConfig();
-const db = await openDatabase(config);
-if (config.demo || config.preview) await seedDemo(db);
-const app = await createApp(db, config);
-app.use("/basemap", async (req, res) => {
-  if (!config.mapOnline) return res.sendStatus(404);
-  const result = await mapTile(
-    new Request(new URL(req.originalUrl, config.origin), {
-      method: req.method,
-    }),
+import { createServer } from "node:http";
+import { readFile, stat } from "node:fs/promises";
+import { resolve, extname, sep } from "node:path";
+const root = resolve("dist");
+const types = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".webmanifest": "application/manifest+json",
+  ".gz": "application/gzip",
+};
+const csp =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'";
+const server = createServer(async (req, res) => {
+  res.setHeader("Content-Security-Policy", csp);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   );
-  res.status(result.status);
-  result.headers.forEach((value, key) => res.setHeader(key, value));
-  res.end(Buffer.from(await result.arrayBuffer()));
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.writeHead(405);
+    res.end();
+    return;
+  }
+  try {
+    const path = decodeURIComponent(
+      new URL(req.url, "http://localhost").pathname,
+    );
+    if (path.startsWith("/api/") || path.includes("\0")) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+    const file = resolve(root, `.${path === "/" ? "/index.html" : path}`);
+    if (!file.startsWith(root + sep)) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    if (!(await stat(file)).isFile()) throw new Error("Not a file");
+    res.setHeader(
+      "Content-Type",
+      types[extname(file)] || "application/octet-stream",
+    );
+    res.setHeader(
+      "Cache-Control",
+      path.startsWith("/assets/")
+        ? "public, max-age=31536000, immutable"
+        : "no-cache",
+    );
+    res.writeHead(200);
+    res.end(req.method === "HEAD" ? undefined : await readFile(file));
+  } catch {
+    res.writeHead(404);
+    res.end("Not found");
+  }
 });
-// Serve only the production bundle. Source files, secrets and the original design stay private.
-if (!existsSync("dist/index.html"))
-  throw new Error("Exécutez npm run build avant de démarrer.");
-app.use(
-  express.static(path.resolve("dist"), { index: false, dotfiles: "deny" }),
+server.listen(
+  Number(process.env.PORT || 4311),
+  process.env.HOST || "127.0.0.1",
+  () =>
+    console.log(
+      `ORION · http://${process.env.HOST || "127.0.0.1"}:${server.address().port}`,
+    ),
 );
-app.get("/{*path}", (req, res) =>
-  res.sendFile(path.resolve("dist/index.html")),
-);
-const server = app.listen(config.port, config.host, () =>
-  console.log(
-    `ORION : ${config.origin} · ${config.preview ? "démonstration partagée" : config.demo ? "exercice local" : "institution"}`,
-  ),
-);
-for (const signal of ["SIGINT", "SIGTERM"])
-  process.on(signal, () =>
-    server.close(async () => {
-      await db.close();
-      process.exit(0);
-    }),
-  );

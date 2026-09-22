@@ -1,789 +1,828 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { JournalRow } from "./journal/JournalRow";
+import { Landing } from "./journal/Landing";
+import { Settings } from "./journal/SessionSettings";
+import { Handover } from "./journal/Handover";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LayoutGrid,
-  ClipboardList,
+  AlertCircle,
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowRight,
+  ArrowUp,
   BookOpen,
-  Map,
-  Truck,
-  Network,
-  Radio,
-  FileText,
-  Settings,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  Download,
+  FileUp,
+  FolderClosed,
+  HardDrive,
+  ListFilter,
   LockKeyhole,
   LogOut,
-  Search,
-  Bell,
-  ChevronRight,
-  Clock,
-  TriangleAlert,
-  RefreshCw,
+  MapPin,
+  Menu,
   Plus,
-  Check,
-  Archive,
-  ArrowUpRight,
-  Edit3,
+  Search,
+  Settings2,
   ShieldCheck,
+  Signal,
+  X,
 } from "lucide-react";
-import { api, downloadExport, setCsrf } from "./api";
-import type {
-  Data,
-  Kind,
-  Operation,
-  RecordItem,
-  Session,
-  SymbolItem,
-} from "./types";
-import { dateTime, recordTitle, roleLabels, shortId } from "./types";
-import { Badge, Empty, Modal, Panel, Status } from "./components";
-import { Login } from "./Login";
-import { MapView } from "./MapView";
-import { RecordForm, kindNames } from "./RecordForm";
-import { OperationForm } from "./OperationForm";
-import { Conduite } from "./Conduite";
-import { Governance } from "./Governance";
-import { ExportForm } from "./ExportForm";
-import { Admin } from "./Admin";
 import {
-  Dashboard,
-  Journal,
-  Links,
-  Reports,
-  Resources,
-  Symbols,
-  Transmissions,
-  type ViewProps,
-} from "./Views";
-const pages = [
-  ["situation", "Situation générale", LayoutGrid],
-  ["conduite", "Suivi de conduite", ClipboardList],
-  ["journal", "Journal d’intervention", BookOpen],
-  ["map", "Carte de conduite", Map],
-  ["resources", "Moyens et partenaires", Truck],
-  ["links", "Analyse des liaisons", Network],
-  ["transmissions", "Transmissions", Radio],
-  ["reports", "Rapports", FileText],
-  ["governance", "Cadre du dossier", ShieldCheck],
-  ["admin", "Administration", Settings],
-] as const;
-const dataLabels: Record<string, string> = {
-  title: "Message",
-  name: "Désignation",
-  type: "Type",
-  priority: "Priorité",
-  source: "Émetteur",
-  status: "Statut",
-  assignee: "Attribué à",
-  location: "Localisation",
-  decision: "Décision",
-  reliability: "Fiabilité",
-  validated: "Validation",
-  organization: "Organisation",
-  specialty: "Spécialité",
-  personnel: "Personnel",
-  contact: "Contact",
-  eta: "Arrivée prévue",
-  lat: "Latitude WGS84",
-  lng: "Longitude WGS84",
-  category: "Calque",
-  notes: "Observations",
-  label: "Relation",
-  channel: "Canal",
-  sender: "Émetteur",
-  recipient: "Destinataire",
-  situation: "Situation",
-  actions: "Actions",
-  needs: "Besoins",
-  outlook: "Évolution",
-  oimde: "Mission OIMDE",
-  observedAt: "Heure de l’observation",
-  total: "Total",
-  available: "Disponible",
-};
+  addEntry,
+  chronological,
+  current,
+  day,
+  emptyFields,
+  mergeJournals,
+  needsFollowUp,
+  numberLabel,
+  overdue,
+  reviseEntry,
+  searchEntries,
+  time,
+  workspaceSchema,
+  type Fields,
+  type Journal,
+} from "../shared/journal";
+import { demoWorkspace } from "./journal/demo";
+import { useWorkspace } from "./journal/useWorkspace";
+import { EntryForm } from "./journal/EntryForm";
+import { EntryDetail } from "./journal/EntryDetail";
+import { JournalSetup } from "./journal/JournalSetup";
+import { Modal } from "./journal/Modal";
+import { Privacy } from "./journal/Privacy";
+import { ExportModal, ImportModal } from "./journal/Transfer";
+
+type Dialog =
+  | "create"
+  | "export"
+  | "import"
+  | "settings"
+  | "privacy"
+  | "handover"
+  | "compose"
+  | null;
+type Filter = "all" | "follow" | "urgent" | "decisions";
 export default function App() {
-  const [session, setSession] = useState<Session | null>(null),
-    [loading, setLoading] = useState(true),
-    [operations, setOperations] = useState<Operation[]>([]),
-    [opId, setOpId] = useState(""),
-    [records, setRecords] = useState<RecordItem[]>([]),
-    [symbols, setSymbols] = useState<SymbolItem[]>([]),
-    [page, setPage] = useState(location.hash.slice(1) || "situation"),
-    [error, setError] = useState(""),
-    [toast, setToast] = useState(""),
-    [now, setNow] = useState(new Date()),
-    [synced, setSynced] = useState<Date | null>(null);
-  const [form, setForm] = useState<{
-      kind: Kind;
-      item?: RecordItem;
-      preset?: Data;
-    } | null>(null),
-    [readItem, setReadItem] = useState<RecordItem | null>(null),
-    [newOperation, setNewOperation] = useState(false),
-    [closing, setClosing] = useState(false),
-    [exporting, setExporting] = useState(false),
-    [mapSelected, setMapSelected] = useState<RecordItem | null>(null),
-    [categories, setCategories] = useState([
-      "Effets",
-      "Moyens",
-      "Mesures",
-      "Dangers",
-    ]),
-    [search, setSearch] = useState(""),
-    [notifications, setNotifications] = useState(false);
-  const currentOp = useRef(opId);
-  currentOp.current = opId;
-  const refreshGeneration = useRef(0);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const operation = operations.find((o) => o.id === opId) ?? null;
-  const canWrite =
-    !!session &&
-    session.user.role !== "viewer" &&
-    operation?.status === "active";
-  const canLead =
-    !!session && ["admin", "command", "chief"].includes(session.user.role);
-  const canClose =
-    !!session && ["admin", "command"].includes(session.user.role);
-  function navigate(value: string) {
-    setPage(value);
-    location.hash = value;
-    setSearch("");
-    setNotifications(false);
-  }
-  const refresh = useCallback(async () => {
-    const generation = ++refreshGeneration.current;
-    const id = currentOp.current;
-    try {
-      const ops = await api<Operation[]>("/operations");
-      const chosen = ops.some((o) => o.id === id) ? id : (ops[0]?.id ?? "");
-      const rows = chosen
-        ? await api<RecordItem[]>(`/operations/${chosen}/records`)
-        : [];
-      if (generation !== refreshGeneration.current) return;
-      setOperations(ops);
-      setOpId(chosen);
-      setRecords(rows);
-      setSynced(new Date());
-      setError("");
-    } catch (e) {
-      if (generation === refreshGeneration.current)
-        setError((e as Error).message);
-    }
-  }, []);
+  const store = useWorkspace();
+  const { workspace, setWorkspace } = store;
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [entryId, setEntryId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [newest, setNewest] = useState(true);
+  const [date, setDate] = useState("");
+  const [limit, setLimit] = useState(100);
+  const [showNav, setShowNav] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [clock, setClock] = useState(new Date());
+  const [toast, setToast] = useState("");
+  const [error, setError] = useState("");
+  const [draft, setDraft] = useState(false);
+  const [preset, setPreset] = useState<Fields | undefined>();
+  const [formGeneration, setFormGeneration] = useState(0);
+  const [backups, setBackups] = useState<Record<string, string>>({});
+  const search = useRef<HTMLInputElement>(null);
+  const journal = workspace?.journals.find((j) => j.id === workspace.activeId);
+  const selected = journal?.entries.find((e) => e.id === entryId);
+  const dirty = journal && backups[journal.id] !== JSON.stringify(journal);
+  const draftExists = draft || !!workspace?.drafts?.[workspace.activeId];
+  const hasDraft = useRef(draftExists);
+  hasDraft.current = draftExists;
   useEffect(() => {
-    const expired = () => {
-      ++refreshGeneration.current;
-      currentOp.current = "";
-      setOpId("");
-      setSession(null);
-      setSynced(null);
-      setRecords([]);
-      setOperations([]);
-      setForm(null);
-      setExporting(false);
-      setNewOperation(false);
-      setReadItem(null);
-      setMapSelected(null);
-      setCsrf("");
-    };
-    window.addEventListener("orion:expired", expired);
-    api<Session>("/session")
-      .then((s) => {
-        setCsrf(s.csrf);
-        setSession(s);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-    fetch("/symbols/catalog.json")
-      .then((r) => r.json())
-      .then(setSymbols)
-      .catch(() => setError("Bibliothèque de signes indisponible."));
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    const hash = () => setPage(location.hash.slice(1) || "situation");
-    window.addEventListener("hashchange", hash);
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    const timer = setInterval(() => setClock(new Date()), 30000);
+    if ("serviceWorker" in navigator && import.meta.env.PROD)
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => navigator.serviceWorker.ready)
+        .then(() => setOfflineReady(true))
+        .catch(() => {});
     return () => {
-      window.removeEventListener("orion:expired", expired);
-      window.removeEventListener("hashchange", hash);
-      clearInterval(interval);
+      clearInterval(timer);
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
     };
   }, []);
   useEffect(() => {
-    if (!session?.authenticated) return;
-    void refresh();
-    const interval = setInterval(refresh, 15000);
-    return () => clearInterval(interval);
-  }, [session, opId, refresh]);
-  useEffect(() => {
-    if (!session?.authenticated) return;
-    let last = 0;
-    const activity = () => {
-      if (Date.now() - last > 60000) {
-        last = Date.now();
-        void api("/activity", "POST", {}).catch(() => {});
-      }
-    };
-    window.addEventListener("pointerdown", activity);
-    window.addEventListener("keydown", activity);
-    return () => {
-      window.removeEventListener("pointerdown", activity);
-      window.removeEventListener("keydown", activity);
-    };
-  }, [session]);
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-      if (e.key === "Escape") {
-        setSearch("");
-        setNotifications(false);
-      }
-    };
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  }, []);
-  useEffect(() => {
-    if (!toast) return;
-    const timeout = setTimeout(() => setToast(""), 5000);
-    return () => clearTimeout(timeout);
+    const timer = setTimeout(() => setToast(""), 6000);
+    return () => clearTimeout(timer);
   }, [toast]);
-  function changeOperation(id: string) {
-    ++refreshGeneration.current;
-    currentOp.current = id;
-    setOpId(id);
-    setSynced(null);
-    setRecords([]);
-    setMapSelected(null);
-    setExporting(false);
-    setSearch("");
+  useEffect(() => {
+    const before = (e: BeforeUnloadEvent) => {
+      if (hasDraft.current && !store.persistent) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", before);
+    return () => window.removeEventListener("beforeunload", before);
+  }, [store.persistent]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        search.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
+  const visible = useMemo(() => {
+    let entries = searchEntries(journal?.entries ?? [], query);
+    if (filter === "follow") entries = entries.filter(needsFollowUp);
+    if (filter === "urgent")
+      entries = entries.filter((e) => current(e).priority === "Urgent");
+    if (filter === "decisions")
+      entries = entries.filter((e) => current(e).type === "Décision");
+    if (date)
+      entries = entries.filter(
+        (e) =>
+          new Date(current(e).happenedAt).toLocaleDateString("sv-SE", {
+            timeZone: "Europe/Zurich",
+          }) === date,
+      );
+    const sorted = chronological(entries);
+    return newest ? sorted.reverse() : sorted;
+  }, [journal, query, filter, date, newest]);
+  useEffect(() => setLimit(100), [query, filter, date, journal?.id]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [journal?.id]);
+  const follow = journal?.entries.filter(needsFollowUp) ?? [];
+  const late = follow.filter((e) => overdue(e, clock.getTime()));
+  function discardDraft() {
+    if (
+      draftExists &&
+      !window.confirm(
+        "Une entrée n’est pas encore consignée. Abandonner cette saisie ?",
+      )
+    )
+      return false;
+    setDraft(false);
+    if (journal)
+      setWorkspace((previous) => {
+        if (!previous) return previous;
+        const drafts = { ...previous.drafts };
+        delete drafts[journal.id];
+        return { ...previous, drafts };
+      });
+    setFormGeneration((value) => value + 1);
+    return true;
   }
-  async function logout() {
-    try {
-      await api("/logout", "POST", {});
-      ++refreshGeneration.current;
-      currentOp.current = "";
-      setOpId("");
-      setSession(null);
-      setSynced(null);
-      setRecords([]);
-      setOperations([]);
-      setForm(null);
-      setExporting(false);
-      setNewOperation(false);
-      setReadItem(null);
-      setMapSelected(null);
-      setCsrf("");
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  function updateJournal(value: Journal) {
+    if (!workspace) return;
+    setWorkspace(
+      workspaceSchema.parse({
+        ...workspace,
+        journals: workspace.journals.map((j) =>
+          j.id === value.id ? value : j,
+        ),
+      }),
+    );
   }
-  function edit(kind: Kind, item?: RecordItem, preset?: Data) {
-    const allowed =
-      canWrite &&
-      (!["report"].includes(kind) || canLead) &&
-      (!(item?.data.validated || item?.data.type === "Ordre") || canLead);
-    if (!allowed) {
-      if (item) setReadItem(item);
-      return;
-    }
-    setForm({ kind, item, preset });
+  function saveDraft(fields: Fields) {
+    if (!journal) return;
+    setDraft(true);
+    setWorkspace((previous) =>
+      previous
+        ? { ...previous, drafts: { ...previous.drafts, [journal.id]: fields } }
+        : previous,
+    );
   }
-  async function update(item: RecordItem, data: Data) {
-    await api(`/operations/${item.operation_id}/records/${item.id}`, "PUT", {
-      kind: item.kind,
-      data,
-      version: item.version,
+  function add(fields: Fields) {
+    if (!journal || !workspace) return;
+    const updated = addEntry(journal, fields, workspace.author);
+    const drafts = { ...workspace.drafts };
+    delete drafts[journal.id];
+    setWorkspace({
+      ...workspace,
+      drafts,
+      journals: workspace.journals.map((j) =>
+        j.id === journal.id ? updated : j,
+      ),
     });
-    await refresh();
-    setToast("Modification enregistrée et historisée.");
+    setDraft(false);
+    setFormGeneration((value) => value + 1);
+    setToast("Entrée consignée.");
   }
-  async function save(data: Data) {
-    if (!form || !operation) return;
-    if (form.item) await update(form.item, data);
-    else {
-      await api(`/operations/${operation.id}/records`, "POST", {
-        kind: form.kind,
-        data,
+  async function create(value: Journal, author: string, password?: string) {
+    if (workspace)
+      setWorkspace(
+        workspaceSchema.parse({
+          ...workspace,
+          author,
+          journals: [...workspace.journals, value],
+          activeId: value.id,
+        }),
+      );
+    else if (password)
+      await store.startProtected(
+        { version: 1, author, journals: [value], activeId: value.id },
+        password,
+      );
+    else
+      store.start({
+        version: 1,
+        author,
+        journals: [value],
+        activeId: value.id,
       });
-      await refresh();
-      setToast("Objet enregistré dans le dossier.");
-    }
+    setDialog(null);
+    setQuery("");
+    setFilter("all");
+    setDate("");
+    setShowNav(false);
   }
-  async function exportData(purpose: string, recipient: string) {
-    await downloadExport(opId, purpose, recipient);
-    setToast("Export du dossier téléchargé et journalisé.");
+  function importJournal(value: Journal, merge: boolean) {
+    if (workspace && journal) {
+      if (merge) updateJournal(mergeJournals(journal, value));
+      else {
+        const copy = {
+          ...value,
+          id: workspace.journals.some((j) => j.id === value.id)
+            ? crypto.randomUUID()
+            : value.id,
+        };
+        setWorkspace(
+          workspaceSchema.parse({
+            ...workspace,
+            journals: [...workspace.journals, copy],
+            activeId: copy.id,
+          }),
+        );
+      }
+    } else
+      store.start({
+        version: 1,
+        author: "Opérateur",
+        journals: [value],
+        activeId: value.id,
+      });
+    setFilter("all");
+    setQuery("");
+    setDate("");
+    setToast("Journal importé. Les données sont disponibles sur ce poste.");
   }
-  async function changeStatus() {
-    if (!operation) return;
+  function compose() {
+    if (journal?.closedAt) return;
+    if (matchMedia("(min-width: 1200px)").matches)
+      document.getElementById("quick-message")?.focus();
+    else setDialog("compose");
+  }
+  async function closeSession() {
+    if (!store.persistent && !discardDraft()) return;
+    if (
+      !store.persistent &&
+      !window.confirm(
+        "Cette session est temporaire. Vérifiez vos exports avant de fermer : son contenu sera retiré de la mémoire. Fermer la session ?",
+      )
+    )
+      return;
     try {
-      await api(`/operations/${opId}`, "PATCH", {
-        status: operation.status === "active" ? "closed" : "active",
-        version: operation.version,
-      });
-      await refresh();
-      setClosing(false);
-      setToast("Statut du dossier mis à jour.");
-    } catch (e) {
-      setError((e as Error).message);
+      await store.close();
+      setDialog(null);
+      setEntryId(null);
+      setBackups({});
+      setDraft(false);
+      setToast("");
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
-  if (loading)
+  const openImport = () => {
+    if (discardDraft()) setDialog("import");
+  };
+  if (store.loading)
     return (
-      <div className="loading">
-        <img src="/orion.svg" alt="" />
-        Ouverture d’ORION…
+      <div className="loading-screen">
+        <span className="brand-mark">O</span>
+        <p>Ouverture d’ORION…</p>
       </div>
     );
-  if (!session?.authenticated)
+  if (!workspace || !journal)
     return (
-      <Login
-        session={session}
-        onLogin={(s) => {
-          setSession(s);
-          setCsrf(s.csrf);
-        }}
-      />
+      <>
+        <Landing
+          stored={!!store.stored}
+          onCreate={create}
+          onDemo={() => store.start(demoWorkspace())}
+          onImport={openImport}
+          onPrivacy={() => setDialog("privacy")}
+          onUnlock={store.unlock}
+          onForget={store.forget}
+          error={store.error}
+        />
+        {dialog === "import" && (
+          <ImportModal
+            onClose={() => setDialog(null)}
+            onImport={importJournal}
+          />
+        )}{" "}
+        {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
+      </>
     );
-  const props: ViewProps | null = operation
-    ? {
-        records,
-        operation,
-        canWrite,
-        canLead,
-        onEdit: edit,
-        onNavigate: navigate,
-        onUpdate: update,
-      }
-    : null;
-  const pageTitle =
-    page === "symbols"
-      ? "Signes conventionnels"
-      : (pages.find((p) => p[0] === page)?.[1] ?? "Situation générale");
-  const results = search.trim()
-    ? records
-        .filter(
-          (r) =>
-            r.kind !== "link" &&
-            `${recordTitle(r)} ${r.data.location ?? ""} ${shortId(r)}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-        )
-        .slice(0, 12)
-    : [];
-  const urgent = records.filter(
-    (r) =>
-      ["journal", "transmission"].includes(r.kind) &&
-      r.data.priority === "P1" &&
-      !["Traité", "Clos", "Accusé reçu"].includes(r.data.status ?? ""),
-  );
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main">
-        Aller au contenu
+      <a href="#journal-main" className="skip-link">
+        Aller au journal
       </a>
-      <nav className="rail" aria-label="Navigation principale">
-        <button
-          className="rail-logo"
-          onClick={() => navigate("situation")}
-          aria-label="ORION — accueil"
-        >
-          <img src="/orion.svg" alt="" />
-        </button>
-        {pages
-          .filter((p) => p[0] !== "admin" || session.user.role === "admin")
-          .map(([id, title, Icon]) => (
-            <button
-              key={id}
-              className={
-                page === id || (id === "map" && page === "symbols")
-                  ? "active"
-                  : ""
-              }
-              aria-label={title}
-              title={title}
-              onClick={() => navigate(id)}
-            >
-              <Icon size={20} />
-            </button>
-          ))}
-        <div className="rail-spacer" />
-        <button
-          aria-label="Verrouiller la session"
-          title="Verrouiller la session"
-          onClick={logout}
-        >
-          <LockKeyhole size={19} />
-        </button>
-        <button
-          aria-label="Se déconnecter"
-          title="Se déconnecter"
-          onClick={logout}
-        >
-          <LogOut size={19} />
-        </button>
-      </nav>
-      <div className="app-body">
-        <header className="app-header">
-          <div className="header-brand">
-            ORION <span>/ Aide à la conduite</span>
-          </div>
-          <div className="breadcrumb">
-            <ChevronRight size={14} />
-            {pageTitle}
-          </div>
-          <div className="header-space" />
-          <div className="global-search">
-            <Search size={15} />
-            <input
-              ref={searchRef}
-              aria-label="Rechercher dans le dossier"
-              placeholder="Rechercher un objet, une adresse, un événement…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <kbd>⌘K</kbd>
-            {search && (
-              <div className="search-results">
-                {results.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => {
-                      edit(r.kind, r);
-                      setSearch("");
-                    }}
-                  >
-                    <Badge>{shortId(r)}</Badge>
-                    <span>{recordTitle(r)}</span>
-                  </button>
-                ))}
-                {!results.length && (
-                  <Empty>Aucun résultat dans ce dossier.</Empty>
-                )}
-              </div>
-            )}
-          </div>
-          <Badge tone={operation?.mode === "real" ? "red" : "amber"}>
-            <TriangleAlert size={12} />
-            {operation?.mode === "real" ? "RÉEL" : "EXERCICE"}
-          </Badge>
-          <div className="clock mono">
-            <Clock size={13} />
-            {now.toLocaleString("fr-CH", { timeZone: "Europe/Zurich" })}
+      <aside className={`sidebar ${showNav ? "open" : ""}`}>
+        <div className="brand">
+          <span className="brand-mark">
+            O<span />
+          </span>
+          <div>
+            ORION<small>JOURNAL D’INTERVENTION</small>
           </div>
           <button
-            className="notification-btn icon-btn"
-            aria-label="Notifications prioritaires"
-            onClick={() => setNotifications(!notifications)}
+            className="icon-button mobile-nav-close"
+            onClick={() => setShowNav(false)}
+            aria-label="Fermer la navigation"
           >
-            <Bell size={18} />
-            {urgent.length > 0 && <i />}
+            <X size={18} />
           </button>
-          <div className="user-menu">
-            <div className="avatar">
-              {session.user.name
-                .replace(/^(Cap|Lt|Maj|Sgt) /, "")
-                .split(" ")
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join("")}
-            </div>
-            <div>
-              <strong>{session.user.name}</strong>
-              <small>
-                {roleLabels[session.user.role]} ·{" "}
-                {session.preview
-                  ? "Espace de test"
-                  : session.demo
-                    ? "Exercice local"
-                    : "ORION"}
-              </small>
-            </div>
+        </div>
+        <div className="sidebar-section-heading">
+          <span>CETTE SESSION</span>
+          <button
+            className="icon-button"
+            aria-label="Nouveau journal"
+            onClick={() => {
+              if (discardDraft()) setDialog("create");
+            }}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        <nav aria-label="Journaux">
+          {workspace.journals.map((j) => (
+            <button
+              className={`journal-link ${j.id === journal.id ? "active" : ""}`}
+              key={j.id}
+              onClick={() => {
+                if (j.id === journal.id || !discardDraft()) return;
+                setWorkspace((previous) =>
+                  previous ? { ...previous, activeId: j.id } : previous,
+                );
+                setFilter("all");
+                setQuery("");
+                setDate("");
+                setEntryId(null);
+                setShowNav(false);
+              }}
+            >
+              <BookOpen size={17} />
+              <span>
+                <strong>{j.title}</strong>
+                <small>
+                  {j.closedAt ? "Clôturé" : j.mode} · {j.entries.length} entrées
+                </small>
+              </span>
+              {j.id === journal.id && <span className="active-dot" />}
+            </button>
+          ))}
+        </nav>
+        <button
+          className="sidebar-add"
+          onClick={() => {
+            if (discardDraft()) setDialog("create");
+          }}
+        >
+          <Plus size={16} />
+          Nouveau journal
+        </button>
+        <div className="sidebar-bottom">
+          <div className="local-card">
+            <span className="local-icon">
+              <ShieldCheck size={17} />
+            </span>
+            <strong>Sur ce poste uniquement</strong>
+            <p>
+              {store.persistent
+                ? "Chaque saisie est sauvegardée et chiffrée pour reprendre après un crash."
+                : "Session temporaire. Exportez votre journal avant de quitter."}
+            </p>
+            <button
+              className="text-button"
+              onClick={() =>
+                setDialog(store.persistent ? "privacy" : "settings")
+              }
+            >
+              {store.persistent
+                ? "Confidentialité"
+                : "Activer la reprise après crash"}
+              <ChevronRight size={13} />
+            </button>
           </div>
-          {notifications && (
-            <div className="notifications">
-              <h3>Messages prioritaires</h3>
-              {urgent.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    edit(r.kind, r);
-                    setNotifications(false);
-                  }}
-                >
-                  <Status value="P1" />
-                  {recordTitle(r)}
-                </button>
-              ))}
-              {!urgent.length && <Empty>Aucun message P1 en attente.</Empty>}
-            </div>
-          )}
+          <button className="sidebar-tool" onClick={openImport}>
+            <FileUp size={17} />
+            Importer un journal
+          </button>
+          <button className="sidebar-tool" onClick={() => setDialog("privacy")}>
+            <CircleHelp size={17} />
+            Confidentialité & aide
+          </button>
+          <a
+            className="sidebar-source"
+            href="/source/orion-source.tar.gz"
+            download
+          >
+            ORION 1.0 <span>Code ouvert ↗</span>
+          </a>
+        </div>
+      </aside>
+      {showNav && (
+        <button
+          className="nav-scrim"
+          aria-label="Fermer la navigation"
+          onClick={() => setShowNav(false)}
+        />
+      )}
+      <div className="workspace">
+        <header className="topbar">
+          <div className="breadcrumbs">
+            <button
+              className="icon-button nav-toggle"
+              aria-label="Ouvrir la navigation"
+              onClick={() => setShowNav(true)}
+            >
+              <Menu size={19} />
+            </button>
+            <BookOpen size={16} />
+            <span>Journaux</span>
+            <ChevronRight size={13} />
+            <strong>{journal.title}</strong>
+          </div>
+          <div className="topbar-right">
+            <span
+              className={`connection ${!online ? "offline" : ""}`}
+              title={
+                offlineReady
+                  ? "L’application est disponible hors ligne sur ce navigateur."
+                  : "Ouvrez une fois la version construite en ligne pour préparer le mode hors ligne."
+              }
+            >
+              <Signal size={14} />
+              {!online
+                ? "Hors ligne"
+                : offlineReady
+                  ? "Prêt hors ligne"
+                  : "Sur ce poste"}
+            </span>
+            <span className="clock">
+              {time(clock.toISOString())}
+              <small>CH</small>
+            </span>
+            <button className="operator" onClick={() => setDialog("settings")}>
+              <span className="avatar">
+                {workspace.author.slice(0, 2).toUpperCase()}
+              </span>
+              <span>{workspace.author}</span>
+              <Settings2 size={14} />
+            </button>
+            <button
+              className="icon-button"
+              title={
+                store.persistent ? "Verrouiller l’espace" : "Fermer la session"
+              }
+              aria-label={
+                store.persistent ? "Verrouiller l’espace" : "Fermer la session"
+              }
+              onClick={() => void closeSession()}
+            >
+              {store.persistent ? (
+                <LockKeyhole size={17} />
+              ) : (
+                <LogOut size={17} />
+              )}
+            </button>
+          </div>
         </header>
-        <main id="main" className={`main-content page-${page}`}>
-          <div className="workspace-heading">
+        <main id="journal-main">
+          <div className="journal-heading">
             <div>
-              <div className="heading-row">
-                <h1>
-                  {page === "situation"
-                    ? (operation?.name ?? "Dossiers d’engagement")
-                    : pageTitle}
-                </h1>
-                {operation && (
-                  <Badge tone={operation.status === "closed" ? "muted" : "red"}>
-                    {operation.status === "closed"
-                      ? "DOSSIER CLÔTURÉ"
-                      : operation.level >= 3
-                        ? "ÉVÉNEMENT MAJEUR"
-                        : `NIVEAU ${operation.level}`}
-                  </Badge>
-                )}
+              <div className="eyebrow">
+                <span
+                  className={`status-dot ${journal.closedAt ? "closed" : ""}`}
+                />
+                {journal.closedAt ? "JOURNAL CLÔTURÉ" : "JOURNAL OUVERT"}
+                <span className="meta-divider" />
+                {journal.mode.toUpperCase()}
+                <span className="badge subdued">{journal.classification}</span>
               </div>
-              <div className="workspace-meta">
-                <select
-                  aria-label="Dossier d’engagement"
-                  value={opId}
-                  onChange={(e) => changeOperation(e.target.value)}
-                >
-                  {!operations.length && (
-                    <option value="">Aucun dossier</option>
-                  )}
-                  {operations.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                      {o.status === "closed" ? " · clôturé" : ""}
-                    </option>
-                  ))}
-                </select>
-                {operation && (
+              <h1>{journal.title}</h1>
+              <div className="journal-context">
+                {journal.location && (
                   <span>
-                    {operation.commander} · {operation.phase}
+                    <MapPin size={14} />
+                    {journal.location}
                   </span>
                 )}
+                {journal.organization && <span>{journal.organization}</span>}
+                <span>{day(journal.createdAt)}</span>
+                {journal.reference && (
+                  <span className="mono">{journal.reference}</span>
+                )}
               </div>
             </div>
-            <div className="actions workspace-actions">
-              {canLead && (
-                <button
-                  className="primary"
-                  onClick={() => setNewOperation(true)}
-                >
-                  <Plus size={15} />
-                  Nouveau dossier
-                </button>
-              )}
-              {page === "situation" && operation && (
-                <>
-                  <button disabled={!canWrite} onClick={() => edit("journal")}>
-                    <BookOpen size={15} />
-                    Entrée journal
-                  </button>
-                  <button onClick={() => navigate("reports")}>
-                    <FileText size={15} />
-                    Rapport de situation
-                  </button>
-                </>
-              )}
-              {canClose && operation && page !== "situation" && (
-                <button
-                  title={
-                    operation.status === "active"
-                      ? "Clôturer le dossier"
-                      : "Rouvrir le dossier"
-                  }
-                  aria-label={
-                    operation.status === "active"
-                      ? "Clôturer le dossier"
-                      : "Rouvrir le dossier"
-                  }
-                  onClick={() => setClosing(true)}
-                >
-                  <Archive size={16} />
-                </button>
-              )}
+            <div className="heading-actions">
+              <button onClick={() => setDialog("handover")}>
+                <ArrowRight size={16} />
+                Passer la relève
+              </button>
+              <button onClick={() => setDialog("export")}>
+                <Download size={16} />
+                Exporter
+              </button>
+              <button
+                className="primary"
+                disabled={!!journal.closedAt}
+                onClick={compose}
+              >
+                <Plus size={17} />
+                Nouvelle entrée
+              </button>
             </div>
           </div>
-          {session.demo && (
-            <div className="exercise-note">
-              <span>EXERCICE · Données fictives</span>
-              <span>
-                {session.preview
-                  ? "Votre exercice · aucune donnée d’intervention réelle."
-                  : "Aucune alerte réelle ni transmission automatique."}
-              </span>
-              <span className="sync-indicator">
-                <i className={error ? "offline" : ""} />
-                {synced
-                  ? `Actualisé à ${synced.toLocaleTimeString("fr-CH")}`
-                  : "Connexion…"}
-                <button
-                  aria-label="Actualiser les données"
-                  className="text-button"
-                  onClick={refresh}
-                >
-                  <RefreshCw size={12} />
-                </button>
-              </span>
+          {(error || store.error) && (
+            <div className="error banner" role="alert">
+              <AlertCircle size={17} />
+              {error || store.error}
+              <button
+                className="text-button"
+                onClick={() => setDialog("export")}
+              >
+                Exporter une copie
+              </button>
             </div>
           )}
-          {error && (
-            <div className="error" role="alert">
-              {error} Les données affichées peuvent être anciennes.{" "}
-              <button onClick={refresh}>Réessayer</button>
-            </div>
-          )}
-          {page === "admin" && session.user.role === "admin" ? (
-            <Admin
-              operations={operations}
-              operation={operation}
-              user={session.user}
-              onRefresh={refresh}
-            />
-          ) : page === "symbols" ? (
-            <Symbols
-              symbols={symbols}
-              canWrite={canWrite}
-              onUse={(s) =>
-                edit("map", undefined, { symbol: s.id, name: s.name })
-              }
-            />
-          ) : !props || !synced ? (
-            <Panel>
-              <Empty>
-                {!synced || operations.length
-                  ? "Chargement du dossier…"
-                  : "Aucun dossier accessible. Créez un dossier ou demandez une affectation à votre administrateur."}
-              </Empty>
-            </Panel>
-          ) : page === "governance" ? (
-            <Governance
-              key={opId}
-              operation={props.operation}
-              role={session.user.role}
-            />
-          ) : page === "conduite" ? (
-            <Conduite key={opId} {...props} now={now} />
-          ) : page === "journal" ? (
-            <Journal {...props} />
-          ) : page === "resources" ? (
-            <Resources {...props} />
-          ) : page === "links" ? (
-            <Links {...props} />
-          ) : page === "transmissions" ? (
-            <Transmissions {...props} />
-          ) : page === "reports" ? (
-            <Reports {...props} onExport={() => setExporting(true)} />
-          ) : page === "map" ? (
-            <div className="full-map-layout">
-              <Panel className="full-map-panel">
-                <MapView
-                  records={records}
-                  selected={mapSelected}
-                  categories={categories}
-                  canWrite={canWrite}
-                  onSelect={setMapSelected}
-                  onAdd={(d) => edit("map", undefined, d)}
-                />
-              </Panel>
-              <div className="map-sidebar">
-                <Panel title="Objet sélectionné">
-                  <div className="panel-body">
-                    {mapSelected ? (
-                      <>
-                        <Badge tone="blue">{shortId(mapSelected)}</Badge>
-                        <h3>{mapSelected.data.name}</h3>
-                        <dl>
-                          <dt>Coordonnées WGS84</dt>
-                          <dd className="mono">
-                            {mapSelected.data.lat?.toFixed(5)} /{" "}
-                            {mapSelected.data.lng?.toFixed(5)}
-                          </dd>
-                          <dt>Organisation</dt>
-                          <dd>{mapSelected.data.organization}</dd>
-                          <dt>Observations</dt>
-                          <dd>{mapSelected.data.notes || "Aucune"}</dd>
-                        </dl>
-                        <button
-                          onClick={() =>
-                            edit(
-                              "map",
-                              records.find((r) => r.id === mapSelected.id) ??
-                                mapSelected,
-                            )
-                          }
-                        >
-                          <Edit3 size={14} />
-                          {canWrite ? "Modifier" : "Consulter"}
-                        </button>
-                      </>
-                    ) : (
-                      <p className="muted">
-                        Sélectionnez un signe sur la carte pour consulter sa
-                        fiche.
-                      </p>
-                    )}
-                  </div>
-                </Panel>
-                <Panel title="Calques opérationnels">
-                  <div className="panel-body layer-list">
-                    {["Effets", "Moyens", "Mesures", "Dangers"].map((v, i) => (
-                      <label className="check" key={v}>
-                        <input
-                          type="checkbox"
-                          checked={categories.includes(v)}
-                          onChange={(e) =>
-                            setCategories((c) =>
-                              e.target.checked
-                                ? [...c, v]
-                                : c.filter((x) => x !== v),
-                            )
-                          }
-                        />
-                        <span className={["red", "blue", "", "amber"][i]}>
-                          ●
-                        </span>
-                        {v}
-                        <small>
-                          {
-                            records.filter(
-                              (r) => r.kind === "map" && r.data.category === v,
-                            ).length
-                          }
-                        </small>
-                      </label>
-                    ))}
-                  </div>
-                </Panel>
-                <button onClick={() => navigate("symbols")}>
-                  Bibliothèque OFPP <ArrowUpRight size={14} />
-                </button>
-                {canWrite && (
-                  <button className="primary" onClick={() => edit("map")}>
-                    <Plus size={15} />
-                    Ajouter un objet
-                  </button>
+          <div className="journal-status">
+            <div>
+              <span className="mono">
+                {String(journal.entries.length).padStart(2, "0")}
+              </span>{" "}
+              entrées
+              <span className="meta-divider" />
+              <button
+                className="text-button"
+                onClick={() => setFilter("follow")}
+              >
+                <span className={follow.length ? "amber-text" : ""}>
+                  {follow.length}
+                </span>{" "}
+                suites à donner
+                {late.length > 0 && (
+                  <span className="overdue-count">{late.length} en retard</span>
                 )}
-                <p className="help">
-                  Les signes officiels conservent leurs couleurs. Les catégories
-                  servent à filtrer les objets du dossier.
-                </p>
-              </div>
+              </button>
             </div>
-          ) : (
-            <Dashboard {...props} />
-          )}
+            <div>
+              <span
+                className={`save-indicator ${store.saveState === "error" ? "red-text" : ""}`}
+              >
+                {store.saveState === "saved" ? (
+                  <Check size={13} />
+                ) : (
+                  <HardDrive size={13} />
+                )}
+                {store.saveState === "saved"
+                  ? "Sauvegardé sur ce poste"
+                  : store.saveState === "saving"
+                    ? "Sauvegarde en cours…"
+                    : store.saveState === "error"
+                      ? "Échec de sauvegarde"
+                      : "Session temporaire"}
+              </span>
+              <button
+                className="text-button backup-indicator"
+                onClick={() => setDialog("export")}
+              >
+                <ArrowDownToLine size={13} />
+                {dirty ? "Copie de sécurité à faire" : "Archive téléchargée"}
+              </button>
+            </div>
+          </div>
+          <div className="journal-layout">
+            <section className="journal-panel" aria-label="Entrées du journal">
+              <div
+                className="filter-tabs"
+                role="group"
+                aria-label="Filtrer les entrées"
+              >
+                {(
+                  [
+                    ["all", "Tout le journal", journal.entries.length],
+                    ["follow", "À suivre", follow.length],
+                    [
+                      "urgent",
+                      "Urgent",
+                      journal.entries.filter(
+                        (e) => current(e).priority === "Urgent",
+                      ).length,
+                    ],
+                    [
+                      "decisions",
+                      "Décisions",
+                      journal.entries.filter(
+                        (e) => current(e).type === "Décision",
+                      ).length,
+                    ],
+                  ] as const
+                ).map(([value, label, count]) => (
+                  <button
+                    aria-pressed={filter === value}
+                    className={filter === value ? "selected" : ""}
+                    key={value}
+                    onClick={() => setFilter(value)}
+                  >
+                    {label}
+                    <span>{count}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="table-toolbar">
+                <div className="search-field">
+                  <Search size={16} />
+                  <input
+                    ref={search}
+                    aria-label="Rechercher dans le journal"
+                    placeholder="Rechercher un message, un lieu, un indicatif…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  {query ? (
+                    <button
+                      className="icon-button"
+                      aria-label="Effacer la recherche"
+                      onClick={() => setQuery("")}
+                    >
+                      <X size={14} />
+                    </button>
+                  ) : (
+                    <kbd>⌘ K</kbd>
+                  )}
+                </div>
+                <label className="date-filter">
+                  <ListFilter size={15} />
+                  <span className="sr-only">Filtrer par date en Suisse</span>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    aria-label="Filtrer par date en Suisse"
+                  />
+                </label>
+                <button
+                  className="icon-button"
+                  title={
+                    newest
+                      ? "Afficher les plus anciennes en premier"
+                      : "Afficher les plus récentes en premier"
+                  }
+                  aria-label={
+                    newest
+                      ? "Afficher les plus anciennes en premier"
+                      : "Afficher les plus récentes en premier"
+                  }
+                  onClick={() => setNewest(!newest)}
+                >
+                  {newest ? <ArrowDown size={17} /> : <ArrowUp size={17} />}
+                </button>
+              </div>
+              <div className="table-container">
+                <table className="journal-table">
+                  <thead>
+                    <tr>
+                      <th>HEURE / N°</th>
+                      <th>ÉVÉNEMENT</th>
+                      <th>ÉMETTEUR</th>
+                      <th>SUIVI</th>
+                      <th>
+                        <span className="sr-only">Ouvrir</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.slice(0, limit).map((entry, index) => {
+                      const f = current(entry);
+                      const newDay =
+                        index === 0 ||
+                        day(current(visible[index - 1]).happenedAt) !==
+                          day(f.happenedAt);
+                      return (
+                        <JournalRow
+                          key={entry.id}
+                          {...{ entry, newDay }}
+                          onOpen={() => setEntryId(entry.id)}
+                          at={clock.getTime()}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {!visible.length && (
+                  <div className="empty-state">
+                    <BookOpen size={30} />
+                    <h2>
+                      {journal.entries.length
+                        ? "Aucune entrée correspondante"
+                        : "Votre journal commence ici"}
+                    </h2>
+                    <p>
+                      {journal.entries.length
+                        ? "Essayez un autre mot ou retirez les filtres."
+                        : "Un appel, un fait observé, une décision. Consignez la première information."}
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (journal.entries.length) {
+                          setQuery("");
+                          setFilter("all");
+                          setDate("");
+                        } else compose();
+                      }}
+                    >
+                      {journal.entries.length
+                        ? "Effacer les filtres"
+                        : "Consigner la première entrée"}
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <footer className="table-footer">
+                <span>
+                  {visible.length} entrée{visible.length !== 1 ? "s" : ""}{" "}
+                  {visible.length !== journal.entries.length &&
+                    `sur ${journal.entries.length}`}
+                  <span className="meta-divider" />
+                  Heures Europe/Zurich
+                </span>
+                <span>
+                  {newest ? "Plus récentes en premier" : "Ordre chronologique"}
+                </span>
+              </footer>
+              {visible.length > limit && (
+                <button
+                  className="load-more"
+                  onClick={() => setLimit(limit + 100)}
+                >
+                  Afficher 100 entrées de plus
+                </button>
+              )}
+            </section>
+            <aside className="composer-panel">
+              {workspace.drafts?.[journal.id]?.message && (
+                <p className="draft-status">
+                  {store.persistent
+                    ? "Brouillon inclus dans la reprise locale"
+                    : "Brouillon non consigné"}
+                </p>
+              )}
+              {journal.closedAt ? (
+                <div className="closed-panel">
+                  <FolderClosed size={28} />
+                  <h2>Journal clôturé</h2>
+                  <p>Consultation et export restent disponibles.</p>
+                  <button onClick={() => setDialog("settings")}>
+                    Gérer le journal
+                  </button>
+                </div>
+              ) : (
+                <EntryForm
+                  key={`${journal.id}-${formGeneration}`}
+                  author={workspace.author}
+                  preset={workspace.drafts?.[journal.id]}
+                  onDraft={saveDraft}
+                  onSave={(fields) => add(fields)}
+                  compact
+                />
+              )}
+              <div className="composer-note">
+                <ShieldCheck size={15} />
+                <span>Reste sur ce poste. Aucun envoi automatique.</span>
+              </div>
+            </aside>
+          </div>
+          <footer className="workspace-footer">
+            <span>
+              ORION <span>·</span> Une trace claire, du premier message à la
+              relève.
+            </span>
+            <button
+              className="text-button"
+              onClick={() => setDialog("privacy")}
+            >
+              Code ouvert · données locales
+            </button>
+          </footer>
         </main>
-        <footer className="app-footer">
-          <span>ORION 0.3 · Projet indépendant pour l’aide à la conduite</span>
-          <span>
-            {session.demo
-              ? session.preview
-                ? "Démonstration · exercices isolés"
-                : "Démonstration locale"
-              : "Instance institutionnelle"}{" "}
-            ·{" "}
-            <a href="/source/orion-source.tar.gz" download>
-              Code source AGPL-3.0
-            </a>
-          </span>
-        </footer>
       </div>
       {toast && (
         <div className="toast" role="status">
@@ -791,103 +830,162 @@ export default function App() {
           {toast}
         </div>
       )}
-      {exporting && (
-        <ExportForm onClose={() => setExporting(false)} onExport={exportData} />
-      )}
-      {form && (
-        <RecordForm
-          {...form}
-          symbols={symbols}
-          records={records}
-          canValidate={canLead}
-          onClose={() => setForm(null)}
-          onSave={save}
-        />
-      )}{" "}
-      {newOperation && (
-        <OperationForm
-          demo={!session.realOperationsEnabled}
-          onClose={() => setNewOperation(false)}
-          onCreated={(id) => {
-            changeOperation(id);
-            navigate("situation");
-            setToast("Dossier créé. Configurez les accès dans Administration.");
+      {selected && (
+        <EntryDetail
+          key={selected.id}
+          entry={selected}
+          author={workspace.author}
+          readOnly={!!journal.closedAt}
+          onClose={() => setEntryId(null)}
+          onRevise={(fields, reason) => {
+            updateJournal(
+              reviseEntry(
+                journal,
+                selected.id,
+                fields,
+                workspace.author,
+                reason,
+              ),
+            );
+            setToast(
+              "Modification enregistrée. La version précédente est conservée.",
+            );
+          }}
+          onReply={() => {
+            if (!discardDraft()) return;
+            setPreset({
+              ...emptyFields(),
+              type: "Quittance",
+              source: workspace.author,
+              recipient: current(selected).source,
+              location: current(selected).location,
+              reference: `Suite de ${numberLabel(selected)}`,
+            });
+            setEntryId(null);
+            setDialog("compose");
           }}
         />
       )}
-      {readItem && (
-        <Modal
-          title={kindNames[readItem.kind]}
-          onClose={() => setReadItem(null)}
-        >
-          <div className="read-only-detail">
-            <Badge>Consultation</Badge>
-            <h3>{recordTitle(readItem)}</h3>
-            <dl>
-              {Object.entries(readItem.data)
-                .filter(([k]) => dataLabels[k] && k !== "oimde")
-                .map(([k, v]) => (
-                  <div key={k}>
-                    <dt>{dataLabels[k]}</dt>
-                    <dd>
-                      {typeof v === "boolean"
-                        ? v
-                          ? "Oui"
-                          : "Non"
-                        : String(v) || "—"}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-            {readItem.data.oimde && (
-              <div className="mission-fields">
-                <h3>Mission OIMDE</h3>
-                {(
-                  [
-                    ["Orientation", "orientation"],
-                    ["Intention", "intention"],
-                    ["Mission", "mission"],
-                    ["Dispositions particulières", "dispositions"],
-                    ["Emplacements", "emplacement"],
-                    ["Échéance", "deadline"],
-                  ] as const
-                ).map(([label, key]) => (
-                  <section key={key}>
-                    <h4>{label}</h4>
-                    <p className="pre-wrap">
-                      {key === "deadline"
-                        ? dateTime(readItem.data.oimde![key])
-                        : readItem.data.oimde![key]}
-                    </p>
-                  </section>
-                ))}
-              </div>
-            )}
-          </div>
+      {dialog === "create" && (
+        <Modal title="Nouveau journal" onClose={() => setDialog(null)}>
+          <JournalSetup author={workspace.author} onCreate={create} />
         </Modal>
       )}
-      {closing && operation && (
+      {dialog === "export" && (
+        <ExportModal
+          journal={journal}
+          onClose={() => setDialog(null)}
+          onBackup={() =>
+            setBackups((prev) => ({
+              ...prev,
+              [journal.id]: JSON.stringify(journal),
+            }))
+          }
+        />
+      )}
+      {dialog === "import" && (
+        <ImportModal
+          target={journal}
+          onClose={() => setDialog(null)}
+          onImport={importJournal}
+        />
+      )}
+      {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
+      {dialog === "settings" && (
+        <Settings
+          workspace={workspace}
+          journal={journal}
+          persistent={store.persistent}
+          stored={!!store.stored}
+          onClose={() => setDialog(null)}
+          onProtect={store.protect}
+          onUpdate={(value) => setWorkspace(workspaceSchema.parse(value))}
+          onJournal={(value) => {
+            const reopened = { ...journal, closedAt: "" };
+            const noted = addEntry(
+              reopened,
+              {
+                ...emptyFields(),
+                type: "Observation",
+                message: value.closedAt
+                  ? "Clôture du journal par l’opérateur."
+                  : "Réouverture du journal par l’opérateur.",
+                reliability: "Confirmé",
+              },
+              workspace.author,
+            );
+            updateJournal({ ...noted, closedAt: value.closedAt });
+          }}
+          onEnd={() => void closeSession()}
+          onFinish={async () => {
+            if (!discardDraft()) return;
+            const unexported = workspace.journals.filter(
+              (j) => backups[j.id] !== JSON.stringify(j),
+            );
+            if (unexported.length)
+              throw new Error(
+                `Exportez une archive récente de chaque journal avant de terminer (${unexported.length} à exporter).`,
+              );
+            if (
+              window.prompt(
+                "Les archives téléchargées doivent avoir été vérifiées. Pour effacer cette session du poste, saisissez TERMINER.",
+              ) === "TERMINER"
+            ) {
+              await store.finish();
+              setDialog(null);
+              setBackups({});
+              setError("");
+              setToast("Session effacée de ce poste.");
+            }
+          }}
+          onExport={() => setDialog("export")}
+        />
+      )}
+      {dialog === "handover" && (
+        <Handover
+          journal={journal}
+          onClose={() => setDialog(null)}
+          onExport={() => setDialog("export")}
+          onTakeOver={() => {
+            if (!discardDraft()) return;
+            setPreset({
+              ...emptyFields(),
+              type: "Relève",
+              reliability: "Confirmé",
+              message: `Relève du journal. ${follow.length} suite(s) à donner, dont ${late.length} en retard.`,
+              notes:
+                "Relire les entrées en attente et préciser les consignes transmises.",
+            });
+            setDialog("compose");
+          }}
+        />
+      )}
+      {dialog === "compose" && (
         <Modal
           title={
-            operation.status === "active"
-              ? "Clôturer le dossier"
-              : "Rouvrir le dossier"
+            preset?.type === "Relève"
+              ? "Consigner la relève"
+              : "Nouvelle entrée"
           }
-          onClose={() => setClosing(false)}
+          onClose={() => {
+            if (discardDraft()) {
+              setDialog(null);
+              setPreset(undefined);
+            }
+          }}
         >
-          <div className="panel-body">
-            <p>{operation.name}</p>
-            <p>
-              {operation.status === "active"
-                ? "La clôture bloque les nouvelles écritures et conserve les données en consultation. Un membre du commandement peut rouvrir le dossier."
-                : "La réouverture autorisera les écritures selon les droits des utilisateurs."}
-            </p>
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setClosing(false)}>Annuler</button>
-            <button className="primary" onClick={changeStatus}>
-              Confirmer
-            </button>
+          <div onInput={() => setDraft(true)}>
+            <EntryForm
+              key={preset?.reference || "new"}
+              author={workspace.author}
+              preset={preset ?? workspace.drafts?.[journal.id]}
+              onDraft={saveDraft}
+              onSave={(fields) => {
+                add(fields);
+                setDialog(null);
+                setPreset(undefined);
+              }}
+            />
           </div>
         </Modal>
       )}

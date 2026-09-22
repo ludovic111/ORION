@@ -1,43 +1,35 @@
 import { mkdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 await mkdir("public/source", { recursive: true });
-// Explicit allowlist keeps deployment secrets, local databases and user files out of the download.
+// Explicit allowlist: no local databases, recovery files, credentials, or user documents.
 execFileSync(
   "tar",
   [
     "-czf",
     "public/source/orion-source.tar.gz",
-    "--exclude=__pycache__",
     "--exclude=.wrangler",
     "src",
     "shared",
-    "pages",
     "server",
     "scripts",
     "tests",
     "docs",
+    "pages/wrangler.jsonc",
     "package.json",
     "package-lock.json",
     "tsconfig.json",
+    "vite.config.ts",
     "index.html",
     "README.md",
     "LICENSE",
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
     "Dockerfile",
-    "compose.yaml",
-    "wrangler.jsonc",
-    ".env.example",
-    ".gitignore",
-    ".gitattributes",
-    ".dockerignore",
-    ".github",
+    ".github/workflows",
     "public/_headers",
     "public/orion.svg",
-    "public/import-example.json",
+    "public/manifest.webmanifest",
     "public/fonts",
-    "public/symbols",
-    "public/tiles",
   ],
   { stdio: "inherit" },
 );
