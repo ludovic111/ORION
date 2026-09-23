@@ -1,44 +1,250 @@
-# ORION — Journal d’intervention et plan du réseau radio
+# ORION
 
-ORION 1.1 est un journal d’intervention en français, avec un module de plan du réseau radio Polycom, utilisable dans un navigateur, **sans compte, sans API métier et sans base de données serveur**. Une session correspond à un événement. Les données ne quittent le poste que lorsque l’opérateur exporte un fichier.
+**Journal d’intervention et plan du réseau radio Polycom pour la protection civile.**
+Application web locale : sans compte, sans base de données serveur, chiffrée sur le poste, utilisable hors ligne.
 
-Logiciel indépendant, sans affiliation, homologation ni approbation de l’OFPP ou de l’État de Genève. L’emploi de données réelles exige un poste, une installation et une organisation autorisés. Le code reste sous **AGPL-3.0-only**, téléchargeable depuis l’application.
+- Production : <https://orion-web-production-1466.up.railway.app>
+- Licence : AGPL-3.0-only (le code source complet est téléchargeable depuis l’application)
+- Version : 1.1
 
-## Utilisation
+> Logiciel indépendant. Aucune affiliation, homologation ni approbation de l’OFPP, de l’OCPPAM ou de l’État de Genève. L’emploi de données réelles exige un poste, une installation et une autorisation de l’organisation.
 
-1. Nommer le journal et indiquer son nom ou indicatif.
-2. Garder la **reprise après crash** activée et choisir une phrase de récupération (12 caractères minimum). Le navigateur conserve uniquement une session chiffrée, y compris le brouillon de nouvelle entrée. Aucun compte n’est créé.
-3. Consigner les événements. Date de l’événement, réception et enregistrement sont distincts. Source, destinataire, canal, confirmation, lieu, coordonnées, mesure/décision, responsable, échéance, statut, moyens, références, notes et mots-clés complètent la saisie.
-4. Retrouver les informations avec la recherche et les filtres. Corriger en conservant les anciennes versions et le motif. Préparer la relève depuis les suites à donner et échéances.
-5. Exporter une **archive ORION chiffrée** pour conserver et transmettre le journal avec toutes ses versions. Importer après aperçu, séparément ou en fusionnant les nouvelles entrées. Les conflits ne sont jamais écrasés silencieusement.
-6. Imprimer ou exporter une **fiche message A4** par entrée : depuis le détail d’une entrée, ou en cochant plusieurs lignes du journal puis « Fiches A4 ». Aperçu à l’écran, impression navigateur ou PDF vectoriel. L’export « Fiches messages A4 » produit tout le journal, une fiche par entrée.
-7. Tenir le **plan du réseau radio** (onglet Réseau radio) : groupes et canaux (TKG, mode direct, relais), noms d’appel (la fonction, jamais la personne) avec groupe principal et alternative, terminaux (n° interne, RFSI, modèle, état), remises et retours avec accessoires et batterie, contrôles de liaison (audibilité THREE / TWO / ONE). Remises et retours peuvent être consignés automatiquement au journal. Le plan s’imprime en A4 paysage.
-8. Après vérification des archives téléchargées, **Terminer et effacer la session** depuis les réglages. Les fichiers exportés ne sont pas supprimés.
+---
 
-Le mode temporaire, volontairement choisi, ne survit pas à la fermeture ou au crash de l’onglet. Ne pas l’utiliser sans exports fréquents. La sauvegarde locale n’est pas une archive : nettoyage du navigateur, navigation privée, panne de disque ou perte de la phrase peuvent la rendre inaccessible.
+## Sommaire
 
-## Formats
+1. [Principe](#principe)
+2. [Démarrage rapide](#démarrage-rapide)
+3. [Session et stockage](#session-et-stockage)
+4. [Journal d’intervention](#journal-dintervention)
+5. [Modifier et supprimer une entrée](#modifier-et-supprimer-une-entrée)
+6. [Fiches message A4](#fiches-message-a4)
+7. [Plan du réseau radio](#plan-du-réseau-radio)
+8. [Relève](#relève)
+9. [Import, export et fusion](#import-export-et-fusion)
+10. [Sécurité](#sécurité)
+11. [Limites](#limites)
+12. [Installation et hébergement](#installation-et-hébergement)
+13. [Développement](#développement)
+14. [Structure du code](#structure-du-code)
+15. [Modèle de données](#modèle-de-données)
+16. [Sources métier](#sources-métier)
 
-| Format                 | Usage                                         | Réimportation              |
-| ---------------------- | --------------------------------------------- | -------------------------- |
-| ORION `.orion`         | Archive chiffrée, journal complet et versions | Oui, sans perte            |
-| JSON `.json`           | Archive ouverte, complète, en clair           | Oui, sans perte            |
-| PDF `.pdf`             | Journal paginé pour lecture/impression        | Non                        |
-| Fiches messages `.pdf` | Une fiche A4 par entrée, zone de visa         | Non                        |
-| Plan radio `.pdf`      | Plan du réseau, terminaux, remises, contrôles | Non                        |
-| Excel `.xlsx`          | Tableur, filtre et première ligne figée       | Non                        |
-| OpenDocument `.ods`    | Tableur LibreOffice                           | Non                        |
-| Word `.docx`           | Document modifiable                           | Non                        |
-| CSV / TSV              | Texte tabulaire UTF-8                         | Oui, état actuel seulement |
-| HTML / TXT / Markdown  | Lecture et documentation                      | Non                        |
+---
 
-Les exports concernent tout le journal, indépendamment des filtres. Seuls ORION et JSON conservent l’historique, le plan radio et les identifiants pour les fusions. La fusion complète une remise ouverte par un retour enregistré sur un autre poste ; toute autre divergence du plan radio bloque la fusion. Les dates tabulaires ISO conservent le fuseau ; l’écran et les documents de lecture affichent Europe/Zurich. Les champs de saisie horaire suivent le fuseau du poste et l’interface le précise.
+## Principe
 
-Les anciens exports `orion-export-v1` sont reconnus : seules leurs entrées de journal sont converties, avec un avertissement avant import. Les anciennes bases de données ne sont ni lues ni supprimées par cette version.
+| Aspect           | Fonctionnement                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| Unité de travail | Une **session** par événement. Elle contient un ou plusieurs **journaux** (intervention, exercice). |
+| Données          | Restent dans le navigateur. Elles ne quittent le poste que par un fichier exporté par l’opérateur.  |
+| Serveur          | Sert uniquement les fichiers statiques. Il refuse toute écriture (`POST`, `PUT`… → 405).            |
+| Identité         | L’opérateur déclare son nom ou sa fonction. Aucun compte, aucune authentification.                  |
+| Transfert        | Archive `.orion` chiffrée, réimportée sur un autre poste, avec fusion contrôlée.                    |
+| Hors ligne       | Après un premier chargement, un service worker met l’application en cache (exports et PDF compris). |
 
-## Installer / auto-héberger
+## Démarrage rapide
 
-Node.js 24 recommandé (minimum 22.18).
+1. Ouvrir l’application.
+2. **Nouvelle session** : nom de l’événement, opérateur, mode (Exercice / Intervention).
+3. Laisser **Sauvegarde chiffrée sur ce poste** cochée et choisir une phrase de récupération (12 caractères minimum). Elle ne peut pas être récupérée.
+4. Consigner les messages dans le panneau **Nouvelle entrée** (`⌘↵` / `Ctrl+↵` pour valider).
+5. Onglet **Réseau radio** : créer les groupes, les noms d’appel, les terminaux, puis remettre les radios.
+6. **Exporter** régulièrement une archive `.orion`.
+7. En fin d’engagement : clôturer le journal, exporter, puis **Session → Effacer la session**.
+
+Le bouton **Ouvrir l’exercice de démonstration** charge un scénario fictif complet (« Crue de l’Arve ») sans toucher aux données locales.
+
+## Session et stockage
+
+| Mode                | Stockage                                            | Survit à la fermeture de l’onglet | Remarque                                         |
+| ------------------- | --------------------------------------------------- | --------------------------------- | ------------------------------------------------ |
+| Sauvegarde chiffrée | IndexedDB `orion-journal-v1`, enveloppe AES-256-GCM | Oui                               | Déverrouillage par la phrase de récupération     |
+| Temporaire          | Mémoire de l’onglet                                 | Non                               | Avertissement avant fermeture. Exporter souvent. |
+
+- Chaque modification est sauvegardée 250 ms après la dernière frappe, brouillon de nouvelle entrée compris.
+- Un verrou Web Locks empêche d’ouvrir la même session sauvegardée dans deux onglets.
+- **Verrouiller** (icône cadenas) retire la session de la mémoire ; elle reste chiffrée sur le poste.
+- **Session → Effacer la session** efface la sauvegarde locale. Cette action exige au préalable une archive ORION ou JSON récente de chaque journal, puis la saisie de `TERMINER`.
+- Phrase perdue : l’écran d’accueil propose d’effacer l’espace local (saisie de `EFFACER`). Les données ne sont alors récupérables que depuis une archive.
+
+La barre supérieure indique en permanence : l’état de sauvegarde (`CHIFFRÉ LOCAL`, `TEMPORAIRE`, `ÉCHEC SAUVEGARDE`), la disponibilité hors ligne et l’heure suisse.
+
+## Journal d’intervention
+
+### Champs d’une entrée
+
+| Groupe               | Champs                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| Essentiel            | Nature, priorité, **message** (obligatoire), heure de l’événement, émetteur                   |
+| Transmission et lieu | Canal, confirmation, destinataire, lieu / secteur, coordonnées (ex. MN95), heure de réception |
+| Conduite et suivi    | Mesure / décision / mission, suivi, responsable, échéance, moyens engagés / besoins           |
+| Compléments          | Référence / entrée liée, observations, mots-clés (20 max.)                                    |
+| Automatique          | Numéro stable (`#001`…), auteur, heure d’enregistrement, historique des versions              |
+
+Valeurs fixes :
+
+- **Nature** : Renseignement, Décision, Mission, Demande, Quittance, Observation, Relève
+- **Priorité** : Normal, Important, Urgent
+- **Suivi** : Consigné, À traiter, En cours, Terminé, Annulé
+- **Canal** : Radio, Téléphone, Sur place, E-mail, Message, Autre
+- **Confirmation** : Non confirmé, Confirmé, À vérifier
+
+Trois instants distincts sont conservés : **événement** (quand les faits se sont produits), **réception** (quand l’information est arrivée) et **enregistrement** (horodatage automatique). Les heures sont saisies dans le fuseau du poste et affichées en Europe/Zurich.
+
+### Consultation
+
+- Filtres : Tout, À suivre (À traiter / En cours), Urgent, Décisions.
+- Recherche plein texte insensible aux accents sur tous les champs (`⌘K` / `Ctrl+K`).
+- Filtre par jour, tri chronologique ou antéchronologique, regroupement par jour.
+- Indicateurs : entrées, suites à donner, échéances dépassées, urgences, radios en service, état de l’archive.
+- Détail d’une entrée : clic sur le message. Actions : Fiche A4, Modifier, Consigner une suite, Terminer le suivi, Versions, Supprimer.
+- **Consigner une suite** prépare une Quittance adressée à l’émetteur, avec la référence de l’entrée d’origine.
+
+## Modifier et supprimer une entrée
+
+Chaque ligne du journal porte deux icônes : **crayon** (modifier) et **corbeille** (supprimer). Les mêmes actions existent dans le détail de l’entrée. Elles sont masquées quand le journal est clôturé.
+
+### Modifier
+
+- Tous les champs sont modifiables.
+- Le **motif** est facultatif ; sans motif, « Modification par l’opérateur » est enregistré.
+- La version précédente est conservée : bouton **N versions** du détail, avec auteur, heure et motif de chaque version. La ligne affiche `v2`, `v3`…
+- Pour invalider une information sans la retirer, passer le suivi à **Annulé** : l’entrée reste lisible, barrée.
+
+### Supprimer
+
+- Exige un **motif** (ex. « Saisie en double », « Mauvais journal »).
+- Le contenu et tout l’historique de l’entrée sont effacés du journal.
+- Il reste une **trace** : numéro, heure, auteur et motif, consultables via le lien « N supprimée(s) » en bas du tableau.
+- Le numéro n’est **jamais réattribué** : l’entrée suivante continue la numérotation.
+- En fusion, une entrée supprimée n’est pas réintroduite par une ancienne archive, et une suppression faite sur un autre poste s’applique ici.
+- Les archives exportées **avant** la suppression contiennent toujours l’entrée : les détruire si nécessaire.
+
+## Fiches message A4
+
+Une fiche par entrée, format A4 portrait, pensée pour l’archivage papier et la signature.
+
+| Section        | Contenu                                                                           |
+| -------------- | --------------------------------------------------------------------------------- |
+| En-tête        | Journal, organisation, lieu, référence, mode (Exercice / Intervention), diffusion |
+| Identification | Numéro, nature, priorité (fond rouge si urgent), suivi                            |
+| Transmission   | Événement, réception, enregistrement, canal, émetteur, destinataire               |
+| Message        | Texte intégral                                                                    |
+| Localisation   | Lieu, coordonnées, confirmation                                                   |
+| Conduite       | Mesure / décision / mission, responsable, échéance, suivi, moyens                 |
+| Compléments    | Référence, mots-clés, observations                                                |
+| Traçabilité    | Saisi par, version, dernière modification et motif, origine, identifiant          |
+| Visa           | Cases vierges : traité par, date / heure, signature                               |
+| Pied de page   | Journal, numéro, date d’édition, pagination                                       |
+
+Accès :
+
+- **Une entrée** : détail → **Fiche A4**.
+- **Plusieurs entrées** : cocher les lignes (ou la case d’en-tête pour tout ce qui est affiché) → **Fiches A4**.
+- **Tout le journal** : Exporter → **Fiches messages A4**.
+
+L’aperçu montre les pages réelles. **Imprimer** utilise l’impression du navigateur (marges à zéro, une fiche par page). **PDF** produit un fichier vectoriel (polices IBM Plex intégrées). Un texte long se poursuit sur la page suivante avec la mention « (suite) ». Une entrée modifiée ou annulée porte un bandeau le signalant.
+
+## Plan du réseau radio
+
+Onglet **Réseau radio**. Le plan fait partie du journal : il est sauvegardé, archivé, fusionné et clôturé avec lui.
+
+### Groupes et canaux
+
+| Champ       | Détail                                                         |
+| ----------- | -------------------------------------------------------------- |
+| N°          | Ex. `G101` (talkgroup), `D481` (mode direct), `R395` (relais)  |
+| Mode        | Groupe (TKG), Direct (DMO), Relais (IDR)                       |
+| Désignation | Ex. « PCi Conduite »                                           |
+| Emploi      | Conduite, Engagement, Logistique, Coordination, Appel, Réserve |
+
+Un groupe utilisé par un contrôle de liaison ne peut pas être supprimé.
+
+### Noms d’appel
+
+Le nom d’appel désigne **la fonction, jamais la personne** (règle OFPP). Champs : nom d’appel (unique), fonction, section, groupe principal, alternative, remarques (ex. station de transit).
+
+Le **schéma de liaisons** affiche une colonne par groupe. Sous chaque groupe : les noms d’appel qui l’ont en principal (témoin vert si un terminal leur est remis, note du dernier contrôle) et, en pointillé, ceux qui l’ont en alternative.
+
+### Terminaux
+
+| Champ       | Détail                                          |
+| ----------- | ----------------------------------------------- |
+| N° interne  | Ex. `R-01`, unique                              |
+| RFSI        | Identifiant Polycom du terminal                 |
+| Modèle      | TPH900, TPH700, TPM700, G2 Smart ou libre       |
+| Type        | Portatif, Véhicule, Fixe                        |
+| N° de série | Libre                                           |
+| État        | Opérationnel, À recharger, Défectueux, Manquant |
+
+**Série** crée d’un coup `R-01` à `R-20` (préfixe, premier numéro, nombre, modèle), en ignorant les numéros existants. Un terminal ayant déjà été remis ne peut pas être supprimé : le passer en Défectueux ou Manquant.
+
+### Remises et retours (« qui a quelle radio »)
+
+- **Remettre** : terminal, heure, nom d’appel (proposé depuis le plan, fonction et section préremplies), détenteur (grade, nom), accessoires (batterie de rechange, microtel, adaptateur FUGA, chargeur, antenne, housse), état de la batterie, remarques.
+- Un terminal Défectueux ou Manquant ne peut pas être remis. Un terminal déjà remis doit d’abord être rendu.
+- **Retour** : heure, état au retour, retour complet ou non (sinon la liste des accessoires remis est notée), remarques. Un retour Manquant rappelle d’annoncer la perte pour blocage.
+- Option **Consigner au journal** (cochée par défaut) : la remise ou le retour crée une entrée Observation, mot-clé `radio`.
+- L’onglet **Remises** liste tout l’historique, du plus récent au plus ancien ; les remises en cours sont marquées « En cours ».
+
+### Contrôles de liaison
+
+Nom d’appel, groupe ou canal, heure, remarques et audibilité selon l’aide-mémoire OFPP : **THREE** (bon), **TWO** (faible mais compréhensible), **ONE** (insuffisant), ou pas de liaison. Option de consignation au journal.
+
+### Impression
+
+**Plan A4** (en-tête de l’onglet) ou Exporter → **Plan du réseau radio** : A4 paysage avec plan du réseau (nom d’appel, fonction, section, titulaire, terminal et RFSI, principal, alternative, sur le réseau, dernier contrôle), groupes, terminaux, registre des remises et contrôles.
+
+## Relève
+
+Bouton **Relève** : suites à donner, échéances dépassées, informations à confirmer, terminaux remis (détenteur, nom d’appel, heure). **Consigner la relève** prépare une entrée de nature Relève avec ces chiffres. Pour un autre poste : archive `.orion` et phrase transmise par un canal séparé.
+
+## Import, export et fusion
+
+Les exports portent sur **tout le journal**, quels que soient les filtres.
+
+| Format                  | Extension            | Contenu                                                | Réimportable                |
+| ----------------------- | -------------------- | ------------------------------------------------------ | --------------------------- |
+| Archive ORION           | `.orion`             | Chiffrée : entrées, versions, suppressions, plan radio | Oui, sans perte             |
+| Archive JSON            | `.json`              | En clair : idem                                        | Oui, sans perte             |
+| Fiches messages A4      | `.pdf`               | Une fiche par entrée                                   | Non                         |
+| Journal PDF             | `.pdf`               | Tableau chronologique A4                               | Non                         |
+| Plan du réseau radio    | `.pdf`               | Plan, groupes, terminaux, remises, contrôles           | Non                         |
+| Excel                   | `.xlsx`              | Filtres, en-tête figé                                  | Non                         |
+| Word                    | `.docx`              | Document modifiable                                    | Non                         |
+| OpenDocument            | `.ods`               | Tableur LibreOffice                                    | Non                         |
+| CSV / TSV               | `.csv` `.tsv`        | UTF-8, point-virgule / tabulation                      | Oui, état actuel uniquement |
+| HTML / Texte / Markdown | `.html` `.txt` `.md` | Lecture                                                | Non                         |
+
+Tous les formats sauf `.orion` sont **en clair** ; l’interface demande de le reconnaître avant téléchargement.
+
+**Import** (`.orion`, `.json`, `.csv`, `.tsv`, 32 Mo maximum) : fichier lu localement, aperçu avant toute modification, puis au choix :
+
+- **Journal séparé** : le journal actuel reste intact.
+- **Fusionner** : ajoute les nouvelles entrées (renumérotées à la suite), ignore les doublons exacts, applique les suppressions et complète les remises radio clôturées ailleurs. Toute autre divergence (même entrée modifiée différemment, terminal remis à deux personnes) **bloque** la fusion : importer alors en journal séparé pour comparer.
+
+Les anciens exports `orion-export-v1` (ORION 0.3) sont reconnus : seules les entrées de journal sont converties.
+
+## Sécurité
+
+- Chiffrement : AES-256-GCM, IV aléatoire de 96 bits par écriture, clé dérivée par PBKDF2-SHA-256 (600 000 itérations, sel de 128 bits), Web Crypto, clé non extractible. La phrase n’est jamais stockée.
+- Aucune requête réseau n’envoie de contenu : ni compte, ni télémétrie, ni IA, ni police ou script externe. CSP stricte (`default-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`).
+- Imports validés par schéma strict (Zod), avec limites de taille ; formules neutralisées dans les exports tableurs ; HTML exporté sans script.
+- Détails et limites : [SECURITY.md](SECURITY.md).
+
+## Limites
+
+- Les noms d’opérateur sont déclaratifs ; l’historique n’est pas une signature électronique.
+- Pas de synchronisation temps réel entre postes : transfert par fichier.
+- Le plan radio documente le réseau ; il ne pilote pas les terminaux. Les numéros de groupes et RFSI réels viennent du plan de flotte cantonal. Ceux de la démonstration sont fictifs.
+- Effacer les données du navigateur efface la sauvegarde locale. Une sauvegarde locale n’est pas une archive.
+- Pas de pièces jointes binaires : noter leur référence.
+- Limites techniques : 10 000 entrées par journal, 500 versions par entrée, message de 12 000 caractères, 1 000 terminaux, import de 32 Mo.
+
+## Installation et hébergement
+
+Prérequis : Node.js 24 (minimum 22.18).
 
 ```sh
 npm ci
@@ -46,29 +252,86 @@ npm run build
 npm start
 ```
 
-Ouvrir `http://127.0.0.1:4311`. Pour développer : `npm run dev`.
+Ouvrir <http://127.0.0.1:4311>. `dist/` est un site statique autonome, à servir en **HTTPS** ou sur `localhost` (Web Crypto et service worker l’exigent).
 
-Hébergement de référence : Railway, service construit depuis le `Dockerfile` de la branche `main` (déploiement à chaque push). Variables : `PORT=4311`, `HOST=0.0.0.0`.
+### Docker
 
-`dist/` est un site statique autonome, à servir sur **HTTPS** ou `localhost` (requis pour Web Crypto et le mode hors ligne). Aucun service propriétaire n’est nécessaire. Le serveur Node fourni ne sert que des fichiers et refuse les écritures ; il n’utilise aucune dépendance de serveur applicatif. Un Dockerfile sans base de données est fourni. Pour un réseau institutionnel, configurer HTTPS et les en-têtes de `public/_headers` sur le serveur retenu.
+```sh
+docker build -t orion .
+docker run -p 4311:4311 orion
+```
 
-Après un premier chargement réussi de la version construite, un service worker met les fichiers de l’application en cache, y compris les modules d’export. L’indicateur « Prêt hors ligne » confirme l’activation. Le code source n’est pas précaché. Une première ouverture sur un poste neuf nécessite l’accès au site ou à une copie locale servie par `npm start`. Les navigateurs peuvent évincer leurs caches ; ne pas déduire d’une installation une garantie de disponibilité absolue.
+### Railway (hébergement de production)
+
+- Service `orion-web` du projet Railway `orion`, construit depuis le `Dockerfile` de la branche **`main`**.
+- **Chaque push sur `main` redéploie automatiquement.**
+- Variables : `PORT=4311`, `HOST=0.0.0.0`.
+- Aucun volume ni base de données : le serveur ne stocke rien.
+
+Pour un autre hébergeur : servir `dist/` avec les en-têtes de [`public/_headers`](public/_headers).
 
 ## Développement
 
 ```sh
-npm run check
-npm test
-npm run build
-npm run format:check
+npm run dev           # serveur Vite sur http://127.0.0.1:4311
+npm run check         # TypeScript
+npm test              # tests Node (node:test)
+npm run format:check  # Prettier
+npm run build         # build de production + service worker
 ```
 
-- `shared/` : modèles validés, chronologie, corrections, fusion, plan radio, CSV, chiffrement.
-- `src/journal/` : saisie, historique, imports, exports, reprise locale.
-- `src/radio/` : plan du réseau, terminaux, remises, contrôles de liaison.
-- `src/print/` : fiches message et plan radio A4 (aperçu HTML, impression, PDF).
-- `server/index.mjs` : serveur statique facultatif.
-- `scripts/` : archive du code source et cache hors ligne déterministe.
-- `tests/` : contrats des données, échanges, chiffrement et protections.
+La CI GitHub (`.github/workflows`) exécute format, typecheck, tests, build, `npm audit` et le build Docker à chaque push.
 
-Voir [les choix métier et sources](docs/JOURNAL.md), [l’architecture](docs/ARCHITECTURE.md) et [les limites de sécurité](SECURITY.md).
+Tests couverts : modèle et révisions, suppression et numérotation, fusion (doublons, conflits, suppressions, idempotence), plan radio (remises, retours, fusion de retours, contraintes), chiffrement, CSV/TSV, formats bureautiques, génération de chaque export, serveur statique.
+
+## Structure du code
+
+```
+shared/            Modèle validé, sans dépendance au navigateur
+  journal.ts       Journal, entrées, versions, suppressions, fusion, recherche
+  radio.ts         Groupes, noms d’appel, terminaux, remises, contrôles, fusion radio
+  interchange.ts   CSV/TSV, import JSON et ancien format, HTML, texte
+  crypto.ts        Enveloppe chiffrée AES-GCM / PBKDF2
+src/
+  App.tsx          Coque, navigation Journal / Réseau radio, état de session
+  journal/         Saisie, détail, relève, import/export, stockage, démo
+  radio/           Vue réseau radio et formulaires
+  print/           Modèle de fiche, aperçu A4, impression, PDF (jsPDF)
+  ui/              Horloge, logo, animations
+  styles.css       Thème
+  motion.css       Transitions et fond
+server/index.mjs   Serveur statique en lecture seule
+scripts/           Archive du code source, service worker
+tests/             Tests node:test
+docs/              Architecture, choix métier et sources, licences des polices
+```
+
+## Modèle de données
+
+```
+Workspace
+├─ author, activeId, drafts
+└─ journals[]
+   ├─ id, title, organization, location, reference, mode, classification, createdAt, closedAt
+   ├─ entries[]    id, number, createdAt, createdBy, origin
+   │  └─ revisions[]  id, at, author, reason, fields{…}
+   ├─ deleted[]    id, number, at, by, reason
+   └─ radio
+      ├─ talkgroups[]  id, number, name, mode, usage, notes
+      ├─ stations[]    id, callsign, role, unit, primary, fallback, notes
+      ├─ terminals[]   id, label, kind, model, serial, rfsi, condition, notes
+      │  └─ assignments[]  holder, callsign, role, unit, accessories, battery,
+      │                    issuedAt, issuedBy, returnedAt, returnedBy, returnCondition, notes
+      └─ checks[]      id, at, by, callsign, talkgroupId, result, notes
+```
+
+Archive : `{ format: "orion-journal", version: 1, exportedAt, journal }`. Les journaux créés avant la version 1.1 se chargent avec un plan radio et une liste de suppressions vides.
+
+## Sources métier
+
+- OFPP — [Documents de formation](https://www.babs.admin.ch/fr/documents-de-formation), manuel Aide à la conduite (suivi de la situation, télématique) et annexes (modèle « Plan du réseau radio »).
+- OFPP — [Aide-mémoire Règles de communication radio](https://www.babs.admin.ch/dam/fr/sd-web/iMa3qxK30t2j/Behelf-Sprechregeln-fr.pdf) : nom d’appel, contrôle de liaison THREE / TWO / ONE.
+- OFPP — mode d’emploi TPH900, matériel radio Polycom (RFSI), manuel Logistique Matériel (quittances).
+- CSSP — formulaire 8.7 Journal d’intervention, règlement Conduite d’intervention.
+
+Détail et correspondance avec le produit : [docs/JOURNAL.md](docs/JOURNAL.md). Architecture : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Composants tiers : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -341,9 +341,9 @@ export function ImportModal({
                 Fusionner dans « {target.title} »
                 <small className="mono">
                   +{plan?.added.length} entrées · {plan?.duplicates.length}{" "}
-                  identiques · {plan?.conflicts.length} conflits · radio +
-                  {plan?.radio.added} / ~{plan?.radio.updated} /{" "}
-                  {plan?.radio.conflicts} conflits
+                  identiques · −{plan?.removed.length} supprimées ailleurs ·{" "}
+                  {plan?.conflicts.length} conflits · radio +{plan?.radio.added}{" "}
+                  / ~{plan?.radio.updated} / {plan?.radio.conflicts} conflits
                 </small>
               </span>
             </label>

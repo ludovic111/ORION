@@ -119,7 +119,7 @@ export function EntryForm({
       return;
     }
     try {
-      onSave(result.data, reason);
+      onSave(result.data, reason.trim() || "Modification par l’opérateur");
       if (!initial) {
         const next = emptyFields();
         setFields({ ...next, source: fields.source, channel: fields.channel });
@@ -315,11 +315,8 @@ export function EntryForm({
       </details>
       {initial && (
         <label>
-          <span>
-            Motif de la modification <span className="required">*</span>
-          </span>
+          Motif de la modification
           <input
-            required
             maxLength={1000}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -342,7 +339,7 @@ export function EntryForm({
           </button>
         )}
         <button className="primary" type="submit">
-          {initial ? "Enregistrer la correction" : "Consigner"}
+          {initial ? "Enregistrer la modification" : "Consigner"}
           <kbd>
             ⌘<CornerDownLeft size={11} />
           </kbd>

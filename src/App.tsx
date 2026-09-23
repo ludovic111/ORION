@@ -25,6 +25,8 @@ import {
 import {
   addEntry,
   chronological,
+  dateTime,
+  deleteEntry,
   current,
   day,
   emptyFields,
@@ -66,6 +68,7 @@ type Dialog =
   | "privacy"
   | "handover"
   | "compose"
+  | "deleted"
   | null;
 type Filter = "all" | "follow" | "urgent" | "decisions";
 type Module = "journal" | "radio";
@@ -78,6 +81,9 @@ export default function App() {
   const [module, setModule] = useState<Module>(moduleFromHash);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
+  const [entryMode, setEntryMode] = useState<"view" | "edit" | "delete">(
+    "view",
+  );
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [newest, setNewest] = useState(true);
@@ -360,6 +366,10 @@ export default function App() {
   const openImport = () => {
     if (discardDraft()) setDialog("import");
   };
+  function openEntry(id: string, mode: "view" | "edit" | "delete" = "view") {
+    setEntryMode(mode);
+    setEntryId(id);
+  }
   function togglePick(id: string) {
     setPicked((previous) => {
       const next = new Set(previous);
@@ -814,6 +824,9 @@ export default function App() {
                         <th>Message</th>
                         <th>Émetteur</th>
                         <th>Suivi</th>
+                        <th>
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -830,7 +843,10 @@ export default function App() {
                             newDay={newDay}
                             picked={picked.has(entry.id)}
                             onPick={() => togglePick(entry.id)}
-                            onOpen={() => setEntryId(entry.id)}
+                            onOpen={() => openEntry(entry.id)}
+                            onEdit={() => openEntry(entry.id, "edit")}
+                            onDelete={() => openEntry(entry.id, "delete")}
+                            readOnly={!!journal.closedAt}
                             at={minute}
                           />
                         );
@@ -872,6 +888,15 @@ export default function App() {
                       ` / ${journal.entries.length}`}{" "}
                     entrée{visible.length !== 1 ? "s" : ""}
                   </span>
+                  {journal.deleted.length > 0 && (
+                    <button
+                      className="link"
+                      onClick={() => setDialog("deleted")}
+                    >
+                      {journal.deleted.length} supprimée
+                      {journal.deleted.length > 1 ? "s" : ""}
+                    </button>
+                  )}
                   <span>Europe/Zurich</span>
                 </footer>
                 {visible.length > limit && (
@@ -931,8 +956,21 @@ export default function App() {
       )}
       {selected && (
         <EntryDetail
-          key={selected.id}
+          key={`${selected.id}-${entryMode}`}
           entry={selected}
+          mode={entryMode}
+          onDelete={(reason) => {
+            updateJournal(
+              deleteEntry(journal, selected.id, workspace.author, reason),
+            );
+            setPicked((previous) => {
+              const next = new Set(previous);
+              next.delete(selected.id);
+              return next;
+            });
+            setEntryId(null);
+            setToast(`Entrée ${numberLabel(selected)} supprimée.`);
+          }}
           author={workspace.author}
           readOnly={!!journal.closedAt}
           onClose={() => setEntryId(null)}
@@ -950,7 +988,7 @@ export default function App() {
                 reason,
               ),
             );
-            setToast("Correction enregistrée. Version précédente conservée.");
+            setToast("Modification enregistrée. Version précédente conservée.");
           }}
           onReply={() => {
             if (!discardDraft()) return;
@@ -994,6 +1032,30 @@ export default function App() {
         />
       )}
       {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
+      {dialog === "deleted" && (
+        <Modal title="Entrées supprimées" onClose={() => setDialog(null)}>
+          <table className="grid dense">
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Supprimée le</th>
+                <th>Par</th>
+                <th>Motif</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...journal.deleted].reverse().map((d) => (
+                <tr key={d.id}>
+                  <td className="mono">#{String(d.number).padStart(3, "0")}</td>
+                  <td className="mono">{dateTime(d.at)}</td>
+                  <td>{d.by}</td>
+                  <td>{d.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Modal>
+      )}
       {dialog === "settings" && (
         <Settings
           workspace={workspace}
@@ -1052,7 +1114,7 @@ export default function App() {
           onExport={() => setDialog("export")}
           onOpen={(id) => {
             setDialog(null);
-            setEntryId(id);
+            openEntry(id);
           }}
           onTakeOver={() => {
             if (!discardDraft()) return;

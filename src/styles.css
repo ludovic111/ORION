@@ -1161,6 +1161,54 @@ fieldset {
 .grid.dense td {
   padding: 7px 10px;
 }
+.journal-grid .row-actions {
+  width: 64px;
+  padding-left: 0;
+  opacity: 0.55;
+  transition: opacity 0.12s;
+}
+.journal-grid tr:hover .row-actions,
+.journal-grid .row-actions:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .journal-grid .row-actions {
+    opacity: 1;
+  }
+}
+.danger-icon:hover {
+  color: var(--crit);
+  background: var(--crit-bg);
+}
+button.danger.solid {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #fff;
+}
+button.danger.solid:hover:not(:disabled) {
+  background: #d9443d;
+}
+.action-row .push-right {
+  margin-left: auto;
+}
+.delete-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(242, 86, 79, 0.4);
+  border-left-width: 2px;
+  background: var(--crit-bg);
+}
+.delete-panel > p {
+  color: #ffc3bf;
+  font-size: 12.5px;
+}
+.delete-panel .action-row {
+  margin-top: 0;
+  justify-content: flex-end;
+}
 .grid .row-actions {
   width: 1%;
   text-align: right;

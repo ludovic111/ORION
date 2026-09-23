@@ -1,4 +1,4 @@
-# Sécurité et confidentialité — ORION 1.0
+# Sécurité et confidentialité — ORION 1.1
 
 ## Flux réels
 
@@ -22,8 +22,12 @@ La commande de fin de session est explicite et demande une archive récente de c
 - Un import est prévisualisé avant mutation. Une fusion ignore les doublons exacts et refuse les identifiants dont les versions divergent. Le choix d’une copie séparée conserve les deux versions.
 - CSV/TSV : syntaxe vérifiée, cellules et lignes bornées, formules neutralisées dans les exports. XLSX/ODS écrivent uniquement des cellules texte, sans macro ni formule ni lien externe.
 - Les textes importés sont affichés par React. Les exports XML/HTML échappent les caractères spéciaux ; le document HTML interdit les scripts et connexions par CSP.
-- Le fichier `.orion` est chiffré. Les dix autres formats sont en clair, avec reconnaissance explicite dans l’interface. Une requête de téléchargement réussie n’atteste pas de la présence durable du fichier sur disque.
+- Le fichier `.orion` est chiffré. Tous les autres formats sont en clair, avec reconnaissance explicite dans l’interface. Une requête de téléchargement réussie n’atteste pas de la présence durable du fichier sur disque.
 - Les exports de lecture ne sont pas des archives d’audit complètes. Seuls ORION/JSON gardent toutes les versions.
+
+## Suppression d’une entrée
+
+La suppression retire le contenu et l’historique de l’entrée du journal et de la sauvegarde locale ; seuls le numéro, l’auteur, l’heure et le motif restent. Elle n’atteint pas les archives, PDF ou copies exportés auparavant, ni d’éventuelles copies sur d’autres postes tant qu’elles n’ont pas été fusionnées avec une archive postérieure à la suppression.
 
 ## Limites du modèle
 

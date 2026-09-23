@@ -81,6 +81,17 @@ export const entrySchema = z
     revisions: z.array(revisionSchema).min(1).max(500),
   })
   .strict();
+// A deleted entry leaves only this trace: its content is gone, its number is
+// never reused, and merges do not bring it back.
+export const deletionSchema = z
+  .object({
+    id: z.uuid(),
+    number: z.number().int().positive(),
+    at: instant,
+    by: text(120).min(1),
+    reason: text(1000).min(1),
+  })
+  .strict();
 export const journalSchema = z
   .object({
     id: z.uuid(),
@@ -94,9 +105,18 @@ export const journalSchema = z
     closedAt: optionalInstant,
     entries: z.array(entrySchema).max(10000),
     radio: radioSchema.default(emptyRadio),
+    deleted: z.array(deletionSchema).max(10000).default([]),
   })
   .strict()
   .superRefine((journal, ctx) => {
+    const gone = new Set(journal.deleted.map((d) => d.id));
+    if (gone.size !== journal.deleted.length)
+      ctx.addIssue({ code: "custom", message: "Suppressions dupliquées." });
+    if (journal.entries.some((e) => gone.has(e.id)))
+      ctx.addIssue({
+        code: "custom",
+        message: "Une entrée supprimée figure encore au journal.",
+      });
     for (const key of ["id", "number"] as const) {
       const values = journal.entries.map((entry) => entry[key]);
       if (new Set(values).size !== values.length)
@@ -148,6 +168,7 @@ export type Fields = z.infer<typeof fieldsSchema>;
 export type Revision = z.infer<typeof revisionSchema>;
 export type Entry = z.infer<typeof entrySchema>;
 export type Journal = z.infer<typeof journalSchema>;
+export type Deletion = z.infer<typeof deletionSchema>;
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type Archive = z.infer<typeof archiveSchema>;
 export const current = (entry: Entry): Fields =>
@@ -234,7 +255,7 @@ export function addEntry(
       "Ce journal est clôturé. Rouvrez-le avant de saisir une entrée.",
     );
   const entry = makeEntry(
-    Math.max(0, ...journal.entries.map((e) => e.number)) + 1,
+    lastNumber(journal) + 1,
     journal.title,
     fields,
     author,
@@ -276,6 +297,31 @@ export function reviseEntry(
     ),
   });
 }
+export function deleteEntry(
+  journal: Journal,
+  id: string,
+  author: string,
+  reason: string,
+): Journal {
+  if (journal.closedAt) throw new Error("Ce journal est clôturé.");
+  const entry = journal.entries.find((e) => e.id === id);
+  if (!entry) throw new Error("Entrée introuvable.");
+  if (!reason.trim()) throw new Error("Indiquez le motif de la suppression.");
+  return journalSchema.parse({
+    ...journal,
+    entries: journal.entries.filter((e) => e.id !== id),
+    deleted: [
+      ...journal.deleted,
+      {
+        id,
+        number: entry.number,
+        at: now(),
+        by: author,
+        reason: reason.trim(),
+      },
+    ],
+  });
+}
 export function updateRadio(journal: Journal, radio: Radio): Journal {
   if (journal.closedAt) throw new Error("Ce journal est clôturé.");
   return journalSchema.parse({ ...journal, radio });
@@ -301,23 +347,40 @@ function sameEntry(a: Entry, b: Entry) {
     JSON.stringify({ ...b, number: 0, origin: "" })
   );
 }
+/** Highest number ever used, deleted entries included. */
+export const lastNumber = (journal: Journal) =>
+  Math.max(
+    0,
+    ...journal.entries.map((e) => e.number),
+    ...journal.deleted.map((d) => d.number),
+  );
 export function planMerge(target: Journal, incoming: Journal) {
   const known = new Map(target.entries.map((e) => [e.id, e]));
-  const entries = incoming.entries.reduce<{
-    added: Entry[];
-    duplicates: Entry[];
-    conflicts: Entry[];
-  }>(
-    (plan, entry) => {
-      const existing = known.get(entry.id);
-      if (!existing) plan.added.push(entry);
-      else if (sameEntry(existing, entry)) plan.duplicates.push(entry);
-      else plan.conflicts.push(entry);
-      return plan;
-    },
-    { added: [], duplicates: [], conflicts: [] },
-  );
-  return { ...entries, radio: planRadioMerge(target.radio, incoming.radio) };
+  const deletedHere = new Set(target.deleted.map((d) => d.id));
+  const deletedThere = new Set(incoming.deleted.map((d) => d.id));
+  // Entries of this journal that the incoming file records as deleted.
+  const removed = target.entries.filter((e) => deletedThere.has(e.id));
+  const entries = incoming.entries
+    .filter((e) => !deletedHere.has(e.id) && !deletedThere.has(e.id))
+    .reduce<{
+      added: Entry[];
+      duplicates: Entry[];
+      conflicts: Entry[];
+    }>(
+      (plan, entry) => {
+        const existing = known.get(entry.id);
+        if (!existing) plan.added.push(entry);
+        else if (sameEntry(existing, entry)) plan.duplicates.push(entry);
+        else plan.conflicts.push(entry);
+        return plan;
+      },
+      { added: [], duplicates: [], conflicts: [] },
+    );
+  return {
+    ...entries,
+    removed,
+    radio: planRadioMerge(target.radio, incoming.radio),
+  };
 }
 export function mergeJournals(target: Journal, incoming: Journal): Journal {
   if (target.closedAt)
@@ -327,12 +390,23 @@ export function mergeJournals(target: Journal, incoming: Journal): Journal {
     throw new Error(
       "Des versions divergent. Importez ce fichier dans un journal séparé pour les comparer.",
     );
-  let number = Math.max(0, ...target.entries.map((e) => e.number));
+  let number = lastNumber(target);
+  const removed = new Set(plan.removed.map((e) => e.id));
+  const known = new Set(target.deleted.map((d) => d.id));
   return journalSchema.parse({
     ...target,
     radio: plan.radio.radio,
+    deleted: [
+      ...target.deleted,
+      ...incoming.deleted
+        .filter((d) => !known.has(d.id))
+        .map((d) => ({
+          ...d,
+          number: target.entries.find((e) => e.id === d.id)?.number ?? d.number,
+        })),
+    ],
     entries: [
-      ...target.entries,
+      ...target.entries.filter((e) => !removed.has(e.id)),
       ...plan.added.map((e) => ({
         ...e,
         number: ++number,

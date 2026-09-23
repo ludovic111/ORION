@@ -5,6 +5,7 @@ import {
   archive,
   chronological,
   current,
+  deleteEntry,
   emptyFields,
   journalSchema,
   mergeJournals,
@@ -224,4 +225,55 @@ test("recovery snapshots accept an unfinished draft and reject orphan drafts", (
     }).success,
     false,
   );
+});
+
+test("deleting an entry keeps a trace, never reuses its number and requires a reason", () => {
+  let value = addEntry(journal(), entry("Deuxième"), "Alpha");
+  const [first, second] = value.entries;
+  assert.throws(() => deleteEntry(value, second.id, "Bravo", " "), /motif/);
+  value = deleteEntry(value, second.id, "Bravo", "Saisie en double");
+  assert.equal(value.entries.length, 1);
+  assert.equal(value.entries[0].id, first.id);
+  assert.deepEqual(
+    { ...value.deleted[0], at: "" },
+    {
+      id: second.id,
+      number: 2,
+      at: "",
+      by: "Bravo",
+      reason: "Saisie en double",
+    },
+  );
+  assert.ok(!JSON.stringify(value).includes("Deuxième"));
+  value = addEntry(value, entry("Troisième"), "Alpha");
+  assert.equal(value.entries.at(-1).number, 3);
+  assert.deepEqual(
+    parseArchive(JSON.parse(JSON.stringify(archive(value)))).journal,
+    value,
+  );
+  const closed = { ...value, closedAt: new Date().toISOString() };
+  assert.throws(
+    () => deleteEntry(closed, first.id, "Bravo", "Test"),
+    /clôturé/,
+  );
+});
+
+test("merges neither resurrect deleted entries nor keep entries deleted elsewhere", () => {
+  const base = addEntry(journal(), entry("Deux"), "Alpha");
+  const [one, two] = base.entries;
+  const here = deleteEntry(base, two.id, "Alpha", "Erreur");
+  // An older copy still holding the deleted entry does not bring it back.
+  assert.deepEqual(
+    mergeJournals(here, base).entries.map((e) => e.id),
+    [one.id],
+  );
+  // A copy where the entry was deleted removes it here too, with its trace.
+  const merged = mergeJournals(base, here);
+  assert.deepEqual(
+    merged.entries.map((e) => e.id),
+    [one.id],
+  );
+  assert.equal(merged.deleted[0].id, two.id);
+  assert.equal(planMerge(base, here).removed.length, 1);
+  assert.deepEqual(mergeJournals(merged, here), merged);
 });

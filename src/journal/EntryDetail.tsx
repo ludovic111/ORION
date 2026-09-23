@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, FileText, History, Pencil, Reply } from "lucide-react";
+import { Check, FileText, History, Pencil, Reply, Trash2 } from "lucide-react";
 import {
   current,
   dateTime,
@@ -18,6 +18,8 @@ export function EntryDetail({
   onRevise,
   onReply,
   onPrint,
+  onDelete,
+  mode = "view",
 }: {
   entry: Entry;
   author: string;
@@ -26,8 +28,13 @@ export function EntryDetail({
   onRevise: (fields: Fields, reason: string) => void;
   onReply: () => void;
   onPrint: () => void;
+  onDelete: (reason: string) => void;
+  mode?: "view" | "edit" | "delete";
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(mode === "edit" && !readOnly);
+  const [deleting, setDeleting] = useState(mode === "delete" && !readOnly);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
   const [history, setHistory] = useState(false);
   const f = current(entry);
   return (
@@ -37,7 +44,7 @@ export function EntryDetail({
       onClose={() => {
         if (
           !editing ||
-          window.confirm("Abandonner cette correction non enregistrée ?")
+          window.confirm("Abandonner cette modification non enregistrée ?")
         )
           onClose();
       }}
@@ -99,7 +106,7 @@ export function EntryDetail({
               <>
                 <button onClick={() => setEditing(true)}>
                   <Pencil size={14} />
-                  Corriger
+                  Modifier
                 </button>
                 <button onClick={onReply}>
                   <Reply size={14} />
@@ -128,7 +135,66 @@ export function EntryDetail({
               {entry.revisions.length} version
               {entry.revisions.length > 1 ? "s" : ""}
             </button>
+            {!readOnly && (
+              <button
+                className="danger push-right"
+                onClick={() => setDeleting(!deleting)}
+                aria-expanded={deleting}
+              >
+                <Trash2 size={14} />
+                Supprimer
+              </button>
+            )}
           </div>
+          {deleting && (
+            <form
+              className="delete-panel"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setError("");
+                try {
+                  onDelete(reason);
+                } catch (err) {
+                  setError((err as Error).message);
+                }
+              }}
+            >
+              <p>
+                Supprimer définitivement {numberLabel(entry)} ? Son contenu et
+                son historique sont effacés ; restent au journal le numéro,
+                l’auteur, l’heure et le motif de la suppression. Pour une
+                information erronée, préférez « Modifier » ou le suivi « Annulé
+                ».
+              </p>
+              <label>
+                <span>
+                  Motif de la suppression <span className="required">*</span>
+                </span>
+                <input
+                  required
+                  autoFocus
+                  maxLength={1000}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Saisie en double, mauvais journal"
+                />
+              </label>
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="action-row">
+                <button type="button" onClick={() => setDeleting(false)}>
+                  Annuler
+                </button>
+                <button className="danger solid" disabled={!reason.trim()}>
+                  <Trash2 size={14} />
+                  Supprimer {numberLabel(entry)}
+                </button>
+              </div>
+            </form>
+          )}
           {history && (
             <section className="history">
               <h3 className="label">Versions · auteurs déclarés, non signés</h3>

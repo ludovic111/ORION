@@ -1,4 +1,4 @@
-import { Square, SquareCheck } from "lucide-react";
+import { Pencil, Square, SquareCheck, Trash2 } from "lucide-react";
 import {
   current,
   dateTime,
@@ -25,6 +25,9 @@ export function JournalRow({
   picked,
   onPick,
   onOpen,
+  onEdit,
+  onDelete,
+  readOnly,
   at,
 }: {
   entry: Journal["entries"][number];
@@ -32,6 +35,9 @@ export function JournalRow({
   picked: boolean;
   onPick: () => void;
   onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  readOnly: boolean;
   at: number;
 }) {
   const f = current(entry);
@@ -40,7 +46,7 @@ export function JournalRow({
     <>
       {newDay && (
         <tr className="day-row">
-          <td colSpan={5}>{day(f.happenedAt)}</td>
+          <td colSpan={6}>{day(f.happenedAt)}</td>
         </tr>
       )}
       <tr
@@ -105,6 +111,28 @@ export function JournalRow({
               {late ? "Retard · " : "Éch. "}
               {dateTime(f.dueAt)}
             </small>
+          )}
+        </td>
+        <td className="row-actions">
+          {!readOnly && (
+            <>
+              <button
+                className="icon-button"
+                title="Modifier"
+                aria-label={`Modifier l’entrée ${entry.number}`}
+                onClick={onEdit}
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                className="icon-button danger-icon"
+                title="Supprimer"
+                aria-label={`Supprimer l’entrée ${entry.number}`}
+                onClick={onDelete}
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
           )}
         </td>
       </tr>
