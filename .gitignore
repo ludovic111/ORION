@@ -16,8 +16,4 @@ __pycache__/
 # Original bundled design: local reference, not application source.
 /ORION*.html
 
-.wrangler/
-.dev.vars*
-worker-configuration.d.ts
 
-dist-pages/

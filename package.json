@@ -15,10 +15,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 4311",
     "check": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "format": "prettier --write src shared server scripts tests docs *.json *.md index.html vite.config.ts pages .github/workflows",
-    "format:check": "prettier --check src shared server scripts tests docs *.json *.md index.html vite.config.ts pages .github/workflows",
-    "build:pages": "npm run build",
-    "deploy:pages": "npm run build && wrangler pages deploy --cwd pages --branch main"
+    "format": "prettier --write src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows",
+    "format:check": "prettier --check src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows"
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -35,8 +33,7 @@
     "@types/react-dom": "^19.2.0",
     "prettier": "^3.9.8",
     "typescript": "^5.9.3",
-    "vite": "^7.1.0",
-    "wrangler": "^4.135.0"
+    "vite": "^7.1.0"
   },
   "description": "Journal d’intervention et plan du réseau radio, local et chiffré"
 }

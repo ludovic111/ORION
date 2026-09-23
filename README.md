@@ -48,6 +48,8 @@ npm start
 
 Ouvrir `http://127.0.0.1:4311`. Pour développer : `npm run dev`.
 
+Hébergement de référence : Railway, service construit depuis le `Dockerfile` de la branche `main` (déploiement à chaque push). Variables : `PORT=4311`, `HOST=0.0.0.0`.
+
 `dist/` est un site statique autonome, à servir sur **HTTPS** ou `localhost` (requis pour Web Crypto et le mode hors ligne). Aucun service propriétaire n’est nécessaire. Le serveur Node fourni ne sert que des fichiers et refuse les écritures ; il n’utilise aucune dépendance de serveur applicatif. Un Dockerfile sans base de données est fourni. Pour un réseau institutionnel, configurer HTTPS et les en-têtes de `public/_headers` sur le serveur retenu.
 
 Après un premier chargement réussi de la version construite, un service worker met les fichiers de l’application en cache, y compris les modules d’export. L’indicateur « Prêt hors ligne » confirme l’activation. Le code source n’est pas précaché. Une première ouverture sur un poste neuf nécessite l’accès au site ou à une copie locale servie par `npm start`. Les navigateurs peuvent évincer leurs caches ; ne pas déduire d’une installation une garantie de disponibilité absolue.
