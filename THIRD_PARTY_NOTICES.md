@@ -7,6 +7,7 @@ Le code ORION est sous AGPL-3.0-only. Les dépendances conservent leurs licences
 - Zod — MIT.
 - fflate (archives ZIP des documents bureautiques) — MIT.
 - jsPDF et jsPDF-AutoTable (PDF) — MIT.
+- qrcode-generator (étiquettes QR) — MIT.
 - Vite, TypeScript, Prettier et leurs dépendances — licences propres aux paquets, outils de développement uniquement.
 - IBM Plex Sans / Mono — SIL Open Font License ; textes dans `docs/licenses/`. Les polices sont hébergées localement.
 

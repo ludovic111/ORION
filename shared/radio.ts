@@ -448,3 +448,23 @@ export function planRadioMerge(target: Radio, incoming: Radio) {
     conflicts: valid.success ? conflicts : conflicts + 1,
   };
 }
+
+/** Battery check due after this many hours in service. */
+export const BATTERY_HOURS = 8;
+export const batteryDue = (terminal: Terminal, at = Date.now()) => {
+  const open = activeAssignment(terminal);
+  return !!open && at - Date.parse(open.issuedAt) >= BATTERY_HOURS * 3_600_000;
+};
+
+/** Terminal label from a scanned QR value or typed text. */
+export function scannedLabel(value: string) {
+  const hash = value.match(/#scan=([^&\s]+)/);
+  return (hash ? decodeURIComponent(hash[1]) : value).trim();
+}
+export const findTerminal = (radio: Radio, value: string) =>
+  radio.terminals.find(
+    (t) => callsignKey(t.label) === callsignKey(scannedLabel(value)),
+  );
+/** URL printed in a terminal's QR label; the phone camera opens it. */
+export const terminalUrl = (origin: string, terminal: Terminal) =>
+  `${origin}/#scan=${encodeURIComponent(terminal.label)}`;

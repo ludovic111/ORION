@@ -5,6 +5,12 @@ import {
   type Entry,
   type Journal,
 } from "../../shared/journal.ts";
+import {
+  callsignKey,
+  type Assignment,
+  type Radio,
+  type Terminal,
+} from "../../shared/radio.ts";
 
 export type SheetField = {
   label: string;
@@ -15,14 +21,16 @@ export type SheetField = {
   strong?: boolean;
 };
 export type SheetSection = { title: string; rows: SheetField[][] };
-export type MessageSheet = {
+/** A one-record A4 form: fiche message, quittance de remise radio. */
+export type FormSheet = {
+  kind: string;
+  idLabel: string;
   number: string;
-  type: string;
-  priority: string;
-  status: string;
-  revised: boolean;
-  cancelled: boolean;
+  boxes: { label: string; value: string; alert?: boolean }[];
+  note?: { text: string; alert?: boolean };
   sections: SheetSection[];
+  visa: { title: string; labels: string[] }[];
+  footer: string;
 };
 
 export type SheetHeader = {
@@ -44,17 +52,31 @@ export const sheetHeader = (journal: Journal): SheetHeader => ({
 
 const or = (value: string) => value.trim() || "—";
 
-export function messageSheet(entry: Entry): MessageSheet {
+export function messageSheet(entry: Entry): FormSheet {
   const f = current(entry);
   const last = entry.revisions.at(-1)!;
   const revised = entry.revisions.length > 1;
+  const cancelled = f.status === "Annulé";
   return {
+    kind: "Fiche message",
+    idLabel: "Message",
     number: numberLabel(entry),
-    type: f.type,
-    priority: f.priority,
-    status: f.status,
-    revised,
-    cancelled: f.status === "Annulé",
+    boxes: [
+      { label: "Nature", value: f.type },
+      { label: "Priorité", value: f.priority, alert: f.priority === "Urgent" },
+      { label: "Suivi", value: f.status },
+    ],
+    note: cancelled
+      ? { text: "ENTRÉE ANNULÉE · conservée pour la traçabilité", alert: true }
+      : revised
+        ? {
+            text: `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive ORION`,
+          }
+        : undefined,
+    visa: [
+      { title: "Visa", labels: ["Traité par", "Date / heure", "Signature"] },
+    ],
+    footer: `message ${numberLabel(entry)}`,
     sections: [
       {
         title: "Transmission",
@@ -157,5 +179,120 @@ export function messageSheet(entry: Entry): MessageSheet {
     ],
   };
 }
+
+export function handoutSheet(
+  terminal: Terminal,
+  assignment: Assignment,
+  radio: Radio,
+): FormSheet {
+  const station = radio.stations.find(
+    (s) => callsignKey(s.callsign) === callsignKey(assignment.callsign),
+  );
+  const returned = !!assignment.returnedAt;
+  const listed = assignment.accessories
+    .split(",")
+    .map((a) => a.trim())
+    .filter(Boolean);
+  return {
+    kind: "Quittance de remise radio",
+    idLabel: "Terminal",
+    number: terminal.label,
+    boxes: [
+      { label: "Modèle", value: terminal.model || "—" },
+      { label: "RFSI", value: terminal.rfsi || "—" },
+      {
+        label: "Statut",
+        value: returned ? "Rendu" : "Remis",
+        alert: assignment.returnCondition === "Manquant",
+      },
+    ],
+    sections: [
+      {
+        title: "Terminal",
+        rows: [
+          [
+            { label: "N° interne", value: terminal.label, mono: true },
+            { label: "Type", value: terminal.kind },
+            { label: "N° de série", value: or(terminal.serial), mono: true },
+            { label: "RFSI", value: or(terminal.rfsi), mono: true },
+          ],
+        ],
+      },
+      {
+        title: "Détenteur",
+        rows: [
+          [
+            {
+              label: "Grade, nom",
+              value: assignment.holder,
+              span: 2,
+              strong: true,
+            },
+            { label: "Nom d’appel", value: or(assignment.callsign), span: 2 },
+          ],
+          [
+            { label: "Fonction", value: or(assignment.role), span: 2 },
+            { label: "Section", value: or(assignment.unit) },
+            {
+              label: "Groupe principal",
+              value: station ? talkgroupName(radio, station.primary) : "—",
+            },
+          ],
+        ],
+      },
+      {
+        title: "Remise",
+        rows: [
+          [
+            {
+              label: "Heure",
+              value: dateTime(assignment.issuedAt),
+              mono: true,
+            },
+            { label: "Remis par", value: assignment.issuedBy },
+            { label: "Batterie", value: assignment.battery },
+            { label: "État", value: terminal.condition },
+          ],
+          [
+            {
+              label: "Accessoires remis",
+              value: listed.length
+                ? listed.map((a) => `[  ] ${a}`).join("   ")
+                : "Aucun",
+            },
+          ],
+          [{ label: "Remarques", value: or(assignment.notes) }],
+        ],
+      },
+      {
+        title: "Retour",
+        rows: [
+          [
+            {
+              label: "Heure",
+              value: returned ? dateTime(assignment.returnedAt) : "",
+              mono: true,
+            },
+            { label: "Reçu par", value: returned ? assignment.returnedBy : "" },
+            { label: "État au retour", value: assignment.returnCondition },
+            { label: "Complet", value: returned ? "" : "[  ] oui    [  ] non" },
+          ],
+        ],
+      },
+    ],
+    visa: [
+      {
+        title: "Signatures",
+        labels: ["Détenteur (remise)", "Remettant", "Détenteur (retour)"],
+      },
+    ],
+    footer: `quittance ${terminal.label} · ${assignment.holder}`,
+  };
+}
+
+const talkgroupName = (radio: Radio, id: string) => {
+  const group = radio.talkgroups.find((g) => g.id === id);
+  return group ? [group.number, group.name].filter(Boolean).join(" · ") : "—";
+};
 
 export const printedAt = () => dateTime(new Date().toISOString());

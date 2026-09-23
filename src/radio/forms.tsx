@@ -642,7 +642,12 @@ export function IssueForm({
   terminal?: Terminal;
   author: string;
   onClose: () => void;
-  onIssue: (terminalId: string, value: IssueInput, log: boolean) => void;
+  onIssue: (
+    terminalId: string,
+    value: IssueInput,
+    log: boolean,
+    print: boolean,
+  ) => void;
 }) {
   const available = radio.terminals.filter(
     (t) =>
@@ -664,6 +669,7 @@ export function IssueForm({
     notes: "",
   });
   const [log, setLog] = useState(true);
+  const [print, setPrint] = useState(false);
   const set = <K extends keyof IssueInput>(key: K, v: IssueInput[K]) =>
     setValue({ ...value, [key]: v });
   const accessories = value.accessories
@@ -690,6 +696,7 @@ export function IssueForm({
             callsign: value.callsign.trim(),
           },
           log,
+          print,
         );
       }}
     >
@@ -830,6 +837,9 @@ export function IssueForm({
       </div>
       <Toggle checked={log} onChange={setLog}>
         Consigner la remise au journal
+      </Toggle>
+      <Toggle checked={print} onChange={setPrint}>
+        Imprimer la quittance de remise à signer
       </Toggle>
     </Shell>
   );

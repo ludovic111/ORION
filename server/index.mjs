@@ -11,6 +11,7 @@ const types = {
   ".woff2": "font/woff2",
   ".webmanifest": "application/manifest+json",
   ".gz": "application/gzip",
+  ".png": "image/png",
 };
 const csp =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'";
@@ -21,7 +22,7 @@ const server = createServer(async (req, res) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
   );
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405);

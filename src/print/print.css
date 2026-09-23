@@ -313,3 +313,38 @@ body.previewing {
     display: table-header-group;
   }
 }
+
+/* QR labels: 3 × 7 per A4 page, 60 × 36 mm, cut lines dashed */
+.sheet.labels {
+  padding: 18mm 15mm 10mm;
+}
+.qr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 60mm);
+  grid-auto-rows: 36mm;
+}
+.qr-label {
+  display: flex;
+  gap: 3mm;
+  align-items: flex-start;
+  padding: 4mm;
+  border: 0.1mm dashed var(--rule);
+  margin: 0 0 -0.1mm -0.1mm;
+}
+.qr-label svg {
+  width: 28mm;
+  height: 28mm;
+  flex: none;
+}
+.qr-label strong {
+  display: block;
+  margin-top: 1.5mm;
+  font-size: 16pt;
+  line-height: 1;
+}
+.qr-label small {
+  display: block;
+  margin-top: 1mm;
+  font-size: 7pt;
+  color: var(--ink-2);
+}

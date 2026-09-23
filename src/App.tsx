@@ -8,6 +8,8 @@ import {
   Download,
   FileText,
   FileUp,
+  Link2,
+  MonitorSmartphone,
   ListFilter,
   LockKeyhole,
   LogOut,
@@ -59,6 +61,10 @@ import { RadioView } from "./radio/RadioView";
 import { PrintPreview, type PrintJob } from "./print/PrintPreview";
 import { Clock } from "./ui/Clock";
 import { Mark } from "./ui/Mark";
+import { InstallHelp, useInstall } from "./ui/Install";
+import { Alerts } from "./journal/Alerts";
+import { ReportDialog } from "./journal/ReportDialog";
+import { closableBy, snooze } from "../shared/workflow";
 import { Num, useSlider } from "./ui/motion";
 
 type Dialog =
@@ -70,11 +76,17 @@ type Dialog =
   | "handover"
   | "compose"
   | "deleted"
+  | "report"
+  | "install"
   | null;
 type Filter = "all" | "follow" | "urgent" | "decisions";
 type Module = "journal" | "radio";
 const moduleFromHash = (): Module =>
-  location.hash === "#radio" ? "radio" : "journal";
+  location.hash === "#radio" || location.hash.startsWith("#scan=")
+    ? "radio"
+    : "journal";
+const scanFromHash = () =>
+  location.hash.startsWith("#scan=") ? location.hash : "";
 
 export default function App() {
   const store = useWorkspace();
@@ -92,6 +104,12 @@ export default function App() {
   const [limit, setLimit] = useState(100);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [print, setPrint] = useState<PrintJob | null>(null);
+  const [scan, setScan] = useState(scanFromHash);
+  const [closeOffer, setCloseOffer] = useState<{
+    receipt: string;
+    ids: string[];
+  } | null>(null);
+  const install = useInstall();
   const [showNav, setShowNav] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -118,7 +136,10 @@ export default function App() {
   hasDraft.current = draftExists;
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
-    const hash = () => setModule(moduleFromHash());
+    const hash = () => {
+      setModule(moduleFromHash());
+      setScan(scanFromHash());
+    };
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
     window.addEventListener("hashchange", hash);
@@ -203,6 +224,25 @@ export default function App() {
     0;
   const decisions =
     journal?.entries.filter((e) => current(e).type === "Décision").length ?? 0;
+  const suggestions = useMemo(() => {
+    if (!journal) return [];
+    const seen = new Map<string, string>();
+    const push = (value: string) => {
+      const key = value.trim().toLocaleLowerCase("fr");
+      if (key && !seen.has(key)) seen.set(key, value.trim());
+    };
+    journal.radio.stations.forEach((s) => push(s.callsign));
+    [...journal.entries].reverse().forEach((e) => {
+      const f = current(e);
+      push(f.source);
+      push(f.recipient);
+      push(f.assignee);
+    });
+    return [...seen.values()].slice(0, 300);
+  }, [journal]);
+  useEffect(() => {
+    document.title = late.length ? `(${late.length}) ORION` : "ORION";
+  }, [late.length]);
   const pickedEntries = chronological(
     journal?.entries.filter((e) => picked.has(e.id)) ?? [],
   );
@@ -275,6 +315,7 @@ export default function App() {
   }
   function add(fields: Fields) {
     if (!journal || !workspace) return;
+    const closable = closableBy(journal, fields);
     const updated = addEntry(journal, fields, workspace.author);
     const drafts = { ...workspace.drafts };
     delete drafts[journal.id];
@@ -287,7 +328,51 @@ export default function App() {
     });
     setDraft(false);
     setFormGeneration((value) => value + 1);
-    setToast(`Entrée ${numberLabel(updated.entries.at(-1)!)} consignée.`);
+    const receipt = numberLabel(updated.entries.at(-1)!);
+    setToast(`Entrée ${receipt} consignée.`);
+    setCloseOffer(
+      closable.length ? { receipt, ids: closable.map((e) => e.id) } : null,
+    );
+  }
+  function revise(id: string, change: Partial<Fields>, reason: string) {
+    if (!journal || !workspace) return;
+    let value = journal;
+    const entry = value.entries.find((e) => e.id === id);
+    if (!entry) return;
+    value = reviseEntry(
+      value,
+      id,
+      { ...current(entry), ...change },
+      workspace.author,
+      reason,
+    );
+    updateJournal(value);
+  }
+  function snoozeEntry(id: string, minutes: number) {
+    const entry = journal?.entries.find((e) => e.id === id);
+    if (!entry) return;
+    revise(
+      id,
+      { dueAt: snooze(current(entry).dueAt, minutes) },
+      `Échéance reportée de ${minutes} min`,
+    );
+    setToast(`${numberLabel(entry)} : échéance reportée de ${minutes} min.`);
+  }
+  function closeEntries(ids: string[], reason: string) {
+    if (!journal || !workspace) return;
+    let value = journal;
+    for (const id of ids) {
+      const entry = value.entries.find((e) => e.id === id);
+      if (entry)
+        value = reviseEntry(
+          value,
+          id,
+          { ...current(entry), status: "Terminé" },
+          workspace.author,
+          reason,
+        );
+    }
+    updateJournal(value);
   }
   async function create(value: Journal, author: string, password?: string) {
     if (workspace)
@@ -585,12 +670,23 @@ export default function App() {
             <Shield size={14} />
             Sécurité et données
           </button>
+          {!install.installed && (
+            <button
+              className="rail-tool"
+              onClick={() =>
+                install.install ? void install.install() : setDialog("install")
+              }
+            >
+              <MonitorSmartphone size={14} />
+              Installer l’app
+            </button>
+          )}
           <a
             className="rail-version"
             href="/source/orion-source.tar.gz"
             download
           >
-            ORION 1.1 · AGPL-3.0 · source
+            ORION 1.2 · AGPL-3.0 · source
           </a>
         </div>
       </aside>
@@ -624,6 +720,10 @@ export default function App() {
           <div className="page-actions">
             {module === "journal" ? (
               <>
+                <button onClick={() => setDialog("report")}>
+                  <FileText size={14} />
+                  Rapport
+                </button>
                 <button onClick={() => setDialog("handover")}>Relève</button>
                 <button onClick={() => setDialog("export")}>
                   <Download size={14} />
@@ -681,6 +781,53 @@ export default function App() {
         )}
         {module === "journal" ? (
           <>
+            {closeOffer && !journal.closedAt && (
+              <div className="banner info" role="status">
+                <Link2 size={15} />
+                <span>
+                  Quittance {closeOffer.receipt} : clore{" "}
+                  {closeOffer.ids
+                    .map((id) => journal.entries.find((e) => e.id === id))
+                    .filter((e) => !!e)
+                    .map(
+                      (e) =>
+                        `${numberLabel(e)} « ${current(e).message.length > 60 ? `${current(e).message.slice(0, 59)}…` : current(e).message} »`,
+                    )
+                    .join(", ")}{" "}
+                  ?
+                </span>
+                <button
+                  className="link"
+                  onClick={() => {
+                    closeEntries(
+                      closeOffer.ids,
+                      `Clos par la quittance ${closeOffer.receipt}`,
+                    );
+                    setToast("Suivi terminé.");
+                    setCloseOffer(null);
+                  }}
+                >
+                  Marquer terminé
+                </button>
+                <button
+                  className="link muted"
+                  onClick={() => setCloseOffer(null)}
+                >
+                  Ignorer
+                </button>
+              </div>
+            )}
+            <Alerts
+              journal={journal}
+              at={minute}
+              readOnly={!!journal.closedAt}
+              onOpen={(id) => openEntry(id)}
+              onSnooze={(e, minutes) => snoozeEntry(e.id, minutes)}
+              onDone={(e) => {
+                closeEntries([e.id], "Suivi marqué terminé par l’opérateur");
+                setToast(`${numberLabel(e)} terminé.`);
+              }}
+            />
             <dl className="metrics">
               <div>
                 <dt>Entrées</dt>
@@ -960,6 +1107,7 @@ export default function App() {
                     preset={workspace.drafts?.[journal.id]}
                     onDraft={saveDraft}
                     onSave={(fields) => add(fields)}
+                    suggestions={suggestions}
                     compact
                     draftLabel={
                       workspace.drafts?.[journal.id]?.message
@@ -978,11 +1126,27 @@ export default function App() {
             journal={journal}
             author={workspace.author}
             readOnly={!!journal.closedAt}
+            at={minute}
             onSave={saveRadio}
             onError={setError}
+            onPrint={(terminalId, assignmentId) =>
+              setPrint({ kind: "handout", journal, terminalId, assignmentId })
+            }
+            onLabels={() => setPrint({ kind: "labels", journal })}
+            scan={scan}
+            onScanHandled={() => {
+              setScan("");
+              if (location.hash.startsWith("#scan="))
+                history.replaceState(null, "", "#radio");
+            }}
           />
         )}
       </main>
+      {module === "journal" && !journal.closedAt && (
+        <button className="fab" onClick={compose} aria-label="Nouvelle entrée">
+          <Plus size={22} />
+        </button>
+      )}
       {toast && (
         <div className="toast" role="status">
           <Check size={14} />
@@ -994,6 +1158,9 @@ export default function App() {
           key={`${selected.id}-${entryMode}`}
           entry={selected}
           mode={entryMode}
+          entries={journal.entries}
+          onOpen={(id) => openEntry(id)}
+          onSnooze={(minutes) => snoozeEntry(selected.id, minutes)}
           onDelete={(reason) => {
             updateJournal(
               deleteEntry(journal, selected.id, workspace.author, reason),
@@ -1040,7 +1207,18 @@ export default function App() {
           }}
         />
       )}
-      {print && <PrintPreview job={print} onClose={() => setPrint(null)} />}
+      {print && (
+        <PrintPreview
+          job={{
+            ...print,
+            // Always print the latest state (a handout saved just before).
+            journal:
+              workspace.journals.find((j) => j.id === print.journal.id) ??
+              print.journal,
+          }}
+          onClose={() => setPrint(null)}
+        />
+      )}
       {dialog === "create" && (
         <Modal title="Nouveau journal" onClose={() => setDialog(null)}>
           <JournalSetup author={workspace.author} onCreate={create} />
@@ -1067,6 +1245,22 @@ export default function App() {
         />
       )}
       {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
+      {dialog === "report" && (
+        <ReportDialog
+          journal={journal}
+          onClose={() => setDialog(null)}
+          onPreview={(range) => {
+            setDialog(null);
+            setPrint({
+              kind: "report",
+              journal,
+              author: workspace.author,
+              range,
+            });
+          }}
+        />
+      )}
+      {dialog === "install" && <InstallHelp onClose={() => setDialog(null)} />}
       {dialog === "deleted" && (
         <Modal title="Entrées supprimées" onClose={() => setDialog(null)}>
           <table className="grid dense">
@@ -1183,6 +1377,7 @@ export default function App() {
               author={workspace.author}
               preset={preset ?? workspace.drafts?.[journal.id]}
               onDraft={saveDraft}
+              suggestions={suggestions}
               onSave={(fields) => {
                 add(fields);
                 setDialog(null);

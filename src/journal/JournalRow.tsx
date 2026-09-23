@@ -9,6 +9,7 @@ import {
   time,
   type Journal,
 } from "../../shared/journal";
+import { referencedNumbers } from "../../shared/workflow";
 
 export const typeTone = (type: string) =>
   type === "Décision" || type === "Mission"
@@ -89,6 +90,11 @@ export function JournalRow({
             {f.reliability !== "Confirmé" && (
               <span className="tag dim">{f.reliability}</span>
             )}
+            {referencedNumbers(f).map((n) => (
+              <span className="tag dim link-tag" key={n}>
+                ↳ #{String(n).padStart(3, "0")}
+              </span>
+            ))}
           </div>
           <button className="row-open" onClick={onOpen}>
             {f.message}

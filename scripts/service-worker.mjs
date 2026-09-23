@@ -1,6 +1,15 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-const files = ["/", "/index.html", "/orion.svg", "/manifest.webmanifest"];
+const files = [
+  "/",
+  "/index.html",
+  "/orion.svg",
+  "/manifest.webmanifest",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-512.png",
+  "/apple-touch-icon.png",
+];
 for (const directory of ["assets", "fonts"])
   for (const name of await readdir(`dist/${directory}`))
     files.push(`/${directory}/${name}`);

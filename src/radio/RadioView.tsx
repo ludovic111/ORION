@@ -1,5 +1,14 @@
-import { useMemo, useState } from "react";
-import { Pencil, Plus, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ListChecks,
+  Pencil,
+  Plus,
+  Printer,
+  QrCode,
+  ScanLine,
+  Search,
+  X,
+} from "lucide-react";
 import {
   dateTime,
   time,
@@ -7,8 +16,13 @@ import {
   type Journal,
 } from "../../shared/journal";
 import {
+  BATTERY_HOURS,
   CHECK_LABELS,
+  CHECK_RESULTS,
   activeAssignment,
+  batteryDue,
+  findTerminal,
+  scannedLabel,
   issueTerminal,
   radioSummary,
   removeTalkgroup,
@@ -33,6 +47,8 @@ import {
   TalkgroupForm,
   TerminalForm,
 } from "./forms";
+import { GeneralCheck } from "./GeneralCheck";
+import { Scanner } from "./Scanner";
 
 type Tab = "plan" | "terminals" | "custody" | "checks";
 type Form =
@@ -42,7 +58,9 @@ type Form =
   | { kind: "series" }
   | { kind: "issue"; terminal?: Terminal }
   | { kind: "return"; terminal: Terminal }
-  | { kind: "check"; callsign?: string };
+  | { kind: "check"; callsign?: string }
+  | { kind: "general" }
+  | { kind: "scan" };
 
 const stateTone = (state: string) =>
   state === "En service"
@@ -69,19 +87,52 @@ export function RadioView({
   journal,
   author,
   readOnly,
+  at,
   onSave,
   onError,
+  onPrint,
+  onLabels,
+  scan,
+  onScanHandled,
 }: {
   journal: Journal;
   author: string;
   readOnly: boolean;
+  at: number;
   onSave: (radio: Radio, log?: Partial<Fields>) => void;
   onError: (message: string) => void;
+  onPrint: (terminalId: string, assignmentId: string) => void;
+  onLabels: () => void;
+  scan: string;
+  onScanHandled: () => void;
 }) {
   const radio = journal.radio;
   const [tab, setTab] = useState<Tab>("plan");
   const [form, setForm] = useState<Form | null>(null);
   const [query, setQuery] = useState("");
+  const [outstanding, setOutstanding] = useState(false);
+  const batteries = radio.terminals.filter((t) => batteryDue(t, at));
+  // A scanned label opens the right action: return if issued, else handout.
+  function act(terminal: Terminal) {
+    setTab("terminals");
+    if (readOnly) return;
+    const state = terminalState(terminal);
+    if (state === "En service") setForm({ kind: "return", terminal });
+    else if (state === "Disponible" || state === "À recharger")
+      setForm({ kind: "issue", terminal });
+    else setForm({ kind: "terminal", terminal });
+  }
+  useEffect(() => {
+    if (!scan) return;
+    const terminal = findTerminal(radio, scan);
+    if (terminal) act(terminal);
+    else
+      onError(
+        `Terminal scanné introuvable dans ce journal : ${scannedLabel(scan)}.`,
+      );
+    onScanHandled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scan]);
   const summary = radioSummary(radio);
   const tabs = useSlider<HTMLDivElement>(tab);
   const lastCheck = radio.checks.at(-1);
@@ -144,6 +195,12 @@ export function RadioView({
           <dt>Indisponibles</dt>
           <dd>
             <Num value={summary.unavailable} />
+          </dd>
+        </div>
+        <div className={batteries.length ? "warn" : ""}>
+          <dt>Batteries &gt; {BATTERY_HOURS} h</dt>
+          <dd>
+            <Num value={batteries.length} />
           </dd>
         </div>
         <div>
@@ -232,6 +289,22 @@ export function RadioView({
               )}
               {tab === "terminals" && (
                 <>
+                  <button
+                    aria-pressed={outstanding}
+                    className={outstanding ? "toggled" : ""}
+                    onClick={() => setOutstanding(!outstanding)}
+                  >
+                    Non rendues
+                    <span className="count">{summary.issued}</span>
+                  </button>
+                  <button onClick={() => edit({ kind: "scan" })}>
+                    <ScanLine size={14} />
+                    Scanner
+                  </button>
+                  <button onClick={onLabels} disabled={!radio.terminals.length}>
+                    <QrCode size={14} />
+                    Étiquettes
+                  </button>
                   <button onClick={() => edit({ kind: "series" })}>
                     Série
                   </button>
@@ -258,13 +331,22 @@ export function RadioView({
                 </button>
               )}
               {tab === "checks" && (
-                <button
-                  className="primary"
-                  onClick={() => edit({ kind: "check" })}
-                >
-                  <Plus size={14} />
-                  Contrôle
-                </button>
+                <>
+                  <button
+                    disabled={!radio.stations.length}
+                    onClick={() => edit({ kind: "general" })}
+                  >
+                    <ListChecks size={14} />
+                    Contrôle général
+                  </button>
+                  <button
+                    className="primary"
+                    onClick={() => edit({ kind: "check" })}
+                  >
+                    <Plus size={14} />
+                    Contrôle
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -522,6 +604,7 @@ export function RadioView({
               </thead>
               <tbody>
                 {radio.terminals
+                  .filter((t) => !outstanding || !!activeAssignment(t))
                   .filter((t) => {
                     const a = activeAssignment(t);
                     return match(
@@ -586,6 +669,16 @@ export function RadioView({
                         </td>
                         <td>
                           {a ? a.battery : <span className="muted">—</span>}
+                          {batteryDue(t, at) && (
+                            <div>
+                              <span
+                                className="tag warn"
+                                title="Remis depuis plus de 8 h"
+                              >
+                                &gt; {BATTERY_HOURS} h
+                              </span>
+                            </div>
+                          )}
                         </td>
                         <td className="row-actions">
                           {!readOnly && (
@@ -611,6 +704,18 @@ export function RadioView({
                                   }
                                 >
                                   Remettre
+                                </button>
+                              )}
+                              {t.assignments.length > 0 && (
+                                <button
+                                  className="icon-button"
+                                  title="Quittance de remise"
+                                  aria-label={`Quittance de remise ${t.label}`}
+                                  onClick={() =>
+                                    onPrint(t.id, t.assignments.at(-1)!.id)
+                                  }
+                                >
+                                  <Printer size={13} />
                                 </button>
                               )}
                               <button
@@ -659,6 +764,7 @@ export function RadioView({
                   <th>Accessoires</th>
                   <th>Retour</th>
                   <th>État</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -708,6 +814,16 @@ export function RadioView({
                           "—"
                         )}
                         {a.notes && <div className="muted">{a.notes}</div>}
+                      </td>
+                      <td className="row-actions">
+                        <button
+                          className="icon-button"
+                          title="Quittance de remise"
+                          aria-label={`Quittance de remise ${t.label} · ${a.holder}`}
+                          onClick={() => onPrint(t.id, a.id)}
+                        >
+                          <Printer size={13} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -819,10 +935,11 @@ export function RadioView({
           terminal={form.terminal}
           author={author}
           onClose={close}
-          onIssue={(terminalId, value, log) => {
+          onIssue={(terminalId, value, log, print) => {
             const terminal = radio.terminals.find((t) => t.id === terminalId)!;
+            const next = issueTerminal(radio, terminalId, value);
             save(
-              issueTerminal(radio, terminalId, value),
+              next,
               log
                 ? {
                     happenedAt: value.issuedAt,
@@ -841,6 +958,13 @@ export function RadioView({
                   }
                 : undefined,
             );
+            if (print)
+              onPrint(
+                terminalId,
+                next.terminals
+                  .find((t) => t.id === terminalId)!
+                  .assignments.at(-1)!.id,
+              );
           }}
         />
       )}
@@ -909,6 +1033,48 @@ export function RadioView({
               throw err;
             }
           }}
+        />
+      )}
+      {form?.kind === "general" && (
+        <GeneralCheck
+          radio={radio}
+          author={author}
+          onClose={close}
+          onSave={(checks, log) => {
+            const count = (r: string) =>
+              checks.filter((c) => c.result === r).map((c) => c.callsign);
+            save(
+              {
+                ...radio,
+                checks: [...radio.checks, ...checks].sort(
+                  (a, b) => Date.parse(a.at) - Date.parse(b.at),
+                ),
+              },
+              log
+                ? {
+                    happenedAt: checks[0].at,
+                    receivedAt: checks[0].at,
+                    channel: "Radio",
+                    message: `Contrôle de liaison général : ${checks.length} station${checks.length > 1 ? "s" : ""}.`,
+                    notes: CHECK_RESULTS.filter((r) => count(r).length)
+                      .map((r) => `${CHECK_LABELS[r]} : ${count(r).join(", ")}`)
+                      .join("\n"),
+                    priority: checks.some(
+                      (c) => c.result === "0" || c.result === "1",
+                    )
+                      ? "Important"
+                      : "Normal",
+                  }
+                : undefined,
+            );
+          }}
+        />
+      )}
+      {form?.kind === "scan" && (
+        <Scanner
+          radio={radio}
+          onClose={close}
+          onFound={(terminal) => act(terminal)}
         />
       )}
     </>

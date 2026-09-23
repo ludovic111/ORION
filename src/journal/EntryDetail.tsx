@@ -1,12 +1,23 @@
 import { useState } from "react";
-import { Check, FileText, History, Pencil, Reply, Trash2 } from "lucide-react";
+import {
+  AlarmClockPlus,
+  Check,
+  FileText,
+  History,
+  Pencil,
+  Reply,
+  Trash2,
+} from "lucide-react";
 import {
   current,
   dateTime,
+  needsFollowUp,
   numberLabel,
+  time,
   type Entry,
   type Fields,
 } from "../../shared/journal";
+import { thread } from "../../shared/workflow";
 import { columns } from "../../shared/interchange";
 import { Modal } from "./Modal";
 import { EntryForm } from "./EntryForm";
@@ -19,6 +30,9 @@ export function EntryDetail({
   onReply,
   onPrint,
   onDelete,
+  onSnooze,
+  onOpen,
+  entries,
   mode = "view",
 }: {
   entry: Entry;
@@ -29,6 +43,9 @@ export function EntryDetail({
   onReply: () => void;
   onPrint: () => void;
   onDelete: (reason: string) => void;
+  onSnooze: (minutes: number) => void;
+  onOpen: (id: string) => void;
+  entries: Entry[];
   mode?: "view" | "edit" | "delete";
 }) {
   const [editing, setEditing] = useState(mode === "edit" && !readOnly);
@@ -37,6 +54,7 @@ export function EntryDetail({
   const [error, setError] = useState("");
   const [history, setHistory] = useState(false);
   const f = current(entry);
+  const linked = thread(entries, entry);
   return (
     <Modal
       wide
@@ -125,6 +143,15 @@ export function EntryDetail({
                     Terminer le suivi
                   </button>
                 )}
+                {needsFollowUp(entry) && (
+                  <button
+                    onClick={() => onSnooze(15)}
+                    title="Reporter l’échéance de 15 minutes"
+                  >
+                    <AlarmClockPlus size={14} />
+                    {f.dueAt ? "Échéance +15 min" : "Échéance dans 15 min"}
+                  </button>
+                )}
               </>
             )}
             <button
@@ -194,6 +221,34 @@ export function EntryDetail({
                 </button>
               </div>
             </form>
+          )}
+          {linked.length > 0 && (
+            <section className="thread">
+              <h3 className="section-label">
+                Fil · {linked.length} entrées liées
+              </h3>
+              <ol>
+                {linked.map((e) => {
+                  const g = current(e);
+                  return (
+                    <li key={e.id}>
+                      <button
+                        className="thread-item"
+                        aria-current={e.id === entry.id ? "true" : undefined}
+                        disabled={e.id === entry.id}
+                        onClick={() => onOpen(e.id)}
+                      >
+                        <span className="mono">{numberLabel(e)}</span>
+                        <span className="mono muted">{time(g.happenedAt)}</span>
+                        <span className="tag">{g.type}</span>
+                        <span className="thread-text">{g.message}</span>
+                        <span className="state">{g.status}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
           )}
           {history && (
             <section className="history">

@@ -1,13 +1,17 @@
 import type { jsPDF } from "jspdf";
 import type { Entry, Journal } from "../../shared/journal.ts";
-import { radioTables } from "./radio-sheet.ts";
+import { radioTables, type SheetTable } from "./radio-sheet.ts";
 import {
   messageSheet,
   printedAt,
   sheetHeader,
+  type FormSheet,
   type SheetField,
   type SheetHeader,
 } from "./sheet.ts";
+import { terminalUrl } from "../../shared/radio.ts";
+import { qrMatrix } from "./qr.ts";
+import { situationReport, type ReportRange } from "./report.ts";
 
 type Doc = jsPDF;
 type RGB = [number, number, number];
@@ -150,7 +154,9 @@ const valueSize = (field: SheetField) => (field.strong ? 10 : VALUE);
 
 function fieldLines(doc: Doc, field: SheetField, width: number): string[] {
   font(doc, valueSize(field), field.strong);
-  return doc.splitTextToSize(field.value || "—", width - PAD * 2) as string[];
+  return field.value
+    ? (doc.splitTextToSize(field.value, width - PAD * 2) as string[])
+    : [];
 }
 
 function drawField(
@@ -236,29 +242,26 @@ function drawRow(doc: Doc, layout: Layout, row: SheetField[]) {
   layout.y += h;
 }
 
-function drawMessage(doc: Doc, journal: Journal, entry: Entry) {
-  const header = sheetHeader(journal);
-  const sheet = messageSheet(entry);
+function drawForm(doc: Doc, header: SheetHeader, sheet: FormSheet) {
   const continuation = () => {
-    const top = drawBand(doc, header, "Fiche message");
+    const top = drawBand(doc, header, sheet.kind);
     font(doc, 8, true);
-    doc.text(`MESSAGE ${sheet.number} · suite`, PAGE.m, top + 6);
+    doc.text(
+      `${sheet.idLabel.toUpperCase()} ${sheet.number} · suite`,
+      PAGE.m,
+      top + 6,
+    );
     return top + 9;
   };
-  let y = drawBand(doc, header, "Fiche message");
+  let y = drawBand(doc, header, sheet.kind);
   y += 5;
   font(doc, 6.5, true, MUTED);
-  doc.text("MESSAGE", PAGE.m, y + 1.5, { charSpace: 0.35 });
+  doc.text(sheet.idLabel.toUpperCase(), PAGE.m, y + 1.5, { charSpace: 0.35 });
   font(doc, 24, true);
   doc.text(sheet.number, PAGE.m, y + 11);
-  const boxes: [string, string, boolean][] = [
-    ["Nature", sheet.type, false],
-    ["Priorité", sheet.priority, sheet.priority === "Urgent"],
-    ["Suivi", sheet.status, false],
-  ];
   const bw = 34;
-  boxes.forEach(([label, value, alert], i) => {
-    const x = PAGE.w - PAGE.m - bw * (boxes.length - i);
+  sheet.boxes.forEach(({ label, value, alert }, i) => {
+    const x = PAGE.w - PAGE.m - bw * (sheet.boxes.length - i);
     doc.setLineWidth(0.25);
     if (alert) {
       doc.setFillColor(...RED);
@@ -271,20 +274,14 @@ function drawMessage(doc: Doc, journal: Journal, entry: Entry) {
     font(doc, 6, true, alert ? [255, 255, 255] : MUTED);
     doc.text(label.toUpperCase(), x + 2, y + 3.6, { charSpace: 0.2 });
     font(doc, 10, true, alert ? [255, 255, 255] : INK);
-    doc.text(value, x + 2, y + 9.4);
+    doc.text(doc.splitTextToSize(value, bw - 4)[0] as string, x + 2, y + 9.4);
   });
   y += 14;
-  if (sheet.revised || sheet.cancelled) {
+  if (sheet.note) {
     doc.setFillColor(...FILL);
     doc.rect(PAGE.m, y, WIDTH, 6, "F");
-    font(doc, 7.5, true, sheet.cancelled ? RED : INK);
-    doc.text(
-      sheet.cancelled
-        ? "ENTRÉE ANNULÉE · conservée pour la traçabilité"
-        : `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive ORION`,
-      PAGE.m + 2,
-      y + 4.1,
-    );
+    font(doc, 7.5, true, sheet.note.alert ? RED : INK);
+    doc.text(sheet.note.text, PAGE.m + 2, y + 4.1);
     y += 7;
   }
   const layout: Layout = { y, top: PAGE.m + 26, onBreak: continuation };
@@ -297,48 +294,63 @@ function drawMessage(doc: Doc, journal: Journal, entry: Entry) {
     );
     for (const row of section.rows) drawRow(doc, layout, row);
   }
-  sectionTitle(doc, layout, "Visa", 17);
-  const visa = ["Traité par", "Date / heure", "Signature"];
-  visa.forEach((label, i) =>
-    drawField(
-      doc,
-      { label, value: "" },
-      PAGE.m + (WIDTH / 3) * i,
-      layout.y,
-      WIDTH / 3,
-      17,
-      [],
-    ),
-  );
+  for (const visa of sheet.visa) {
+    sectionTitle(doc, layout, visa.title, 17);
+    const w = WIDTH / visa.labels.length;
+    visa.labels.forEach((label, i) =>
+      drawField(doc, { label, value: "" }, PAGE.m + w * i, layout.y, w, 17, []),
+    );
+    layout.y += 17;
+  }
   color(doc, INK);
 }
 
-export async function messagesPdf(journal: Journal, entries: Entry[]) {
-  if (!entries.length) throw new Error("Aucune entrée sélectionnée.");
+export async function formsPdf(
+  journal: Journal,
+  sheets: FormSheet[],
+  label: string,
+) {
+  if (!sheets.length) throw new Error("Aucun document à produire.");
   const doc = await pdfDocument();
-  entries.forEach((entry, i) => {
+  const header = sheetHeader(journal);
+  sheets.forEach((sheet, i) => {
     if (i) doc.addPage();
-    drawMessage(doc, journal, entry);
+    drawForm(doc, header, sheet);
   });
   drawFooters(
     doc,
-    entries.length === 1
-      ? `${journal.title} · message ${messageSheet(entries[0]).number}`
-      : `${journal.title} · ${entries.length} messages`,
+    `${journal.title} · ${sheets.length === 1 ? sheets[0].footer : label}`,
   );
   return doc.output("blob");
 }
 
-export async function radioPdf(journal: Journal, author: string) {
+export async function messagesPdf(journal: Journal, entries: Entry[]) {
+  if (!entries.length) throw new Error("Aucune entrée sélectionnée.");
+  return formsPdf(
+    journal,
+    entries.map(messageSheet),
+    `${entries.length} messages`,
+  );
+}
+
+export async function tablesPdf(
+  journal: Journal,
+  options: {
+    kind: string;
+    extra: string;
+    tables: SheetTable[];
+    orientation: "portrait" | "landscape";
+    footer: string;
+  },
+) {
   const [doc, { autoTable }] = await Promise.all([
-    pdfDocument("landscape"),
+    pdfDocument(options.orientation),
     import("jspdf-autotable"),
   ]);
   const header = sheetHeader(journal);
-  const band = () =>
-    drawBand(doc, header, "Plan du réseau radio", `Établi par ${author}`);
+  const band = () => drawBand(doc, header, options.kind, options.extra);
   let y = band() + 4;
-  for (const table of radioTables(journal.radio)) {
+  for (const table of options.tables) {
     if (y > pageHeight(doc) - 40) {
       doc.addPage();
       y = band() + 4;
@@ -384,6 +396,77 @@ export async function radioPdf(journal: Journal, author: string) {
       (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable
         .finalY + 7;
   }
-  drawFooters(doc, `${journal.title} · plan du réseau radio`);
+  drawFooters(doc, `${journal.title} · ${options.footer}`);
+  return doc.output("blob");
+}
+
+export const radioPdf = (journal: Journal, author: string) =>
+  tablesPdf(journal, {
+    kind: "Plan du réseau radio",
+    extra: `Établi par ${author}`,
+    tables: radioTables(journal.radio),
+    orientation: "landscape",
+    footer: "plan du réseau radio",
+  });
+
+export const reportPdf = (
+  journal: Journal,
+  author: string,
+  range: ReportRange,
+) =>
+  tablesPdf(journal, {
+    kind: "Rapport de situation",
+    extra: `Établi par ${author}`,
+    tables: situationReport(journal, range),
+    orientation: "portrait",
+    footer: "rapport de situation",
+  });
+
+/** A4 sheet of 3 × 7 QR labels, one per terminal. */
+export async function labelsPdf(journal: Journal, origin: string) {
+  if (!journal.radio.terminals.length) throw new Error("Aucun terminal.");
+  const doc = await pdfDocument();
+  const cols = 3,
+    rows = 7,
+    w = 60,
+    h = 36,
+    left = (PAGE.w - cols * w) / 2,
+    top = 18;
+  journal.radio.terminals.forEach((terminal, i) => {
+    const slot = i % (cols * rows);
+    if (i && slot === 0) doc.addPage();
+    const x = left + (slot % cols) * w;
+    const y = top + Math.floor(slot / cols) * h;
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.1);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.rect(x, y, w, h);
+    doc.setLineDashPattern([], 0);
+    const matrix = qrMatrix(terminalUrl(origin, terminal));
+    const size = 28,
+      cell = size / matrix.length;
+    doc.setFillColor(...INK);
+    matrix.forEach((line, r) =>
+      line.forEach((dark, c) => {
+        if (dark) doc.rect(x + 4 + c * cell, y + 4 + r * cell, cell, cell, "F");
+      }),
+    );
+    font(doc, 6, true, MUTED);
+    doc.text("ORION · RADIO", x + 35, y + 8, { charSpace: 0.3 });
+    font(doc, 16, true);
+    doc.text(terminal.label, x + 35, y + 16);
+    font(doc, 7, false, MUTED);
+    doc.text(
+      doc.splitTextToSize(
+        [terminal.model, terminal.rfsi && `RFSI ${terminal.rfsi}`]
+          .filter(Boolean)
+          .join("\n"),
+        22,
+      ),
+      x + 35,
+      y + 21,
+    );
+  });
+  drawFooters(doc, `${journal.title} · étiquettes radio`);
   return doc.output("blob");
 }

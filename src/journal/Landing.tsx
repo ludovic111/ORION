@@ -37,7 +37,7 @@ export function Landing({
           <Mark />
           <span>ORION</span>
         </span>
-        <span className="landing-version">1.1</span>
+        <span className="landing-version">1.2</span>
         <button className="link" onClick={onPrivacy}>
           Sécurité et données
         </button>

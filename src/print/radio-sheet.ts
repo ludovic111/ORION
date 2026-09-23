@@ -7,13 +7,13 @@ import {
   type Radio,
 } from "../../shared/radio.ts";
 
-export type RadioTable = {
+export type SheetTable = {
   id: string;
   title: string;
   caption: string;
   head: string[];
   body: string[][];
-  /** Column widths in mm for a landscape A4 page (269 mm usable). */
+  /** Column widths in mm (landscape A4: 269 mm usable, portrait: 182 mm). */
   widths?: number[];
 };
 
@@ -25,7 +25,7 @@ export function talkgroupLabel(radio: Radio, id: string) {
   return group.number ? `${group.number} · ${group.name}` : group.name;
 }
 
-export function radioTables(radio: Radio): RadioTable[] {
+export function radioTables(radio: Radio): SheetTable[] {
   const history = radio.terminals
     .flatMap((t) => t.assignments.map((a) => ({ t, a })))
     .sort((x, y) => Date.parse(x.a.issuedAt) - Date.parse(y.a.issuedAt));

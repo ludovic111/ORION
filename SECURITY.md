@@ -1,4 +1,4 @@
-# Sécurité et confidentialité — ORION 1.1
+# Sécurité et confidentialité — ORION 1.2
 
 ## Flux réels
 
@@ -24,6 +24,10 @@ La commande de fin de session est explicite et demande une archive récente de c
 - Les textes importés sont affichés par React. Les exports XML/HTML échappent les caractères spéciaux ; le document HTML interdit les scripts et connexions par CSP.
 - Le fichier `.orion` est chiffré. Tous les autres formats sont en clair, avec reconnaissance explicite dans l’interface. Une requête de téléchargement réussie n’atteste pas de la présence durable du fichier sur disque.
 - Les exports de lecture ne sont pas des archives d’audit complètes. Seuls ORION/JSON gardent toutes les versions.
+
+## Caméra et QR codes
+
+La caméra est demandée uniquement à l’ouverture de la fenêtre « Scanner » et arrêtée à sa fermeture. Les images sont analysées dans le navigateur (BarcodeDetector) ; rien n’est enregistré ni transmis. L’en-tête `Permissions-Policy` n’autorise la caméra que pour l’origine du site. Les étiquettes QR contiennent seulement l’adresse du site et le numéro interne du terminal, jamais le détenteur.
 
 ## Suppression d’une entrée
 

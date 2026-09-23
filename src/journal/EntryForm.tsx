@@ -10,6 +10,7 @@ import {
   fieldsSchema,
   type Fields,
 } from "../../shared/journal";
+import { TEMPLATES, applyTemplate } from "../../shared/workflow";
 export function localInput(iso: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -28,6 +29,7 @@ export function EntryForm({
   onCancel,
   compact = false,
   draftLabel = "",
+  suggestions = [],
 }: {
   initial?: Fields;
   preset?: Fields;
@@ -37,7 +39,9 @@ export function EntryForm({
   onCancel?: () => void;
   compact?: boolean;
   draftLabel?: string;
+  suggestions?: string[];
 }) {
+  const listId = `callsigns-${compact ? "quick" : initial ? "edit" : "full"}`;
   const [fields, setFields] = useState<Fields>(
     () => initial ?? preset ?? emptyFields(),
   );
@@ -69,6 +73,11 @@ export function EntryForm({
         value={String(fields[key])}
         maxLength={maxLength}
         placeholder={placeholder}
+        list={
+          ["recipient", "assignee"].includes(key) && suggestions.length
+            ? listId
+            : undefined
+        }
         onChange={(e) => update(key, e.target.value)}
       />
     </label>
@@ -148,6 +157,37 @@ export function EntryForm({
           {draftLabel && <span className="draft">{draftLabel}</span>}
         </div>
       )}
+      {!initial && (
+        <div className="templates" role="group" aria-label="Modèles">
+          {TEMPLATES.map((template) => (
+            <button
+              type="button"
+              className="chip"
+              key={template.id}
+              onClick={() => {
+                if (
+                  fields.message.trim() &&
+                  !window.confirm("Remplacer le message en cours ?")
+                )
+                  return;
+                const next = applyTemplate(fields, template);
+                setFields(next);
+                onDraft?.(next);
+                requestAnimationFrame(() => {
+                  const area = message.current;
+                  if (!area) return;
+                  area.focus();
+                  const line = area.value.indexOf(": ");
+                  const at = line < 0 ? area.value.length : line + 2;
+                  area.setSelectionRange(at, at);
+                });
+              }}
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="form-pair">
         {select("type", "Nature", TYPES)}
         {select("priority", "Priorité", PRIORITIES)}
@@ -188,9 +228,17 @@ export function EntryForm({
             maxLength={500}
             onChange={(e) => update("source", e.target.value)}
             placeholder="Nom d’appel, équipe"
+            list={suggestions.length ? listId : undefined}
           />
         </label>
       </div>
+      {suggestions.length > 0 && (
+        <datalist id={listId}>
+          {suggestions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      )}
       <details open={!!initial}>
         <summary>
           <ChevronRight size={13} />
@@ -246,7 +294,7 @@ export function EntryForm({
           {textarea("resources", "Moyens engagés / besoins", "", 4000)}
         </div>
       </details>
-      <details open={!!initial}>
+      <details open={!!initial || !!fields.reference}>
         <summary>
           <ChevronRight size={13} />
           Compléments

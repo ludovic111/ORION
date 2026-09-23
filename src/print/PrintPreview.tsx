@@ -1,21 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Printer, X } from "lucide-react";
 import type { Entry, Journal } from "../../shared/journal";
+import { terminalUrl, type Terminal } from "../../shared/radio";
 import { download, fileName } from "../journal/exports";
 import {
+  handoutSheet,
   messageSheet,
   printedAt,
   sheetHeader,
+  type FormSheet,
   type SheetField,
   type SheetHeader,
 } from "./sheet";
-import { radioTables } from "./radio-sheet";
+import { radioTables, type SheetTable } from "./radio-sheet";
+import { situationReport, type ReportRange } from "./report";
+import { qrMatrix, qrPath } from "./qr";
 import "./print.css";
 
 export type PrintJob =
   | { kind: "messages"; journal: Journal; entries: Entry[] }
-  | { kind: "radio"; journal: Journal; author: string };
+  | { kind: "radio"; journal: Journal; author: string }
+  | {
+      kind: "handout";
+      journal: Journal;
+      terminalId: string;
+      assignmentId: string;
+    }
+  | { kind: "report"; journal: Journal; author: string; range: ReportRange }
+  | { kind: "labels"; journal: Journal };
 
 function Band({
   header,
@@ -70,44 +83,35 @@ function Cell({ field }: { field: SheetField }) {
   );
 }
 
-function MessageSheetView({
+function FormSheetView({
   journal,
-  entry,
+  sheet,
   stamp,
 }: {
   journal: Journal;
-  entry: Entry;
+  sheet: FormSheet;
   stamp: string;
 }) {
-  const sheet = messageSheet(entry);
   return (
     <article className="sheet portrait">
-      <Band header={sheetHeader(journal)} kind="Fiche message" />
+      <Band header={sheetHeader(journal)} kind={sheet.kind} />
       <div className="sheet-id">
         <div>
-          <span className="cell-label">Message</span>
+          <span className="cell-label">{sheet.idLabel}</span>
           <strong>{sheet.number}</strong>
         </div>
         <dl>
-          <div>
-            <dt>Nature</dt>
-            <dd>{sheet.type}</dd>
-          </div>
-          <div className={sheet.priority === "Urgent" ? "alert" : ""}>
-            <dt>Priorité</dt>
-            <dd>{sheet.priority}</dd>
-          </div>
-          <div>
-            <dt>Suivi</dt>
-            <dd>{sheet.status}</dd>
-          </div>
+          {sheet.boxes.map((box) => (
+            <div key={box.label} className={box.alert ? "alert" : ""}>
+              <dt>{box.label}</dt>
+              <dd>{box.value}</dd>
+            </div>
+          ))}
         </dl>
       </div>
-      {(sheet.revised || sheet.cancelled) && (
-        <p className={`sheet-note ${sheet.cancelled ? "alert" : ""}`}>
-          {sheet.cancelled
-            ? "ENTRÉE ANNULÉE · conservée pour la traçabilité"
-            : `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive ORION`}
+      {sheet.note && (
+        <p className={`sheet-note ${sheet.note.alert ? "alert" : ""}`}>
+          {sheet.note.text}
         </p>
       )}
       {sheet.sections.map((section) => (
@@ -122,23 +126,25 @@ function MessageSheetView({
           ))}
         </section>
       ))}
-      <section className="sheet-section">
-        <h2>Visa</h2>
-        <div className="sheet-row">
-          {["Traité par", "Date / heure", "Signature"].map((label) => (
-            <div
-              className="cell visa"
-              key={label}
-              style={{ flexGrow: 1, flexBasis: 0 }}
-            >
-              <span className="cell-label">{label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {sheet.visa.map((visa) => (
+        <section className="sheet-section" key={visa.title}>
+          <h2>{visa.title}</h2>
+          <div className="sheet-row">
+            {visa.labels.map((label) => (
+              <div
+                className="cell visa"
+                key={label}
+                style={{ flexGrow: 1, flexBasis: 0 }}
+              >
+                <span className="cell-label">{label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
       <footer className="sheet-foot">
         <span>
-          {journal.title} · message {sheet.number}
+          {journal.title} · {sheet.footer}
         </span>
         <span>Édité le {stamp} · Europe/Zurich</span>
       </footer>
@@ -146,23 +152,27 @@ function MessageSheetView({
   );
 }
 
-function RadioSheetView({
+function TablesSheetView({
   journal,
-  author,
+  kind,
+  extra,
+  tables,
+  landscape,
+  footer,
   stamp,
 }: {
   journal: Journal;
-  author: string;
+  kind: string;
+  extra: string;
+  tables: SheetTable[];
+  landscape: boolean;
+  footer: string;
   stamp: string;
 }) {
   return (
-    <article className="sheet landscape">
-      <Band
-        header={sheetHeader(journal)}
-        kind="Plan du réseau radio"
-        extra={`Établi par ${author}`}
-      />
-      {radioTables(journal.radio).map((table) => (
+    <article className={`sheet ${landscape ? "landscape" : "portrait"}`}>
+      <Band header={sheetHeader(journal)} kind={kind} extra={extra} />
+      {tables.map((table) => (
         <section key={table.id} className="sheet-section">
           <h2>
             {table.title}
@@ -176,8 +186,8 @@ function RadioSheetView({
             </colgroup>
             <thead>
               <tr>
-                {table.head.map((h) => (
-                  <th key={h}>{h}</th>
+                {table.head.map((h, i) => (
+                  <th key={i}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -202,28 +212,126 @@ function RadioSheetView({
         </section>
       ))}
       <footer className="sheet-foot">
-        <span>{journal.title} · plan du réseau radio</span>
+        <span>
+          {journal.title} · {footer}
+        </span>
         <span>Édité le {stamp} · Europe/Zurich</span>
       </footer>
     </article>
   );
 }
 
-function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
-  return job.kind === "messages" ? (
+function Label({ terminal }: { terminal: Terminal }) {
+  const matrix = useMemo(
+    () => qrMatrix(terminalUrl(location.origin, terminal)),
+    [terminal],
+  );
+  return (
+    <div className="qr-label">
+      <svg
+        viewBox={`0 0 ${matrix.length} ${matrix.length}`}
+        shapeRendering="crispEdges"
+        aria-hidden="true"
+      >
+        <path d={qrPath(matrix)} fill="#101318" />
+      </svg>
+      <div>
+        <span className="cell-label">ORION · radio</span>
+        <strong>{terminal.label}</strong>
+        <small>{terminal.model}</small>
+        {terminal.rfsi && <small>RFSI {terminal.rfsi}</small>}
+      </div>
+    </div>
+  );
+}
+
+function LabelsView({ journal, stamp }: { journal: Journal; stamp: string }) {
+  const pages: Terminal[][] = [];
+  journal.radio.terminals.forEach((t, i) => {
+    if (i % 21 === 0) pages.push([]);
+    pages[pages.length - 1].push(t);
+  });
+  return (
     <>
-      {job.entries.map((entry) => (
-        <MessageSheetView
-          key={entry.id}
-          journal={job.journal}
-          entry={entry}
-          stamp={stamp}
-        />
+      {pages.map((page, i) => (
+        <article className="sheet portrait labels" key={i}>
+          <div className="qr-grid">
+            {page.map((t) => (
+              <Label key={t.id} terminal={t} />
+            ))}
+          </div>
+          <footer className="sheet-foot">
+            <span>{journal.title} · étiquettes radio</span>
+            <span>Édité le {stamp}</span>
+          </footer>
+        </article>
       ))}
     </>
-  ) : (
-    <RadioSheetView journal={job.journal} author={job.author} stamp={stamp} />
   );
+}
+
+function forms(job: PrintJob): FormSheet[] {
+  if (job.kind === "messages") return job.entries.map(messageSheet);
+  if (job.kind === "handout") {
+    const terminal = job.journal.radio.terminals.find(
+      (t) => t.id === job.terminalId,
+    );
+    const assignment = terminal?.assignments.find(
+      (a) => a.id === job.assignmentId,
+    );
+    return terminal && assignment
+      ? [handoutSheet(terminal, assignment, job.journal.radio)]
+      : [];
+  }
+  return [];
+}
+
+function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
+  if (job.kind === "messages" || job.kind === "handout")
+    return (
+      <>
+        {forms(job).map((sheet, i) => (
+          <FormSheetView
+            key={i}
+            journal={job.journal}
+            sheet={sheet}
+            stamp={stamp}
+          />
+        ))}
+      </>
+    );
+  if (job.kind === "labels")
+    return <LabelsView journal={job.journal} stamp={stamp} />;
+  return job.kind === "radio" ? (
+    <TablesSheetView
+      journal={job.journal}
+      kind="Plan du réseau radio"
+      extra={`Établi par ${job.author}`}
+      tables={radioTables(job.journal.radio)}
+      landscape
+      footer="plan du réseau radio"
+      stamp={stamp}
+    />
+  ) : (
+    <TablesSheetView
+      journal={job.journal}
+      kind="Rapport de situation"
+      extra={`Établi par ${job.author}`}
+      tables={situationReport(job.journal, job.range)}
+      landscape={false}
+      footer="rapport de situation"
+      stamp={stamp}
+    />
+  );
+}
+
+function title(job: PrintJob) {
+  if (job.kind === "messages")
+    return `${job.entries.length} fiche${job.entries.length > 1 ? "s" : ""} message · A4 portrait`;
+  if (job.kind === "radio") return "Plan du réseau radio · A4 paysage";
+  if (job.kind === "handout") return "Quittance de remise radio · A4 portrait";
+  if (job.kind === "report") return "Rapport de situation · A4 portrait";
+  return `${job.journal.radio.terminals.length} étiquettes QR · A4 portrait`;
 }
 
 export function PrintPreview({
@@ -236,11 +344,12 @@ export function PrintPreview({
   const [stamp] = useState(printedAt);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const count = job.kind === "messages" ? job.entries.length : 1;
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close.current();
     };
     document.body.classList.add("previewing");
     window.addEventListener("keydown", key);
@@ -249,25 +358,32 @@ export function PrintPreview({
       window.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [onClose]);
+  }, []);
   async function pdf() {
     setBusy(true);
     setError("");
     try {
-      const { messagesPdf, radioPdf } = await import("./pdf");
-      if (job.kind === "messages") {
-        const blob = await messagesPdf(job.journal, job.entries);
-        const suffix =
+      const pdfs = await import("./pdf");
+      const { journal } = job;
+      const save = (blob: Blob, suffix: string) =>
+        download(blob, fileName(journal, ".pdf", suffix));
+      if (job.kind === "messages")
+        save(
+          await pdfs.messagesPdf(journal, job.entries),
           job.entries.length === 1
             ? `message-${job.entries[0].number}`
-            : "fiches";
-        download(blob, fileName(job.journal, ".pdf", suffix));
-      } else {
-        download(
-          await radioPdf(job.journal, job.author),
-          fileName(job.journal, ".pdf", "radio"),
+            : "fiches",
         );
-      }
+      else if (job.kind === "handout")
+        save(
+          await pdfs.formsPdf(journal, forms(job), "quittance"),
+          "quittance",
+        );
+      else if (job.kind === "radio")
+        save(await pdfs.radioPdf(journal, job.author), "radio");
+      else if (job.kind === "report")
+        save(await pdfs.reportPdf(journal, job.author, job.range), "rapport");
+      else save(await pdfs.labelsPdf(journal, location.origin), "etiquettes");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -283,11 +399,7 @@ export function PrintPreview({
         aria-label="Aperçu avant impression"
       >
         <header className="preview-bar">
-          <span className="label">
-            {job.kind === "messages"
-              ? `${count} fiche${count > 1 ? "s" : ""} message · A4 portrait`
-              : "Plan du réseau radio · A4 paysage"}
-          </span>
+          <span className="label">{title(job)}</span>
           {error && <span className="crit-text">{error}</span>}
           <div className="preview-actions">
             <button onClick={pdf} disabled={busy}>
