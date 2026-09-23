@@ -14,6 +14,7 @@ import {
   Menu,
   Plus,
   Radio as RadioIcon,
+  RefreshCw,
   Search,
   Shield,
   Settings2,
@@ -94,6 +95,7 @@ export default function App() {
   const [showNav, setShowNav] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [offlineReady, setOfflineReady] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
   const [minute, setMinute] = useState(Date.now());
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
@@ -121,14 +123,27 @@ export default function App() {
     window.addEventListener("offline", update);
     window.addEventListener("hashchange", hash);
     const timer = setInterval(() => setMinute(Date.now()), 30000);
-    if ("serviceWorker" in navigator && import.meta.env.PROD)
+    let checkUpdates: ReturnType<typeof setInterval> | undefined;
+    if ("serviceWorker" in navigator && import.meta.env.PROD) {
+      const controlled = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (controlled) setUpdateReady(true);
+      });
       navigator.serviceWorker
         .register("/sw.js")
-        .then(() => navigator.serviceWorker.ready)
+        .then((registration) => {
+          checkUpdates = setInterval(
+            () => void registration.update().catch(() => {}),
+            15 * 60_000,
+          );
+          return navigator.serviceWorker.ready;
+        })
         .then(() => setOfflineReady(true))
         .catch(() => {});
+    }
     return () => {
       clearInterval(timer);
+      clearInterval(checkUpdates);
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
       window.removeEventListener("hashchange", hash);
@@ -635,6 +650,26 @@ export default function App() {
             )}
           </div>
         </section>
+        {updateReady && (
+          <div className="banner info" role="status">
+            <RefreshCw size={15} />
+            <span>Nouvelle version d’ORION disponible.</span>
+            <button
+              className="link"
+              onClick={() => {
+                if (
+                  store.persistent ||
+                  window.confirm(
+                    "Session temporaire : recharger efface son contenu. Exportez d’abord. Recharger ?",
+                  )
+                )
+                  location.reload();
+              }}
+            >
+              Recharger
+            </button>
+          </div>
+        )}
         {(error || store.error) && (
           <div className="banner crit" role="alert">
             <AlertTriangle size={15} />

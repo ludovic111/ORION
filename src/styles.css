@@ -892,6 +892,11 @@ fieldset {
   background: var(--crit-bg);
   color: #ffc3bf;
 }
+.banner.info {
+  border-color: rgba(74, 140, 255, 0.4);
+  background: var(--accent-bg);
+  color: var(--text);
+}
 .banner .link {
   margin-left: auto;
 }
