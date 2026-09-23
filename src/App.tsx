@@ -1,32 +1,25 @@
-import { JournalRow } from "./journal/JournalRow";
-import { Landing } from "./journal/Landing";
-import { Settings } from "./journal/SessionSettings";
-import { Handover } from "./journal/Handover";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle,
+  AlertTriangle,
   ArrowDown,
-  ArrowDownToLine,
-  ArrowRight,
   ArrowUp,
   BookOpen,
   Check,
-  ChevronRight,
-  CircleHelp,
   Download,
+  FileText,
   FileUp,
-  FolderClosed,
-  HardDrive,
   ListFilter,
   LockKeyhole,
   LogOut,
-  MapPin,
   Menu,
   Plus,
+  Radio as RadioIcon,
   Search,
+  Shield,
   Settings2,
-  ShieldCheck,
-  Signal,
+  Square,
+  SquareCheck,
+  SquareMinus,
   X,
 } from "lucide-react";
 import {
@@ -41,19 +34,29 @@ import {
   overdue,
   reviseEntry,
   searchEntries,
-  time,
+  updateRadio,
   workspaceSchema,
   type Fields,
   type Journal,
 } from "../shared/journal";
+import { radioSummary, type Radio } from "../shared/radio";
 import { demoWorkspace } from "./journal/demo";
 import { useWorkspace } from "./journal/useWorkspace";
 import { EntryForm } from "./journal/EntryForm";
 import { EntryDetail } from "./journal/EntryDetail";
+import { JournalRow } from "./journal/JournalRow";
 import { JournalSetup } from "./journal/JournalSetup";
+import { Landing } from "./journal/Landing";
 import { Modal } from "./journal/Modal";
 import { Privacy } from "./journal/Privacy";
+import { Settings } from "./journal/SessionSettings";
+import { Handover } from "./journal/Handover";
 import { ExportModal, ImportModal } from "./journal/Transfer";
+import { RadioView } from "./radio/RadioView";
+import { PrintPreview, type PrintJob } from "./print/PrintPreview";
+import { Clock } from "./ui/Clock";
+import { Mark } from "./ui/Mark";
+import { Num, useSlider } from "./ui/motion";
 
 type Dialog =
   | "create"
@@ -65,9 +68,14 @@ type Dialog =
   | "compose"
   | null;
 type Filter = "all" | "follow" | "urgent" | "decisions";
+type Module = "journal" | "radio";
+const moduleFromHash = (): Module =>
+  location.hash === "#radio" ? "radio" : "journal";
+
 export default function App() {
   const store = useWorkspace();
   const { workspace, setWorkspace } = store;
+  const [module, setModule] = useState<Module>(moduleFromHash);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -75,10 +83,12 @@ export default function App() {
   const [newest, setNewest] = useState(true);
   const [date, setDate] = useState("");
   const [limit, setLimit] = useState(100);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [print, setPrint] = useState<PrintJob | null>(null);
   const [showNav, setShowNav] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [offlineReady, setOfflineReady] = useState(false);
-  const [clock, setClock] = useState(new Date());
+  const [minute, setMinute] = useState(Date.now());
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [draft, setDraft] = useState(false);
@@ -86,6 +96,12 @@ export default function App() {
   const [formGeneration, setFormGeneration] = useState(0);
   const [backups, setBackups] = useState<Record<string, string>>({});
   const search = useRef<HTMLInputElement>(null);
+  const modulesSlider = useSlider<HTMLElement>(
+    `${module}-${workspace?.activeId}`,
+  );
+  const filterSlider = useSlider<HTMLDivElement>(
+    `${filter}-${module}-${workspace?.activeId}`,
+  );
   const journal = workspace?.journals.find((j) => j.id === workspace.activeId);
   const selected = journal?.entries.find((e) => e.id === entryId);
   const dirty = journal && backups[journal.id] !== JSON.stringify(journal);
@@ -94,9 +110,11 @@ export default function App() {
   hasDraft.current = draftExists;
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
+    const hash = () => setModule(moduleFromHash());
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    const timer = setInterval(() => setClock(new Date()), 30000);
+    window.addEventListener("hashchange", hash);
+    const timer = setInterval(() => setMinute(Date.now()), 30000);
     if ("serviceWorker" in navigator && import.meta.env.PROD)
       navigator.serviceWorker
         .register("/sw.js")
@@ -107,10 +125,11 @@ export default function App() {
       clearInterval(timer);
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
+      window.removeEventListener("hashchange", hash);
     };
   }, []);
   useEffect(() => {
-    const timer = setTimeout(() => setToast(""), 6000);
+    const timer = setTimeout(() => setToast(""), 5000);
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
@@ -127,7 +146,8 @@ export default function App() {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        search.current?.focus();
+        go("journal");
+        requestAnimationFrame(() => search.current?.focus());
       }
     };
     window.addEventListener("keydown", key);
@@ -153,9 +173,27 @@ export default function App() {
   useEffect(() => setLimit(100), [query, filter, date, journal?.id]);
   useEffect(() => {
     window.scrollTo(0, 0);
+    setPicked(new Set());
   }, [journal?.id]);
   const follow = journal?.entries.filter(needsFollowUp) ?? [];
-  const late = follow.filter((e) => overdue(e, clock.getTime()));
+  const late = follow.filter((e) => overdue(e, minute));
+  const urgent =
+    journal?.entries.filter((e) => current(e).priority === "Urgent").length ??
+    0;
+  const decisions =
+    journal?.entries.filter((e) => current(e).type === "Décision").length ?? 0;
+  const pickedEntries = chronological(
+    journal?.entries.filter((e) => picked.has(e.id)) ?? [],
+  );
+  function go(value: Module) {
+    history.replaceState(
+      null,
+      "",
+      value === "radio" ? "#radio" : location.pathname + location.search,
+    );
+    setModule(value);
+    setShowNav(false);
+  }
   function discardDraft() {
     if (
       draftExists &&
@@ -186,6 +224,25 @@ export default function App() {
       }),
     );
   }
+  function saveRadio(radio: Radio, log?: Partial<Fields>) {
+    if (!journal || !workspace) return;
+    let value = updateRadio(journal, radio);
+    if (log)
+      value = addEntry(
+        value,
+        {
+          ...emptyFields(),
+          type: "Observation",
+          channel: "Sur place",
+          reliability: "Confirmé",
+          tags: ["radio"],
+          ...log,
+        },
+        workspace.author,
+      );
+    updateJournal(value);
+    if (log) setToast(`Consigné au journal : ${log.message}`);
+  }
   function saveDraft(fields: Fields) {
     if (!journal) return;
     setDraft(true);
@@ -209,7 +266,7 @@ export default function App() {
     });
     setDraft(false);
     setFormGeneration((value) => value + 1);
-    setToast("Entrée consignée.");
+    setToast(`Entrée ${numberLabel(updated.entries.at(-1)!)} consignée.`);
   }
   async function create(value: Journal, author: string, password?: string) {
     if (workspace)
@@ -234,12 +291,16 @@ export default function App() {
         activeId: value.id,
       });
     setDialog(null);
+    resetView();
+  }
+  function resetView() {
     setQuery("");
     setFilter("all");
     setDate("");
+    setEntryId(null);
     setShowNav(false);
   }
-  function importJournal(value: Journal, merge: boolean) {
+  function importJournal(value: Journal, merge: boolean, author?: string) {
     if (workspace && journal) {
       if (merge) updateJournal(mergeJournals(journal, value));
       else {
@@ -260,19 +321,20 @@ export default function App() {
     } else
       store.start({
         version: 1,
-        author: "Opérateur",
+        author: author || "Opérateur",
         journals: [value],
         activeId: value.id,
       });
-    setFilter("all");
-    setQuery("");
-    setDate("");
-    setToast("Journal importé. Les données sont disponibles sur ce poste.");
+    resetView();
+    setToast(merge ? "Entrées fusionnées." : "Journal importé.");
   }
   function compose() {
     if (journal?.closedAt) return;
+    go("journal");
     if (matchMedia("(min-width: 1200px)").matches)
-      document.getElementById("quick-message")?.focus();
+      requestAnimationFrame(() =>
+        document.getElementById("quick-message")?.focus(),
+      );
     else setDialog("compose");
   }
   async function closeSession() {
@@ -280,7 +342,7 @@ export default function App() {
     if (
       !store.persistent &&
       !window.confirm(
-        "Cette session est temporaire. Vérifiez vos exports avant de fermer : son contenu sera retiré de la mémoire. Fermer la session ?",
+        "Session temporaire : son contenu sera retiré de la mémoire. Vérifiez vos exports. Fermer la session ?",
       )
     )
       return;
@@ -298,11 +360,19 @@ export default function App() {
   const openImport = () => {
     if (discardDraft()) setDialog("import");
   };
+  function togglePick(id: string) {
+    setPicked((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   if (store.loading)
     return (
-      <div className="loading-screen">
-        <span className="brand-mark">O</span>
-        <p>Ouverture d’ORION…</p>
+      <div className="boot">
+        <Mark />
+        <span>ORION</span>
       </div>
     );
   if (!workspace || !journal)
@@ -323,510 +393,539 @@ export default function App() {
             onClose={() => setDialog(null)}
             onImport={importJournal}
           />
-        )}{" "}
+        )}
         {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
       </>
     );
+  const radio = radioSummary(journal.radio);
+  const shownIds = visible.slice(0, limit).map((e) => e.id);
+  const allShownPicked =
+    shownIds.length > 0 && shownIds.every((id) => picked.has(id));
   return (
-    <div className="app-shell">
-      <a href="#journal-main" className="skip-link">
-        Aller au journal
+    <div className="shell">
+      <a href="#main" className="skip-link">
+        Aller au contenu
       </a>
-      <aside className={`sidebar ${showNav ? "open" : ""}`}>
-        <div className="brand">
-          <span className="brand-mark">
-            O<span />
-          </span>
-          <div>
-            ORION<small>JOURNAL D’INTERVENTION</small>
-          </div>
+      <header className="topbar">
+        <button
+          className="icon-button nav-toggle"
+          aria-label="Ouvrir la navigation"
+          onClick={() => setShowNav(true)}
+        >
+          <Menu size={18} />
+        </button>
+        <div className="topbar-brand">
+          <Mark />
+          <span>ORION</span>
+        </div>
+        <nav
+          className="modules slider"
+          aria-label="Modules"
+          ref={modulesSlider.ref}
+        >
+          <span className="slider-pill" ref={modulesSlider.pill} />
           <button
-            className="icon-button mobile-nav-close"
-            onClick={() => setShowNav(false)}
-            aria-label="Fermer la navigation"
+            aria-current={module === "journal" ? "page" : undefined}
+            onClick={() => go("journal")}
           >
-            <X size={18} />
+            <BookOpen size={14} />
+            Journal
+            <span className="count">{journal.entries.length}</span>
+          </button>
+          <button
+            aria-current={module === "radio" ? "page" : undefined}
+            onClick={() => go("radio")}
+          >
+            <RadioIcon size={14} />
+            <span className="wide-only">Réseau radio</span>
+            <span className="narrow-only">Radio</span>
+            <span className="count">
+              {radio.issued}/{radio.terminals}
+            </span>
+          </button>
+        </nav>
+        <div className="topbar-status">
+          <span
+            className={`status-chip ${store.saveState === "error" ? "crit" : store.persistent ? "ok" : "warn"}`}
+            title={
+              store.persistent
+                ? "Sauvegarde chiffrée sur ce poste"
+                : "Session temporaire : exportez avant de fermer"
+            }
+          >
+            <span className="dot" />
+            {store.saveState === "error"
+              ? "Échec sauvegarde"
+              : store.saveState === "saving"
+                ? "Sauvegarde…"
+                : store.persistent
+                  ? "Chiffré local"
+                  : "Temporaire"}
+          </span>
+          <span
+            className={`status-chip ${online ? "" : "warn"}`}
+            title={
+              offlineReady
+                ? "Application disponible hors ligne"
+                : "Mode hors ligne actif après un premier chargement de la version construite"
+            }
+          >
+            <span className="dot" />
+            {!online
+              ? "Hors ligne"
+              : offlineReady
+                ? "Hors ligne prêt"
+                : "En ligne"}
+          </span>
+          <Clock />
+          <button
+            className="operator"
+            onClick={() => setDialog("settings")}
+            title="Opérateur et session"
+          >
+            <span className="avatar">
+              {workspace.author.slice(0, 2).toUpperCase()}
+            </span>
+            <span className="operator-name">{workspace.author}</span>
+            <Settings2 size={13} />
+          </button>
+          <button
+            className="icon-button"
+            title={store.persistent ? "Verrouiller" : "Fermer la session"}
+            aria-label={store.persistent ? "Verrouiller" : "Fermer la session"}
+            onClick={() => void closeSession()}
+          >
+            {store.persistent ? (
+              <LockKeyhole size={16} />
+            ) : (
+              <LogOut size={16} />
+            )}
           </button>
         </div>
-        <div className="sidebar-section-heading">
-          <span>CETTE SESSION</span>
+      </header>
+      <aside className={`rail ${showNav ? "open" : ""}`}>
+        <div className="rail-head">
+          <span className="label">Journaux · session</span>
           <button
             className="icon-button"
             aria-label="Nouveau journal"
+            title="Nouveau journal"
             onClick={() => {
               if (discardDraft()) setDialog("create");
             }}
           >
-            <Plus size={16} />
+            <Plus size={15} />
+          </button>
+          <button
+            className="icon-button rail-close"
+            onClick={() => setShowNav(false)}
+            aria-label="Fermer la navigation"
+          >
+            <X size={16} />
           </button>
         </div>
-        <nav aria-label="Journaux">
+        <nav aria-label="Journaux" className="rail-list">
           {workspace.journals.map((j) => (
             <button
-              className={`journal-link ${j.id === journal.id ? "active" : ""}`}
+              className="rail-item"
+              aria-current={j.id === journal.id ? "true" : undefined}
               key={j.id}
               onClick={() => {
                 if (j.id === journal.id || !discardDraft()) return;
                 setWorkspace((previous) =>
                   previous ? { ...previous, activeId: j.id } : previous,
                 );
-                setFilter("all");
-                setQuery("");
-                setDate("");
-                setEntryId(null);
-                setShowNav(false);
+                resetView();
               }}
             >
-              <BookOpen size={17} />
-              <span>
-                <strong>{j.title}</strong>
-                <small>
-                  {j.closedAt ? "Clôturé" : j.mode} · {j.entries.length} entrées
-                </small>
-              </span>
-              {j.id === journal.id && <span className="active-dot" />}
+              <strong>{j.title}</strong>
+              <small>
+                {j.closedAt ? "CLÔTURÉ" : j.mode.toUpperCase()} ·{" "}
+                {j.entries.length} ENT · {j.radio.terminals.length} TERM
+              </small>
             </button>
           ))}
         </nav>
-        <button
-          className="sidebar-add"
-          onClick={() => {
-            if (discardDraft()) setDialog("create");
-          }}
-        >
-          <Plus size={16} />
-          Nouveau journal
-        </button>
-        <div className="sidebar-bottom">
-          <div className="local-card">
-            <span className="local-icon">
-              <ShieldCheck size={17} />
-            </span>
-            <strong>Sur ce poste uniquement</strong>
-            <p>
-              {store.persistent
-                ? "Chaque saisie est sauvegardée et chiffrée pour reprendre après un crash."
-                : "Session temporaire. Exportez votre journal avant de quitter."}
-            </p>
-            <button
-              className="text-button"
-              onClick={() =>
-                setDialog(store.persistent ? "privacy" : "settings")
-              }
-            >
-              {store.persistent
-                ? "Confidentialité"
-                : "Activer la reprise après crash"}
-              <ChevronRight size={13} />
-            </button>
-          </div>
-          <button className="sidebar-tool" onClick={openImport}>
-            <FileUp size={17} />
-            Importer un journal
+        <div className="rail-foot">
+          <button className="rail-tool" onClick={openImport}>
+            <FileUp size={14} />
+            Importer
           </button>
-          <button className="sidebar-tool" onClick={() => setDialog("privacy")}>
-            <CircleHelp size={17} />
-            Confidentialité & aide
+          <button className="rail-tool" onClick={() => setDialog("export")}>
+            <Download size={14} />
+            Exporter
+            {dirty && <span className="pip" title="Aucune archive récente" />}
+          </button>
+          <button className="rail-tool" onClick={() => setDialog("privacy")}>
+            <Shield size={14} />
+            Sécurité et données
           </button>
           <a
-            className="sidebar-source"
+            className="rail-version"
             href="/source/orion-source.tar.gz"
             download
           >
-            ORION 1.0 <span>Code ouvert ↗</span>
+            ORION 1.1 · AGPL-3.0 · source
           </a>
         </div>
       </aside>
       {showNav && (
         <button
-          className="nav-scrim"
+          className="scrim"
           aria-label="Fermer la navigation"
           onClick={() => setShowNav(false)}
         />
       )}
-      <div className="workspace">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            <button
-              className="icon-button nav-toggle"
-              aria-label="Ouvrir la navigation"
-              onClick={() => setShowNav(true)}
-            >
-              <Menu size={19} />
-            </button>
-            <BookOpen size={16} />
-            <span>Journaux</span>
-            <ChevronRight size={13} />
-            <strong>{journal.title}</strong>
-          </div>
-          <div className="topbar-right">
-            <span
-              className={`connection ${!online ? "offline" : ""}`}
-              title={
-                offlineReady
-                  ? "L’application est disponible hors ligne sur ce navigateur."
-                  : "Ouvrez une fois la version construite en ligne pour préparer le mode hors ligne."
-              }
-            >
-              <Signal size={14} />
-              {!online
-                ? "Hors ligne"
-                : offlineReady
-                  ? "Prêt hors ligne"
-                  : "Sur ce poste"}
-            </span>
-            <span className="clock">
-              {time(clock.toISOString())}
-              <small>CH</small>
-            </span>
-            <button className="operator" onClick={() => setDialog("settings")}>
-              <span className="avatar">
-                {workspace.author.slice(0, 2).toUpperCase()}
+      <main id="main" className="main">
+        <section className="page-head">
+          <div className="page-title">
+            <div className="kicker">
+              <span className={`state ${journal.closedAt ? "closed" : "open"}`}>
+                {journal.closedAt ? "Clôturé" : "Ouvert"}
               </span>
-              <span>{workspace.author}</span>
-              <Settings2 size={14} />
-            </button>
-            <button
-              className="icon-button"
-              title={
-                store.persistent ? "Verrouiller l’espace" : "Fermer la session"
-              }
-              aria-label={
-                store.persistent ? "Verrouiller l’espace" : "Fermer la session"
-              }
-              onClick={() => void closeSession()}
-            >
-              {store.persistent ? (
-                <LockKeyhole size={17} />
-              ) : (
-                <LogOut size={17} />
+              <span>{journal.mode}</span>
+              <span>{journal.classification}</span>
+              {journal.reference && (
+                <span className="mono">{journal.reference}</span>
               )}
+            </div>
+            <h1>{journal.title}</h1>
+            <p className="meta">
+              {[journal.organization, journal.location, day(journal.createdAt)]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+          <div className="page-actions">
+            {module === "journal" ? (
+              <>
+                <button onClick={() => setDialog("handover")}>Relève</button>
+                <button onClick={() => setDialog("export")}>
+                  <Download size={14} />
+                  Exporter
+                </button>
+                <button
+                  className="primary"
+                  disabled={!!journal.closedAt}
+                  onClick={compose}
+                >
+                  <Plus size={15} />
+                  Nouvelle entrée
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() =>
+                  setPrint({ kind: "radio", journal, author: workspace.author })
+                }
+              >
+                <FileText size={14} />
+                Plan A4
+              </button>
+            )}
+          </div>
+        </section>
+        {(error || store.error) && (
+          <div className="banner crit" role="alert">
+            <AlertTriangle size={15} />
+            <span>{error || store.error}</span>
+            <button className="link" onClick={() => setDialog("export")}>
+              Exporter une copie
             </button>
           </div>
-        </header>
-        <main id="journal-main">
-          <div className="journal-heading">
-            <div>
-              <div className="eyebrow">
-                <span
-                  className={`status-dot ${journal.closedAt ? "closed" : ""}`}
-                />
-                {journal.closedAt ? "JOURNAL CLÔTURÉ" : "JOURNAL OUVERT"}
-                <span className="meta-divider" />
-                {journal.mode.toUpperCase()}
-                <span className="badge subdued">{journal.classification}</span>
+        )}
+        {module === "journal" ? (
+          <>
+            <dl className="metrics">
+              <div>
+                <dt>Entrées</dt>
+                <dd>
+                  <Num value={journal.entries.length} />
+                </dd>
               </div>
-              <h1>{journal.title}</h1>
-              <div className="journal-context">
-                {journal.location && (
-                  <span>
-                    <MapPin size={14} />
-                    {journal.location}
-                  </span>
-                )}
-                {journal.organization && <span>{journal.organization}</span>}
-                <span>{day(journal.createdAt)}</span>
-                {journal.reference && (
-                  <span className="mono">{journal.reference}</span>
-                )}
+              <div className={follow.length ? "warn" : ""}>
+                <dt>À suivre</dt>
+                <dd>
+                  <Num value={follow.length} />
+                </dd>
               </div>
-            </div>
-            <div className="heading-actions">
-              <button onClick={() => setDialog("handover")}>
-                <ArrowRight size={16} />
-                Passer la relève
-              </button>
-              <button onClick={() => setDialog("export")}>
-                <Download size={16} />
-                Exporter
-              </button>
-              <button
-                className="primary"
-                disabled={!!journal.closedAt}
-                onClick={compose}
-              >
-                <Plus size={17} />
-                Nouvelle entrée
-              </button>
-            </div>
-          </div>
-          {(error || store.error) && (
-            <div className="error banner" role="alert">
-              <AlertCircle size={17} />
-              {error || store.error}
-              <button
-                className="text-button"
-                onClick={() => setDialog("export")}
-              >
-                Exporter une copie
-              </button>
-            </div>
-          )}
-          <div className="journal-status">
-            <div>
-              <span className="mono">
-                {String(journal.entries.length).padStart(2, "0")}
-              </span>{" "}
-              entrées
-              <span className="meta-divider" />
-              <button
-                className="text-button"
-                onClick={() => setFilter("follow")}
-              >
-                <span className={follow.length ? "amber-text" : ""}>
-                  {follow.length}
-                </span>{" "}
-                suites à donner
-                {late.length > 0 && (
-                  <span className="overdue-count">{late.length} en retard</span>
-                )}
-              </button>
-            </div>
-            <div>
-              <span
-                className={`save-indicator ${store.saveState === "error" ? "red-text" : ""}`}
-              >
-                {store.saveState === "saved" ? (
-                  <Check size={13} />
-                ) : (
-                  <HardDrive size={13} />
-                )}
-                {store.saveState === "saved"
-                  ? "Sauvegardé sur ce poste"
-                  : store.saveState === "saving"
-                    ? "Sauvegarde en cours…"
-                    : store.saveState === "error"
-                      ? "Échec de sauvegarde"
-                      : "Session temporaire"}
-              </span>
-              <button
-                className="text-button backup-indicator"
-                onClick={() => setDialog("export")}
-              >
-                <ArrowDownToLine size={13} />
-                {dirty ? "Copie de sécurité à faire" : "Archive téléchargée"}
-              </button>
-            </div>
-          </div>
-          <div className="journal-layout">
-            <section className="journal-panel" aria-label="Entrées du journal">
-              <div
-                className="filter-tabs"
-                role="group"
-                aria-label="Filtrer les entrées"
-              >
-                {(
-                  [
-                    ["all", "Tout le journal", journal.entries.length],
-                    ["follow", "À suivre", follow.length],
-                    [
-                      "urgent",
-                      "Urgent",
-                      journal.entries.filter(
-                        (e) => current(e).priority === "Urgent",
-                      ).length,
-                    ],
-                    [
-                      "decisions",
-                      "Décisions",
-                      journal.entries.filter(
-                        (e) => current(e).type === "Décision",
-                      ).length,
-                    ],
-                  ] as const
-                ).map(([value, label, count]) => (
-                  <button
-                    aria-pressed={filter === value}
-                    className={filter === value ? "selected" : ""}
-                    key={value}
-                    onClick={() => setFilter(value)}
-                  >
-                    {label}
-                    <span>{count}</span>
+              <div className={late.length ? "crit" : ""}>
+                <dt>Échéances dépassées</dt>
+                <dd>
+                  <Num value={late.length} />
+                </dd>
+              </div>
+              <div className={urgent ? "crit" : ""}>
+                <dt>Urgent</dt>
+                <dd>
+                  <Num value={urgent} />
+                </dd>
+              </div>
+              <div>
+                <dt>Radios en service</dt>
+                <dd>
+                  <Num value={radio.issued} />
+                  <small>/{radio.terminals}</small>
+                </dd>
+              </div>
+              <div className={dirty ? "warn" : ""}>
+                <dt>Archive</dt>
+                <dd className="text">
+                  <button className="link" onClick={() => setDialog("export")}>
+                    {dirty ? "À exporter" : "À jour"}
                   </button>
-                ))}
+                </dd>
               </div>
-              <div className="table-toolbar">
-                <div className="search-field">
-                  <Search size={16} />
-                  <input
-                    ref={search}
-                    aria-label="Rechercher dans le journal"
-                    placeholder="Rechercher un message, un lieu, un indicatif…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  {query ? (
-                    <button
-                      className="icon-button"
-                      aria-label="Effacer la recherche"
-                      onClick={() => setQuery("")}
-                    >
-                      <X size={14} />
-                    </button>
-                  ) : (
-                    <kbd>⌘ K</kbd>
-                  )}
+            </dl>
+            <div className="journal-layout">
+              <section className="panel journal-panel" aria-label="Entrées">
+                <div className="toolbar">
+                  <div
+                    className="segmented slider"
+                    role="group"
+                    aria-label="Filtrer"
+                    ref={filterSlider.ref}
+                  >
+                    <span className="slider-pill" ref={filterSlider.pill} />
+                    {(
+                      [
+                        ["all", "Tout", journal.entries.length],
+                        ["follow", "À suivre", follow.length],
+                        ["urgent", "Urgent", urgent],
+                        ["decisions", "Décisions", decisions],
+                      ] as const
+                    ).map(([value, label, count]) => (
+                      <button
+                        aria-pressed={filter === value}
+                        key={value}
+                        onClick={() => setFilter(value)}
+                      >
+                        {label}
+                        <span>{count}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="search">
+                    <Search size={14} />
+                    <input
+                      ref={search}
+                      aria-label="Rechercher"
+                      placeholder="Rechercher"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    {query ? (
+                      <button
+                        className="icon-button"
+                        aria-label="Effacer la recherche"
+                        onClick={() => setQuery("")}
+                      >
+                        <X size={13} />
+                      </button>
+                    ) : (
+                      <kbd>⌘K</kbd>
+                    )}
+                  </div>
+                  <label className="date-filter">
+                    <ListFilter size={14} />
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      aria-label="Filtrer par jour (heure suisse)"
+                    />
+                  </label>
+                  <button
+                    className="icon-button"
+                    title={
+                      newest ? "Plus récentes d’abord" : "Ordre chronologique"
+                    }
+                    aria-label={
+                      newest
+                        ? "Afficher en ordre chronologique"
+                        : "Afficher les plus récentes d’abord"
+                    }
+                    onClick={() => setNewest(!newest)}
+                  >
+                    {newest ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
+                  </button>
                 </div>
-                <label className="date-filter">
-                  <ListFilter size={15} />
-                  <span className="sr-only">Filtrer par date en Suisse</span>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    aria-label="Filtrer par date en Suisse"
-                  />
-                </label>
-                <button
-                  className="icon-button"
-                  title={
-                    newest
-                      ? "Afficher les plus anciennes en premier"
-                      : "Afficher les plus récentes en premier"
-                  }
-                  aria-label={
-                    newest
-                      ? "Afficher les plus anciennes en premier"
-                      : "Afficher les plus récentes en premier"
-                  }
-                  onClick={() => setNewest(!newest)}
-                >
-                  {newest ? <ArrowDown size={17} /> : <ArrowUp size={17} />}
-                </button>
-              </div>
-              <div className="table-container">
-                <table className="journal-table">
-                  <thead>
-                    <tr>
-                      <th>HEURE / N°</th>
-                      <th>ÉVÉNEMENT</th>
-                      <th>ÉMETTEUR</th>
-                      <th>SUIVI</th>
-                      <th>
-                        <span className="sr-only">Ouvrir</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.slice(0, limit).map((entry, index) => {
-                      const f = current(entry);
-                      const newDay =
-                        index === 0 ||
-                        day(current(visible[index - 1]).happenedAt) !==
-                          day(f.happenedAt);
-                      return (
-                        <JournalRow
-                          key={entry.id}
-                          {...{ entry, newDay }}
-                          onOpen={() => setEntryId(entry.id)}
-                          at={clock.getTime()}
-                        />
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {!visible.length && (
-                  <div className="empty-state">
-                    <BookOpen size={30} />
-                    <h2>
-                      {journal.entries.length
-                        ? "Aucune entrée correspondante"
-                        : "Votre journal commence ici"}
-                    </h2>
-                    <p>
-                      {journal.entries.length
-                        ? "Essayez un autre mot ou retirez les filtres."
-                        : "Un appel, un fait observé, une décision. Consignez la première information."}
-                    </p>
+                {picked.size > 0 && (
+                  <div
+                    className="selection-bar"
+                    role="region"
+                    aria-label="Sélection"
+                  >
+                    <span className="mono">
+                      {picked.size} sélectionnée{picked.size > 1 ? "s" : ""}
+                    </span>
                     <button
-                      onClick={() => {
-                        if (journal.entries.length) {
-                          setQuery("");
-                          setFilter("all");
-                          setDate("");
-                        } else compose();
-                      }}
+                      className="primary"
+                      onClick={() =>
+                        setPrint({
+                          kind: "messages",
+                          journal,
+                          entries: pickedEntries,
+                        })
+                      }
                     >
-                      {journal.entries.length
-                        ? "Effacer les filtres"
-                        : "Consigner la première entrée"}
-                      <ArrowRight size={15} />
+                      <FileText size={14} />
+                      Fiches A4
+                    </button>
+                    <button onClick={() => setPicked(new Set())}>
+                      Désélectionner
                     </button>
                   </div>
                 )}
-              </div>
-              <footer className="table-footer">
-                <span>
-                  {visible.length} entrée{visible.length !== 1 ? "s" : ""}{" "}
-                  {visible.length !== journal.entries.length &&
-                    `sur ${journal.entries.length}`}
-                  <span className="meta-divider" />
-                  Heures Europe/Zurich
-                </span>
-                <span>
-                  {newest ? "Plus récentes en premier" : "Ordre chronologique"}
-                </span>
-              </footer>
-              {visible.length > limit && (
-                <button
-                  className="load-more"
-                  onClick={() => setLimit(limit + 100)}
-                >
-                  Afficher 100 entrées de plus
-                </button>
-              )}
-            </section>
-            <aside className="composer-panel">
-              {workspace.drafts?.[journal.id]?.message && (
-                <p className="draft-status">
-                  {store.persistent
-                    ? "Brouillon inclus dans la reprise locale"
-                    : "Brouillon non consigné"}
-                </p>
-              )}
-              {journal.closedAt ? (
-                <div className="closed-panel">
-                  <FolderClosed size={28} />
-                  <h2>Journal clôturé</h2>
-                  <p>Consultation et export restent disponibles.</p>
-                  <button onClick={() => setDialog("settings")}>
-                    Gérer le journal
-                  </button>
+                <div className="table-scroll">
+                  <table className="grid journal-grid">
+                    <thead>
+                      <tr>
+                        <th className="pick">
+                          <button
+                            className="check"
+                            aria-label={
+                              allShownPicked
+                                ? "Désélectionner les entrées affichées"
+                                : "Sélectionner les entrées affichées"
+                            }
+                            onClick={() =>
+                              setPicked((previous) => {
+                                const next = new Set(previous);
+                                shownIds.forEach((id) =>
+                                  allShownPicked
+                                    ? next.delete(id)
+                                    : next.add(id),
+                                );
+                                return next;
+                              })
+                            }
+                          >
+                            {allShownPicked ? (
+                              <SquareCheck size={15} />
+                            ) : picked.size ? (
+                              <SquareMinus size={15} />
+                            ) : (
+                              <Square size={15} />
+                            )}
+                          </button>
+                        </th>
+                        <th>Heure · N°</th>
+                        <th>Message</th>
+                        <th>Émetteur</th>
+                        <th>Suivi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.slice(0, limit).map((entry, index) => {
+                        const f = current(entry);
+                        const newDay =
+                          index === 0 ||
+                          day(current(visible[index - 1]).happenedAt) !==
+                            day(f.happenedAt);
+                        return (
+                          <JournalRow
+                            key={entry.id}
+                            entry={entry}
+                            newDay={newDay}
+                            picked={picked.has(entry.id)}
+                            onPick={() => togglePick(entry.id)}
+                            onOpen={() => setEntryId(entry.id)}
+                            at={minute}
+                          />
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {!visible.length && (
+                    <div className="empty">
+                      <p>
+                        {journal.entries.length
+                          ? "Aucune entrée ne correspond."
+                          : "Journal vide."}
+                      </p>
+                      {journal.entries.length ? (
+                        <button
+                          onClick={() => {
+                            setQuery("");
+                            setFilter("all");
+                            setDate("");
+                          }}
+                        >
+                          Retirer les filtres
+                        </button>
+                      ) : (
+                        !journal.closedAt && (
+                          <button className="primary" onClick={compose}>
+                            <Plus size={14} />
+                            Première entrée
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <EntryForm
-                  key={`${journal.id}-${formGeneration}`}
-                  author={workspace.author}
-                  preset={workspace.drafts?.[journal.id]}
-                  onDraft={saveDraft}
-                  onSave={(fields) => add(fields)}
-                  compact
-                />
-              )}
-              <div className="composer-note">
-                <ShieldCheck size={15} />
-                <span>Reste sur ce poste. Aucun envoi automatique.</span>
-              </div>
-            </aside>
-          </div>
-          <footer className="workspace-footer">
-            <span>
-              ORION <span>·</span> Une trace claire, du premier message à la
-              relève.
-            </span>
-            <button
-              className="text-button"
-              onClick={() => setDialog("privacy")}
-            >
-              Code ouvert · données locales
-            </button>
-          </footer>
-        </main>
-      </div>
+                <footer className="panel-foot">
+                  <span>
+                    {visible.length}
+                    {visible.length !== journal.entries.length &&
+                      ` / ${journal.entries.length}`}{" "}
+                    entrée{visible.length !== 1 ? "s" : ""}
+                  </span>
+                  <span>Europe/Zurich</span>
+                </footer>
+                {visible.length > limit && (
+                  <button
+                    className="load-more"
+                    onClick={() => setLimit(limit + 100)}
+                  >
+                    Afficher 100 de plus
+                  </button>
+                )}
+              </section>
+              <aside className="panel composer">
+                {journal.closedAt ? (
+                  <div className="closed">
+                    <LockKeyhole size={18} />
+                    <strong>Journal clôturé</strong>
+                    <p>Lecture et export uniquement.</p>
+                    <button onClick={() => setDialog("settings")}>
+                      Rouvrir
+                    </button>
+                  </div>
+                ) : (
+                  <EntryForm
+                    key={`${journal.id}-${formGeneration}`}
+                    author={workspace.author}
+                    preset={workspace.drafts?.[journal.id]}
+                    onDraft={saveDraft}
+                    onSave={(fields) => add(fields)}
+                    compact
+                    draftLabel={
+                      workspace.drafts?.[journal.id]?.message
+                        ? store.persistent
+                          ? "Brouillon sauvegardé"
+                          : "Brouillon non sauvegardé"
+                        : ""
+                    }
+                  />
+                )}
+              </aside>
+            </div>
+          </>
+        ) : (
+          <RadioView
+            journal={journal}
+            author={workspace.author}
+            readOnly={!!journal.closedAt}
+            onSave={saveRadio}
+            onError={setError}
+          />
+        )}
+      </main>
       {toast && (
         <div className="toast" role="status">
-          <Check size={16} />
+          <Check size={14} />
           {toast}
         </div>
       )}
@@ -837,6 +936,10 @@ export default function App() {
           author={workspace.author}
           readOnly={!!journal.closedAt}
           onClose={() => setEntryId(null)}
+          onPrint={() => {
+            setEntryId(null);
+            setPrint({ kind: "messages", journal, entries: [selected] });
+          }}
           onRevise={(fields, reason) => {
             updateJournal(
               reviseEntry(
@@ -847,9 +950,7 @@ export default function App() {
                 reason,
               ),
             );
-            setToast(
-              "Modification enregistrée. La version précédente est conservée.",
-            );
+            setToast("Correction enregistrée. Version précédente conservée.");
           }}
           onReply={() => {
             if (!discardDraft()) return;
@@ -866,6 +967,7 @@ export default function App() {
           }}
         />
       )}
+      {print && <PrintPreview job={print} onClose={() => setPrint(null)} />}
       {dialog === "create" && (
         <Modal title="Nouveau journal" onClose={() => setDialog(null)}>
           <JournalSetup author={workspace.author} onCreate={create} />
@@ -874,6 +976,7 @@ export default function App() {
       {dialog === "export" && (
         <ExportModal
           journal={journal}
+          author={workspace.author}
           onClose={() => setDialog(null)}
           onBackup={() =>
             setBackups((prev) => ({
@@ -908,8 +1011,8 @@ export default function App() {
                 ...emptyFields(),
                 type: "Observation",
                 message: value.closedAt
-                  ? "Clôture du journal par l’opérateur."
-                  : "Réouverture du journal par l’opérateur.",
+                  ? "Clôture du journal."
+                  : "Réouverture du journal.",
                 reliability: "Confirmé",
               },
               workspace.author,
@@ -924,11 +1027,11 @@ export default function App() {
             );
             if (unexported.length)
               throw new Error(
-                `Exportez une archive récente de chaque journal avant de terminer (${unexported.length} à exporter).`,
+                `Exportez d’abord une archive ORION ou JSON de chaque journal (${unexported.length} restant${unexported.length > 1 ? "s" : ""}).`,
               );
             if (
               window.prompt(
-                "Les archives téléchargées doivent avoir été vérifiées. Pour effacer cette session du poste, saisissez TERMINER.",
+                "Archives vérifiées ? Saisissez TERMINER pour effacer la session de ce poste.",
               ) === "TERMINER"
             ) {
               await store.finish();
@@ -944,17 +1047,20 @@ export default function App() {
       {dialog === "handover" && (
         <Handover
           journal={journal}
+          at={minute}
           onClose={() => setDialog(null)}
           onExport={() => setDialog("export")}
+          onOpen={(id) => {
+            setDialog(null);
+            setEntryId(id);
+          }}
           onTakeOver={() => {
             if (!discardDraft()) return;
             setPreset({
               ...emptyFields(),
               type: "Relève",
               reliability: "Confirmé",
-              message: `Relève du journal. ${follow.length} suite(s) à donner, dont ${late.length} en retard.`,
-              notes:
-                "Relire les entrées en attente et préciser les consignes transmises.",
+              message: `Relève. ${follow.length} suite(s) à donner, dont ${late.length} en retard. ${radio.issued} radio(s) en service.`,
             });
             setDialog("compose");
           }}
@@ -976,7 +1082,7 @@ export default function App() {
         >
           <div onInput={() => setDraft(true)}>
             <EntryForm
-              key={preset?.reference || "new"}
+              key={preset?.reference || preset?.type || "new"}
               author={workspace.author}
               preset={preset ?? workspace.drafts?.[journal.id]}
               onDraft={saveDraft}

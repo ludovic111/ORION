@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { newJournal, type Journal } from "../../shared/journal";
 export function JournalSetup({
   author: initialAuthor = "",
@@ -29,7 +29,7 @@ export function JournalSetup({
   const [error, setError] = useState("");
   return (
     <form
-      className="setup-form"
+      className="stack"
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
@@ -58,29 +58,33 @@ export function JournalSetup({
       }}
     >
       <label>
-        Nom de l’intervention <span className="required">*</span>
+        <span>
+          Événement <span className="required">*</span>
+        </span>
         <input
           required
           maxLength={200}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex. Crue de l’Arve · secteur Carouge"
+          placeholder="Crue de l’Arve · secteur Carouge"
           autoFocus
         />
       </label>
       <div className="form-pair">
         <label>
-          Votre nom ou indicatif <span className="required">*</span>
+          <span>
+            Opérateur <span className="required">*</span>
+          </span>
           <input
             required
             maxLength={120}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Ex. Opérateur Alpha"
+            placeholder="Nom ou fonction"
           />
         </label>
         <label>
-          Type de journal
+          Mode
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Journal["mode"])}
@@ -91,9 +95,7 @@ export function JournalSetup({
         </label>
       </div>
       <details>
-        <summary>
-          Préciser le cadre <span>Facultatif</span>
-        </summary>
+        <summary>Organisation, lieu, référence</summary>
         <div className="details-fields">
           <label>
             Organisation
@@ -101,7 +103,7 @@ export function JournalSetup({
               maxLength={200}
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
-              placeholder="PCi, compagnie, cellule…"
+              placeholder="OPC / ORPC, compagnie"
             />
           </label>
           <label>
@@ -144,12 +146,7 @@ export function JournalSetup({
               checked={protect}
               onChange={(e) => setProtect(e.target.checked)}
             />
-            <span>
-              Activer la reprise après crash{" "}
-              <small>
-                Recommandé · sauvegarde automatique chiffrée sur ce poste.
-              </small>
-            </span>
+            <span>Sauvegarde chiffrée sur ce poste</span>
           </label>
           {protect ? (
             <div className="details-fields">
@@ -180,24 +177,20 @@ export function JournalSetup({
                   />
                 </label>
               </div>
-              <small>
-                Propre à cette session, sans création de compte. Nécessaire
-                après fermeture ou crash. ORION ne peut pas la récupérer.
-              </small>
+              <small>Demandée après fermeture ou crash. Irrécupérable.</small>
             </div>
           ) : (
-            <p className="hint">
-              Mode temporaire : les données seront perdues si cet onglet se
-              ferme ou plante. Exportez régulièrement.
+            <p className="hint warn">
+              Temporaire : perdu à la fermeture de l’onglet. Exportez
+              régulièrement.
             </p>
           )}
         </div>
       )}
       {mode === "Intervention" && (
         <p className="hint">
-          Pour un engagement réel, utilisez un poste et une installation
-          autorisés par votre organisation. ORION est un projet indépendant,
-          sans homologation institutionnelle.
+          Engagement réel : poste et installation autorisés par votre
+          organisation uniquement.
         </p>
       )}
       {error && (
@@ -206,9 +199,8 @@ export function JournalSetup({
         </p>
       )}
       <button type="submit" className="primary large" disabled={busy}>
-        <BookOpen size={17} />
-        {busy ? "Protection de la session…" : "Ouvrir le journal"}
-        <ArrowRight size={17} />
+        {busy ? "Chiffrement…" : "Ouvrir le journal"}
+        <ArrowRight size={15} />
       </button>
     </form>
   );

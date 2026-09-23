@@ -8,6 +8,6 @@ Le code ORION est sous AGPL-3.0-only. Les dépendances conservent leurs licences
 - fflate (archives ZIP des documents bureautiques) — MIT.
 - jsPDF et jsPDF-AutoTable (PDF) — MIT.
 - Vite, TypeScript, Prettier, Wrangler et leurs dépendances — licences propres aux paquets, outils de développement uniquement.
-- IBM Plex Sans / Mono et Space Grotesk — SIL Open Font License ; textes dans `docs/licenses/`. Les polices sont hébergées localement.
+- IBM Plex Sans / Mono — SIL Open Font License ; textes dans `docs/licenses/`. Les polices sont hébergées localement.
 
 Les anciens signes OFPP et tuiles swisstopo ne sont plus distribués par le journal 1.0. Les références métier citées ne sont pas une approbation du produit.

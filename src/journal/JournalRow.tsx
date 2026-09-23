@@ -1,4 +1,4 @@
-import { ChevronRight, Clock3, MapPin, Radio } from "lucide-react";
+import { Square, SquareCheck } from "lucide-react";
 import {
   current,
   dateTime,
@@ -9,18 +9,33 @@ import {
   time,
   type Journal,
 } from "../../shared/journal";
+
+export const typeTone = (type: string) =>
+  type === "Décision" || type === "Mission"
+    ? "accent"
+    : type === "Demande"
+      ? "warn"
+      : type === "Quittance"
+        ? "ok"
+        : "";
+
 export function JournalRow({
   entry,
   newDay,
+  picked,
+  onPick,
   onOpen,
   at,
 }: {
   entry: Journal["entries"][number];
   newDay: boolean;
+  picked: boolean;
+  onPick: () => void;
   onOpen: () => void;
   at: number;
 }) {
   const f = current(entry);
+  const late = overdue(entry, at);
   return (
     <>
       {newDay && (
@@ -28,71 +43,69 @@ export function JournalRow({
           <td colSpan={5}>{day(f.happenedAt)}</td>
         </tr>
       )}
-      <tr className={f.priority === "Urgent" ? "urgent-row" : ""}>
-        <td className="time-cell">
+      <tr
+        className={[
+          f.priority === "Urgent" ? "urgent" : "",
+          f.status === "Annulé" ? "cancelled" : "",
+          picked ? "picked" : "",
+          Date.now() - Date.parse(entry.createdAt) < 4000 ? "fresh" : "",
+        ].join(" ")}
+      >
+        <td className="pick">
+          <button
+            className="check"
+            aria-pressed={picked}
+            aria-label={`Sélectionner l’entrée ${entry.number}`}
+            onClick={onPick}
+          >
+            {picked ? <SquareCheck size={15} /> : <Square size={15} />}
+          </button>
+        </td>
+        <td className="when">
           <strong>{time(f.happenedAt)}</strong>
           <span>{numberLabel(entry)}</span>
-          {entry.revisions.length > 1 && <small>corrigé</small>}
+          {entry.revisions.length > 1 && (
+            <small title={`${entry.revisions.length} versions`}>
+              v{entry.revisions.length}
+            </small>
+          )}
         </td>
-        <td className="message-cell">
-          <div className="entry-badges">
-            <span
-              className={`type-label type-${f.type === "Décision" ? "decision" : f.type === "Quittance" ? "receipt" : "info"}`}
-            >
-              {f.type}
-            </span>
+        <td className="what">
+          <div className="tags">
+            <span className={`tag ${typeTone(f.type)}`}>{f.type}</span>
             {f.priority !== "Normal" && (
               <span
-                className={`badge ${f.priority === "Urgent" ? "red" : "amber"}`}
+                className={`tag ${f.priority === "Urgent" ? "crit" : "warn"} solid`}
               >
                 {f.priority}
               </span>
             )}
             {f.reliability !== "Confirmé" && (
-              <span className="unconfirmed">{f.reliability}</span>
+              <span className="tag dim">{f.reliability}</span>
             )}
           </div>
-          <button className="message-button" onClick={onOpen}>
+          <button className="row-open" onClick={onOpen}>
             {f.message}
           </button>
-          {f.location && (
-            <span className="row-location">
-              <MapPin size={12} />
-              {f.location}
-            </span>
-          )}
+          {f.location && <span className="where">{f.location}</span>}
         </td>
-        <td className="source-cell">
+        <td className="who">
           <strong>{f.source || "—"}</strong>
-          <span>
-            <Radio size={11} />
-            {f.channel}
-          </span>
+          <span>{f.channel}</span>
         </td>
-        <td className="follow-cell">
+        <td className="follow">
           <span
-            className={`follow-label ${f.status === "Terminé" ? "done" : needsFollowUp(entry) ? "pending" : ""}`}
+            className={`state ${f.status === "Terminé" ? "ok" : needsFollowUp(entry) ? (late ? "crit" : "warn") : ""}`}
           >
-            <span />
             {f.status}
           </span>
           {f.assignee && <small>{f.assignee}</small>}
           {f.dueAt && needsFollowUp(entry) && (
-            <small className={overdue(entry, at) ? "red-text" : ""}>
-              <Clock3 size={11} />
+            <small className={late ? "crit-text" : ""}>
+              {late ? "Retard · " : "Éch. "}
               {dateTime(f.dueAt)}
-              {overdue(entry, at) && " · retard"}
             </small>
           )}
-        </td>
-        <td>
-          <button
-            className="icon-button row-open"
-            aria-label={`Ouvrir l’entrée ${entry.number}`}
-            onClick={onOpen}
-          >
-            <ChevronRight size={17} />
-          </button>
         </td>
       </tr>
     </>

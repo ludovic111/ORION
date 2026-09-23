@@ -15,6 +15,8 @@ Une session contient un auteur déclaré, un journal actif et les journaux impor
 
 Le modèle conserve des entrées avec identifiant UUID, numéro de registre, auteur/origine et versions successives. Chaque version stocke un instant, un auteur, un motif et l’ensemble des champs métier. Les numéros sont stables ; la chronologie se trie selon l’heure des faits. Une entrée peut être annulée par une correction motivée, sans suppression de son historique.
 
+Le plan du réseau radio est stocké dans le journal (`radio` : groupes, noms d’appel, terminaux avec historique des remises, contrôles de liaison). Il suit donc la reprise chiffrée, les archives et la clôture. Les fiches A4 partagent un modèle unique (`src/print/sheet.ts`) rendu en HTML pour l’aperçu et l’impression, et en PDF vectoriel via jsPDF.
+
 La fusion conserve l’identifiant global et attribue un numéro dans le journal cible. Elle ignore un doublon exact (hors numéro/origine locale) et refuse les versions divergentes. Une copie séparée reçoit un nouvel identifiant de journal si nécessaire. Les identités importées sont déclaratives, pas des signatures vérifiées.
 
 Le service worker précache seulement les ressources de construction, jamais des données d’intervention. Une mise à jour attend la fermeture des onglets de l’ancienne version. Toutes les dépendances d’export sont locales. La sauvegarde chiffrée utilise IndexedDB avec un verrou exclusif Web Locks pour prévenir les écrasements entre onglets.

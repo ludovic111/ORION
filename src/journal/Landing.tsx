@@ -1,14 +1,7 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Clock3,
-  FileUp,
-  HardDrive,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, FileUp, LockKeyhole } from "lucide-react";
 import type { Journal } from "../../shared/journal";
+import { Mark } from "../ui/Mark";
 import { JournalSetup } from "./JournalSetup";
 export function Landing({
   stored,
@@ -39,76 +32,63 @@ export function Landing({
   const [temporary, setTemporary] = useState(false);
   return (
     <div className="landing">
-      <header>
-        <a className="brand" href="/">
-          <span className="brand-mark">
-            O<span />
-          </span>
-          <div>
-            ORION<small>JOURNAL D’INTERVENTION</small>
-          </div>
-        </a>
-        <button className="text-button" onClick={onPrivacy}>
-          <ShieldCheck size={15} />
-          Confidentialité & code ouvert
+      <header className="landing-bar">
+        <span className="topbar-brand">
+          <Mark />
+          <span>ORION</span>
+        </span>
+        <span className="landing-version">1.1</span>
+        <button className="link" onClick={onPrivacy}>
+          Sécurité et données
         </button>
       </header>
       <main className="landing-main">
-        <section className="landing-copy">
-          <p className="eyebrow">
-            <span className="status-dot" />
-            PRÊT QUAND VOUS L’ÊTES
-          </p>
+        <section className="landing-system" aria-label="Système">
           <h1>
-            Les faits.
+            Journal d’intervention
             <br />
-            Les décisions.
-            <br />
-            <span>Une trace claire.</span>
+            Plan du réseau radio
           </h1>
-          <p className="landing-description">
-            Le journal d’intervention qui suit le rythme du terrain. Ouvrez,
-            consignez, passez le relais.
-          </p>
-          <div className="landing-points">
+          <dl className="spec">
             <div>
-              <Clock3 size={18} />
-              <span>
-                <strong>Immédiat</strong>Sans compte. Sans installation.
-              </span>
+              <dt>Stockage</dt>
+              <dd>Ce poste · AES-256-GCM</dd>
             </div>
             <div>
-              <ShieldCheck size={18} />
-              <span>
-                <strong>Maîtrisé</strong>Vos données restent sur votre poste.
-              </span>
+              <dt>Serveur</dt>
+              <dd>Aucun</dd>
             </div>
             <div>
-              <ArrowRight size={18} />
-              <span>
-                <strong>Portable</strong>Un journal complet à transmettre et
-                reprendre.
-              </span>
+              <dt>Compte</dt>
+              <dd>Aucun</dd>
             </div>
-          </div>
-          <button className="demo-link" onClick={onDemo}>
-            Explorer un journal d’exemple <ArrowRight size={16} />
+            <div>
+              <dt>Transfert</dt>
+              <dd>Archive .orion chiffrée</dd>
+            </div>
+            <div>
+              <dt>Impression</dt>
+              <dd>Fiches message A4 · plan radio A4</dd>
+            </div>
+            <div>
+              <dt>Radio</dt>
+              <dd>Polycom · noms d’appel, TKG, terminaux, remises</dd>
+            </div>
+          </dl>
+          <button className="demo" onClick={onDemo}>
+            Ouvrir l’exercice de démonstration
+            <ArrowRight size={14} />
           </button>
-          <small className="demo-note">
-            Scénario fictif · aucune donnée réelle
-          </small>
         </section>
-        <section className="start-card">
+        <section className="panel start">
           {stored && !temporary ? (
             <>
-              <span className="icon-square">
-                <LockKeyhole size={22} />
-              </span>
-              <h2>Reprendre la session</h2>
-              <p className="muted">
-                Une sauvegarde de session est présente sur ce poste.
-              </p>
+              <header className="panel-head">
+                <LockKeyhole size={14} />
+                <span className="label">Reprendre la session</span>
+              </header>
               <form
+                className="stack"
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setBusy(true);
@@ -123,7 +103,7 @@ export function Landing({
                 }}
               >
                 <label>
-                  Phrase secrète
+                  Phrase de récupération
                   <input
                     type="password"
                     required
@@ -136,30 +116,27 @@ export function Landing({
                   />
                 </label>
                 <button className="primary large" disabled={busy}>
-                  <LockKeyhole size={16} />
-                  {busy ? "Déverrouillage…" : "Reprendre mon journal"}
-                  <ArrowRight size={16} />
+                  {busy ? "Déchiffrement…" : "Déverrouiller"}
+                  <ArrowRight size={15} />
                 </button>
               </form>
-              <button
-                className="text-button"
-                onClick={() => setTemporary(true)}
-              >
-                Ouvrir une autre session temporaire
-              </button>
-              <details className="recovery">
-                <summary>Phrase de récupération oubliée ?</summary>
+              <div className="start-links">
+                <button className="link" onClick={() => setTemporary(true)}>
+                  Nouvelle session temporaire
+                </button>
+              </div>
+              <details className="danger-zone">
+                <summary>Phrase perdue</summary>
                 <p>
-                  ORION ne peut pas la récupérer. Reprenez une archive avec sa
-                  phrase secrète, ou effacez l’espace local si vous disposez
-                  d’une sauvegarde.
+                  Irrécupérable. Reprenez depuis une archive, ou effacez
+                  l’espace local de ce navigateur.
                 </p>
                 <button
-                  className="danger-button"
+                  className="danger"
                   onClick={async () => {
                     if (
                       window.prompt(
-                        "Pour effacer uniquement l’espace chiffré de ce navigateur, saisissez EFFACER. Cette action est irréversible sans votre archive.",
+                        "Effacement définitif de l’espace chiffré de ce navigateur. Saisissez EFFACER.",
                       ) === "EFFACER"
                     ) {
                       try {
@@ -176,41 +153,25 @@ export function Landing({
             </>
           ) : (
             <>
-              <p className="eyebrow">NOUVELLE SESSION</p>
-              <h2>Ouvrir un journal</h2>
-              <p className="muted">
-                Une session pour votre intervention, sans compte.
-              </p>
+              <header className="panel-head">
+                <span className="label">Nouvelle session</span>
+                {stored && (
+                  <button className="link" onClick={() => setTemporary(false)}>
+                    <ArrowLeft size={12} />
+                    Session enregistrée
+                  </button>
+                )}
+              </header>
               <JournalSetup recovery={!stored} onCreate={onCreate} />
-              <div className="start-storage-note">
-                <HardDrive size={17} />
-                <p>
-                  Aucune donnée sur un serveur.
-                  <br />
-                  <span>
-                    La reprise locale protège cette session. Exportez puis
-                    effacez le poste en fin d’intervention.
-                  </span>
-                </p>
-              </div>
-              {stored && (
-                <button
-                  className="text-button"
-                  onClick={() => setTemporary(false)}
-                >
-                  <ArrowLeft size={13} />
-                  Reprendre la session sauvegardée
-                </button>
-              )}
             </>
           )}
-          <div className="start-import">
-            <span>Vous avez déjà un journal ?</span>
+          <footer className="panel-foot">
+            <span>Fichier .orion, .json ou .csv</span>
             <button onClick={onImport}>
-              <FileUp size={16} />
-              Importer un fichier
+              <FileUp size={14} />
+              Importer
             </button>
-          </div>
+          </footer>
           {(failure || error) && (
             <p className="error" role="alert">
               {failure || error}
@@ -218,13 +179,13 @@ export function Landing({
           )}
         </section>
       </main>
-      <footer>
+      <footer className="landing-foot">
         <span>
-          Projet indépendant · sans affiliation ni homologation
-          institutionnelle.
+          Logiciel indépendant. Sans affiliation ni homologation OFPP ou État de
+          Genève.
         </span>
         <a href="/source/orion-source.tar.gz" download>
-          AGPL-3.0 · Télécharger le code source ↗
+          Code source · AGPL-3.0
         </a>
       </footer>
     </div>

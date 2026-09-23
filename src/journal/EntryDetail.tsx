@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, History, Pencil, Reply } from "lucide-react";
+import { Check, FileText, History, Pencil, Reply } from "lucide-react";
 import {
   current,
   dateTime,
@@ -17,6 +17,7 @@ export function EntryDetail({
   onClose,
   onRevise,
   onReply,
+  onPrint,
 }: {
   entry: Entry;
   author: string;
@@ -24,6 +25,7 @@ export function EntryDetail({
   onClose: () => void;
   onRevise: (fields: Fields, reason: string) => void;
   onReply: () => void;
+  onPrint: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [history, setHistory] = useState(false);
@@ -52,14 +54,14 @@ export function EntryDetail({
         />
       ) : (
         <>
-          <div className="entry-detail-meta">
+          <div className="detail-meta">
             <span
-              className={`badge ${f.priority === "Urgent" ? "red" : f.priority === "Important" ? "amber" : ""}`}
+              className={`tag ${f.priority === "Urgent" ? "crit solid" : f.priority === "Important" ? "warn solid" : ""}`}
             >
               {f.priority}
             </span>
-            <span className="badge">{f.status}</span>
-            <span>{dateTime(f.happenedAt)} · Europe/Zurich</span>
+            <span className="tag">{f.status}</span>
+            <span className="mono">{dateTime(f.happenedAt)}</span>
           </div>
           <p className="detail-message">{f.message}</p>
           <dl className="detail-grid">
@@ -89,14 +91,18 @@ export function EntryDetail({
               ))}
           </dl>
           <div className="action-row">
+            <button onClick={onPrint}>
+              <FileText size={14} />
+              Fiche A4
+            </button>
             {!readOnly && (
               <>
                 <button onClick={() => setEditing(true)}>
-                  <Pencil size={15} />
-                  Corriger / mettre à jour
+                  <Pencil size={14} />
+                  Corriger
                 </button>
                 <button onClick={onReply}>
-                  <Reply size={15} />
+                  <Reply size={14} />
                   Consigner une suite
                 </button>
                 {["À traiter", "En cours"].includes(f.status) && (
@@ -108,7 +114,7 @@ export function EntryDetail({
                       )
                     }
                   >
-                    <Check size={15} />
+                    <Check size={14} />
                     Terminer le suivi
                   </button>
                 )}
@@ -118,18 +124,14 @@ export function EntryDetail({
               onClick={() => setHistory(!history)}
               aria-expanded={history}
             >
-              <History size={15} />
+              <History size={14} />
               {entry.revisions.length} version
               {entry.revisions.length > 1 ? "s" : ""}
             </button>
           </div>
           {history && (
             <section className="history">
-              <h3>Historique des versions</h3>
-              <p className="muted">
-                Les noms sont déclaratifs. Cet historique local n’est pas une
-                signature certifiée.
-              </p>
+              <h3 className="label">Versions · auteurs déclarés, non signés</h3>
               {[...entry.revisions].reverse().map((revision, i) => (
                 <details key={revision.id}>
                   <summary>

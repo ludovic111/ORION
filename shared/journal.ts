@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  emptyRadio,
+  planRadioMerge,
+  radioSchema,
+  type Radio,
+} from "./radio.ts";
 
 export const TYPES = [
   "Renseignement",
@@ -87,6 +93,7 @@ export const journalSchema = z
     createdAt: instant,
     closedAt: optionalInstant,
     entries: z.array(entrySchema).max(10000),
+    radio: radioSchema.default(emptyRadio),
   })
   .strict()
   .superRefine((journal, ctx) => {
@@ -269,6 +276,10 @@ export function reviseEntry(
     ),
   });
 }
+export function updateRadio(journal: Journal, radio: Radio): Journal {
+  if (journal.closedAt) throw new Error("Ce journal est clôturé.");
+  return journalSchema.parse({ ...journal, radio });
+}
 export const archive = (journal: Journal): Archive => ({
   format: "orion-journal",
   version: 1,
@@ -292,7 +303,7 @@ function sameEntry(a: Entry, b: Entry) {
 }
 export function planMerge(target: Journal, incoming: Journal) {
   const known = new Map(target.entries.map((e) => [e.id, e]));
-  return incoming.entries.reduce<{
+  const entries = incoming.entries.reduce<{
     added: Entry[];
     duplicates: Entry[];
     conflicts: Entry[];
@@ -306,18 +317,20 @@ export function planMerge(target: Journal, incoming: Journal) {
     },
     { added: [], duplicates: [], conflicts: [] },
   );
+  return { ...entries, radio: planRadioMerge(target.radio, incoming.radio) };
 }
 export function mergeJournals(target: Journal, incoming: Journal): Journal {
   if (target.closedAt)
     throw new Error("Rouvrez le journal avant de fusionner.");
   const plan = planMerge(target, incoming);
-  if (plan.conflicts.length)
+  if (plan.conflicts.length || plan.radio.conflicts)
     throw new Error(
       "Des versions divergent. Importez ce fichier dans un journal séparé pour les comparer.",
     );
   let number = Math.max(0, ...target.entries.map((e) => e.number));
   return journalSchema.parse({
     ...target,
+    radio: plan.radio.radio,
     entries: [
       ...target.entries,
       ...plan.added.map((e) => ({

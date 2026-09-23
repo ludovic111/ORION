@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Download,
-  FileCheck2,
-  FileUp,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { Download, FileCheck2, FileUp, LockKeyhole } from "lucide-react";
 import { planMerge, type Archive, type Journal } from "../../shared/journal";
 import {
   importCsv,
@@ -21,12 +15,18 @@ import {
   type ExportFormat,
 } from "./exports";
 import { Modal } from "./Modal";
+const suffixes: Partial<Record<ExportFormat, string>> = {
+  sheets: "fiches",
+  radio: "radio",
+};
 export function ExportModal({
   journal,
+  author,
   onClose,
   onBackup,
 }: {
   journal: Journal;
+  author: string;
   onClose: () => void;
   onBackup: () => void;
 }) {
@@ -45,16 +45,15 @@ export function ExportModal({
     try {
       if (format === "orion" && password !== repeat)
         throw new Error("Les deux phrases secrètes ne correspondent pas.");
-      const blob = await makeExport(journal, format, password);
+      const blob = await makeExport(journal, format, password, author);
       const name = fileName(
         journal,
         exportFormats.find((f) => f.id === format)!.extension,
+        suffixes[format],
       );
       download(blob, name);
       if (format === "orion" || format === "json") onBackup();
-      setDone(
-        `Téléchargement demandé : ${name}. Vérifiez sa présence dans vos téléchargements.`,
-      );
+      setDone(`${name} · vérifiez le dossier de téléchargement.`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -63,50 +62,50 @@ export function ExportModal({
   }
   return (
     <Modal
-      title="Exporter le journal"
+      title="Exporter"
       onClose={() => {
         if (!busy) onClose();
       }}
       wide
     >
-      <p className="modal-intro">
-        <strong>{journal.title}</strong> · {journal.entries.length} entrées ·
-        Journal entier, quels que soient les filtres.
+      <p className="modal-intro mono">
+        {journal.title} · {journal.entries.length} entrées ·{" "}
+        {journal.radio.terminals.length} terminaux · journal entier, sans filtre
       </p>
-      <form onSubmit={submit}>
-        <div className="export-grid">
-          {exportFormats.map((f) => (
-            <label
-              className={`export-choice ${format === f.id ? "selected" : ""}`}
-              key={f.id}
-            >
-              <input
-                type="radio"
-                name="format"
-                value={f.id}
-                checked={format === f.id}
-                onChange={() => {
-                  setFormat(f.id);
-                  setDone("");
-                  setAcknowledged(false);
-                }}
-              />
-              <span>
-                <strong>
-                  {f.name}
-                  <code>{f.extension}</code>
-                </strong>
-                <small>{f.detail}</small>
-              </span>
-            </label>
-          ))}
-        </div>
+      <form onSubmit={submit} className="stack">
+        {[...new Set(exportFormats.map((f) => f.group))].map((group) => (
+          <fieldset className="format-group" key={group}>
+            <legend className="section-label">{group}</legend>
+            <div className="format-grid">
+              {exportFormats
+                .filter((f) => f.group === group)
+                .map((f) => (
+                  <label className="format" key={f.id}>
+                    <input
+                      type="radio"
+                      name="format"
+                      value={f.id}
+                      checked={format === f.id}
+                      onChange={() => {
+                        setFormat(f.id);
+                        setDone("");
+                        setAcknowledged(false);
+                      }}
+                    />
+                    <span>
+                      <strong>
+                        {f.name}
+                        <code>{f.extension}</code>
+                      </strong>
+                      <small>{f.detail}</small>
+                    </span>
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+        ))}
         {format === "orion" ? (
           <div className="inset">
-            <p>
-              <LockKeyhole size={16} />
-              Archive protégée par une phrase secrète
-            </p>
             <div className="form-pair">
               <label>
                 Phrase secrète
@@ -134,8 +133,8 @@ export function ExportModal({
               </label>
             </div>
             <small>
-              12 caractères minimum. Transmettez la phrase par un canal distinct
-              du fichier. Elle ne peut pas être récupérée par ORION.
+              <LockKeyhole size={11} /> 12 caractères min. Transmise par un
+              autre canal que le fichier. Irrécupérable.
             </small>
           </div>
         ) : (
@@ -147,16 +146,11 @@ export function ExportModal({
                 checked={acknowledged}
                 onChange={(e) => setAcknowledged(e.target.checked)}
               />
-              <span>
-                Je comprends que ce fichier contient les données du journal en
-                clair et je choisis où le conserver ou le transmettre.
-              </span>
+              <span>Fichier en clair : je choisis où il est conservé.</span>
             </label>
-            {!["json"].includes(format) && (
+            {format !== "json" && (
               <small>
-                Ce format contient l’état actuel des entrées. Pour conserver les
-                versions précédentes et reprendre le journal, utilisez ORION ou
-                JSON.
+                État actuel uniquement, non réimportable sans perte.
               </small>
             )}
           </div>
@@ -177,8 +171,8 @@ export function ExportModal({
             Fermer
           </button>
           <button className="primary" disabled={busy}>
-            <Download size={16} />
-            {busy ? "Préparation…" : "Télécharger le journal"}
+            <Download size={14} />
+            {busy ? "Préparation…" : "Télécharger"}
           </button>
         </div>
       </form>
@@ -192,8 +186,9 @@ export function ImportModal({
 }: {
   target?: Journal;
   onClose: () => void;
-  onImport: (journal: Journal, merge: boolean) => void;
+  onImport: (journal: Journal, merge: boolean, author?: string) => void;
 }) {
+  const [author, setAuthor] = useState("");
   const [candidate, setCandidate] = useState<Archive | null>(null);
   const [encrypted, setEncrypted] = useState<unknown>(null);
   const [password, setPassword] = useState("");
@@ -224,9 +219,7 @@ export function ImportModal({
       const text = await file.text();
       if (/\.(csv|tsv)$/i.test(file.name)) {
         setCandidate(importCsv(text, file.name.replace(/\.[^.]+$/, "")));
-        setNotice(
-          "CSV : les entrées sont recréées, sans les versions précédentes. Pour un transfert fidèle, utilisez une archive ORION ou JSON.",
-        );
+        setNotice("CSV : entrées recréées sans leurs versions antérieures.");
       } else {
         const value = JSON.parse(text);
         if (value?.format === "orion-encrypted") setEncrypted(value);
@@ -244,19 +237,17 @@ export function ImportModal({
   }
   return (
     <Modal
-      title="Importer un journal"
+      title="Importer"
       onClose={() => {
         if (!busy) onClose();
       }}
     >
-      <p className="modal-intro">
-        Reprenez un journal reçu d’un collègue ou votre propre sauvegarde. Le
-        fichier est lu uniquement sur ce poste.
-      </p>
       <label className="dropzone">
-        <FileUp size={28} />
+        <FileUp size={20} />
         <strong>Choisir un fichier</strong>
-        <span>ORION · JSON · CSV · TSV · 32 Mo maximum</span>
+        <span className="mono">
+          .orion · .json · .csv · .tsv · 32 Mo max · lu localement
+        </span>
         <input
           type="file"
           accept=".orion,.json,.csv,.tsv"
@@ -282,7 +273,7 @@ export function ImportModal({
           }}
         >
           <label>
-            Phrase secrète du fichier
+            Phrase de l’archive
             <input
               type="password"
               required
@@ -294,23 +285,34 @@ export function ImportModal({
             />
           </label>
           <button className="primary" disabled={busy}>
-            <LockKeyhole size={16} />
-            Déchiffrer l’archive
+            <LockKeyhole size={14} />
+            Déchiffrer
           </button>
         </form>
       )}
       {candidate && (
         <div className="import-preview">
-          <p className="eyebrow">
-            <ShieldCheck size={14} />
-            Fichier vérifié · prêt à importer
-          </p>
+          <span className="section-label">Fichier valide</span>
           <h3>{candidate.journal.title}</h3>
-          <p>
+          <p className="mono">
             {candidate.journal.entries.length} entrées ·{" "}
+            {candidate.journal.radio.terminals.length} terminaux ·{" "}
             {candidate.journal.mode} · {candidate.journal.classification}
           </p>
           <p className="muted">{notice}</p>
+          {!target && (
+            <label>
+              <span>
+                Opérateur sur ce poste <span className="required">*</span>
+              </span>
+              <input
+                value={author}
+                maxLength={120}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Nom ou fonction"
+              />
+            </label>
+          )}
           <label className="check-label">
             <input
               type="radio"
@@ -319,8 +321,7 @@ export function ImportModal({
               onChange={() => setMerge(false)}
             />
             <span>
-              Ouvrir comme journal séparé{" "}
-              <small>Le journal actuel reste intact.</small>
+              Journal séparé <small>Le journal actuel reste intact.</small>
             </span>
           </label>
           {target && (
@@ -330,40 +331,44 @@ export function ImportModal({
                 name="import-mode"
                 checked={merge}
                 onChange={() => setMerge(true)}
-                disabled={!!target.closedAt || !!plan?.conflicts.length}
+                disabled={
+                  !!target.closedAt ||
+                  !!plan?.conflicts.length ||
+                  !!plan?.radio.conflicts
+                }
               />
               <span>
                 Fusionner dans « {target.title} »
-                <small>
-                  {plan?.added.length} nouvelles · {plan?.duplicates.length}{" "}
-                  identiques ignorées · {plan?.conflicts.length} conflits
+                <small className="mono">
+                  +{plan?.added.length} entrées · {plan?.duplicates.length}{" "}
+                  identiques · {plan?.conflicts.length} conflits · radio +
+                  {plan?.radio.added} / ~{plan?.radio.updated} /{" "}
+                  {plan?.radio.conflicts} conflits
                 </small>
               </span>
             </label>
           )}
-          {!!plan?.conflicts.length && (
-            <p className="warning">
-              Des entrées ont été modifiées différemment. Importez un journal
-              séparé pour conserver les deux versions.
+          {(!!plan?.conflicts.length || !!plan?.radio.conflicts) && (
+            <p className="hint warn">
+              Versions divergentes : importez en journal séparé pour comparer.
             </p>
           )}
           <div className="modal-actions">
             <button onClick={onClose}>Annuler</button>
             <button
               className="primary"
+              disabled={!target && !author.trim()}
               onClick={() => {
                 try {
-                  onImport(candidate.journal, merge);
+                  onImport(candidate.journal, merge, author.trim());
                   onClose();
                 } catch (err) {
                   setError((err as Error).message);
                 }
               }}
             >
-              <FileUp size={16} />
-              {merge
-                ? "Fusionner les nouvelles entrées"
-                : "Importer le journal"}
+              <FileUp size={14} />
+              {merge ? "Fusionner" : "Importer"}
             </button>
           </div>
         </div>
@@ -374,10 +379,6 @@ export function ImportModal({
           {error}
         </p>
       )}
-      <p className="hint">
-        Excel, Word et PDF sont des exports de lecture. Pour réimporter sans
-        perdre l’historique, demandez le fichier ORION ou JSON.
-      </p>
     </Modal>
   );
 }

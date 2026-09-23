@@ -1,84 +1,69 @@
-import {
-  ExternalLink,
-  HardDrive,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Modal } from "./Modal";
+
 export function Privacy({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="Vos données restent sur votre poste" onClose={onClose}>
-      <div className="privacy-list">
-        <section>
-          <HardDrive />
-          <div>
-            <h3>Vous choisissez ce qui reste</h3>
-            <p>
-              En mode temporaire, le contenu reste dans la mémoire de cet
-              onglet. Exportez avant de fermer ou recharger. Avec la sauvegarde
-              locale, l’espace est chiffré dans ce navigateur ; votre phrase
-              secrète et la clé ne sont jamais enregistrées.
-            </p>
-          </div>
-        </section>
-        <section>
-          <LockKeyhole />
-          <div>
-            <h3>Un fichier pour passer le relais</h3>
-            <p>
-              L’archive ORION est chiffrée avec AES-256-GCM ; la clé est dérivée
-              avec PBKDF2-SHA-256, 600 000 itérations. Les autres formats sont
-              en clair. La phrase secrète n’est pas récupérable. Conservez une
-              copie sur un support autorisé.
-            </p>
-          </div>
-        </section>
-        <section>
-          <ShieldCheck />
-          <div>
-            <h3>Un outil indépendant, à autoriser sur le terrain</h3>
-            <p>
-              Aucun contenu du journal n’est transmis au serveur. Pas de
-              publicité, d’IA, de statistiques de navigation, de police distante
-              ou de compte. L’hébergeur reçoit les requêtes nécessaires au
-              chargement du site (notamment l’adresse IP). Le logiciel peut être
-              hébergé par votre institution.
-            </p>
-          </div>
-        </section>
-      </div>
-      <div className="inset">
-        <h3>Les limites à connaître</h3>
-        <p>
-          Un poste compromis ou un espace déverrouillé peut exposer les données.
-          Le nom de l’opérateur est déclaratif ; l’historique conserve les
-          corrections mais ne constitue pas une preuve inviolable. Il n’y a pas
-          de synchronisation entre postes.
-        </p>
-        <p>
-          La conservation, les destinataires, les sauvegardes et l’autorisation
-          de traiter des données réelles relèvent de votre organisation. La
-          suppression des données du navigateur efface aussi la sauvegarde
-          locale. ORION ne garantit pas une conformité ou homologation
-          institutionnelle.
-        </p>
-      </div>
-      <p className="hint">
-        Notez les renseignements utiles à l’intervention. Évitez les données
-        personnelles sans nécessité opérationnelle.
-      </p>
+    <Modal title="Sécurité et données" onClose={onClose}>
+      <dl className="spec">
+        <div>
+          <dt>Session temporaire</dt>
+          <dd>Mémoire de l’onglet uniquement. Perdue à la fermeture.</dd>
+        </div>
+        <div>
+          <dt>Sauvegarde locale</dt>
+          <dd>
+            IndexedDB de ce navigateur, chiffrée. Phrase et clé jamais
+            enregistrées.
+          </dd>
+        </div>
+        <div>
+          <dt>Archive .orion</dt>
+          <dd>AES-256-GCM · PBKDF2-SHA-256, 600 000 itérations.</dd>
+        </div>
+        <div>
+          <dt>Autres formats</dt>
+          <dd>En clair : PDF, Excel, Word, CSV, JSON, HTML, texte.</dd>
+        </div>
+        <div>
+          <dt>Réseau</dt>
+          <dd>
+            Aucun contenu transmis. Ni IA, ni statistiques, ni police distante.
+            L’hébergeur voit les requêtes de chargement (adresse IP).
+          </dd>
+        </div>
+        <div>
+          <dt>Identité</dt>
+          <dd>Noms d’opérateur déclaratifs. Historique non signé.</dd>
+        </div>
+      </dl>
+      <h3 className="section-label">Limites</h3>
+      <ul className="plain">
+        <li>
+          Un poste compromis ou une session déverrouillée expose les données.
+        </li>
+        <li>Effacer les données du navigateur efface la sauvegarde locale.</li>
+        <li>Aucune synchronisation entre postes : transfert par fichier.</li>
+        <li>
+          Conservation, destinataires et autorisation de traiter des données
+          réelles : responsabilité de l’organisation.
+        </li>
+        <li>
+          Logiciel indépendant, sans homologation OFPP ni État de Genève. Les
+          numéros de groupes et RFSI viennent du plan de flotte cantonal.
+        </li>
+      </ul>
       <div className="action-row">
         <a className="button" href="/source/orion-source.tar.gz" download>
           Code source · AGPL-3.0
         </a>
         <a
-          className="text-link"
+          className="link"
           href="https://www.babs.admin.ch/fr/documents-de-formation"
           target="_blank"
           rel="noreferrer"
         >
-          Références OFPP
-          <ExternalLink size={13} />
+          Documents OFPP
+          <ExternalLink size={12} />
         </a>
       </div>
     </Modal>

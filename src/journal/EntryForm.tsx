@@ -1,12 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import {
-  ArrowDownLeft,
-  ChevronDown,
-  Clock3,
-  Plus,
-  Send,
-  X,
-} from "lucide-react";
+import { ChevronRight, CornerDownLeft, Plus, X } from "lucide-react";
 import {
   CHANNELS,
   PRIORITIES,
@@ -34,6 +27,7 @@ export function EntryForm({
   onDraft,
   onCancel,
   compact = false,
+  draftLabel = "",
 }: {
   initial?: Fields;
   preset?: Fields;
@@ -42,6 +36,7 @@ export function EntryForm({
   onDraft?: (fields: Fields) => void;
   onCancel?: () => void;
   compact?: boolean;
+  draftLabel?: string;
 }) {
   const [fields, setFields] = useState<Fields>(
     () => initial ?? preset ?? emptyFields(),
@@ -98,7 +93,7 @@ export function EntryForm({
   const textarea = (
     key: Exclude<keyof Fields, "tags">,
     label: string,
-    placeholder: string,
+    placeholder = "",
     maxLength = 12000,
   ) => (
     <label>
@@ -147,15 +142,10 @@ export function EntryForm({
         }
       }}
     >
-      {!initial && (
-        <div className="composer-heading">
-          <span className="icon-square">
-            <Plus size={18} />
-          </span>
-          <div>
-            <h2>Consigner une entrée</h2>
-            <p>Chaque information compte.</p>
-          </div>
+      {compact && (
+        <div className="form-head">
+          <span className="label">Nouvelle entrée</span>
+          {draftLabel && <span className="draft">{draftLabel}</span>}
         </div>
       )}
       <div className="form-pair">
@@ -163,7 +153,9 @@ export function EntryForm({
         {select("priority", "Priorité", PRIORITIES)}
       </div>
       <label>
-        Message <span className="required">*</span>
+        <span>
+          Message <span className="required">*</span>
+        </span>
         <textarea
           ref={message}
           id={compact ? "quick-message" : undefined}
@@ -172,7 +164,7 @@ export function EntryForm({
           maxLength={12000}
           value={fields.message}
           onChange={(e) => update("message", e.target.value)}
-          placeholder="Que s’est-il passé ? Décrivez les faits."
+          placeholder="Texte du message"
           autoFocus={!compact}
         />
       </label>
@@ -195,26 +187,26 @@ export function EntryForm({
             value={fields.source}
             maxLength={500}
             onChange={(e) => update("source", e.target.value)}
-            placeholder="Indicatif, équipe…"
+            placeholder="Nom d’appel, équipe"
           />
         </label>
       </div>
       <details open={!!initial}>
         <summary>
-          <ChevronDown size={15} />
-          Source et localisation<span>Qui · où</span>
+          <ChevronRight size={13} />
+          Transmission et lieu
         </summary>
         <div className="details-fields">
           <div className="form-pair">
             {select("channel", "Canal", CHANNELS)}
             {select("reliability", "Confirmation", RELIABILITIES)}
           </div>
-          {input("recipient", "Destinataire", "Personne ou service informé")}
-          {input("location", "Lieu / secteur", "Adresse, bâtiment, zone…")}
+          {input("recipient", "Destinataire")}
+          {input("location", "Lieu / secteur")}
           {input(
             "coordinates",
-            "Coordonnées et système",
-            "Ex. MN95 : E 2 499 000 / N 1 116 000",
+            "Coordonnées",
+            "MN95 2 499 000 / 1 116 000",
             150,
           )}
           <label>
@@ -229,29 +221,20 @@ export function EntryForm({
               }}
             />
           </label>
-          <small>
-            La saisie est horodatée séparément. Les champs horaires utilisent le
-            fuseau de ce poste.
-          </small>
+          <small>Heures saisies dans le fuseau de ce poste.</small>
         </div>
       </details>
       <details open={!!initial || fields.status !== "Consigné"}>
         <summary>
-          <ChevronDown size={15} />
-          Décision et suite à donner<span>Action · délai</span>
+          <ChevronRight size={13} />
+          Conduite et suivi
         </summary>
         <div className="details-fields">
-          {textarea(
-            "action",
-            "Mesure, décision ou mission",
-            "Ce qui a été décidé, demandé ou effectué…",
-          )}
-          {select("status", "Suivi", STATUSES)}
-          {input(
-            "assignee",
-            "Responsable du suivi",
-            "Indicatif, fonction ou équipe",
-          )}
+          {textarea("action", "Mesure / décision / mission")}
+          <div className="form-pair">
+            {select("status", "Suivi", STATUSES)}
+            {input("assignee", "Responsable")}
+          </div>
           <label>
             Échéance
             <input
@@ -260,31 +243,22 @@ export function EntryForm({
               onChange={(e) => update("dueAt", fromInput(e.target.value))}
             />
           </label>
-          {textarea(
-            "resources",
-            "Moyens engagés / besoins",
-            "Effectifs, matériel, appui demandé…",
-            4000,
-          )}
+          {textarea("resources", "Moyens engagés / besoins", "", 4000)}
         </div>
       </details>
       <details open={!!initial}>
         <summary>
-          <ChevronDown size={15} />
-          Informations complémentaires<span>Notes · références</span>
+          <ChevronRight size={13} />
+          Compléments
         </summary>
         <div className="details-fields">
           {input(
             "reference",
             "Référence / entrée liée",
-            "N° de message, document ou entrée #…",
+            "#012, n° de document",
             1000,
           )}
-          {textarea(
-            "notes",
-            "Observations complémentaires",
-            "Dangers, conséquences, météo, contraintes, détails utiles…",
-          )}
+          {textarea("notes", "Observations")}
           <label>
             Mots-clés
             <div className="inline-field">
@@ -292,7 +266,7 @@ export function EntryForm({
                 value={tag}
                 maxLength={60}
                 onChange={(e) => setTag(e.target.value)}
-                placeholder="Ex. évacuation"
+                placeholder="Entrée pour ajouter"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -341,15 +315,16 @@ export function EntryForm({
       </details>
       {initial && (
         <label>
-          Motif de la modification <span className="required">*</span>
+          <span>
+            Motif de la modification <span className="required">*</span>
+          </span>
           <input
             required
             maxLength={1000}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex. confirmation reçue, erreur de lieu…"
+            placeholder="Confirmation reçue, erreur de lieu"
           />
-          <small>La version précédente reste dans l’historique.</small>
         </label>
       )}
       {error && (
@@ -357,26 +332,21 @@ export function EntryForm({
           {error}
         </p>
       )}
-      <div className="composer-footer">
-        <div>
-          <ArrowDownLeft size={13} />
-          <span>
-            Saisie par <strong>{author}</strong>
-          </span>
-        </div>
-        <button className="primary" type="submit">
-          <Send size={16} />
-          {initial ? "Enregistrer la correction" : "Consigner l’entrée"}
-          <kbd>⌘ ↵</kbd>
-        </button>
+      <div className="form-foot">
+        <span className="by">
+          Par <strong>{author}</strong>
+        </span>
         {onCancel && (
           <button type="button" onClick={onCancel}>
             Annuler
           </button>
         )}
-        <small>
-          <Clock3 size={12} /> Horodatage automatique de l’enregistrement
-        </small>
+        <button className="primary" type="submit">
+          {initial ? "Enregistrer la correction" : "Consigner"}
+          <kbd>
+            ⌘<CornerDownLeft size={11} />
+          </kbd>
+        </button>
       </div>
     </form>
   );

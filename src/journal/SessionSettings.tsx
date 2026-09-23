@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Download,
-  FolderClosed,
-  HardDrive,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { Download, LockKeyhole } from "lucide-react";
 import {
   dateTime,
   now,
@@ -46,58 +40,53 @@ export function Settings({
   const [done, setDone] = useState("");
   return (
     <Modal
-      title="Le poste et le journal"
+      title="Session"
       onClose={() => {
         if (!busy) onClose();
       }}
     >
       <form
+        className="settings-section"
         onSubmit={(e) => {
           e.preventDefault();
           const value = author.trim();
           if (!value) return;
           onUpdate({ ...workspace, author: value });
           setDone(
-            "Opérateur mis à jour. Les anciennes saisies gardent leur auteur.",
+            "Opérateur modifié. Les saisies existantes gardent leur auteur.",
           );
         }}
       >
-        <label>
-          Opérateur actuel
+        <h3 className="section-label">Opérateur</h3>
+        <div className="inline-field">
           <input
+            aria-label="Opérateur"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             required
             maxLength={120}
           />
-        </label>
-        <button>Changer d’opérateur</button>
-        <small>
-          Ce nom identifie les saisies ; il ne constitue pas une
-          authentification.
-        </small>
+          <button>Appliquer</button>
+        </div>
+        <small>Déclaratif, sans authentification.</small>
       </form>
       <div className="settings-section">
-        <h3>
-          <HardDrive size={17} />
-          Reprise après crash
-        </h3>
+        <h3 className="section-label">Sauvegarde locale</h3>
         {persistent ? (
           <>
-            <p className="success">Reprise automatique chiffrée activée.</p>
-            <p>
-              Exportez régulièrement une archive. Le nettoyage du navigateur ou
-              la perte du poste peut supprimer votre espace.
+            <p className="success">Active · chiffrée sur ce poste.</p>
+            <p className="muted">
+              Ne remplace pas une archive : le nettoyage du navigateur l’efface.
             </p>
             <button onClick={onEnd}>
-              <LockKeyhole size={16} />
-              Verrouiller l’espace
+              <LockKeyhole size={14} />
+              Verrouiller
             </button>
           </>
         ) : stored ? (
-          <p>
-            Un espace chiffré existe déjà. Exportez cette session, puis
-            déverrouillez cet espace pour y importer votre journal.
+          <p className="muted">
+            Un espace chiffré existe déjà sur ce poste. Exportez cette session,
+            déverrouillez l’espace existant, puis importez.
           </p>
         ) : (
           <form
@@ -119,12 +108,11 @@ export function Settings({
               }
             }}
           >
-            <p>
-              Choisissez cette option sur un poste que vous êtes autorisé à
-              utiliser pour conserver ces données.
+            <p className="hint warn">
+              Session temporaire. Activez uniquement sur un poste autorisé.
             </p>
             <label>
-              Phrase secrète · 12 caractères minimum
+              Phrase de récupération · 12 caractères min.
               <input
                 type="password"
                 required
@@ -147,31 +135,24 @@ export function Settings({
                 onChange={(e) => setRepeat(e.target.value)}
               />
             </label>
-            <small>
-              Elle ne peut pas être récupérée. Conservez-la séparément de vos
-              archives.
-            </small>
+            <small>Irrécupérable. À conserver séparément des archives.</small>
             <button className="primary" disabled={busy}>
-              <ShieldCheck size={16} />
-              {busy ? "Chiffrement…" : "Activer la sauvegarde chiffrée"}
+              {busy ? "Chiffrement…" : "Activer"}
             </button>
           </form>
         )}
       </div>
       <div className="settings-section">
-        <h3>
-          <FolderClosed size={17} />
-          Fin de l’intervention
-        </h3>
-        <p>
+        <h3 className="section-label">Clôture · {journal.title}</h3>
+        <p className="muted">
           {journal.closedAt
-            ? `Clôturé le ${dateTime(journal.closedAt)}. Le journal reste exportable.`
-            : "Clôturer empêche les nouvelles saisies. Le journal reste consultable et exportable."}
+            ? `Clôturé le ${dateTime(journal.closedAt)}.`
+            : "Bloque saisies, corrections et plan radio. Lecture et export restent possibles."}
         </p>
         <div className="action-row">
           <button onClick={onExport}>
-            <Download size={16} />
-            Exporter le journal
+            <Download size={14} />
+            Exporter
           </button>
           <button
             onClick={() => {
@@ -195,14 +176,13 @@ export function Settings({
         </div>
       </div>
       <div className="settings-section">
-        <h3>Terminer et libérer le poste</h3>
-        <p>
-          Après export de chaque journal, effacez la session et sa sauvegarde de
-          reprise de ce navigateur. Les fichiers téléchargés restent à votre
-          disposition.
+        <h3 className="section-label">Libérer le poste</h3>
+        <p className="muted">
+          Efface la session et sa sauvegarde locale. Les fichiers exportés ne
+          sont pas touchés.
         </p>
         <button
-          className="danger-button"
+          className="danger"
           onClick={async () => {
             setError("");
             try {
@@ -212,7 +192,7 @@ export function Settings({
             }
           }}
         >
-          Terminer et effacer la session
+          Effacer la session
         </button>
       </div>
       {error && (

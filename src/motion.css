@@ -1,0 +1,352 @@
+/* Motion: easing and timings after transitions.dev. Backgrounds are
+   procedural (no external image) so the app stays offline and CSP-clean. */
+:root {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  interpolate-size: allow-keywords;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+button {
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    transform 0.16s var(--ease);
+}
+
+/* Modal open: scale 0.96 → 1, 250 ms */
+@keyframes t-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes t-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.modal[open] {
+  animation: t-modal-in 250ms var(--ease);
+}
+.modal[open]::backdrop {
+  animation: t-fade-in 250ms var(--ease);
+}
+
+/* Toast: rises with fade, blur and scale */
+@keyframes t-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+    filter: blur(2px);
+  }
+}
+.toast {
+  animation: t-toast-in 350ms var(--ease);
+}
+
+/* Panel reveal: print preview and selection bar */
+@keyframes t-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(2px);
+  }
+}
+.preview {
+  animation: t-fade-in 200ms var(--ease);
+}
+.preview-stage .sheet {
+  animation: t-panel-in 400ms var(--ease) both;
+}
+.preview-stage .sheet:nth-child(2) {
+  animation-delay: 60ms;
+}
+.preview-stage .sheet:nth-child(n + 3) {
+  animation-delay: 120ms;
+}
+@keyframes t-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.selection-bar,
+.banner {
+  animation: t-drop-in 220ms var(--ease);
+}
+
+/* Number pop-in: metric values re-key on change */
+@keyframes t-digit-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+}
+.num {
+  display: inline-block;
+  animation: t-digit-in 500ms var(--spring) both;
+}
+
+/* Sliding indicator for segmented controls and module tabs */
+.slider {
+  position: relative;
+}
+.slider-pill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0;
+  background: var(--accent);
+  pointer-events: none;
+  transition:
+    transform 250ms var(--ease),
+    width 250ms var(--ease);
+}
+.segmented.slider .slider-pill {
+  top: 0;
+  height: auto;
+  background: var(--bg-3);
+  border-bottom: 2px solid var(--accent);
+  z-index: 0;
+}
+.segmented.slider button {
+  position: relative;
+  z-index: 1;
+  transition: color 250ms var(--ease);
+}
+.segmented.slider button[aria-pressed="true"] {
+  background: none;
+  box-shadow: none;
+}
+.modules.slider button[aria-current="page"] {
+  border-bottom-color: transparent;
+}
+
+/* Accordion: native details, height animated where supported */
+details::details-content {
+  height: 0;
+  overflow: clip;
+  opacity: 0;
+  filter: blur(2px);
+  transition:
+    height 250ms var(--ease),
+    opacity 250ms var(--ease),
+    filter 250ms var(--ease),
+    content-visibility 250ms allow-discrete;
+}
+details[open]::details-content {
+  height: auto;
+  opacity: 1;
+  filter: none;
+}
+details > summary svg {
+  transition: transform 250ms var(--ease);
+}
+
+/* Error: cubic-bezier shake on appearance */
+@keyframes t-shake {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--ease);
+  }
+  28.57% {
+    transform: translateX(6px);
+    animation-timing-function: var(--ease);
+  }
+  57.14% {
+    transform: translateX(-6px);
+    animation-timing-function: var(--ease);
+  }
+  78.57% {
+    transform: translateX(4px);
+    animation-timing-function: var(--ease);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.error {
+  animation: t-shake 280ms linear;
+}
+
+/* Row selection pop and freshly logged entries */
+.check svg {
+  transition: transform 250ms var(--spring);
+}
+.check[aria-pressed="true"] svg {
+  transform: scale(1.12);
+}
+@keyframes t-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+    filter: blur(2px);
+  }
+}
+@keyframes t-row-flash {
+  from {
+    background: rgba(74, 140, 255, 0.16);
+  }
+}
+.grid tr.fresh td {
+  animation:
+    t-row-in 400ms var(--ease),
+    t-row-flash 1600ms var(--ease);
+}
+.node.live .led {
+  animation: t-led 2.4s ease-in-out infinite;
+}
+@keyframes t-led {
+  50% {
+    box-shadow: 0 0 2px var(--ok);
+  }
+}
+
+/* Texts reveal on the landing */
+@keyframes t-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+}
+.landing-system h1,
+.landing-system .spec > div,
+.landing-system .demo,
+.landing .start {
+  animation: t-line-in 500ms var(--ease) both;
+}
+.landing-system .spec > div:nth-child(1) {
+  animation-delay: 80ms;
+}
+.landing-system .spec > div:nth-child(2) {
+  animation-delay: 120ms;
+}
+.landing-system .spec > div:nth-child(3) {
+  animation-delay: 160ms;
+}
+.landing-system .spec > div:nth-child(4) {
+  animation-delay: 200ms;
+}
+.landing-system .spec > div:nth-child(5) {
+  animation-delay: 240ms;
+}
+.landing-system .spec > div:nth-child(6) {
+  animation-delay: 280ms;
+}
+.landing-system .demo {
+  animation-delay: 320ms;
+}
+.landing .start {
+  animation-delay: 120ms;
+}
+
+/* Background: light beam and grain, in the manner of backgrounds.supply */
+.landing {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.landing::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -30% -20% auto 20%;
+  height: 120%;
+  background:
+    radial-gradient(
+      40% 55% at 70% 20%,
+      rgba(74, 140, 255, 0.32),
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 45% at 45% 5%,
+      rgba(120, 90, 255, 0.16),
+      transparent 70%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 38%,
+      rgba(74, 140, 255, 0.14) 48%,
+      transparent 58%
+    );
+  filter: blur(40px);
+  transform: rotate(-8deg);
+  animation: t-beam 18s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.landing::after,
+.shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--grain);
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+@keyframes t-beam {
+  to {
+    transform: rotate(-4deg) translate3d(-4%, 3%, 0);
+  }
+}
+.page-head {
+  position: relative;
+}
+.page-head::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -24px;
+  right: -24px;
+  top: -20px;
+  height: 160px;
+  background:
+    radial-gradient(
+      50% 100% at 15% 0%,
+      rgba(74, 140, 255, 0.09),
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 80% at 60% 0%,
+      rgba(120, 90, 255, 0.05),
+      transparent 70%
+    );
+  pointer-events: none;
+}
+.main {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+.empty {
+  background: radial-gradient(
+    40% 60% at 50% 0%,
+    rgba(74, 140, 255, 0.06),
+    transparent 70%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  details::details-content {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media print {
+  .landing::after,
+  .shell::after {
+    display: none;
+  }
+}

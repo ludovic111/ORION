@@ -19,81 +19,94 @@ import { deriveKey, encrypt } from "../../shared/crypto.ts";
 export const exportFormats = [
   {
     id: "orion",
-    name: "Archive ORION chiffrée",
+    name: "Archive ORION",
     extension: ".orion",
-    detail:
-      "Pour transmettre ou reprendre le journal, avec tout son historique.",
-    group: "Reprendre et transmettre",
+    detail: "Chiffrée. Journal, versions et plan radio. Réimportable.",
+    group: "Archive",
   },
   {
     id: "json",
     name: "Archive JSON",
     extension: ".json",
-    detail: "Format ouvert, réimportable, historique complet. Non chiffré.",
-    group: "Reprendre et transmettre",
+    detail: "En clair. Journal, versions et plan radio. Réimportable.",
+    group: "Archive",
+  },
+  {
+    id: "sheets",
+    name: "Fiches messages A4",
+    extension: ".pdf",
+    detail: "Une fiche par entrée, ordre chronologique.",
+    group: "Impression",
   },
   {
     id: "pdf",
-    name: "Document PDF",
+    name: "Journal PDF",
     extension: ".pdf",
-    detail: "Journal paginé, prêt à lire ou à imprimer.",
-    group: "Lire et partager",
+    detail: "Tableau chronologique paginé A4.",
+    group: "Impression",
+  },
+  {
+    id: "radio",
+    name: "Plan du réseau radio",
+    extension: ".pdf",
+    detail: "Noms d’appel, groupes, terminaux, remises, contrôles.",
+    group: "Impression",
   },
   {
     id: "xlsx",
     name: "Excel",
     extension: ".xlsx",
-    detail: "Colonnes filtrables et en-tête figé.",
-    group: "Lire et partager",
+    detail: "Filtres, en-tête figé.",
+    group: "Bureautique",
   },
   {
     id: "docx",
     name: "Word",
     extension: ".docx",
-    detail: "Document modifiable, toutes les informations des entrées.",
-    group: "Lire et partager",
+    detail: "Document modifiable.",
+    group: "Bureautique",
   },
   {
     id: "ods",
     name: "OpenDocument",
     extension: ".ods",
-    detail: "Tableur ouvert pour LibreOffice et les suites compatibles.",
-    group: "Lire et partager",
+    detail: "Tableur LibreOffice.",
+    group: "Bureautique",
   },
   {
     id: "csv",
     name: "CSV",
     extension: ".csv",
-    detail: "UTF-8, séparateur point-virgule. Compatible Excel.",
-    group: "Formats ouverts",
+    detail: "UTF-8, point-virgule.",
+    group: "Texte",
   },
   {
     id: "tsv",
     name: "TSV",
     extension: ".tsv",
-    detail: "Texte tabulé pour les tableurs et outils de traitement.",
-    group: "Formats ouverts",
+    detail: "UTF-8, tabulation.",
+    group: "Texte",
   },
   {
     id: "html",
-    name: "Page HTML",
+    name: "HTML",
     extension: ".html",
-    detail: "Document autonome, lisible dans un navigateur.",
-    group: "Formats ouverts",
+    detail: "Page autonome.",
+    group: "Texte",
   },
   {
     id: "txt",
-    name: "Texte brut",
+    name: "Texte",
     extension: ".txt",
-    detail: "Lisible partout, sans logiciel spécialisé.",
-    group: "Formats ouverts",
+    detail: "Texte brut.",
+    group: "Texte",
   },
   {
     id: "md",
     name: "Markdown",
     extension: ".md",
-    detail: "Texte structuré pour la documentation.",
-    group: "Formats ouverts",
+    detail: "Texte structuré.",
+    group: "Texte",
   },
 ] as const;
 export type ExportFormat = (typeof exportFormats)[number]["id"];
@@ -186,7 +199,16 @@ export async function makeExport(
   journal: Journal,
   format: ExportFormat,
   password = "",
+  author = "",
 ): Promise<Blob> {
+  if (format === "sheets") {
+    const { messagesPdf } = await import("../print/pdf.ts");
+    return messagesPdf(journal, chronological(journal.entries));
+  }
+  if (format === "radio") {
+    const { radioPdf } = await import("../print/pdf.ts");
+    return radioPdf(journal, author || "—");
+  }
   if (format === "orion" || format === "json") {
     const value =
       format === "orion"
@@ -215,24 +237,11 @@ export async function makeExport(
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
   if (format === "pdf") {
-    const [{ jsPDF }, { autoTable }] = await Promise.all([
-      import("jspdf"),
+    const [{ pdfDocument }, { autoTable }] = await Promise.all([
+      import("../print/pdf.ts"),
       import("jspdf-autotable"),
     ]);
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
-    const [regular, semibold] = await Promise.all([
-      import("./pdf-font-regular.ts"),
-      import("./pdf-font-semibold.ts"),
-    ]);
-    doc.addFileToVFS("Plex-Regular.ttf", regular.default);
-    doc.addFileToVFS("Plex-Semibold.ttf", semibold.default);
-    doc.addFont("Plex-Regular.ttf", "Plex", "normal");
-    doc.addFont("Plex-Semibold.ttf", "Plex", "bold");
-    doc.setFont("Plex", "normal");
+    const doc = await pdfDocument();
     doc.setFontSize(20);
     doc.text(doc.splitTextToSize(journal.title, 180), 15, 20);
     const heading = doc.splitTextToSize(
@@ -276,7 +285,7 @@ export async function makeExport(
         overflow: "linebreak",
         valign: "top",
       },
-      headStyles: { fillColor: [23, 37, 54] },
+      headStyles: { fillColor: [16, 19, 24] },
       columnStyles: {
         0: { cellWidth: 32 },
         1: { cellWidth: 105 },
@@ -317,8 +326,8 @@ export function download(blob: Blob, filename: string) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
-export const fileName = (journal: Journal, extension: string) =>
-  `orion-${journal.title
+export const fileName = (journal: Journal, extension: string, suffix = "") =>
+  `orion-${suffix ? suffix + "-" : ""}${journal.title
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .replace(/[^a-zA-Z0-9-]+/g, "-")
