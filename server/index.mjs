@@ -67,6 +67,6 @@ server.listen(
   process.env.HOST || "127.0.0.1",
   () =>
     console.log(
-      `ORION · http://${process.env.HOST || "127.0.0.1"}:${server.address().port}`,
+      `orion aic · http://${process.env.HOST || "127.0.0.1"}:${server.address().port}`,
     ),
 );

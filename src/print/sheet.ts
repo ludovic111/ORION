@@ -70,7 +70,7 @@ export function messageSheet(entry: Entry): FormSheet {
       ? { text: "ENTRÉE ANNULÉE · conservée pour la traçabilité", alert: true }
       : revised
         ? {
-            text: `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive ORION`,
+            text: `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive orion aic`,
           }
         : undefined,
     visa: [

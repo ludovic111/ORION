@@ -122,7 +122,7 @@ export function Handover({
         </>
       )}
       <p className="hint">
-        Autre poste : archive .orion, phrase transmise par un canal séparé.
+        Autre poste : archive .orionaic, phrase transmise par un canal séparé.
       </p>
       <div className="modal-actions">
         <button onClick={onTakeOver} disabled={!!journal.closedAt}>

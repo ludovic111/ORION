@@ -19,8 +19,8 @@ import { deriveKey, encrypt } from "../../shared/crypto.ts";
 export const exportFormats = [
   {
     id: "orion",
-    name: "Archive ORION",
-    extension: ".orion",
+    name: "Archive orion aic",
+    extension: ".orionaic",
     detail: "Chiffrée. Journal, versions et plan radio. Réimportable.",
     group: "Archive",
   },
@@ -177,7 +177,7 @@ export function docx(journal: Journal): Uint8Array {
       `Réf. ${journal.reference} · Export ${dateTime(new Date().toISOString())} · Europe/Zurich`,
     ),
     paragraph(
-      "État actuel des entrées ; historique complet dans l’archive ORION.",
+      "État actuel des entrées ; historique complet dans l’archive orion aic.",
     ),
     ...chronological(journal.entries).flatMap((e) => [
       paragraph(
@@ -245,7 +245,7 @@ export async function makeExport(
     doc.setFontSize(20);
     doc.text(doc.splitTextToSize(journal.title, 180), 15, 20);
     const heading = doc.splitTextToSize(
-      `${journal.organization} · ${journal.location}\n${journal.mode} · ${journal.classification} · ${journal.reference}\nExport ${dateTime(new Date().toISOString())} · Europe/Zurich\nÉtat actuel ; historique complet dans l’archive ORION.`,
+      `${journal.organization} · ${journal.location}\n${journal.mode} · ${journal.classification} · ${journal.reference}\nExport ${dateTime(new Date().toISOString())} · Europe/Zurich\nÉtat actuel ; historique complet dans l’archive orion aic.`,
       180,
     );
     const startY = 22 + doc.splitTextToSize(journal.title, 180).length * 8;
@@ -297,7 +297,7 @@ export async function makeExport(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.text(
-        `ORION · ${journal.classification} · ${i} / ${doc.getNumberOfPages()}`,
+        `orion aic · ${journal.classification} · ${i} / ${doc.getNumberOfPages()}`,
         15,
         288,
       );
@@ -327,7 +327,7 @@ export function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 export const fileName = (journal: Journal, extension: string, suffix = "") =>
-  `orion-${suffix ? suffix + "-" : ""}${journal.title
+  `orion-aic-${suffix ? suffix + "-" : ""}${journal.title
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .replace(/[^a-zA-Z0-9-]+/g, "-")

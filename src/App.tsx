@@ -241,7 +241,7 @@ export default function App() {
     return [...seen.values()].slice(0, 300);
   }, [journal]);
   useEffect(() => {
-    document.title = late.length ? `(${late.length}) ORION` : "ORION";
+    document.title = late.length ? `(${late.length}) orion aic` : "orion aic";
   }, [late.length]);
   const pickedEntries = chronological(
     journal?.entries.filter((e) => picked.has(e.id)) ?? [],
@@ -482,7 +482,7 @@ export default function App() {
     return (
       <div className="boot">
         <Mark />
-        <span>ORION</span>
+        <span>orion aic</span>
       </div>
     );
   if (!workspace || !journal)
@@ -526,7 +526,7 @@ export default function App() {
         </button>
         <div className="topbar-brand">
           <Mark />
-          <span>ORION</span>
+          <span>orion aic</span>
         </div>
         <nav
           className="modules slider"
@@ -683,10 +683,10 @@ export default function App() {
           )}
           <a
             className="rail-version"
-            href="/source/orion-source.tar.gz"
+            href="/source/orion-aic-source.tar.gz"
             download
           >
-            ORION 1.2 · AGPL-3.0 · source
+            orion aic 2.0 · AGPL-3.0 · source
           </a>
         </div>
       </aside>
@@ -753,7 +753,7 @@ export default function App() {
         {updateReady && (
           <div className="banner info" role="status">
             <RefreshCw size={15} />
-            <span>Nouvelle version d’ORION disponible.</span>
+            <span>Nouvelle version d’orion aic disponible.</span>
             <button
               className="link"
               onClick={() => {
@@ -1318,7 +1318,7 @@ export default function App() {
             );
             if (unexported.length)
               throw new Error(
-                `Exportez d’abord une archive ORION ou JSON de chaque journal (${unexported.length} restant${unexported.length > 1 ? "s" : ""}).`,
+                `Exportez d’abord une archive orion aic ou JSON de chaque journal (${unexported.length} restant${unexported.length > 1 ? "s" : ""}).`,
               );
             if (
               window.prompt(

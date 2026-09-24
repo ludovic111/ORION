@@ -42,7 +42,7 @@ function Band({
   return (
     <header className="sheet-band">
       <div className="sheet-band-top">
-        <span>ORION · {kind}</span>
+        <span>orion aic · {kind}</span>
         <span className="chips">
           <b className={header.mode === "Intervention" ? "solid" : ""}>
             {header.mode}
@@ -236,7 +236,7 @@ function Label({ terminal }: { terminal: Terminal }) {
         <path d={qrPath(matrix)} fill="#101318" />
       </svg>
       <div>
-        <span className="cell-label">ORION · radio</span>
+        <span className="cell-label">orion aic · radio</span>
         <strong>{terminal.label}</strong>
         <small>{terminal.model}</small>
         {terminal.rfsi && <small>RFSI {terminal.rfsi}</small>}

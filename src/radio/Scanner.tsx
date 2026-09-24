@@ -83,7 +83,7 @@ export function Scanner({
         <p className="hint">
           Lecture de QR indisponible dans ce navigateur. Saisir le numéro, ou
           scanner l’étiquette avec l’appareil photo du téléphone : le lien ouvre
-          ce terminal dans ORION.
+          ce terminal dans orion aic.
         </p>
       )}
       <form

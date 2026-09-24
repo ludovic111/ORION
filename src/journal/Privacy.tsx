@@ -17,7 +17,7 @@ export function Privacy({ onClose }: { onClose: () => void }) {
           </dd>
         </div>
         <div>
-          <dt>Archive .orion</dt>
+          <dt>Archive .orionaic</dt>
           <dd>AES-256-GCM · PBKDF2-SHA-256, 600 000 itérations.</dd>
         </div>
         <div>
@@ -53,7 +53,7 @@ export function Privacy({ onClose }: { onClose: () => void }) {
         </li>
       </ul>
       <div className="action-row">
-        <a className="button" href="/source/orion-source.tar.gz" download>
+        <a className="button" href="/source/orion-aic-source.tar.gz" download>
           Code source · AGPL-3.0
         </a>
         <a

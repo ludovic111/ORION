@@ -336,7 +336,7 @@ export function parseArchive(input: unknown): Archive {
   const parsed = archiveSchema.safeParse(input);
   if (!parsed.success)
     throw new Error(
-      "Fichier ORION invalide ou version non prise en charge. Le journal actuel est intact.",
+      "Fichier orion aic invalide ou version non prise en charge. Le journal actuel est intact.",
     );
   return parsed.data;
 }

@@ -135,7 +135,7 @@ export function importCsv(text: string, title: string): Archive {
     !header.includes("Événement (ISO)")
   )
     throw new Error(
-      "Colonnes « Message » et « Événement (ISO) » requises. Utilisez le modèle CSV ORION.",
+      "Colonnes « Message » et « Événement (ISO) » requises. Utilisez le modèle CSV orion aic.",
     );
   if (new Set(header).size !== header.length)
     throw new Error("Le CSV comporte des colonnes dupliquées.");
@@ -280,7 +280,7 @@ export const xml = (s: string) =>
 export function asText(journal: Journal, markdown = false): string {
   const prefix = markdown ? "# " : "";
   return (
-    `${prefix}${journal.title}\n${journal.organization} · ${journal.location}\n${journal.mode} · ${journal.classification} · Réf. ${journal.reference || "—"}\nExport du ${dateTime(new Date().toISOString())} · Heures Europe/Zurich\nÉtat actuel des entrées ; historique complet dans l’archive ORION.\n\n` +
+    `${prefix}${journal.title}\n${journal.organization} · ${journal.location}\n${journal.mode} · ${journal.classification} · Réf. ${journal.reference || "—"}\nExport du ${dateTime(new Date().toISOString())} · Heures Europe/Zurich\nÉtat actuel des entrées ; historique complet dans l’archive orion aic.\n\n` +
     chronological(journal.entries)
       .map(
         (e) =>
@@ -305,5 +305,5 @@ export function asHtml(journal: Journal): string {
           .join("")}</dl></article>`,
     )
     .join("");
-  return `<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(journal.title)}</title><style>body{font:14px system-ui;max-width:1000px;margin:40px auto;padding:20px;color:#17202d}h1{font-size:28px}article{border-top:1px solid #aab3bf;margin-top:30px;padding-top:10px}dl{display:grid;grid-template-columns:170px 1fr;gap:8px}dt{font-weight:600}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}h2{font-size:18px}@media print{body{margin:0}h2{break-after:avoid}dt,dd{break-inside:avoid}}</style><h1>${xml(journal.title)}</h1><p>${xml(journal.organization)} · ${xml(journal.location)} · ${xml(journal.mode)} · ${xml(journal.classification)}</p><p>Référence : ${xml(journal.reference)} · Export du ${xml(dateTime(new Date().toISOString()))} · Europe/Zurich</p><p>État actuel des entrées. Historique complet dans l’archive ORION.</p>${details}</html>`;
+  return `<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(journal.title)}</title><style>body{font:14px system-ui;max-width:1000px;margin:40px auto;padding:20px;color:#17202d}h1{font-size:28px}article{border-top:1px solid #aab3bf;margin-top:30px;padding-top:10px}dl{display:grid;grid-template-columns:170px 1fr;gap:8px}dt{font-weight:600}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}h2{font-size:18px}@media print{body{margin:0}h2{break-after:avoid}dt,dd{break-inside:avoid}}</style><h1>${xml(journal.title)}</h1><p>${xml(journal.organization)} · ${xml(journal.location)} · ${xml(journal.mode)} · ${xml(journal.classification)}</p><p>Référence : ${xml(journal.reference)} · Export du ${xml(dateTime(new Date().toISOString()))} · Europe/Zurich</p><p>État actuel des entrées. Historique complet dans l’archive orion aic.</p>${details}</html>`;
 }

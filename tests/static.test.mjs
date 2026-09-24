@@ -10,7 +10,7 @@ before(async () => {
   await mkdir(join(directory, "dist"));
   await writeFile(
     join(directory, "dist", "index.html"),
-    "<!doctype html><title>ORION fixture</title>",
+    "<!doctype html><title>orion aic fixture</title>",
   );
   await writeFile(join(directory, ".env"), "TEST_ONLY_SECRET=not-for-http");
   child = spawn(process.execPath, [resolve("server/index.mjs")], {
@@ -40,7 +40,7 @@ after(async () => {
 test("static server serves the application with restrictive headers and no cookies", async () => {
   const response = await fetch(base);
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /ORION fixture/);
+  assert.match(await response.text(), /orion aic fixture/);
   assert.match(response.headers.get("content-type"), /text\/html/);
   assert.equal(response.headers.get("set-cookie"), null);
   for (const directive of [

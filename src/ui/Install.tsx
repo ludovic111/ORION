@@ -47,7 +47,7 @@ export function useInstall() {
 
 export function InstallHelp({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="Installer ORION" onClose={onClose}>
+    <Modal title="Installer orion aic" onClose={onClose}>
       <dl className="spec">
         <div>
           <dt>iPhone · iPad</dt>
@@ -69,7 +69,7 @@ export function InstallHelp({ onClose }: { onClose: () => void }) {
         L’app installée s’ouvre en plein écran et fonctionne hors ligne. Ses
         données restent propres à ce navigateur : une session ouverte dans
         Safari n’apparaît pas dans l’app installée, et inversement. Transférer
-        par archive .orion si besoin.
+        par archive .orionaic si besoin.
       </p>
     </Modal>
   );

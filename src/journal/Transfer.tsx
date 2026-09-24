@@ -228,7 +228,7 @@ export function ImportModal({
     } catch (err) {
       setError(
         err instanceof SyntaxError
-          ? "Ce fichier n’est pas un fichier JSON / ORION valide."
+          ? "Ce fichier n’est pas un fichier JSON / orion aic valide."
           : (err as Error).message,
       );
     } finally {
@@ -246,11 +246,11 @@ export function ImportModal({
         <FileUp size={20} />
         <strong>Choisir un fichier</strong>
         <span className="mono">
-          .orion · .json · .csv · .tsv · 32 Mo max · lu localement
+          .orionaic · .orion · .json · .csv · .tsv · 32 Mo max · lu localement
         </span>
         <input
           type="file"
-          accept=".orion,.json,.csv,.tsv"
+          accept=".orionaic,.orion,.json,.csv,.tsv"
           disabled={busy}
           onChange={(e) => void read(e.target.files?.[0])}
         />

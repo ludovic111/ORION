@@ -6,7 +6,7 @@ execFileSync(
   "tar",
   [
     "-czf",
-    "public/source/orion-source.tar.gz",
+    "public/source/orion-aic-source.tar.gz",
     "src",
     "shared",
     "server",

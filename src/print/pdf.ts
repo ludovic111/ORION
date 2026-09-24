@@ -75,7 +75,7 @@ function chip(
 const pageWidth = (doc: Doc) => doc.internal.pageSize.getWidth();
 const pageHeight = (doc: Doc) => doc.internal.pageSize.getHeight();
 
-/** Document band shared by every ORION print. Returns the y below it. */
+/** Document band shared by every orion aic print. Returns the y below it. */
 export function drawBand(
   doc: Doc,
   header: SheetHeader,
@@ -86,7 +86,7 @@ export function drawBand(
   const W = pageWidth(doc);
   const inner = W - PAGE.m * 2;
   font(doc, 6.5, true, MUTED);
-  doc.text(`ORION  ·  ${kind.toUpperCase()}`, PAGE.m, top + 2, {
+  doc.text(`orion aic  ·  ${kind.toUpperCase()}`, PAGE.m, top + 2, {
     charSpace: 0.35,
   });
   let x = W - PAGE.m;
@@ -452,7 +452,7 @@ export async function labelsPdf(journal: Journal, origin: string) {
       }),
     );
     font(doc, 6, true, MUTED);
-    doc.text("ORION · RADIO", x + 35, y + 8, { charSpace: 0.3 });
+    doc.text("orion aic · RADIO", x + 35, y + 8, { charSpace: 0.3 });
     font(doc, 16, true);
     doc.text(terminal.label, x + 35, y + 16);
     font(doc, 7, false, MUTED);

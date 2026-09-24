@@ -35,7 +35,7 @@ export function Landing({
       <header className="landing-bar">
         <span className="topbar-brand">
           <Mark />
-          <span>ORION</span>
+          <span>orion aic</span>
         </span>
         <span className="landing-version">1.2</span>
         <button className="link" onClick={onPrivacy}>
@@ -64,7 +64,7 @@ export function Landing({
             </div>
             <div>
               <dt>Transfert</dt>
-              <dd>Archive .orion chiffrée</dd>
+              <dd>Archive .orionaic chiffrée</dd>
             </div>
             <div>
               <dt>Impression</dt>
@@ -166,7 +166,7 @@ export function Landing({
             </>
           )}
           <footer className="panel-foot">
-            <span>Fichier .orion, .json ou .csv</span>
+            <span>Fichier .orionaic, .json ou .csv</span>
             <button onClick={onImport}>
               <FileUp size={14} />
               Importer
@@ -184,7 +184,7 @@ export function Landing({
           Logiciel indépendant. Sans affiliation ni homologation OFPP ou État de
           Genève.
         </span>
-        <a href="/source/orion-source.tar.gz" download>
+        <a href="/source/orion-aic-source.tar.gz" download>
           Code source · AGPL-3.0
         </a>
       </footer>

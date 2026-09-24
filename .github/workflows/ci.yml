@@ -1,4 +1,4 @@
-name: ORION checks
+name: orion aic checks
 on: [push, pull_request]
 permissions:
   contents: read
