@@ -123,7 +123,8 @@ class Peer {
   }
 }
 
-export function attachRelay(server) {
+/** `shared`: other upgrade handlers exist (Vite's hot reload in development). */
+export function attachRelay(server, { shared = false } = {}) {
   const rooms = new Map();
   const announce = (room) => {
     const peers = rooms.get(room);
@@ -152,7 +153,8 @@ export function attachRelay(server) {
       const url = new URL(req.url, "http://localhost");
       const room = url.searchParams.get("room") ?? "";
       const key = req.headers["sec-websocket-key"];
-      if (url.pathname !== "/sync") return reject("404 Not Found");
+      if (url.pathname !== "/sync")
+        return shared ? undefined : reject("404 Not Found");
       if (
         !/^[a-f0-9]{64}$/.test(room) ||
         typeof key !== "string" ||

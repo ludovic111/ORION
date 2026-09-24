@@ -1946,6 +1946,25 @@ button.row-item:hover,
     }
   }
 }
+@media (max-width: 480px) {
+  .bar > .brand {
+    display: none;
+  }
+  .bar-status > .icon-button {
+    display: none;
+  }
+  .journal-switch {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .bar-status .status-chip {
+    padding: 0 8px;
+  }
+  .bar-status .status-chip .avatars {
+    display: none;
+  }
+}
 @media print {
   .cosmos,
   .dock,
