@@ -442,9 +442,9 @@ docker run -p 4311:4311 orion-aic
 
 ### Railway (hébergement de production)
 
-- Projet Railway `orion`, service construit depuis le `Dockerfile` de la branche **`main`** ; configuration dans [`railway.json`](railway.json).
-- Région **EU West (Amsterdam, `europe-west4-drams3a`)**, la plus proche de la Suisse parmi les régions Railway. Une seule instance : le relais garde les salles en mémoire.
-- Domaine : <https://orionaic.xyz> (et `www.orionaic.xyz`), DNS chez Porkbun (ALIAS / CNAME vers Railway). L’ancienne adresse `orion-web-production-1466.up.railway.app` reste active.
+- Projet et service Railway `orion-aic`, construits depuis le `Dockerfile` de la branche **`main`** du dépôt `ludovic111/orion-aic` (réglages du service : constructeur Dockerfile, contrôle de santé, redémarrage en cas d’échec).
+- Région **EU West (Amsterdam, `europe-west4-drams3a`)**, la plus proche de la Suisse parmi les régions Railway, réglée dans Settings → Scale. Une seule instance : le relais garde les salles en mémoire.
+- Domaine : <https://orionaic.xyz> (et `www.orionaic.xyz`), DNS chez Porkbun : ALIAS `@` et CNAME `www` vers Railway, plus les enregistrements TXT `_railway-verify` de vérification. L’ancienne adresse `orion-web-production-1466.up.railway.app` reste active.
 - **Chaque push sur `main` redéploie automatiquement.** Contrôle de santé : `/healthz`.
 - Variables : `PORT=4311`, `HOST=0.0.0.0`. Aucun volume ni base de données.
 

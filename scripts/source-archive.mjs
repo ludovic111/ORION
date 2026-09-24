@@ -26,7 +26,6 @@ execFileSync(
       "SECURITY.md",
       "THIRD_PARTY_NOTICES.md",
       "Dockerfile",
-      "railway.json",
       ".github/workflows",
       "public/_headers",
       "public/orion.svg",
