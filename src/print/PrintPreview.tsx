@@ -28,7 +28,23 @@ export type PrintJob =
       assignmentId: string;
     }
   | { kind: "report"; journal: Journal; author: string; range: ReportRange }
-  | { kind: "labels"; journal: Journal };
+  | { kind: "labels"; journal: Journal }
+  | {
+      kind: "forms";
+      journal: Journal;
+      sheets: FormSheet[];
+      title: string;
+      name: string;
+    }
+  | {
+      kind: "tables";
+      journal: Journal;
+      title: string;
+      extra: string;
+      tables: SheetTable[];
+      landscape: boolean;
+      name: string;
+    };
 
 function Band({
   header,
@@ -272,6 +288,7 @@ function LabelsView({ journal, stamp }: { journal: Journal; stamp: string }) {
 
 function forms(job: PrintJob): FormSheet[] {
   if (job.kind === "messages") return job.entries.map(messageSheet);
+  if (job.kind === "forms") return job.sheets;
   if (job.kind === "handout") {
     const terminal = job.journal.radio.terminals.find(
       (t) => t.id === job.terminalId,
@@ -286,8 +303,20 @@ function forms(job: PrintJob): FormSheet[] {
   return [];
 }
 
-function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
-  if (job.kind === "messages" || job.kind === "handout")
+export function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
+  if (job.kind === "tables")
+    return (
+      <TablesSheetView
+        journal={job.journal}
+        kind={job.title}
+        extra={job.extra}
+        tables={job.tables}
+        landscape={job.landscape}
+        footer={job.name}
+        stamp={stamp}
+      />
+    );
+  if (job.kind === "messages" || job.kind === "handout" || job.kind === "forms")
     return (
       <>
         {forms(job).map((sheet, i) => (
@@ -331,6 +360,10 @@ function title(job: PrintJob) {
   if (job.kind === "radio") return "Plan du réseau radio · A4 paysage";
   if (job.kind === "handout") return "Quittance de remise radio · A4 portrait";
   if (job.kind === "report") return "Rapport de situation · A4 portrait";
+  if (job.kind === "forms")
+    return `${job.sheets.length} ${job.title} · A4 portrait`;
+  if (job.kind === "tables")
+    return `${job.title} · A4 ${job.landscape ? "paysage" : "portrait"}`;
   return `${job.journal.radio.terminals.length} étiquettes QR · A4 portrait`;
 }
 
@@ -383,6 +416,19 @@ export function PrintPreview({
         save(await pdfs.radioPdf(journal, job.author), "radio");
       else if (job.kind === "report")
         save(await pdfs.reportPdf(journal, job.author, job.range), "rapport");
+      else if (job.kind === "forms")
+        save(await pdfs.formsPdf(journal, job.sheets, job.title), job.name);
+      else if (job.kind === "tables")
+        save(
+          await pdfs.tablesPdf(journal, {
+            kind: job.title,
+            extra: job.extra,
+            tables: job.tables,
+            orientation: job.landscape ? "landscape" : "portrait",
+            footer: job.name,
+          }),
+          job.name,
+        );
       else save(await pdfs.labelsPdf(journal, location.origin), "etiquettes");
     } catch (err) {
       setError((err as Error).message);
@@ -434,5 +480,52 @@ export function PrintPreview({
         document.body,
       )}
     </>
+  );
+}
+
+/**
+ * Prints jobs one after the other without preview (impression automatique).
+ * The browser shows its print dialog unless it runs in kiosk printing mode.
+ */
+export function AutoPrint({
+  queue,
+  onDone,
+  paused,
+}: {
+  queue: PrintJob[];
+  onDone: () => void;
+  paused: boolean;
+}) {
+  const job = paused ? undefined : queue[0];
+  const [stamp, setStamp] = useState(printedAt);
+  const done = useRef(onDone);
+  done.current = onDone;
+  useEffect(() => {
+    if (!job) return;
+    setStamp(printedAt());
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.removeEventListener("afterprint", finish);
+      done.current();
+    };
+    window.addEventListener("afterprint", finish);
+    // Let the sheets render before opening the print dialog.
+    const timer = setTimeout(() => {
+      window.print();
+      setTimeout(finish, 400);
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("afterprint", finish);
+    };
+  }, [job]);
+  if (!job) return null;
+  return createPortal(
+    <div className="print-root" aria-hidden="true">
+      <Sheets job={job} stamp={stamp} />
+    </div>,
+    document.body,
   );
 }

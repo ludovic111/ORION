@@ -30,6 +30,7 @@ export function JournalRow({
   onDelete,
   readOnly,
   at,
+  fresh = false,
 }: {
   entry: Journal["entries"][number];
   newDay: boolean;
@@ -40,6 +41,7 @@ export function JournalRow({
   onDelete: () => void;
   readOnly: boolean;
   at: number;
+  fresh?: boolean;
 }) {
   const f = current(entry);
   const late = overdue(entry, at);
@@ -55,7 +57,7 @@ export function JournalRow({
           f.priority === "Urgent" ? "urgent" : "",
           f.status === "Annulé" ? "cancelled" : "",
           picked ? "picked" : "",
-          Date.now() - Date.parse(entry.createdAt) < 4000 ? "fresh" : "",
+          fresh ? "fresh" : "",
         ].join(" ")}
       >
         <td className="pick">

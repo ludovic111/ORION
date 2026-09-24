@@ -5,6 +5,7 @@ import {
   type Entry,
   type Journal,
 } from "../../shared/journal.ts";
+import type { Message } from "../../shared/ops.ts";
 import {
   callsignKey,
   type Assignment,
@@ -296,3 +297,73 @@ const talkgroupName = (radio: Radio, id: string) => {
 };
 
 export const printedAt = () => dateTime(new Date().toISOString());
+
+/** Standard A4 message form (formule de message) for the intake. */
+export function intakeSheet(message: Message, number: number): FormSheet {
+  const urgent = message.priority === "Urgent";
+  return {
+    kind: "Formule de message",
+    idLabel: "Message",
+    number: `M${String(number).padStart(3, "0")}`,
+    boxes: [
+      { label: "Priorité", value: message.priority, alert: urgent },
+      { label: "Catégorie", value: or(message.category) },
+      { label: "État", value: message.status },
+    ],
+    note: message.replyNeeded
+      ? {
+          text: `RÉPONSE ATTENDUE${message.replyBy ? ` AVANT ${dateTime(message.replyBy)}` : ""}`,
+          alert: true,
+        }
+      : undefined,
+    sections: [
+      {
+        title: "Transmission",
+        rows: [
+          [
+            { label: "De", value: or(message.from), strong: true, span: 2 },
+            { label: "À", value: or(message.to), strong: true, span: 2 },
+          ],
+          [
+            { label: "Reçu le", value: dateTime(message.receivedAt), mono: true },
+            { label: "Canal", value: or(message.via) },
+            { label: "Reçu par", value: or(message.by) },
+          ],
+        ],
+      },
+      {
+        title: "Message",
+        rows: [
+          [{ label: "Objet", value: or(message.subject), strong: true }],
+          [{ label: "Texte", value: or(message.body), tall: true }],
+        ],
+      },
+      {
+        title: "Lieu",
+        rows: [
+          [
+            { label: "Lieu / secteur", value: or(message.location), span: 2 },
+            { label: "Coordonnées", value: or(message.coordinates), mono: true },
+          ],
+        ],
+      },
+      {
+        title: "Traitement",
+        rows: [
+          [
+            { label: "Traité par", value: or(message.handledBy) },
+            { label: "Mots-clés", value: or(message.tags.join(", ")) },
+          ],
+          [{ label: "Remarques", value: or(message.notes) }],
+        ],
+      },
+    ],
+    visa: [
+      {
+        title: "Visa",
+        labels: ["Reçu par", "Synthèse / journal", "Transmis à", "Heure"],
+      },
+    ],
+    footer: `message M${String(number).padStart(3, "0")}`,
+  };
+}

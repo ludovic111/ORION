@@ -192,7 +192,7 @@ details > summary svg {
 }
 @keyframes t-row-flash {
   from {
-    background: rgba(74, 140, 255, 0.16);
+    background: rgba(var(--accent-rgb), 0.16);
   }
 }
 .grid tr.fresh td {
@@ -209,132 +209,6 @@ details > summary svg {
   }
 }
 
-/* Texts reveal on the landing */
-@keyframes t-line-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-    filter: blur(3px);
-  }
-}
-.landing-system h1,
-.landing-system .spec > div,
-.landing-system .demo,
-.landing .start {
-  animation: t-line-in 500ms var(--ease) both;
-}
-.landing-system .spec > div:nth-child(1) {
-  animation-delay: 80ms;
-}
-.landing-system .spec > div:nth-child(2) {
-  animation-delay: 120ms;
-}
-.landing-system .spec > div:nth-child(3) {
-  animation-delay: 160ms;
-}
-.landing-system .spec > div:nth-child(4) {
-  animation-delay: 200ms;
-}
-.landing-system .spec > div:nth-child(5) {
-  animation-delay: 240ms;
-}
-.landing-system .spec > div:nth-child(6) {
-  animation-delay: 280ms;
-}
-.landing-system .demo {
-  animation-delay: 320ms;
-}
-.landing .start {
-  animation-delay: 120ms;
-}
-
-/* Background: light beam and grain, in the manner of backgrounds.supply */
-.landing {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-.landing::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -30% -20% auto 20%;
-  height: 120%;
-  background:
-    radial-gradient(
-      40% 55% at 70% 20%,
-      rgba(74, 140, 255, 0.32),
-      transparent 70%
-    ),
-    radial-gradient(
-      30% 45% at 45% 5%,
-      rgba(120, 90, 255, 0.16),
-      transparent 70%
-    ),
-    linear-gradient(
-      115deg,
-      transparent 38%,
-      rgba(74, 140, 255, 0.14) 48%,
-      transparent 58%
-    );
-  filter: blur(40px);
-  transform: rotate(-8deg);
-  animation: t-beam 18s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-.landing::after,
-.shell::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: var(--grain);
-  opacity: 0.035;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-@keyframes t-beam {
-  to {
-    transform: rotate(-4deg) translate3d(-4%, 3%, 0);
-  }
-}
-.page-head {
-  position: relative;
-}
-.page-head::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  left: -24px;
-  right: -24px;
-  top: -20px;
-  height: 160px;
-  background:
-    radial-gradient(
-      50% 100% at 15% 0%,
-      rgba(74, 140, 255, 0.09),
-      transparent 70%
-    ),
-    radial-gradient(
-      30% 80% at 60% 0%,
-      rgba(120, 90, 255, 0.05),
-      transparent 70%
-    );
-  pointer-events: none;
-}
-.main {
-  position: relative;
-  isolation: isolate;
-  overflow-x: clip;
-}
-.empty {
-  background: radial-gradient(
-    40% 60% at 50% 0%,
-    rgba(74, 140, 255, 0.06),
-    transparent 70%
-  );
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -344,9 +218,4 @@ details > summary svg {
     transition: none !important;
   }
 }
-@media print {
-  .landing::after,
-  .shell::after {
-    display: none;
-  }
-}
+

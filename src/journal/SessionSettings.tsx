@@ -6,8 +6,7 @@ import {
   type Journal,
   type Workspace,
 } from "../../shared/journal";
-import { Modal } from "./Modal";
-export function Settings({
+export function SessionPanel({
   workspace,
   journal,
   persistent,
@@ -39,12 +38,7 @@ export function Settings({
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
   return (
-    <Modal
-      title="Session"
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-    >
+    <>
       <form
         className="settings-section"
         onSubmit={(e) => {
@@ -205,6 +199,6 @@ export function Settings({
           {done}
         </p>
       )}
-    </Modal>
+    </>
   );
 }
