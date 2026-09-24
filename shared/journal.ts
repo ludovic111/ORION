@@ -5,6 +5,7 @@ import {
   radioSchema,
   type Radio,
 } from "./radio.ts";
+import { emptyOps, opsSchema } from "./ops.ts";
 
 export const TYPES = [
   "Renseignement",
@@ -92,6 +93,12 @@ export const deletionSchema = z
     reason: text(1000).min(1),
   })
   .strict();
+export const syncSchema = z
+  .object({
+    clock: z.record(z.string().max(80), instant),
+    removed: z.record(z.string().max(80), instant),
+  })
+  .strict();
 export const journalSchema = z
   .object({
     id: z.uuid(),
@@ -106,6 +113,10 @@ export const journalSchema = z
     entries: z.array(entrySchema).max(10000),
     radio: radioSchema.default(emptyRadio),
     deleted: z.array(deletionSchema).max(10000).default([]),
+    ops: opsSchema.default(emptyOps),
+    // Live synchronisation: last local change per record id ("meta" for the
+    // journal header, "settings" for the référentiels) and removals.
+    sync: syncSchema.default(() => ({ clock: {}, removed: {} })),
   })
   .strict()
   .superRefine((journal, ctx) => {
@@ -141,6 +152,11 @@ export const workspaceSchema = z
     journals: z.array(journalSchema).min(1).max(100),
     activeId: z.uuid(),
     drafts: z.record(z.uuid(), draftSchema).optional(),
+    // Journals removed from the session, kept so a synchronised post does not
+    // bring them back.
+    gone: z.record(z.uuid(), instant).optional(),
+    // Session code of the live synchronisation, kept on this post only.
+    room: z.string().max(40).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {

@@ -7,6 +7,7 @@ import {
   type VaultKey,
 } from "../../shared/crypto";
 import { workspaceSchema, type Workspace } from "../../shared/journal";
+import { stampWorkspace } from "../../shared/sync";
 import { deleteVault, readVault, writeVault } from "./storage";
 async function acquireWriter(): Promise<() => void> {
   if (!navigator.locks)
@@ -29,8 +30,40 @@ async function acquireWriter(): Promise<() => void> {
       .catch(reject);
   });
 }
+type Update =
+  | Workspace
+  | null
+  | ((previous: Workspace | null) => Workspace | null);
 export function useWorkspace() {
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspace, setRaw] = useState<Workspace | null>(null);
+  // Journals changed on this post since the last synchronisation message.
+  const dirty = useRef(new Set<string>());
+  const [localTick, setLocalTick] = useState(0);
+  /** Local change: stamped for the synchronisation. */
+  const setWorkspace = useCallback((update: Update) => {
+    setRaw((previous) => {
+      const next = typeof update === "function" ? update(previous) : update;
+      if (!next || !previous || next === previous) return next;
+      const stamped = stampWorkspace(previous, next);
+      const before = new Map(previous.journals.map((j) => [j.id, j]));
+      for (const j of stamped.journals)
+        if (before.get(j.id) !== j) dirty.current.add(j.id);
+      if (stamped.gone !== previous.gone) dirty.current.add("*");
+      return stamped;
+    });
+    setLocalTick((t) => t + 1);
+  }, []);
+  /** Change received from another post: applied as is. */
+  const applyRemote = useCallback(
+    (update: (previous: Workspace) => Workspace) =>
+      setRaw((previous) => (previous ? update(previous) : previous)),
+    [],
+  );
+  const takeDirty = useCallback(() => {
+    const ids = [...dirty.current];
+    dirty.current.clear();
+    return ids;
+  }, []);
   const [vaultKey, setVaultKey] = useState<VaultKey | null>(null);
   const [stored, setStored] = useState<Encrypted | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +127,7 @@ export function useWorkspace() {
     return () => window.removeEventListener("beforeunload", before);
   }, [vaultKey]);
   const start = useCallback((value: Workspace) => {
-    setWorkspace(workspaceSchema.parse(value));
+    setRaw(workspaceSchema.parse(value));
     setSaveState("temporary");
     setError("");
   }, []);
@@ -113,7 +146,7 @@ export function useWorkspace() {
       saved.current = parsed;
       setStored(ciphertext);
       setVaultKey(key);
-      setWorkspace(parsed);
+      setRaw(parsed);
       setSaveState("saved");
       setError("");
       void navigator.storage?.persist?.().catch(() => {});
@@ -155,7 +188,7 @@ export function useWorkspace() {
       writer.current = release;
       saved.current = parsed;
       setVaultKey(vault);
-      setWorkspace(parsed);
+      setRaw(parsed);
       setSaveState("saved");
       setError("");
     } catch (err) {
@@ -176,7 +209,7 @@ export function useWorkspace() {
       saved.current = snapshot;
       setStored(ciphertext);
     }
-    setWorkspace(null);
+    setRaw(null);
     latest.current = null;
     saved.current = null;
     setVaultKey(null);
@@ -191,7 +224,7 @@ export function useWorkspace() {
     }
     await queue.current;
     if (vaultKey) await deleteVault();
-    setWorkspace(null);
+    setRaw(null);
     latest.current = null;
     saved.current = null;
     setVaultKey(null);
@@ -213,6 +246,9 @@ export function useWorkspace() {
   return {
     workspace,
     setWorkspace,
+    applyRemote,
+    takeDirty,
+    localTick,
     stored,
     loading,
     error,

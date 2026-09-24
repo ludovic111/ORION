@@ -1,0 +1,85 @@
+import { readFile, stat } from "node:fs/promises";
+import { resolve, extname, sep } from "node:path";
+
+// Static files of the built application. The server stores nothing: every
+// write (POST, PUT…) is refused and journal contents never reach it.
+const root = resolve("dist");
+const types = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".webmanifest": "application/manifest+json",
+  ".gz": "application/gzip",
+  ".png": "image/png",
+};
+// Map tiles (swisstopo), weather (Open-Meteo) and place search (geo.admin.ch)
+// are optional services queried from the browser on demand.
+export const MAP_ORIGINS =
+  "https://wmts.geo.admin.ch https://tile.openstreetmap.org";
+export const API_ORIGINS =
+  "https://api.open-meteo.com https://api3.geo.admin.ch";
+export function contentSecurityPolicy(host = "") {
+  const sockets = host ? ` wss://${host} ws://${host}` : "";
+  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${MAP_ORIGINS}; connect-src 'self'${sockets} ${API_ORIGINS}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'`;
+}
+
+export async function handle(req, res) {
+  res.setHeader(
+    "Content-Security-Policy",
+    contentSecurityPolicy(req.headers.host),
+  );
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()",
+  );
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.writeHead(405);
+    res.end();
+    return;
+  }
+  try {
+    const path = decodeURIComponent(
+      new URL(req.url, "http://localhost").pathname,
+    );
+    if (path === "/healthz") {
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.writeHead(200);
+      res.end("ok");
+      return;
+    }
+    if (path.startsWith("/api/") || path.includes("\0")) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+    const file = resolve(root, `.${path === "/" ? "/index.html" : path}`);
+    if (!file.startsWith(root + sep)) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    if (!(await stat(file)).isFile()) throw new Error("Not a file");
+    res.setHeader(
+      "Content-Type",
+      types[extname(file)] || "application/octet-stream",
+    );
+    res.setHeader(
+      "Cache-Control",
+      path.startsWith("/assets/")
+        ? "public, max-age=31536000, immutable"
+        : "no-cache",
+    );
+    res.writeHead(200);
+    res.end(req.method === "HEAD" ? undefined : await readFile(file));
+  } catch {
+    res.writeHead(404);
+    res.end("Not found");
+  }
+}

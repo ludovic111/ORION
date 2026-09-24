@@ -16,19 +16,27 @@
     "check": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "format": "prettier --write src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows",
-    "format:check": "prettier --check src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows"
+    "format:check": "prettier --check src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows",
+    "lan": "npm run build && node server/lan.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "d3-force": "^3.0.0",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
+    "motion": "^13.4.3",
     "qrcode-generator": "^2.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "selfsigned": "^5.5.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -36,5 +44,5 @@
     "typescript": "^5.9.3",
     "vite": "^7.1.0"
   },
-  "description": "Journal d’intervention et plan du réseau radio, local et chiffré"
+  "description": "orion aic : journal d’intervention, messages, carte, moyens, équipe et réseau radio pour l’aide à la conduite. Local, chiffré, synchronisé sans base de données."
 }
