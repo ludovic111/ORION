@@ -508,7 +508,7 @@ src/
                    ODS, HTML, texte, agenda, contacts), empreintes, vérification
   present/         Mode présentation, affichage mural, vue orateur, annotations,
                    PowerPoint / ODP / PDF / HTML animés
-  ui/              Kit : champs standardisés, fiche générique, liens, effets, ciel étoilé
+  ui/              Kit : champs standardisés, fiche générique, liens, fond papier
   sync/            Synchronisation en direct (useSync)
   journal/ radio/  Journal, réseau radio
   print/           Fiches, quittances, rapport, étiquettes, formules : aperçu A4, PDF

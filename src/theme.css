@@ -961,7 +961,7 @@ button.pill {
   letter-spacing: -0.04em;
   line-height: 1;
 }
-.stat span {
+.stat > span {
   color: var(--text-2);
   font-size: 12px;
 }
@@ -1994,53 +1994,50 @@ button.row-item:hover,
 .contact-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
-  padding: 18px;
-  border: 1px solid rgba(var(--accent-rgb), 0.35);
-  border-radius: 18px;
-  background:
-    radial-gradient(
-      circle at 0 0,
-      rgba(var(--accent-rgb), 0.18),
-      transparent 60%
-    ),
-    var(--bg-1);
+  gap: 20px;
+  padding: 28px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  box-shadow: var(--shadow-xl);
 }
 .contact-icon {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 14px;
-  background: var(--gradient);
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.4);
+  background: var(--bg-2);
+  color: var(--text);
 }
 .contact-card h3 {
-  margin: 2px 0 6px;
-  font-size: 16px;
+  margin: 2px 0 8px;
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .contact-card p {
-  margin: 0 0 12px;
+  max-width: 56ch;
+  margin: 0 0 16px;
   color: var(--text-2);
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.5;
 }
 .contact-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .contact-actions a.button.primary {
-  border: 0;
-  background: var(--gradient);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.35);
+  text-decoration: none;
 }
 .landing-foot-links {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 16px;
+}
+.landing-foot-links a {
+  color: var(--text-2);
 }
 
 /* The theme sets a display on every button: keep [hidden] effective. */

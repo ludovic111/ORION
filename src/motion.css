@@ -1,5 +1,5 @@
-/* Motion: easing and timings after transitions.dev. Backgrounds are
-   procedural (no external image) so the app stays offline and CSP-clean. */
+/* Motion: easing and timings after transitions.dev. Calm and unblurred,
+   in keeping with the editorial atelier (see DESIGN.md). */
 :root {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --spring: cubic-bezier(0.34, 1.45, 0.64, 1);
@@ -8,7 +8,7 @@
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: translateY(1px);
 }
 button {
   transition:
@@ -37,12 +37,11 @@ button {
   animation: t-fade-in 250ms var(--ease);
 }
 
-/* Toast: rises with fade, blur and scale */
+/* Toast: rises with a fade */
 @keyframes t-toast-in {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.97);
-    filter: blur(2px);
+    transform: translateY(12px);
   }
 }
 .toast {
@@ -53,8 +52,7 @@ button {
 @keyframes t-panel-in {
   from {
     opacity: 0;
-    transform: translateY(24px);
-    filter: blur(2px);
+    transform: translateY(16px);
   }
 }
 .preview {
@@ -84,13 +82,12 @@ button {
 @keyframes t-digit-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
-    filter: blur(2px);
+    transform: translateY(6px);
   }
 }
 .num {
   display: inline-block;
-  animation: t-digit-in 500ms var(--spring) both;
+  animation: t-digit-in 400ms var(--ease) both;
 }
 
 /* Sliding indicator for segmented controls and module tabs */
@@ -103,18 +100,26 @@ button {
   bottom: 0;
   height: 2px;
   width: 0;
-  background: var(--accent);
+  border-radius: 2px;
+  background: var(--text);
   pointer-events: none;
   transition:
     transform 250ms var(--ease),
     width 250ms var(--ease);
 }
+/* In a segmented control the indicator is the white active pill. */
 .segmented.slider .slider-pill {
-  top: 0;
+  top: 3px;
+  bottom: 3px;
   height: auto;
-  background: var(--bg-3);
-  border-bottom: 2px solid var(--accent);
+  border-radius: 9px;
+  background: var(--solid);
+  box-shadow: var(--shadow-xl);
   z-index: 0;
+}
+:root[data-theme="dark"] .segmented.slider .slider-pill {
+  background: var(--bg-3);
+  box-shadow: none;
 }
 .segmented.slider button {
   position: relative;
@@ -134,17 +139,14 @@ details::details-content {
   height: 0;
   overflow: clip;
   opacity: 0;
-  filter: blur(2px);
   transition:
     height 250ms var(--ease),
     opacity 250ms var(--ease),
-    filter 250ms var(--ease),
     content-visibility 250ms allow-discrete;
 }
 details[open]::details-content {
   height: auto;
   opacity: 1;
-  filter: none;
 }
 details > summary svg {
   transition: transform 250ms var(--ease);
@@ -187,12 +189,12 @@ details > summary svg {
   from {
     opacity: 0;
     transform: translateY(-4px);
-    filter: blur(2px);
   }
 }
+/* A freshly logged row warms with a trace of ember, then settles. */
 @keyframes t-row-flash {
   from {
-    background: rgba(var(--accent-rgb), 0.16);
+    background: color-mix(in srgb, var(--ember) 10%, transparent);
   }
 }
 .grid tr.fresh td {
@@ -205,7 +207,7 @@ details > summary svg {
 }
 @keyframes t-led {
   50% {
-    box-shadow: 0 0 2px var(--ok);
+    opacity: 0.45;
   }
 }
 

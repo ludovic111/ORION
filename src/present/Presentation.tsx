@@ -1517,7 +1517,7 @@ function EndScreen({
     setError("");
     try {
       const { captureSlide, annotationsPdf } = await import("./capture");
-      const bg = look === "light" ? "#f4f5fb" : "#05060d";
+      const bg = look === "light" ? "#e4dfd9" : "#121110";
       const pages: HTMLCanvasElement[] = [];
       for (const s of annotated) {
         const node = holders.current.get(s.id)

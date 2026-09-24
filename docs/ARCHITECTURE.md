@@ -89,7 +89,7 @@ Le mode réseau local (`server/lan.mjs`) sert la même application et le même r
 - `src/App.tsx` : coque (dock, barre supérieure, palette ⌘K, dialogues), état de session, synchronisation, impression automatique, routage par ancre (`#journal`, `#map`…).
 - `src/app/` : contexte partagé (`useApp`), liste des modules, réglages du poste, dialogue Réglages.
 - `src/modules/<module>/` : un dossier par module (situation, journal, messages, missions, carte, moyens, équipe, contacts, météo, agenda, réseau, aide).
-- `src/ui/` : kit d’interface (champs standardisés, fiche générique, liens et aperçus, feuille latérale, effets, champ d’étoiles). Guide : [UI.md](UI.md).
+- `src/ui/` : kit d’interface (champs standardisés, fiche générique, liens et aperçus, feuille latérale, fond papier). Guide : [UI.md](UI.md).
 - `src/journal/`, `src/radio/`, `src/print/` : journal, réseau radio et impressions A4 / PDF.
 
 Le service worker précache l’application et garde, une fois vus, les signes et jusqu’à 4 000 tuiles de carte. Il ne met jamais de contenu de session en cache.

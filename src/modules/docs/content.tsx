@@ -2749,8 +2749,8 @@ export const TOPICS: Topic[] = [
         <H>Ce poste</H>
         <ul>
           <li>
-            <strong>Thème</strong> : Sombre · espace, Clair · jour, ou Comme le
-            système.
+            <strong>Thème</strong> : Clair · papier (par défaut), Sombre ·
+            graphite, ou Comme le système.
           </li>
           <li>
             <strong>Animations</strong> : Toutes, ou Réduites (poste lent,

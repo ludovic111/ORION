@@ -6,41 +6,36 @@
 .team-presence {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 .team-stat {
   --tone: var(--text);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 12px 14px;
+  gap: 2px;
+  padding: 16px 18px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
   background: var(--bg-1);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-xl);
 }
-.team-stat::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: linear-gradient(90deg, var(--tone), transparent);
-  opacity: 0.7;
+:root[data-theme="dark"] .team-stat {
+  border-color: var(--line);
 }
 .team-stat strong {
   font-family: var(--display);
-  font-size: 26px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--tone);
 }
-.team-stat span {
+.team-stat > span {
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .team-stat.tone-ok,
 .team-bar .tone-ok {
@@ -64,8 +59,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin-bottom: 14px;
-  padding: 10px 12px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
 }
 .team-toolbar .search button {
   width: 22px;
@@ -83,60 +78,55 @@
 .team-org {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 16px;
+  gap: 20px;
   align-items: start;
 }
 .team-cell {
   --cell: var(--accent);
+  /* The colour chosen for the post, muted into the ink. */
+  --cell-tone: color-mix(in oklab, var(--cell) 62%, var(--text-2));
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 14px 12px;
+  gap: 12px;
+  padding: 20px 18px 16px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(
-      120% 60% at 0% 0%,
-      color-mix(in srgb, var(--cell) 12%, transparent),
-      transparent 60%
-    ),
-    var(--bg-1);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: var(--bg-1);
+  box-shadow: var(--shadow-xl);
   animation: team-rise 420ms var(--ease) both;
   transition:
     border-color 180ms,
     box-shadow 180ms;
 }
+:root[data-theme="dark"] .team-cell {
+  border-color: var(--line);
+}
 .team-cell::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--cell),
-    color-mix(in srgb, var(--cell) 30%, transparent)
-  );
-  box-shadow: 0 0 18px var(--cell);
+  height: 3px;
+  background: var(--cell-tone);
 }
 .team-cell.loose {
-  border-style: dashed;
-  background: color-mix(in srgb, var(--bg-1) 70%, transparent);
+  border: 1px dashed var(--line-2);
+  background: transparent;
+  box-shadow: none;
 }
 .team-cell.loose::before {
   display: none;
 }
 .team-cell.drop {
-  border-color: var(--cell);
+  border-color: var(--cell-tone);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--cell) 25%, transparent),
-    0 16px 40px rgba(0, 0, 0, 0.25);
+    0 0 0 1px var(--cell-tone),
+    var(--shadow-xl);
 }
 .team-cell.loose.drop {
-  border-color: rgba(var(--accent-rgb), 0.7);
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
 }
 @keyframes team-rise {
   from {
@@ -162,23 +152,23 @@
   background: none;
   color: var(--text);
   font-family: var(--display);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 500;
   letter-spacing: -0.02em;
   text-align: left;
   white-space: normal;
 }
 button.team-cell-name:hover {
   background: none;
-  color: var(--cell);
+  color: var(--cell-tone);
 }
 .team-cell.loose .team-cell-name {
   color: var(--text-2);
 }
 .team-kind {
-  color: var(--cell);
-  border-color: color-mix(in srgb, var(--cell) 40%, transparent);
-  background: color-mix(in srgb, var(--cell) 10%, transparent);
+  color: var(--cell-tone);
+  border-color: color-mix(in srgb, var(--cell-tone) 35%, transparent);
+  background: var(--bg-1);
 }
 .team-cell-tools {
   display: inline-flex;
@@ -205,9 +195,9 @@ button.team-cell-name:hover {
 .team-cell-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 4px 14px;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .team-cell-meta > * {
   display: inline-flex;
@@ -231,10 +221,10 @@ button.team-cell-name:hover {
   display: flex;
   flex: 1;
   gap: 2px;
-  height: 5px;
+  height: 4px;
   overflow: hidden;
-  border-radius: 99px;
-  background: var(--bg-2);
+  border-radius: 9999px;
+  background: var(--bg-3);
 }
 .team-bar i {
   --tone: var(--text-3);
@@ -252,12 +242,12 @@ button.team-cell-name:hover {
   place-items: center;
   min-height: 64px;
   border: 1px dashed var(--line-2);
-  border-radius: 12px;
+  border-radius: var(--radius);
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .team-cell.drop .team-drop-hint {
-  border-color: var(--cell);
+  border-color: var(--cell-tone);
   color: var(--text-2);
 }
 .team-add {
@@ -272,10 +262,10 @@ button.team-cell-name:hover {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius);
   background: var(--bg-2);
   cursor: grab;
   transition:
@@ -286,8 +276,9 @@ button.team-cell-name:hover {
 }
 .team-member:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--cell) 45%, transparent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+  border-color: var(--line-2);
+  background: var(--bg-1);
+  box-shadow: var(--shadow-xl);
 }
 .team-member.dragging {
   opacity: 0.4;
@@ -307,23 +298,22 @@ button.team-cell-name:hover {
   place-items: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--a1), var(--a2));
-  color: #fff;
-  font-family: var(--display);
-  font-size: 14px;
+  border-radius: 50%;
+  /* A faint tint of the person's hue, like the item kinds. */
+  background: color-mix(in oklab, var(--a1) 22%, var(--bg-1));
+  color: color-mix(in oklab, var(--a1) 38%, var(--text));
+  font-family: var(--sans);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 4px 14px color-mix(in srgb, var(--a1) 35%, transparent);
+  letter-spacing: 0;
+  text-shadow: none;
+  box-shadow: none;
 }
 .team-avatar.small {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  font-size: 11px;
+  border-radius: 50%;
+  font-size: 10.5px;
 }
 .team-member-main {
   display: flex;
@@ -349,15 +339,17 @@ button.team-cell-name:hover {
 }
 .team-member-name:hover {
   background: none;
-  color: var(--accent);
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
 }
 .team-grade {
-  font-family: var(--mono);
-  font-size: 11px;
+  font-family: var(--sans);
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.01em;
 }
 .team-role {
   color: var(--text-2);
@@ -393,12 +385,13 @@ button.team-cell-name:hover {
   text-decoration: none;
 }
 .team-phone:hover {
-  color: var(--accent);
+  color: var(--text);
 }
 .team-shift {
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
+  font-family: var(--mono);
   font-size: 10.5px;
 }
 .team-menu-gap {

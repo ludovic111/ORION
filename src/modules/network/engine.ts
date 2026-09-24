@@ -60,10 +60,17 @@ type View = { k: number; x: number; y: number };
 type Theme = {
   dark: boolean;
   text: string;
+  /** Card surface under the canvas: halo of the labels. */
   bg: string;
   crit: string;
   accent: string;
+  /** Ink of the links, as "r, g, b". */
   accentRgb: string;
+  /** Punctuation of emphasis: search matches. */
+  ember: string;
+  /** Muting of the kind hues (saturation and lightness factors). */
+  kindS: number;
+  kindL: number;
   font: string;
 };
 
@@ -607,19 +614,22 @@ export class NetworkEngine {
       css.getPropertyValue(name).trim() || fallback;
     return {
       dark: document.documentElement.dataset.theme !== "light",
-      text: v("--text", "#eceefe"),
-      bg: v("--bg", "#05060d"),
-      crit: v("--crit", "#ff5a7a"),
-      accent: v("--accent", "#8b7bff"),
-      accentRgb: v("--accent-rgb", "139, 123, 255"),
+      text: v("--text", "#050505"),
+      bg: v("--bg-1", "#ffffff"),
+      crit: v("--crit", "#b3261e"),
+      accent: v("--accent", "#171717"),
+      accentRgb: v("--accent-rgb", "23, 23, 23"),
+      ember: v("--ember", "#ff6a1f"),
+      kindS: parseFloat(v("--kind-s", "0.32")) || 0.32,
+      kindL: parseFloat(v("--kind-l", "0.62")) || 0.62,
       font: getComputedStyle(this.canvas).fontFamily || "system-ui, sans-serif",
     };
   }
 
+  /** Muted tint of a kind, as the item-kind dots of the interface. */
   private color(hue: number, alpha = 1) {
-    return this.theme.dark
-      ? `hsla(${hue}, 85%, 65%, ${alpha})`
-      : `hsla(${hue}, 72%, 46%, ${alpha})`;
+    const { kindS, kindL } = this.theme;
+    return `hsla(${hue}, ${85 * kindS}%, ${65 * kindL}%, ${alpha})`;
   }
 
   private sprite(
@@ -632,19 +642,14 @@ export class NetworkEngine {
     c = document.createElement("canvas");
     c.width = c.height = 64;
     const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    const dark = this.theme.dark;
-    if (core) {
-      grad.addColorStop(0, `hsla(${hue}, 100%, ${dark ? 94 : 60}%, 1)`);
-      grad.addColorStop(0.22, `hsla(${hue}, 95%, ${dark ? 72 : 50}%, 0.85)`);
-      grad.addColorStop(1, `hsla(${hue}, 95%, 60%, 0)`);
-    } else {
-      grad.addColorStop(0, `hsla(${hue}, 90%, 65%, ${dark ? 0.55 : 0.3})`);
-      grad.addColorStop(0.4, `hsla(${hue}, 90%, 60%, ${dark ? 0.16 : 0.08})`);
-      grad.addColorStop(1, `hsla(${hue}, 90%, 60%, 0)`);
-    }
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
+    // Flat ink-on-paper marks: a small solid dot for the pulses, a faint
+    // flat halo for a node that fires. No glow.
+    g.fillStyle = core
+      ? this.color(hue, 1)
+      : this.color(hue, this.theme.dark ? 0.22 : 0.18);
+    g.beginPath();
+    g.arc(32, 32, core ? 14 : 32, 0, Math.PI * 2);
+    g.fill();
     cache.set(hue, c);
     return c;
   }
@@ -663,19 +668,6 @@ export class NetworkEngine {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    const bg = ctx.createRadialGradient(
-      w / 2,
-      h / 2,
-      0,
-      w / 2,
-      h / 2,
-      Math.max(w, h) * 0.65,
-    );
-    bg.addColorStop(0, `rgba(${theme.accentRgb}, ${theme.dark ? 0.1 : 0.06})`);
-    bg.addColorStop(1, `rgba(${theme.accentRgb}, 0)`);
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
-
     ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * tx, dpr * ty);
     const m = 40 / k;
     const vx0 = -tx / k - m;
@@ -686,10 +678,9 @@ export class NetworkEngine {
       n.x < vx0 || n.x > vx1 || n.y < vy0 || n.y > vy1;
     const focused = this.levels.size > 0;
     const focus = this.focus();
-    const lighter = theme.dark ? "lighter" : "source-over";
 
-    // Links, in batches by style.
-    const line = theme.dark ? "170, 180, 255" : "60, 66, 140";
+    // Links, in batches by style: hairlines of ink.
+    const line = theme.accentRgb;
     const plain = new Path2D();
     const strong = new Path2D();
     const faint = new Path2D();
@@ -750,7 +741,6 @@ export class NetworkEngine {
 
     // Particles.
     if (!this.reduced) {
-      ctx.globalCompositeOperation = lighter;
       const dim = focused ? 0.25 : 1;
       for (const p of this.ambient)
         this.drawPulse(p, 5 / k, 0.55 * dim, outside);
@@ -765,14 +755,13 @@ export class NetworkEngine {
       ctx.globalCompositeOperation = "source-over";
     }
 
-    // Nodes: glow, body, nucleus, rings.
-    const glowScale = theme.dark ? 4.2 : 3;
-    ctx.globalCompositeOperation = lighter;
+    // Nodes: halo when firing, body, nucleus, rings.
+    const glowScale = 2.4;
     for (const n of this.nodes) {
-      if (outside(n) || n.r * k < 1.2) continue;
+      if (outside(n) || n.r * k < 1.2 || n.fire < 0.02) continue;
       const a = this.alphaOf(n);
       const s = n.r * glowScale * (1 + n.fire * 0.9);
-      ctx.globalAlpha = Math.min(1, a * (0.7 + n.fire * 0.6));
+      ctx.globalAlpha = Math.min(1, a * n.fire);
       ctx.drawImage(
         this.sprite(this.glow, n.hue, false),
         n.x - s / 2,
@@ -792,8 +781,8 @@ export class NetworkEngine {
       ctx.fill();
       if (n.r * k > 5) {
         ctx.fillStyle = theme.dark
-          ? `hsla(${n.hue}, 100%, 90%, ${a * (0.55 + n.fire * 0.45)})`
-          : `hsla(${n.hue}, 100%, 96%, ${a * 0.7})`;
+          ? `rgba(${theme.accentRgb}, ${a * (0.45 + n.fire * 0.4)})`
+          : `rgba(255, 255, 255, ${a * 0.75})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r * 0.42, 0, Math.PI * 2);
         ctx.fill();
@@ -819,7 +808,7 @@ export class NetworkEngine {
         ctx.globalAlpha = 1;
       }
       if (this.matches.has(n.ref)) {
-        ctx.strokeStyle = theme.dark ? "#ffd27a" : "#b86e00";
+        ctx.strokeStyle = theme.ember;
         ctx.lineWidth = 2 / k;
         ctx.setLineDash([3 / k, 2.5 / k]);
         ctx.beginPath();

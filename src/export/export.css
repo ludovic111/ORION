@@ -7,6 +7,7 @@
   max-height: none;
   padding: 0;
   overflow: hidden;
+  background: var(--bg);
 }
 .modal.xc[open] {
   display: flex;
@@ -33,18 +34,22 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 12px;
-  padding: 14px 16px 10px;
+  gap: 16px;
+  padding: 18px 20px 12px;
 }
 .xc-step {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  background: var(--bg-2);
+  background: var(--bg-1);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   animation: xc-rise 420ms var(--ease) both;
+}
+:root[data-theme="dark"] .xc-step {
+  border-color: var(--line);
 }
 .xc-step:nth-child(2) {
   animation-delay: 60ms;
@@ -61,18 +66,19 @@
 .xc-step-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px 10px;
+  gap: 12px;
+  padding: 16px 18px 13px;
   border-bottom: 1px solid var(--line);
 }
 .xc-step-head h3 {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .xc-step-head small {
   display: block;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-3);
 }
 .xc-num {
@@ -82,10 +88,9 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--gradient);
-  color: #fff;
-  font: 600 12.5px/1 var(--mono);
-  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.4);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 500 12.5px/1 var(--mono);
 }
 .xc-step-body {
   flex: 1;
@@ -93,8 +98,8 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px 14px;
+  gap: 12px;
+  padding: 14px 18px 18px;
   overscroll-behavior: contain;
 }
 .xc-step-body > .seg {
@@ -133,10 +138,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
   background: var(--bg-1);
   font-size: 12px;
   color: var(--text-2);
@@ -151,7 +156,7 @@
 }
 .xc-contents li b {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
 }
 .xc-contents li small {
@@ -216,9 +221,9 @@
 .xc-count {
   flex: none;
   min-width: 28px;
-  padding: 2px 7px;
-  border-radius: 99px;
-  background: var(--bg-3);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--bg-2);
   font: 500 11.5px/1.4 var(--mono);
   color: var(--text-2);
   text-align: center;
@@ -357,10 +362,14 @@
   height: 10px;
   margin-left: -5px;
   padding: 0;
-  border: 2px solid var(--bg);
+  border: 2px solid var(--bg-1);
   border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 10px rgba(63, 220, 255, 0.6);
+  background: var(--text-2);
+  box-shadow: none;
+}
+.xc-marks button:hover {
+  background: var(--text);
+  border-color: var(--bg-1);
 }
 .xc-range-labels {
   display: flex;
@@ -402,9 +411,9 @@
   gap: 10px;
   height: auto;
   min-height: 58px;
-  padding: 9px 26px 9px 10px;
+  padding: 10px 26px 10px 10px;
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--field);
   color: var(--text);
   text-align: left;
@@ -417,13 +426,17 @@
     box-shadow 0.2s;
 }
 .xc-card:hover:not(:disabled) {
-  border-color: rgba(var(--accent-rgb), 0.5);
+  border-color: var(--text-3);
+  background: var(--field);
   transform: translateY(-1px);
 }
-.xc-card.on {
+.xc-card.on,
+.xc-card.on:hover:not(:disabled) {
   border-color: var(--accent);
-  background: var(--accent-bg);
-  box-shadow: 0 6px 22px rgba(var(--accent-rgb), 0.22);
+  background: var(--field);
+  box-shadow:
+    var(--shadow-xl),
+    inset 0 0 0 1px var(--accent);
 }
 .xc-card:disabled {
   opacity: 0.45;
@@ -443,8 +456,8 @@
     color 0.2s;
 }
 .xc-card.on .xc-card-icon {
-  background: var(--gradient);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .xc-card-text {
   display: flex;
@@ -453,8 +466,8 @@
   min-width: 0;
 }
 .xc-card-text strong {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 .xc-card-text code {
   margin-left: 2px;
@@ -538,10 +551,9 @@
   justify-content: space-between;
   gap: 12px 20px;
   flex-wrap: wrap;
-  padding: 12px 16px;
+  padding: 14px 20px;
   border-top: 1px solid var(--line);
-  background: var(--bg-1);
-  backdrop-filter: blur(var(--glass-blur));
+  background: var(--solid);
 }
 .xc-summary {
   flex: 1 1 380px;
@@ -580,8 +592,8 @@
 }
 .xc-bar {
   position: relative;
-  height: 6px;
-  border-radius: 99px;
+  height: 4px;
+  border-radius: 9999px;
   background: var(--bg-3);
   overflow: hidden;
 }
@@ -589,28 +601,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: var(--gradient);
+  background: var(--accent);
   transition: width 0.3s var(--ease);
-}
-.xc-bar i::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.45),
-    transparent
-  );
-  animation: xc-shine 1.2s linear infinite;
-}
-@keyframes xc-shine {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
 }
 .xc-actions {
   display: flex;
@@ -626,7 +618,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: 20px;
 }
 
 /* ---------- Verification ---------- */
@@ -634,6 +626,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.xv-drop .mono {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  color: var(--text-3);
 }
 .xv-drop.over {
   border-color: var(--accent);
@@ -646,9 +644,10 @@
 .xv-result {
   display: flex;
   gap: 12px;
-  padding: 14px;
+  padding: 18px 20px;
   border: 1px solid var(--line-2);
   border-radius: var(--radius-lg);
+  background: var(--bg-1);
   animation: xc-rise 300ms var(--ease);
 }
 .xv-result > svg {
@@ -669,8 +668,10 @@
   color: var(--crit);
 }
 .xv-result h3 {
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .xv-result p {
   margin: 4px 0 8px;
@@ -689,7 +690,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-1);
   font-size: 12px;

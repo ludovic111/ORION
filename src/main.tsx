@@ -6,6 +6,7 @@ import "./fonts.css";
 import "./styles.css";
 import "./motion.css";
 import "./theme.css";
+import "./atelier.css";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

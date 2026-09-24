@@ -96,7 +96,7 @@ const {
 
 | Classe                                                                 | Rendu                                                |
 | ---------------------------------------------------------------------- | ---------------------------------------------------- |
-| `.card` (+ `.spot`)                                                    | Carte en verre, halo qui suit la souris              |
+| `.card`                                                                | Carte blanche, rayon 20 px, ombre douce unique       |
 | `.card-head`                                                           | En-tête de carte : icône, `h2`/`h3`, action à droite |
 | `.bento` + `.w-3` … `.w-12`                                            | Grille de tableau de bord sur 12 colonnes            |
 | `.tile-grid` / `.tile` / `.tile-top` / `.meta-line`                    | Grille de tuiles cliquables                          |
@@ -110,6 +110,6 @@ const {
 | `.panel`, `.panel-head`, `.panel-foot`, `.toolbar`, `.search`, `.grid` | Hérités du journal                                   |
 | `.label`, `.muted`, `.mono`, `.gradient-text`, `.display`              | Texte                                                |
 
-Couleurs : `var(--text)`, `--text-2`, `--text-3`, `--accent`, `--ok`, `--warn`, `--crit`, `--cyan`, `--pink`, `--amber`, `--line`, `--bg-1` (verre), `--bg-2`, `--solid` (opaque). Teinte d’un type d’élément : `KIND_INFO[kind].hue` → `hsl(h 85% 68%)`. Thème clair : `:root[data-theme="light"]`, toutes les couleurs passent par les variables.
+Design : « atelier éditorial » de [DESIGN.md](DESIGN.md) — papier crème `--bg`, cartes blanches `--bg-1` / `--solid` (rayon `--radius-lg` 20 px, ombre `--shadow-xl`), encre `--text` / `--text-2` / `--text-3`, bordures `--line` / `--line-2`, boutons pleins graphite `--accent` avec `--on-accent` (rayon `--radius-button` 8 px), champs `--radius` 12 px, pastilles en pilule, titres `--display` (Inter 500, jamais gras), texte fonctionnel `--sans` (police système), `--mono` pour les heures et les codes. Un seul point orange `--ember` pour ce qui est en direct. États `--ok`, `--warn`, `--crit` (tons terre, sans néon). Teinte discrète d’un type d’élément : `hsl(var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)))`. Couche globale : `src/atelier.css`. Thème sombre « graphite » : `:root[data-theme="dark"]` ; toutes les couleurs passent par les variables.
 
 Un module peut avoir sa feuille `src/modules/<nom>/<nom>.css`, importée par le module, avec des classes préfixées (`.map-…`, `.net-…`).

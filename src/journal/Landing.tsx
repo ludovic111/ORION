@@ -106,7 +106,7 @@ export function Landing({
           <h1>
             Aide à la conduite,
             <br />
-            <span className="gradient-text">tout relié.</span>
+            tout relié<span className="ember-dot">.</span>
           </h1>
           <p className="lead">
             Journal d’intervention, messages, carte, moyens, équipe, radio,

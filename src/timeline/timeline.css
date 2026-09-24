@@ -2,7 +2,7 @@
 
 /* The whole interface shows it is in the past. */
 :root[data-past] .bar {
-  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.55);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 :root[data-past] .main {
   padding-bottom: 170px;
@@ -22,22 +22,17 @@
   z-index: 45;
   display: grid;
   gap: 8px;
-  padding: 10px 14px 8px;
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--solid) 88%, transparent);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  box-shadow:
-    var(--shadow),
-    0 0 0 1px rgba(var(--accent-rgb), 0.12),
-    0 18px 60px rgba(var(--accent-rgb), 0.18);
-  animation: timebar-in 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  padding: 12px 18px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-lg);
+  background: var(--solid);
+  box-shadow: var(--shadow);
+  animation: timebar-in 0.35s var(--ease, ease-out);
 }
 @keyframes timebar-in {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.98);
+    transform: translateY(12px);
   }
 }
 .timebar-head {
@@ -50,15 +45,17 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 99px;
-  background: rgba(var(--accent-rgb), 0.16);
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
+  background: var(--bg-1);
+  color: var(--text-2);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 .timebar.playing .timebar-badge svg {
   animation: timebar-spin 2.4s linear infinite reverse;
@@ -74,12 +71,12 @@
   padding: 0 8px;
   font-family: var(--mono);
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 .timebar-count {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 12px;
 }
 .timebar-controls {
   display: flex;
@@ -93,26 +90,26 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--gradient);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.45);
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
 }
 .timebar-play:hover {
-  background: var(--gradient);
-  filter: brightness(1.1);
+  background: var(--accent-2);
+  color: var(--on-accent);
 }
 .timebar.playing .timebar-play {
   animation: timebar-pulse 1.6s ease-in-out infinite;
 }
 @keyframes timebar-pulse {
   50% {
-    box-shadow: 0 0 0 7px rgba(var(--accent-rgb), 0.15);
+    box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.1);
   }
 }
 .timebar-speed button {
   height: 26px;
-  padding: 0 9px;
-  font-size: 11.5px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 .timebar-actions {
   display: flex;
@@ -143,11 +140,7 @@
   transition: background 0.2s;
 }
 .timebar-bins i.past {
-  background: linear-gradient(
-    to top,
-    rgba(var(--accent-rgb), 0.35),
-    rgba(var(--accent-rgb), 0.9)
-  );
+  background: rgba(var(--accent-rgb), 0.6);
 }
 .timebar-flag {
   position: absolute;
@@ -159,15 +152,19 @@
   height: 18px;
   margin-left: -9px;
   padding: 0;
-  border: 1px solid var(--cyan);
+  border: 1px solid var(--line-2);
   border-radius: 50%;
   background: var(--solid);
-  color: var(--cyan);
-  transition: transform 0.15s;
+  color: var(--text-2);
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
 }
 .timebar-flag:hover {
-  transform: scale(1.25);
+  transform: scale(1.2);
+  border-color: var(--text);
   background: var(--solid);
+  color: var(--text);
 }
 .timebar-range {
   width: 100%;
@@ -183,7 +180,8 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-3);
-  font-size: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
 }
 @media (max-width: 1100px) {
   .timebar .wide {
@@ -254,9 +252,9 @@
   position: relative;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
-  gap: 10px;
-  padding: 10px 6px 12px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 12px 8px 14px;
+  border-radius: var(--radius);
   animation: audit-in 0.3s ease both;
 }
 .audit-row:hover {
@@ -290,7 +288,7 @@
     hsl(var(--h) calc(70% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.5);
   color: hsl(var(--h) calc(85% * var(--kind-s)) calc(72% * var(--kind-l)));
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 :root[data-theme="light"] .audit-avatar {
   color: hsl(var(--h) calc(70% * var(--kind-s)) 35%);
@@ -306,13 +304,15 @@
   border-radius: 50%;
   border: 2px solid var(--solid);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .audit-row.create .audit-avatar i {
   background: var(--ok);
+  color: #fff;
 }
 .audit-row.remove .audit-avatar i {
   background: var(--crit);
+  color: #fff;
 }
 .audit-main {
   min-width: 0;
@@ -328,13 +328,15 @@
 .audit-line time {
   margin-left: auto;
   color: var(--text-3);
+  font-family: var(--mono);
   font-size: 11px;
+  letter-spacing: 0;
 }
 .audit-kind {
   color: var(--text-3);
 }
 .audit-title {
-  font-weight: 600;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 button.audit-title {
@@ -365,21 +367,22 @@ button.audit-title {
 }
 .audit-field {
   color: var(--text-3);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 .audit-diff del {
   color: var(--text-3);
   text-decoration: line-through;
-  text-decoration-color: rgba(242, 86, 79, 0.6);
+  text-decoration-color: color-mix(in srgb, var(--crit) 55%, transparent);
   overflow-wrap: anywhere;
 }
 .audit-diff ins {
-  padding: 0 5px;
+  padding: 0 6px;
   border-radius: 6px;
-  background: rgba(var(--accent-rgb), 0.12);
+  background: var(--bg-3);
   color: var(--text);
   text-decoration: none;
   overflow-wrap: anywhere;
@@ -398,10 +401,11 @@ button.audit-title {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  padding: 14px;
+  padding: 16px 18px;
   border: 1px dashed var(--line-2);
-  border-radius: 12px;
-  font-size: 12.5px;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-size: 13px;
 }
 .audit-empty svg {
   flex: none;
@@ -417,9 +421,9 @@ button.audit-title {
 .trace-summary > div {
   display: grid;
   gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
   background: var(--bg-1);
   min-width: 0;
 }
@@ -427,7 +431,10 @@ button.audit-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .trace-summary small {
   color: var(--text-3);
@@ -459,14 +466,14 @@ button.audit-title {
 .snapshot-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
   background: var(--bg-1);
 }
 .snapshot-list li > svg {
-  color: var(--cyan);
+  color: var(--text-2);
   flex: none;
 }
 .snapshot-list span {
@@ -479,7 +486,7 @@ button.audit-title {
   font-size: 11px;
 }
 .banner.warn {
-  border-color: rgba(245, 158, 11, 0.45);
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
   background: var(--warn-bg);
   color: var(--text);
 }

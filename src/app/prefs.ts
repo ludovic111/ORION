@@ -18,7 +18,7 @@ export type Prefs = {
 };
 const KEY = "orion-aic-prefs";
 export const DEFAULT_PREFS: Prefs = {
-  theme: "dark",
+  theme: "light",
   motion: "full",
   hidden: [],
   autoPrint: false,
@@ -26,10 +26,20 @@ export const DEFAULT_PREFS: Prefs = {
   autoPrintMessages: false,
   docsLevel: "guide",
 };
+// The editorial design (cream paper) replaced the deep-space look: posts
+// still on the former default dark theme switch to it once.
+const DESIGN = "orion-aic-design";
 function read(): Prefs {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS;
+    const prefs: Prefs = raw
+      ? { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+      : DEFAULT_PREFS;
+    if (localStorage.getItem(DESIGN) !== "atelier") {
+      localStorage.setItem(DESIGN, "atelier");
+      if (prefs.theme === "dark") return { ...prefs, theme: "light" };
+    }
+    return prefs;
   } catch {
     return DEFAULT_PREFS;
   }
@@ -51,7 +61,7 @@ export function usePrefs() {
           : "full";
       document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute("content", light ? "#eef0f9" : "#05060d");
+        ?.setAttribute("content", light ? "#e4dfd9" : "#121110");
     };
     apply();
     const media = matchMedia("(prefers-color-scheme: light)");

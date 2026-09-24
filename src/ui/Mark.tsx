@@ -20,6 +20,10 @@ export const ORION_LINES = [
   [5, 7],
 ] as const;
 
+/**
+ * The Orion constellation in ink, Betelgeuse as the single ember dot of the
+ * design.
+ */
 export function Mark({ size = 22 }: { size?: number }) {
   return (
     <svg
@@ -29,23 +33,16 @@ export function Mark({ size = 22 }: { size?: number }) {
       viewBox="0 0 32 32"
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="orion-ring" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#3fdcff" />
-          <stop offset="0.5" stopColor="#8b7bff" />
-          <stop offset="1" stopColor="#ff72c8" />
-        </linearGradient>
-      </defs>
       <circle
         cx="16"
         cy="16"
         r="15"
         fill="none"
-        stroke="url(#orion-ring)"
-        strokeWidth="1.2"
-        opacity="0.9"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        opacity="0.85"
       />
-      <g stroke="currentColor" strokeWidth="0.55" opacity="0.45">
+      <g stroke="currentColor" strokeWidth="0.6" opacity="0.4">
         {ORION_LINES.map(([a, b]) => (
           <line
             key={`${a}-${b}`}
@@ -59,11 +56,11 @@ export function Mark({ size = 22 }: { size?: number }) {
       {ORION_STARS.map((s, i) => (
         <circle
           key={i}
-          className="star"
+          className={i === 0 ? "star ember" : "star"}
           cx={s.x}
           cy={s.y}
           r={s.r}
-          fill={i === 0 || i === 7 ? s.color : "currentColor"}
+          fill={i === 0 ? "var(--ember)" : "currentColor"}
         />
       ))}
     </svg>

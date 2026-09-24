@@ -150,7 +150,7 @@ export function InkLayer({
     const pts = trail.current;
     for (let i = 1; i < pts.length; i++) {
       const age = (now - pts[i].t) / 450;
-      ctx.strokeStyle = `rgba(255, 59, 92, ${0.6 * (1 - age)})`;
+      ctx.strokeStyle = `rgba(255, 106, 31, ${0.55 * (1 - age)})`;
       ctx.lineWidth = 14 * (1 - age) + 2;
       ctx.lineCap = "round";
       ctx.beginPath();
@@ -169,8 +169,8 @@ export function InkLayer({
         34,
       );
       glow.addColorStop(0, "rgba(255, 255, 255, 1)");
-      glow.addColorStop(0.25, "rgba(255, 59, 92, 1)");
-      glow.addColorStop(1, "rgba(255, 59, 92, 0)");
+      glow.addColorStop(0.25, "rgba(255, 106, 31, 1)");
+      glow.addColorStop(1, "rgba(255, 106, 31, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(last.x, last.y, 34, 0, Math.PI * 2);

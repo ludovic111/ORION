@@ -117,8 +117,8 @@ function PostSettings() {
             value={prefs.theme}
             onChange={(theme) => setPrefs({ theme })}
             options={[
-              { value: "dark", label: "Sombre · espace" },
-              { value: "light", label: "Clair · jour" },
+              { value: "dark", label: "Sombre · graphite" },
+              { value: "light", label: "Clair · papier" },
               { value: "auto", label: "Comme le système" },
             ]}
           />
