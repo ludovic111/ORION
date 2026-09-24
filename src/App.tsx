@@ -659,6 +659,7 @@ export default function App() {
     open,
     toast: setToast,
     print: setPrint,
+    queuePrint: (job) => setAutoQueue((q) => [...q, job]),
     prefs,
     setPrefs,
     help,

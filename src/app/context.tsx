@@ -35,6 +35,8 @@ export type AppContext = {
   open: (ref: Ref) => void;
   toast: (message: string) => void;
   print: (job: PrintJob) => void;
+  /** Print without preview (impression automatique), after the current jobs. */
+  queuePrint: (job: PrintJob) => void;
   prefs: Prefs;
   setPrefs: (patch: Partial<Prefs>) => void;
   /** Open the documentation at a topic. */

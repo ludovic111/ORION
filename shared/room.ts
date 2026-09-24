@@ -8,8 +8,13 @@ const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // no 0/O, 1/I/L
 const ITERATIONS = 200_000;
 
 export function newRoomCode(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const chars = [...bytes].map((b) => ALPHABET[b % ALPHABET.length]);
+  // Rejection sampling: every character equally likely (≈ 79 bits).
+  const chars: string[] = [];
+  const limit = 256 - (256 % ALPHABET.length);
+  while (chars.length < 16)
+    for (const b of crypto.getRandomValues(new Uint8Array(24)))
+      if (b < limit && chars.length < 16)
+        chars.push(ALPHABET[b % ALPHABET.length]);
   return [0, 4, 8, 12].map((i) => chars.slice(i, i + 4).join("")).join("-");
 }
 

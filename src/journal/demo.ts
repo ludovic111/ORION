@@ -5,7 +5,23 @@ import {
   updateRadio,
   type Workspace,
   type Fields,
+  type Journal,
 } from "../../shared/journal.ts";
+import {
+  MEMBER_STATUSES,
+  RESOURCE_STATUSES,
+  SWISS_EMERGENCY,
+  emptyMessage,
+  upsert,
+  type Collection,
+  type Contact,
+  type Message,
+  type Ops,
+  type Place,
+  type RecordOf,
+  type Resource,
+} from "../../shared/ops.ts";
+import { addLink, ref, type Ref } from "../../shared/links.ts";
 import {
   emptyRadio,
   issueTerminal,
@@ -202,6 +218,522 @@ function demoRadio(at: (minutes: number) => string): Radio {
   ];
   return radio;
 }
+// Every name, number and position below is fictitious.
+function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
+  const author = "Opérateur A · fictif";
+  const entry = (i: number) => ref("entry", journal.entries[i].id);
+  const id = () => crypto.randomUUID();
+  let ops = journal.ops;
+  const put = <C extends Collection>(
+    collection: C,
+    value: Omit<RecordOf<C>, "createdAt" | "updatedAt" | "by">,
+  ) => {
+    ops = upsert(ops, collection, value as never, author);
+    return value.id;
+  };
+  const link = (a: Ref, b: Ref, label = "") => {
+    ops = addLink(ops, a, b, label, author);
+  };
+  const cell = (
+    name: string,
+    kind: string,
+    color: string,
+    location: string,
+    radio: string,
+    order: number,
+  ) =>
+    put("cells", {
+      id: id(),
+      name,
+      kind,
+      color,
+      location,
+      phone: "",
+      radio,
+      notes: "",
+      order,
+    });
+  const front = cell(
+    "PC front",
+    "PC front",
+    "#ff72c8",
+    "Quai Charles-Page",
+    "PC front",
+    0,
+  );
+  const back = cell(
+    "PC arrière",
+    "PC arrière",
+    "#8b7bff",
+    "PC Carouge",
+    "PC Carouge",
+    1,
+  );
+  const situation = cell(
+    "Cellule situation",
+    "Cellule",
+    "#3fdcff",
+    "PC Carouge",
+    "",
+    2,
+  );
+  const logistics = cell(
+    "Cellule logistique",
+    "Cellule",
+    "#ffb35c",
+    "PC Carouge",
+    "Logistique",
+    3,
+  );
+  const member = (
+    grade: string,
+    name: string,
+    role: string,
+    cellId: string,
+    callsign = "",
+    status: (typeof MEMBER_STATUSES)[number] = "Présent",
+  ) =>
+    put("members", {
+      id: id(),
+      name,
+      grade,
+      role,
+      cellId,
+      callsign,
+      phone: "",
+      email: "",
+      status,
+      from: at(-60),
+      to: at(660),
+      notes: "",
+    });
+  member("Cap", "Fictif Arnaud", "Chef d’intervention", back, "PC Carouge");
+  member("Plt", "Fictive Bernasconi", "Chef AIC", back);
+  member("Sgt", "Fictif A", "Opérateur journal", situation);
+  member("Sgt", "Fictive Delacrétaz", "Synthèse des messages", situation);
+  member("Cpl", "Fictif Egger", "Cartographe", situation, "", "En pause");
+  member("App", "Fictive Favre", "Opérateur radio", back);
+  member("Lt", "Fictif B", "Chef de section", front, "Chef section appui");
+  member("Cpl", "Fictif D", "Chef de groupe", front, "Équipe Bravo");
+  member(
+    "Sgtm",
+    "Fictif Gilliéron",
+    "Chef logistique",
+    logistics,
+    "Logistique",
+  );
+  member("Sdt", "Fictive Huber", "Téléphoniste", logistics, "", "Absent");
+
+  const resource = (
+    name: string,
+    kind: string,
+    organization: string,
+    count: number,
+    status: (typeof RESOURCE_STATUSES)[number],
+    extra: Partial<Resource> = {},
+  ) =>
+    put("resources", {
+      id: id(),
+      name,
+      kind,
+      organization,
+      callsign: "",
+      count,
+      status,
+      location: "",
+      mission: "",
+      eta: "",
+      contact: "",
+      notes: "",
+      ...extra,
+    });
+  const bravo = resource(
+    "Équipe Bravo",
+    "Personnel",
+    "Protection civile",
+    6,
+    "Engagé",
+    {
+      callsign: "Équipe Bravo",
+      location: "Passerelle de la Fontenette",
+      mission: "Sécuriser l’accès aux berges.",
+    },
+  );
+  resource("Patrouille Alpha", "Personnel", "Protection civile", 3, "Engagé", {
+    callsign: "Patrouille Alpha",
+    location: "Pont des Acacias",
+    mission: "Reconnaissance du niveau de l’Arve.",
+  });
+  const trucks = resource(
+    "Camions de transport PCi",
+    "Véhicule",
+    "Protection civile",
+    2,
+    "En route",
+    {
+      location: "Arsenal → Point de rassemblement Acacias",
+      mission: "Livrer 200 sacs de sable.",
+      eta: at(115),
+    },
+  );
+  const bags = resource(
+    "Sacs de sable",
+    "Matériel",
+    "Protection civile",
+    200,
+    "En route",
+    {
+      location: "Camions de transport PCi",
+    },
+  );
+  const pump = resource(
+    "Tonne-pompe SIS (fictif)",
+    "Véhicule",
+    "Pompiers (SIS)",
+    1,
+    "Engagé",
+    {
+      location: "Quai Charles-Page",
+      mission: "Pompage des caves inondées.",
+    },
+  );
+  resource("Motopompes", "Matériel", "Protection civile", 4, "Disponible", {
+    location: "PC Carouge",
+  });
+  resource(
+    "Section appui (réserve)",
+    "Personnel",
+    "Protection civile",
+    12,
+    "Alerté",
+  );
+
+  const contact = (
+    name: string,
+    category: string,
+    phone: string,
+    extra: Partial<Contact> = {},
+  ) =>
+    put("contacts", {
+      id: id(),
+      name,
+      organization: "",
+      role: "",
+      category,
+      phone,
+      phone2: "",
+      email: "",
+      radio: "",
+      address: "",
+      notes: "",
+      favorite: false,
+      ...extra,
+    });
+  SWISS_EMERGENCY.slice(0, 5).forEach((c) =>
+    contact(c.name, c.category, c.phone, {
+      organization: c.organization,
+      notes: c.notes,
+    }),
+  );
+  const commune = contact(
+    "Permanence de la commune (fictif)",
+    "Autorités",
+    "022 000 00 01",
+    {
+      organization: "Commune de Carouge · fictif",
+      role: "Permanence technique",
+      favorite: true,
+    },
+  );
+  contact("Centrale d’engagement (fictif)", "Partenaires", "022 000 00 02", {
+    organization: "Protection civile · fictif",
+    radio: "PC Carouge",
+    favorite: true,
+  });
+  contact(
+    "Fournisseur de sacs de sable (fictif)",
+    "Fournisseurs",
+    "022 000 00 03",
+    {
+      organization: "Entreprise fictive SA",
+    },
+  );
+
+  const message = (value: Partial<Message> & Pick<Message, "body">) =>
+    put("messages", { ...emptyMessage(), id: id(), ...value } as Message & {
+      id: string;
+    });
+  const rising = message({
+    receivedAt: at(8),
+    from: "Patrouille Alpha",
+    to: "PC arrière",
+    via: "Radio",
+    priority: "Important",
+    category: "Renseignement",
+    subject: "Niveau de l’Arve en hausse",
+    body: "Niveau en hausse rapide au pont des Acacias, environ 20 cm en 30 minutes.",
+    location: "Pont des Acacias",
+    status: "Transmis",
+    entryId: journal.entries[1].id,
+    handledBy: "Fictive Delacrétaz",
+  });
+  const road = message({
+    receivedAt: at(62),
+    from: "Équipe Bravo",
+    to: "PC front",
+    via: "Radio",
+    priority: "Urgent",
+    category: "Alerte",
+    subject: "Eau sur la chaussée",
+    body: "Eau sur la chaussée route de Veyrier à la hauteur de la Fontenette. Circulation dangereuse.",
+    location: "Route de Veyrier",
+    replyNeeded: true,
+    replyBy: at(80),
+  });
+  message({
+    receivedAt: at(70),
+    from: "Logistique",
+    to: "PC arrière",
+    via: "Téléphone",
+    category: "Compte rendu",
+    subject: "Sacs de sable en route",
+    body: "Deux camions partis de l’arsenal avec 200 sacs. Arrivée estimée dans 45 minutes.",
+    status: "En traitement",
+    handledBy: "Fictive Delacrétaz",
+  });
+  message({
+    receivedAt: at(74),
+    from: "Police",
+    to: "Chef d’intervention",
+    via: "Téléphone",
+    category: "Information",
+    subject: "Fermeture du pont",
+    body: "La police ferme le pont de Carouge à la circulation dès 09:30.",
+    location: "Pont de Carouge",
+  });
+
+  const place = (
+    label: string,
+    kind: Place["kind"],
+    layer: string,
+    points: [number, number][],
+    symbol = "",
+    color = "",
+    notes = "",
+  ) =>
+    put("places", {
+      id: id(),
+      label,
+      kind,
+      layer,
+      points,
+      symbol,
+      color,
+      notes,
+    });
+  const pc = place(
+    "PC Carouge",
+    "point",
+    "Emplacements",
+    [[46.1829, 6.1398]],
+    "c57efe9980d514d6",
+  );
+  const pcFront = place(
+    "PC front",
+    "point",
+    "Emplacements",
+    [[46.1953, 6.1463]],
+    "997aec2a2a12cbfc",
+  );
+  const flood = place(
+    "Zone inondée Acacias",
+    "area",
+    "Effets",
+    [
+      [46.1941, 6.1352],
+      [46.1952, 6.1391],
+      [46.1938, 6.1419],
+      [46.1921, 6.1402],
+      [46.1918, 6.1363],
+    ],
+    "",
+    "#3fdcff",
+    "Surface estimée d’après la reconnaissance de 08:08.",
+  );
+  const closure = place(
+    "Fermeture des berges",
+    "line",
+    "Mesures",
+    [
+      [46.1962, 6.1441],
+      [46.1956, 6.1467],
+      [46.1948, 6.149],
+    ],
+    "",
+    "#34e0a1",
+  );
+  const pumpPlace = place(
+    "Tonne-pompe SIS",
+    "point",
+    "Moyens",
+    [[46.1949, 6.1478]],
+    "7e9d403b48f7e265",
+  );
+  const gathering = place(
+    "Point de rassemblement Acacias",
+    "point",
+    "Emplacements",
+    [[46.1912, 6.1336]],
+    "35501db9d9a6e728",
+  );
+  const walkway = place(
+    "Passerelle de la Fontenette",
+    "point",
+    "Dangers",
+    [[46.1843, 6.1537]],
+    "b3bc72f54c8ed2e5",
+    "",
+    "Second accès aux berges encore ouvert.",
+  );
+  const roadPlace = place(
+    "Route de Veyrier inondée",
+    "point",
+    "Effets",
+    [[46.1861, 6.1548]],
+    "85d41c22bf08bbff",
+  );
+
+  link(ref("place", pc), ref("cell", back), "emplacement");
+  link(ref("place", pcFront), ref("cell", front), "emplacement");
+  link(ref("place", flood), entry(1), "reconnaissance");
+  link(ref("place", flood), ref("message", rising), "signalé par");
+  link(ref("place", closure), entry(2), "décision");
+  link(ref("place", closure), entry(4), "quittance");
+  link(ref("place", pumpPlace), ref("resource", pump), "position");
+  link(ref("place", gathering), entry(3), "livraison");
+  link(ref("resource", trucks), entry(3), "répond à");
+  link(ref("resource", bags), entry(3), "répond à");
+  link(ref("resource", bags), ref("resource", trucks), "transporté par");
+  link(ref("place", walkway), entry(5), "concerne");
+  link(ref("place", walkway), ref("resource", bravo), "position");
+  link(ref("place", roadPlace), ref("message", road), "signalé par");
+  link(ref("contact", commune), ref("message", road), "à informer");
+
+  const agenda = (
+    minutes: number,
+    title: string,
+    kind: string,
+    location = "PC Carouge",
+    participants = "",
+  ) =>
+    put("agenda", {
+      id: id(),
+      at: at(minutes),
+      minutes: 30,
+      title,
+      kind,
+      location,
+      participants,
+      notes: "",
+      done: minutes < 0,
+    });
+  agenda(
+    0,
+    "Orientation initiale",
+    "Orientation",
+    "PC Carouge",
+    "Chef d’intervention, chefs de cellule",
+  );
+  agenda(
+    120,
+    "Rapport de conduite",
+    "Rapport de conduite",
+    "PC Carouge",
+    "Chefs de cellule, chef de section",
+  );
+  agenda(
+    210,
+    "Point presse",
+    "Conférence de presse",
+    "Mairie de Carouge (fictif)",
+  );
+  agenda(
+    360,
+    "Rapport de conduite",
+    "Rapport de conduite",
+    "PC Carouge",
+    "Chefs de cellule, chef de section",
+  );
+  agenda(660, "Relève", "Relève");
+
+  const facts: [string, string, string, string][] = [
+    ["Personnes blessées", "0", "pers.", "Personnes"],
+    ["Personnes évacuées", "12", "pers.", "Personnes"],
+    ["Bâtiments touchés", "3", "bât.", "Bâtiments"],
+    ["Routes fermées", "2", "", "Infrastructures"],
+    ["Personnel engagé", "27", "pers.", "Engagement"],
+    ["Niveau de l’Arve (Acacias)", "+ 45", "cm", "Infrastructures"],
+  ];
+  facts.forEach(([label, value, unit, category], order) =>
+    put("facts", { id: id(), label, value, unit, category, note: "", order }),
+  );
+  const boards: [string, string][] = [
+    [
+      "Situation générale",
+      "Crue de l’Arve après de fortes pluies. Montée d’environ 45 cm depuis 08:00 au pont des Acacias. Caves inondées quai Charles-Page.",
+    ],
+    [
+      "Dangers et évolution probable",
+      "Pic attendu vers 13:00. Risque de débordement sur la route de Veyrier et aux accès des berges.",
+    ],
+    [
+      "Intention / idée de manœuvre",
+      "Fermer et baliser tous les accès aux berges, protéger les bâtiments du quai avec des sacs de sable, garder une réserve alertée.",
+    ],
+  ];
+  boards.forEach(([title, body], order) =>
+    put("boards", { id: id(), title, body, order }),
+  );
+  put("observations", {
+    id: id(),
+    at: at(30),
+    place: "Pont des Acacias",
+    temperature: "11 °C",
+    wind: "SO 20 km/h",
+    precipitation: "Pluie modérée",
+    visibility: "Bonne",
+    conditions: "Couvert, pluie continue",
+    notes: "",
+  });
+  put("alerts", {
+    id: id(),
+    level: "3",
+    hazard: "Fortes pluies",
+    region: "Genève",
+    from: at(-240),
+    to: at(720),
+    source: "MétéoSuisse (exemple fictif)",
+    notes: "",
+  });
+  put("alerts", {
+    id: id(),
+    level: "3",
+    hazard: "Crues",
+    region: "Arve",
+    from: at(-60),
+    to: at(1440),
+    source: "Canton (exemple fictif)",
+    notes: "",
+  });
+  return {
+    ...ops,
+    settings: {
+      ...ops.settings,
+      mapCenter: { lat: 46.1905, lng: 6.1445, zoom: 15 },
+      weatherPlace: { name: "Carouge (GE)", lat: 46.1839, lng: 6.1397 },
+    },
+  };
+}
 export function demoWorkspace(): Workspace {
   let journal = newJournal("Crue de l’Arve", {
     organization: "PCi · Exercice de démonstration",
@@ -294,6 +826,7 @@ export function demoWorkspace(): Workspace {
     );
   });
   journal = updateRadio(journal, demoRadio(at));
+  journal = { ...journal, ops: demoOps(journal, at) };
   return {
     version: 1,
     author: "Opérateur · démo",

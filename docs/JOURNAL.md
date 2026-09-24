@@ -43,6 +43,6 @@ Le formulaire est volontairement progressif : message, heure, type et émetteur 
 
 ## Limites et migration
 
-Pas de carte, organigramme, messagerie ni transmission radio réelle : le plan radio documente le réseau, il ne pilote pas les terminaux. Le canal décrit une communication effectuée avec les moyens usuels. Pas de synchronisation implicite ou d’identité certifiée. Les imports CSV sont volontairement limités au modèle ORION ; aucun mapping arbitraire Excel n’est promis.
+Depuis la version 2.0 (orion aic), la carte, l’équipe, les messages et les autres produits de l’aide à la conduite existent comme modules reliés au journal ; le journal reste le registre de référence. Aucune transmission radio réelle : le plan radio documente le réseau, il ne pilote pas les terminaux, et le module Messages consigne des messages reçus par les moyens usuels. La synchronisation entre postes est explicite (code de session) ; l’identité reste déclarative. Les imports CSV sont volontairement limités au modèle du journal ; aucun mapping arbitraire Excel n’est promis.
 
 Les sauvegardes serveur ORION 0.3 restent en place sur leur stockage antérieur. L’application 1.0 ne les contacte pas. Avant de retirer l’ancien service, conserver ses exports et sauvegardes conformément à la politique de l’exploitant. Les exports JSON ORION 0.3 sont convertibles en journal par l’importeur ; les autres objets métier sont laissés hors de cette application.

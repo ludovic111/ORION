@@ -1,11 +1,12 @@
-# ORION
+# orion aic
 
-**Journal d’intervention et plan du réseau radio Polycom pour la protection civile.**
-Application web locale : sans compte, sans base de données serveur, chiffrée sur le poste, utilisable hors ligne.
+**L’aide à la conduite, tout relié.** Journal d’intervention, messages, carte de situation, moyens, équipe, réseau radio Polycom, contacts, météo et rythme de conduite pour la protection civile, dans une seule application web.
+Locale et chiffrée, sans compte ni base de données, synchronisée en direct entre les postes d’un même poste de conduite, utilisable hors ligne.
 
-- Production : <https://orion-web-production-1466.up.railway.app>
+- Production : <https://orionaic.xyz>
 - Licence : AGPL-3.0-only (le code source complet est téléchargeable depuis l’application)
-- Version : 1.2
+- Version : 2.0
+- Documentation d’utilisation : dans l’application, module **Aide** (trois niveaux de détail).
 
 > Logiciel indépendant. Aucune affiliation, homologation ni approbation de l’OFPP, de l’OCPPAM ou de l’État de Genève. L’emploi de données réelles exige un poste, une installation et une autorisation de l’organisation.
 
@@ -15,14 +16,14 @@ Application web locale : sans compte, sans base de données serveur, chiffrée s
 
 1. [Principe](#principe)
 2. [Démarrage rapide](#démarrage-rapide)
-3. [Session et stockage](#session-et-stockage)
-4. [Journal d’intervention](#journal-dintervention)
-5. [Saisie rapide et suivi](#saisie-rapide-et-suivi)
-6. [Modifier et supprimer une entrée](#modifier-et-supprimer-une-entrée)
-7. [Fiches message A4](#fiches-message-a4)
-8. [Plan du réseau radio](#plan-du-réseau-radio)
-9. [Rapport de situation](#rapport-de-situation)
-10. [Relève](#relève)
+3. [Les modules](#les-modules)
+4. [Tout est relié](#tout-est-relié)
+5. [Travailler à plusieurs postes](#travailler-à-plusieurs-postes)
+6. [Impression automatique](#impression-automatique)
+7. [Référentiels et réglages](#référentiels-et-réglages)
+8. [Session et stockage](#session-et-stockage)
+9. [Journal d’intervention](#journal-dintervention)
+10. [Plan du réseau radio](#plan-du-réseau-radio)
 11. [Téléphone, tablette et QR codes](#téléphone-tablette-et-qr-codes)
 12. [Import, export et fusion](#import-export-et-fusion)
 13. [Sécurité](#sécurité)
@@ -30,33 +31,95 @@ Application web locale : sans compte, sans base de données serveur, chiffrée s
 15. [Installation et hébergement](#installation-et-hébergement)
 16. [Développement](#développement)
 17. [Structure du code](#structure-du-code)
-18. [Modèle de données](#modèle-de-données)
-19. [Sources métier](#sources-métier)
+18. [Sources métier](#sources-métier)
 
 ---
 
 ## Principe
 
-| Aspect           | Fonctionnement                                                                                      |
-| ---------------- | --------------------------------------------------------------------------------------------------- |
-| Unité de travail | Une **session** par événement. Elle contient un ou plusieurs **journaux** (intervention, exercice). |
-| Données          | Restent dans le navigateur. Elles ne quittent le poste que par un fichier exporté par l’opérateur.  |
-| Serveur          | Sert uniquement les fichiers statiques. Il refuse toute écriture (`POST`, `PUT`… → 405).            |
-| Identité         | L’opérateur déclare son nom ou sa fonction. Aucun compte, aucune authentification.                  |
-| Transfert        | Archive `.orion` chiffrée, réimportée sur un autre poste, avec fusion contrôlée.                    |
-| Hors ligne       | Après un premier chargement, un service worker met l’application en cache (exports et PDF compris). |
+| Aspect           | Fonctionnement                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Unité de travail | Une **session** par événement. Elle contient un ou plusieurs **journaux** (intervention, exercice).                   |
+| Données          | Dans le navigateur de chaque poste, chiffrées. Elles ne quittent le poste que par un export ou la synchronisation.    |
+| Serveur          | Sert les fichiers et relaie des messages chiffrés entre postes. Aucune base de données, rien n’est stocké.            |
+| Identité         | L’opérateur déclare son nom ou sa fonction. Aucun compte, aucune authentification.                                    |
+| Plusieurs postes | Un **code de session** relie les postes : tout se synchronise en direct, chiffré de bout en bout.                     |
+| Transfert        | Archive `.orionaic` chiffrée, réimportable, avec fusion contrôlée (les anciennes archives `.orion` restent lisibles). |
+| Hors ligne       | Après un premier chargement, l’application, les signes et les tuiles de carte déjà vues restent disponibles.          |
+| Tout facultatif  | Chaque module et chaque champ est facultatif, modifiable et supprimable. Les modules inutiles peuvent être masqués.   |
 
 ## Démarrage rapide
 
-1. Ouvrir l’application.
-2. **Nouvelle session** : nom de l’événement, opérateur, mode (Exercice / Intervention).
-3. Laisser **Sauvegarde chiffrée sur ce poste** cochée et choisir une phrase de récupération (12 caractères minimum). Elle ne peut pas être récupérée.
-4. Consigner les messages dans le panneau **Nouvelle entrée** (`⌘↵` / `Ctrl+↵` pour valider).
-5. Onglet **Réseau radio** : créer les groupes, les noms d’appel, les terminaux, puis remettre les radios.
-6. **Exporter** régulièrement une archive `.orion`.
-7. En fin d’engagement : clôturer le journal, exporter, puis **Session → Effacer la session**.
+1. Ouvrir <https://orionaic.xyz>.
+2. **Nouvelle session** : nom de l’événement, opérateur, mode (Exercice / Intervention). Laisser **Sauvegarde chiffrée sur ce poste** cochée et choisir une phrase de récupération (12 caractères minimum, irrécupérable).
+3. La page **Situation** s’ouvre : renseignements clés, points ouverts, moyens, météo, prochains rapports. Le dock à gauche donne accès à tous les modules ; `⌘K` / `Ctrl+K` cherche partout et lance n’importe quelle action.
+4. Consigner au **Journal**, recevoir et synthétiser dans **Messages**, dessiner la **Carte**, tenir les **Moyens** et l’**Équipe**.
+5. Pour travailler à plusieurs : menu opérateur → **Synchronisation** → **Créer un code de session**, puis sur les autres postes **Rejoindre** avec ce code (ou le QR code).
+6. **Exporter** régulièrement une archive `.orionaic`. En fin d’engagement : clôturer le journal, exporter, puis **Session → Effacer la session**.
 
-Le bouton **Ouvrir l’exercice de démonstration** charge un scénario fictif complet (« Crue de l’Arve ») sans toucher aux données locales.
+Le bouton **Ouvrir l’exercice de démonstration** charge un scénario fictif complet (« Crue de l’Arve ») avec tous les modules remplis et reliés, sans toucher aux données locales.
+
+## Les modules
+
+| Module                 | À quoi il sert                                                                                                                                                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Situation**          | Accueil. Renseignements clés modifiables (+/−), tableaux de situation (situation générale, dangers, intention, points ouverts), échéances, derniers messages, moyens par état, présences, radios, rendez-vous, météo, réseau.                                                               |
+| **Journal**            | Registre chronologique numéroté : saisie rapide, modèles, suivi, échéances, versions, fiches A4, rapport de situation, relève (détail ci-dessous).                                                                                                                                          |
+| **Messages**           | Réception et synthèse des messages avant le journal : saisie standardisée (De, À, canal, priorité, catégorie en un clic, texte libre toujours possible), tableau Nouveau → En traitement → Transmis → Classé, **Inscrire au journal** (entrée préremplie et reliée), formule de message A4. |
+| **Missions**           | Tableau des entrées à suivre (À traiter, En cours, Terminé, Annulé) par glisser-déposer, filtres par type et responsable, retards, report d’échéance, suites.                                                                                                                               |
+| **Carte**              | Fonds swisstopo (couleur, gris, aérien, nuit) et OpenStreetMap, signes conventionnels civils OFPP, lignes, zones, textes, mesures, coordonnées MN95, recherche d’adresse, calques. Au **survol**, chaque objet montre tout ce qui lui est lié.                                              |
+| **Moyens**             | Véhicules, personnel et matériel par état (Disponible, Alerté, En route, Engagé, De retour, Hors service), glisser-déposer, arrivée prévue, consignation des changements, placement sur la carte, tableau A4.                                                                               |
+| **Équipe**             | Postes et cellules (PC front, PC arrière, cellules…) et personnes (grade, nom, fonction, nom d’appel, téléphone, présence, horaires) en organigramme ou en liste, impression A4.                                                                                                            |
+| **Réseau radio**       | Plan Polycom : groupes, noms d’appel, terminaux, remises et retours, quittances, contrôles de liaison, étiquettes QR (détail ci-dessous).                                                                                                                                                   |
+| **Contacts**           | Annuaire par catégories, favoris, appel en un clic sur téléphone, numéros d’urgence suisses en un clic, import vCard / CSV, export CSV, impression.                                                                                                                                         |
+| **Météo**              | Prévisions MétéoSuisse (ICON-CH via Open-Meteo, sur demande), graphique 48 h, trois jours, observations sur place, alertes de danger degré 1 à 5.                                                                                                                                           |
+| **Rythme de conduite** | Rapports, orientations, relèves et rendez-vous avec compte à rebours ; génération d’un rythme (« toutes les 4 h »), consignation au journal, impression.                                                                                                                                    |
+| **Réseau des liens**   | Graphe animé de tous les éléments et de leurs liens, « comme un réseau de neurones » : survol, filtres, recherche, ajout de liens.                                                                                                                                                          |
+| **Aide**               | Documentation intégrée pour tous, en trois niveaux : En bref, Guide, Tout le détail. Chaque module a son bouton « ? ».                                                                                                                                                                      |
+
+## Tout est relié
+
+Chaque élément (entrée, message, objet de la carte, moyen, personne, poste, contact, rendez-vous, renseignement, alerte, terminal, nom d’appel, groupe radio) peut être relié à n’importe quel autre.
+
+- **Liens automatiques** : même nom d’appel ; émetteur, destinataire ou responsable qui correspond à une personne, un poste, un moyen ou un contact ; références `#012` entre entrées ; message inscrit au journal ; membre d’un poste ; groupe principal d’un nom d’appel ; terminal remis.
+- **Liens manuels** : bouton **Lier** dans chaque fiche, avec une nature facultative (« position », « demandé par »…). Un lien manuel se retire d’un clic.
+- **Actions reliées** : « Inscrire au journal » relie l’entrée au message ; « Placer sur la carte » relie l’objet au moyen ou au message.
+- Partout, une puce de lien montre un **aperçu au survol** (l’élément et ses propres liens) et ouvre l’élément au clic. Sur la carte, survoler un véhicule montre le message, l’entrée et les moyens liés.
+- Le module **Réseau des liens** montre l’ensemble.
+
+## Travailler à plusieurs postes
+
+Sans compte ni base de données : chaque poste garde une copie complète de la session, les postes s’échangent leurs modifications.
+
+1. Poste A : menu opérateur → **Synchronisation** → **Créer un code de session** (format `ABCD-EFGH-JKMN-PQRS`). Un QR code et un lien s’affichent.
+2. Poste B : page d’accueil → **Rejoindre** → saisir le code (ou scanner le QR) et son nom. La session arrive, puis tout reste synchronisé en direct : journal, messages, carte, moyens, équipe, radio, référentiels…
+3. La puce en haut indique `Seul`, `3 postes` (avec qui travaille sur quel module) ou `Reconnexion`.
+
+| Question                              | Réponse                                                                                                                                                                                                                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Où passent les données ?              | Par le relais du site (`/sync`), **chiffrées de bout en bout** (AES-256-GCM, clé dérivée du code). Le relais ne voit que des messages illisibles et ne garde rien.                                                                                    |
+| Et sans internet ?                    | Mode réseau local : sur un ordinateur du poste de conduite, `npm run lan` sert l’application en HTTPS sur le Wi-Fi / réseau ; les autres postes ouvrent l’adresse affichée.                                                                           |
+| Un poste perd la connexion ?          | Il continue à travailler ; à la reconnexion, les postes comparent leurs empreintes et se remettent à jour.                                                                                                                                            |
+| Deux postes modifient la même chose ? | Journal : les deux versions sont gardées dans l’historique. Autres éléments : la modification la plus récente l’emporte ; une suppression l’emporte sur une modification plus ancienne. Deux entrées avec le même numéro : la plus ancienne le garde. |
+| Bluetooth ?                           | Les navigateurs ne permettent pas ce mode d’échange ; le Wi-Fi local (`npm run lan`) le remplace.                                                                                                                                                     |
+| Sécurité du code ?                    | Le code est un mot de passe : il donne accès à toute la session. Le transmettre sur place ou par un canal sûr.                                                                                                                                        |
+
+Les réglages du poste (thème, modules affichés, impression automatique) restent propres à chaque poste.
+
+## Impression automatique
+
+- Sous le formulaire du journal : **Impression automatique**. Chaque entrée consignée part aussitôt à l’impression (fiche message A4). Désactivable à tout moment.
+- Réglages → Ce poste : imprimer aussi **les entrées des autres postes** (un poste d’impression central) et **chaque nouveau message** reçu (formule de message A4).
+- Le navigateur affiche sa fenêtre d’impression à chaque fiche. Pour imprimer sans fenêtre, lancer Chrome ou Edge avec `--kiosk-printing` et choisir l’imprimante par défaut du système :
+  - Windows : `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://orionaic.xyz`
+  - macOS : `open -a "Google Chrome" --args --kiosk-printing https://orionaic.xyz`
+
+## Référentiels et réglages
+
+- **Référentiels** (menu opérateur) : les valeurs standards proposées en un clic — destinataires et émetteurs (PC front, PC arrière, chef d’intervention…), catégories de message, canaux, types de poste, grades, fonctions, types de moyens, organisations, catégories de contact, types de rendez-vous, calques de carte, catégories de renseignements. Chaque liste est modifiable ; « Rétablir les valeurs standards ». Tout champ accepte aussi du texte libre. Les référentiels font partie du journal (synchronisés, archivés).
+- **Ce poste** : thème sombre « espace », clair « jour » ou système ; animations réduites ; impression automatique ; modules affichés ou masqués.
+- **Session et journal** : propriétés du journal (toutes modifiables), opérateur, sauvegarde chiffrée, clôture et réouverture, effacement de la session.
+- **Retirer un journal** de la session : menu du titre du journal.
 
 ## Session et stockage
 
@@ -67,11 +130,11 @@ Le bouton **Ouvrir l’exercice de démonstration** charge un scénario fictif c
 
 - Chaque modification est sauvegardée 250 ms après la dernière frappe, brouillon de nouvelle entrée compris.
 - Un verrou Web Locks empêche d’ouvrir la même session sauvegardée dans deux onglets.
-- **Verrouiller** (icône cadenas) retire la session de la mémoire ; elle reste chiffrée sur le poste.
-- **Session → Effacer la session** efface la sauvegarde locale. Cette action exige au préalable une archive ORION ou JSON récente de chaque journal, puis la saisie de `TERMINER`.
+- **Verrouiller** (menu opérateur) retire la session de la mémoire ; elle reste chiffrée sur le poste.
+- **Session → Effacer la session** efface la sauvegarde locale. Cette action exige au préalable une archive orion aic ou JSON récente de chaque journal, puis la saisie de `TERMINER`.
 - Phrase perdue : l’écran d’accueil propose d’effacer l’espace local (saisie de `EFFACER`). Les données ne sont alors récupérables que depuis une archive.
 
-La barre supérieure indique en permanence : l’état de sauvegarde (`CHIFFRÉ LOCAL`, `TEMPORAIRE`, `ÉCHEC SAUVEGARDE`), la disponibilité hors ligne et l’heure suisse.
+La barre supérieure indique en permanence : la synchronisation (`Seul`, `N postes`, `Reconnexion`), l’état de sauvegarde (`Chiffré`, `Temporaire`, `Échec sauvegarde`), le mode hors ligne et l’heure suisse.
 
 ## Journal d’intervention
 
@@ -98,7 +161,7 @@ Trois instants distincts sont conservés : **événement** (quand les faits se s
 ### Consultation
 
 - Filtres : Tout, À suivre (À traiter / En cours), Urgent, Décisions.
-- Recherche plein texte insensible aux accents sur tous les champs (`⌘K` / `Ctrl+K`).
+- Recherche plein texte insensible aux accents sur tous les champs (champ du journal) ; `⌘K` / `Ctrl+K` cherche dans tous les modules.
 - Filtre par jour, tri chronologique ou antéchronologique, regroupement par jour.
 - Indicateurs : entrées, suites à donner, échéances dépassées, urgences, radios en service, état de l’archive.
 - Détail d’une entrée : clic sur le message. Actions : Fiche A4, Modifier, Consigner une suite, Terminer le suivi, Versions, Supprimer.
@@ -138,7 +201,7 @@ Au-dessus du formulaire, six modèles préremplissent la nature, la priorité, l
 
 - Au-dessus des indicateurs, un bandeau liste les échéances **dépassées** (rouge) et celles des **15 prochaines minutes** (orange) : numéro, message, heure, retard ou délai restant, responsable.
 - Actions directes : **+15 min** (reporte l’échéance de 15 minutes après maintenant ou après l’échéance si elle est plus tardive, motif consigné), **Terminé**, ou clic pour ouvrir l’entrée. Le détail d’une entrée à suivre propose aussi « Échéance +15 min ».
-- Le titre de l’onglet affiche le nombre d’échéances dépassées : `(3) ORION`, visible même quand l’onglet est en arrière-plan.
+- Le titre de l’onglet affiche le nombre d’échéances dépassées : `(3) orion aic`, visible même quand l’onglet est en arrière-plan.
 - **Alarme sonore** (icône cloche) : deux bips quand une nouvelle échéance est dépassée. Désactivée par défaut ; le réglage est mémorisé sur ce navigateur. Le navigateur exige un clic pour autoriser le son, d’où l’activation manuelle.
 - Les échéances sont vérifiées toutes les 30 secondes.
 
@@ -189,7 +252,7 @@ L’aperçu montre les pages réelles. **Imprimer** utilise l’impression du na
 
 ## Plan du réseau radio
 
-Onglet **Réseau radio**. Le plan fait partie du journal : il est sauvegardé, archivé, fusionné et clôturé avec lui.
+Module **Réseau radio**. Le plan fait partie du journal : il est sauvegardé, archivé, fusionné et clôturé avec lui.
 
 ### Groupes et canaux
 
@@ -254,7 +317,7 @@ Nom d’appel, groupe ou canal, heure, remarques et audibilité selon l’aide-m
 
 ### Impression
 
-**Plan A4** (en-tête de l’onglet) ou Exporter → **Plan du réseau radio** : A4 paysage avec plan du réseau (nom d’appel, fonction, section, titulaire, terminal et RFSI, principal, alternative, sur le réseau, dernier contrôle), groupes, terminaux, registre des remises et contrôles.
+**Plan A4** (en-tête du module) ou Exporter → **Plan du réseau radio** : A4 paysage avec plan du réseau (nom d’appel, fonction, section, titulaire, terminal et RFSI, principal, alternative, sur le réseau, dernier contrôle), groupes, terminaux, registre des remises et contrôles.
 
 ## Rapport de situation
 
@@ -275,77 +338,79 @@ La période porte sur l’**heure de l’événement**. Les textes longs sont ab
 
 ## Relève
 
-Bouton **Relève** : suites à donner, échéances dépassées, informations à confirmer, terminaux remis (détenteur, nom d’appel, heure). **Consigner la relève** prépare une entrée de nature Relève avec ces chiffres. Pour un autre poste : archive `.orion` et phrase transmise par un canal séparé.
+Bouton **Relève** : suites à donner, échéances dépassées, informations à confirmer, terminaux remis (détenteur, nom d’appel, heure). **Consigner la relève** prépare une entrée de nature Relève avec ces chiffres. Pour un autre poste : archive `.orionaic` et phrase transmise par un canal séparé.
 
 ## Téléphone, tablette et QR codes
 
 ### Installer l’app
 
-Rail de gauche → **Installer l’app**. Sur Chrome, Edge, Brave et Android, le navigateur propose l’installation directement ; sinon une aide s’affiche :
+Menu opérateur → **Installer l’application**. Sur Chrome, Edge, Brave et Android, le navigateur propose l’installation directement ; sinon une aide s’affiche :
 
 - iPhone / iPad : Safari → Partager → « Sur l’écran d’accueil » ;
 - Android : Chrome → ⋮ → « Installer l’application » ;
 - ordinateur : icône d’installation dans la barre d’adresse.
 
-L’app installée s’ouvre en plein écran, fonctionne hors ligne et a son icône. **Ses données sont propres à ce contexte** : une session ouverte dans Safari n’apparaît pas dans l’app installée (et inversement). Transférer par archive `.orion` si nécessaire.
+L’app installée s’ouvre en plein écran, fonctionne hors ligne et a son icône. **Ses données sont propres à ce contexte** : une session ouverte dans Safari n’apparaît pas dans l’app installée (et inversement). Utiliser la synchronisation ou une archive `.orionaic`.
 
 ### Écran tactile
 
-Sur écran tactile, boutons et champs sont agrandis (cibles de 40 px au moins, texte à 16 px pour éviter le zoom automatique d’iOS), les icônes Modifier / Supprimer restent visibles, et un **bouton rond +** en bas à droite ouvre une nouvelle entrée. Sous 1 200 px de large, la saisie se fait dans une fenêtre dédiée.
+Sous 900 px de large, le dock passe en bas de l’écran. Boutons et champs sont agrandis (cibles de 40 px au moins, texte à 16 px pour éviter le zoom automatique d’iOS) et un **bouton rond +** ouvre une nouvelle entrée. Dans Contacts, les numéros s’appellent d’un toucher.
 
 ### Étiquettes et scan des radios
 
-1. Onglet Réseau radio → Terminaux → **Étiquettes** : planche A4 de 21 étiquettes (3 × 7, 60 × 36 mm, traits de coupe) avec QR code, numéro, modèle et RFSI.
+1. Réseau radio → Terminaux → **Étiquettes** : planche A4 de 21 étiquettes (3 × 7, 60 × 36 mm, traits de coupe) avec QR code, numéro, modèle et RFSI.
 2. Coller une étiquette sur chaque radio.
 3. **Scanner** :
-   - dans ORION (Chrome / Edge sur Android, navigateurs compatibles avec la lecture de QR) : la caméra arrière s’ouvre et reconnaît l’étiquette ;
-   - avec l’appareil photo du téléphone : le QR contient un lien `…/#scan=R-04` qui ouvre ORION sur ce terminal ;
+   - dans orion aic (navigateurs compatibles avec la lecture de QR) : la caméra arrière s’ouvre et reconnaît l’étiquette ;
+   - avec l’appareil photo du téléphone : le QR contient un lien `…/#scan=R-04` qui ouvre orion aic sur ce terminal ;
    - sinon : saisir le numéro (`R-04`, insensible à la casse).
-4. ORION ouvre directement la bonne action : **retour** si le terminal est en service, **remise** s’il est disponible ou à recharger, sa fiche s’il est défectueux ou manquant.
+4. orion aic ouvre directement la bonne action : **retour** si le terminal est en service, **remise** s’il est disponible ou à recharger, sa fiche s’il est défectueux ou manquant.
 
-La caméra n’est utilisée que dans la fenêtre Scanner, localement ; aucune image n’est enregistrée ni transmise. L’étiquette ne contient que l’adresse du site et le numéro du terminal.
+Pour rejoindre une session depuis un téléphone : scanner le QR code affiché dans Réglages → Synchronisation du poste qui partage.
 
 ## Import, export et fusion
 
 Les exports portent sur **tout le journal**, quels que soient les filtres.
 
-| Format                  | Extension            | Contenu                                                | Réimportable                |
-| ----------------------- | -------------------- | ------------------------------------------------------ | --------------------------- |
-| Archive ORION           | `.orion`             | Chiffrée : entrées, versions, suppressions, plan radio | Oui, sans perte             |
-| Archive JSON            | `.json`              | En clair : idem                                        | Oui, sans perte             |
-| Fiches messages A4      | `.pdf`               | Une fiche par entrée                                   | Non                         |
-| Journal PDF             | `.pdf`               | Tableau chronologique A4                               | Non                         |
-| Plan du réseau radio    | `.pdf`               | Plan, groupes, terminaux, remises, contrôles           | Non                         |
-| Excel                   | `.xlsx`              | Filtres, en-tête figé                                  | Non                         |
-| Word                    | `.docx`              | Document modifiable                                    | Non                         |
-| OpenDocument            | `.ods`               | Tableur LibreOffice                                    | Non                         |
-| CSV / TSV               | `.csv` `.tsv`        | UTF-8, point-virgule / tabulation                      | Oui, état actuel uniquement |
-| HTML / Texte / Markdown | `.html` `.txt` `.md` | Lecture                                                | Non                         |
+| Format                  | Extension            | Contenu                                                                  | Réimportable                |
+| ----------------------- | -------------------- | ------------------------------------------------------------------------ | --------------------------- |
+| Archive orion aic       | `.orionaic`          | Chiffrée : entrées, versions, suppressions, plan radio, tous les modules | Oui, sans perte             |
+| Archive JSON            | `.json`              | En clair : idem                                                          | Oui, sans perte             |
+| Fiches messages A4      | `.pdf`               | Une fiche par entrée                                                     | Non                         |
+| Journal PDF             | `.pdf`               | Tableau chronologique A4                                                 | Non                         |
+| Plan du réseau radio    | `.pdf`               | Plan, groupes, terminaux, remises, contrôles                             | Non                         |
+| Excel                   | `.xlsx`              | Filtres, en-tête figé                                                    | Non                         |
+| Word                    | `.docx`              | Document modifiable                                                      | Non                         |
+| OpenDocument            | `.ods`               | Tableur LibreOffice                                                      | Non                         |
+| CSV / TSV               | `.csv` `.tsv`        | UTF-8, point-virgule / tabulation                                        | Oui, état actuel uniquement |
+| HTML / Texte / Markdown | `.html` `.txt` `.md` | Lecture                                                                  | Non                         |
 
-Tous les formats sauf `.orion` sont **en clair** ; l’interface demande de le reconnaître avant téléchargement.
+Les modules ont leurs propres impressions A4 / PDF : formule de message, tableau des moyens, équipe et postes, annuaire, rythme de conduite. Tous les formats sauf `.orionaic` sont **en clair** ; l’interface demande de le reconnaître avant téléchargement.
 
-**Import** (`.orion`, `.json`, `.csv`, `.tsv`, 32 Mo maximum) : fichier lu localement, aperçu avant toute modification, puis au choix :
+**Import** (`.orionaic`, `.orion`, `.json`, `.csv`, `.tsv`, 32 Mo maximum) : fichier lu localement, aperçu avant toute modification, puis au choix :
 
 - **Journal séparé** : le journal actuel reste intact.
-- **Fusionner** : ajoute les nouvelles entrées (renumérotées à la suite), ignore les doublons exacts, applique les suppressions et complète les remises radio clôturées ailleurs. Toute autre divergence (même entrée modifiée différemment, terminal remis à deux personnes) **bloque** la fusion : importer alors en journal séparé pour comparer.
+- **Fusionner** : ajoute les nouvelles entrées (renumérotées à la suite), ignore les doublons exacts, applique les suppressions, complète les remises radio clôturées ailleurs et combine les données des modules (la modification la plus récente l’emporte). Deux versions divergentes d’une même entrée **bloquent** la fusion : importer alors en journal séparé pour comparer.
 
 Les anciens exports `orion-export-v1` (ORION 0.3) sont reconnus : seules les entrées de journal sont converties.
 
 ## Sécurité
 
-- Chiffrement : AES-256-GCM, IV aléatoire de 96 bits par écriture, clé dérivée par PBKDF2-SHA-256 (600 000 itérations, sel de 128 bits), Web Crypto, clé non extractible. La phrase n’est jamais stockée.
-- Aucune requête réseau n’envoie de contenu : ni compte, ni télémétrie, ni IA, ni police ou script externe. CSP stricte (`default-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`).
-- Imports validés par schéma strict (Zod), avec limites de taille ; formules neutralisées dans les exports tableurs ; HTML exporté sans script.
+- Chiffrement local : AES-256-GCM, IV aléatoire de 96 bits par écriture, clé dérivée par PBKDF2-SHA-256 (600 000 itérations, sel de 128 bits), clé non extractible. La phrase n’est jamais stockée.
+- Synchronisation chiffrée de bout en bout avec une clé dérivée du code de session ; relais aveugle, en mémoire, sans stockage.
+- Services externes facultatifs et à la demande : tuiles swisstopo / OpenStreetMap, recherche geo.admin.ch, prévisions Open-Meteo (coordonnées seulement). Ni compte, ni télémétrie, ni IA, ni police ou script externe. CSP stricte.
+- Imports et données reçues validés par schéma strict (Zod), avec limites de taille ; formules neutralisées dans les exports tableurs ; HTML exporté sans script.
 - Détails et limites : [SECURITY.md](SECURITY.md).
 
 ## Limites
 
 - Les noms d’opérateur sont déclaratifs ; l’historique n’est pas une signature électronique.
-- Pas de synchronisation temps réel entre postes : transfert par fichier.
+- Le code de session donne accès à toute la session ; un poste retiré garde sa copie.
+- La résolution des conflits suppose des postes à l’heure.
 - Le plan radio documente le réseau ; il ne pilote pas les terminaux. Les numéros de groupes et RFSI réels viennent du plan de flotte cantonal. Ceux de la démonstration sont fictifs.
 - Effacer les données du navigateur efface la sauvegarde locale. Une sauvegarde locale n’est pas une archive.
 - Pas de pièces jointes binaires : noter leur référence.
-- Limites techniques : 10 000 entrées par journal, 500 versions par entrée, message de 12 000 caractères, 1 000 terminaux, import de 32 Mo.
+- Limites techniques : 10 000 entrées par journal, 500 versions par entrée, message de 12 000 caractères, 1 000 terminaux, 20 000 messages, 5 000 objets de carte, import de 32 Mo, 24 Mo par message de synchronisation.
 
 ## Installation et hébergement
 
@@ -357,23 +422,33 @@ npm run build
 npm start
 ```
 
-Ouvrir <http://127.0.0.1:4311>. `dist/` est un site statique autonome, à servir en **HTTPS** ou sur `localhost` (Web Crypto et service worker l’exigent).
+Ouvrir <http://127.0.0.1:4311>. Le serveur (`server/index.mjs`) sert `dist/` et le relais de synchronisation `/sync`. À servir en **HTTPS** ou sur `localhost` (Web Crypto et service worker l’exigent).
+
+### Réseau local sans internet
+
+```sh
+npm ci
+npm run lan
+```
+
+L’application est servie en HTTPS sur le port 4443 de toutes les interfaces, avec un certificat auto-signé créé dans `.lan/`. La console affiche les adresses (`https://192.168.x.x:4443`) et l’empreinte du certificat. Les autres postes du même réseau ouvrent l’adresse, acceptent le certificat une fois, puis rejoignent la session avec son code.
 
 ### Docker
 
 ```sh
-docker build -t orion .
-docker run -p 4311:4311 orion
+docker build -t orion-aic .
+docker run -p 4311:4311 orion-aic
 ```
 
 ### Railway (hébergement de production)
 
-- Service `orion-web` du projet Railway `orion`, construit depuis le `Dockerfile` de la branche **`main`**.
-- **Chaque push sur `main` redéploie automatiquement.**
-- Variables : `PORT=4311`, `HOST=0.0.0.0`.
-- Aucun volume ni base de données : le serveur ne stocke rien.
+- Projet Railway `orion`, service construit depuis le `Dockerfile` de la branche **`main`** ; configuration dans [`railway.json`](railway.json).
+- Région **EU West (Amsterdam, `europe-west4-drams3a`)**, la plus proche de la Suisse parmi les régions Railway. Une seule instance : le relais garde les salles en mémoire.
+- Domaine : <https://orionaic.xyz> (et `www.orionaic.xyz`), DNS chez Porkbun (ALIAS / CNAME vers Railway). L’ancienne adresse `orion-web-production-1466.up.railway.app` reste active.
+- **Chaque push sur `main` redéploie automatiquement.** Contrôle de santé : `/healthz`.
+- Variables : `PORT=4311`, `HOST=0.0.0.0`. Aucun volume ni base de données.
 
-Pour un autre hébergeur : servir `dist/` avec les en-têtes de [`public/_headers`](public/_headers).
+Pour un autre hébergeur : servir `dist/` avec les en-têtes de [`public/_headers`](public/_headers) et relayer `/sync` vers `server/relay.mjs` (ou se passer de la synchronisation).
 
 ## Développement
 
@@ -383,61 +458,57 @@ npm run check         # TypeScript
 npm test              # tests Node (node:test)
 npm run format:check  # Prettier
 npm run build         # build de production + service worker
+npm start             # serveur de production + relais
+npm run lan           # réseau local en HTTPS
 ```
 
-La CI GitHub (`.github/workflows`) exécute format, typecheck, tests, build, `npm audit` et le build Docker à chaque push.
+La CI GitHub (`.github/workflows`) exécute format, typecheck, tests, build, `npm audit` et le build Docker à chaque push. Guide du kit d’interface pour écrire un module : [docs/UI.md](docs/UI.md).
 
-Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion (doublons, conflits, suppressions, idempotence), plan radio (remises, retours, fusion de retours, contraintes), chiffrement, CSV/TSV, formats bureautiques, génération de chaque export, serveur statique.
+Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion, plan radio, chiffrement, CSV/TSV, formats bureautiques, exports, serveur statique, **fusion de synchronisation** (convergence, numéros disputés, versions, suppressions, journaux retirés), **liens** explicites et implicites, **relais WebSocket** (salles, grands messages, refus), échange chiffré de bout en bout entre deux postes.
 
 ## Structure du code
 
 ```
 shared/            Modèle validé, sans dépendance au navigateur
   journal.ts       Journal, entrées, versions, suppressions, fusion, recherche
-  radio.ts         Groupes, noms d’appel, terminaux, remises, contrôles, batteries, QR, fusion radio
+  ops.ts           Modules : messages, postes, personnes, moyens, contacts, carte, agenda,
+                   renseignements, météo, liens, référentiels
+  links.ts         Éléments, liens explicites et implicites, voisins, recherche
+  sync.ts          Horodatage des changements, fusion de synchronisation, empreintes
+  room.ts          Code de session, clé et salle, enveloppes chiffrées
+  radio.ts         Groupes, noms d’appel, terminaux, remises, contrôles, fusion radio
   workflow.ts      Entrées liées et fil, clôture par quittance, relance d’échéance, modèles
   interchange.ts   CSV/TSV, import JSON et ancien format, HTML, texte
   crypto.ts        Enveloppe chiffrée AES-GCM / PBKDF2
+  coordinates.ts   Conversion MN95 ↔ WGS84 (formules swisstopo)
 src/
-  App.tsx          Coque, navigation Journal / Réseau radio, état de session
-  journal/         Saisie, détail, alertes, rapport, relève, import/export, stockage, démo
-  radio/           Vue réseau radio, formulaires, contrôle général, scanner QR
-  print/           Fiches, quittance, rapport, étiquettes QR : aperçu A4, impression, PDF (jsPDF)
-  ui/              Horloge, logo, animations, installation
-  styles.css       Thème
-  motion.css       Transitions et fond
-server/index.mjs   Serveur statique en lecture seule
+  App.tsx          Coque : dock, barre, palette ⌘K, dialogues, session, synchronisation
+  app/             Contexte, modules, réglages du poste, dialogue Réglages
+  modules/         Un dossier par module (situation, journal, messages, missions, map,
+                   resources, team, contacts, weather, agenda, network, docs)
+  ui/              Kit : champs standardisés, fiche générique, liens, effets, ciel étoilé
+  sync/            Synchronisation en direct (useSync)
+  journal/ radio/  Journal, réseau radio
+  print/           Fiches, quittances, rapport, étiquettes, formules : aperçu A4, PDF
+  styles.css theme.css motion.css
+server/
+  app.mjs          Fichiers statiques en lecture seule, en-têtes, /healthz
+  relay.mjs        Relais WebSocket en mémoire
+  index.mjs        Serveur HTTP
+  lan.mjs          Serveur HTTPS du réseau local
 scripts/           Archive du code source, service worker
 tests/             Tests node:test
-docs/              Architecture, choix métier et sources, licences des polices
+docs/              Architecture, kit d’interface, choix métier, licences, provenance des signes
 ```
 
-## Modèle de données
-
-```
-Workspace
-├─ author, activeId, drafts
-└─ journals[]
-   ├─ id, title, organization, location, reference, mode, classification, createdAt, closedAt
-   ├─ entries[]    id, number, createdAt, createdBy, origin
-   │  └─ revisions[]  id, at, author, reason, fields{…}
-   ├─ deleted[]    id, number, at, by, reason
-   └─ radio
-      ├─ talkgroups[]  id, number, name, mode, usage, notes
-      ├─ stations[]    id, callsign, role, unit, primary, fallback, notes
-      ├─ terminals[]   id, label, kind, model, serial, rfsi, condition, notes
-      │  └─ assignments[]  holder, callsign, role, unit, accessories, battery,
-      │                    issuedAt, issuedBy, returnedAt, returnedBy, returnCondition, notes
-      └─ checks[]      id, at, by, callsign, talkgroupId, result, notes
-```
-
-Archive : `{ format: "orion-journal", version: 1, exportedAt, journal }`. Les journaux créés avant la version 1.1 se chargent avec un plan radio et une liste de suppressions vides.
+Modèle de données et synchronisation : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Archive : `{ format: "orion-journal", version: 1, exportedAt, journal }` (identifiant technique conservé pour la compatibilité). Les journaux créés avec ORION 1.x se chargent avec des modules vides.
 
 ## Sources métier
 
 - OFPP — [Documents de formation](https://www.babs.admin.ch/fr/documents-de-formation), manuel Aide à la conduite (suivi de la situation, télématique) et annexes (modèle « Plan du réseau radio »).
 - OFPP — [Aide-mémoire Règles de communication radio](https://www.babs.admin.ch/dam/fr/sd-web/iMa3qxK30t2j/Behelf-Sprechregeln-fr.pdf) : nom d’appel, contrôle de liaison THREE / TWO / ONE.
-- OFPP — mode d’emploi TPH900, matériel radio Polycom (RFSI), manuel Logistique Matériel (quittances).
+- OFPP — signes conventionnels civils (jeu SVG), mode d’emploi TPH900, matériel radio Polycom (RFSI), manuel Logistique Matériel (quittances).
 - CSSP — formulaire 8.7 Journal d’intervention, règlement Conduite d’intervention.
+- swisstopo / geo.admin.ch — fonds de carte et recherche de lieux ; MétéoSuisse via Open-Meteo — prévisions.
 
 Détail et correspondance avec le produit : [docs/JOURNAL.md](docs/JOURNAL.md). Architecture : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Composants tiers : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

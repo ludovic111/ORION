@@ -25,11 +25,23 @@ export function Privacy({ onClose }: { onClose: () => void }) {
           <dd>En clair : PDF, Excel, Word, CSV, JSON, HTML, texte.</dd>
         </div>
         <div>
-          <dt>Réseau</dt>
+          <dt>Synchronisation</dt>
           <dd>
-            Aucun contenu transmis. Ni IA, ni statistiques, ni police distante.
-            L’hébergeur voit les requêtes de chargement (adresse IP).
+            Facultative. Chiffrée de bout en bout avec le code de session ; le
+            relais ne voit que des messages illisibles et ne garde rien.
           </dd>
+        </div>
+        <div>
+          <dt>Services externes</dt>
+          <dd>
+            Sur demande uniquement : tuiles swisstopo / OpenStreetMap, recherche
+            de lieu geo.admin.ch, prévisions Open-Meteo (coordonnées seulement).
+            Ni IA, ni statistiques, ni police distante.
+          </dd>
+        </div>
+        <div>
+          <dt>Hébergeur</dt>
+          <dd>Voit les requêtes de chargement (adresse IP).</dd>
         </div>
         <div>
           <dt>Identité</dt>
@@ -42,7 +54,10 @@ export function Privacy({ onClose }: { onClose: () => void }) {
           Un poste compromis ou une session déverrouillée expose les données.
         </li>
         <li>Effacer les données du navigateur efface la sauvegarde locale.</li>
-        <li>Aucune synchronisation entre postes : transfert par fichier.</li>
+        <li>
+          Le code de session donne accès à toute la session : le transmettre
+          comme un mot de passe.
+        </li>
         <li>
           Conservation, destinataires et autorisation de traiter des données
           réelles : responsabilité de l’organisation.
