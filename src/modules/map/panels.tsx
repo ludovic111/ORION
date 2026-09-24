@@ -13,25 +13,15 @@ import type { Place } from "../../../shared/ops";
 import { useApp } from "../../app/context";
 import { ref } from "../../../shared/links";
 import { Glyph } from "./symbols";
+import { hexColor, layerKey, toneOf } from "./maps";
 
-export const layerKey = (p: Place) => p.layer.trim();
+export { layerKey, toneOf };
 
 const norm = (s: string) =>
   s
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase("fr");
-
-/** Style family of a layer (colours of lines, areas and the legend). */
-export function toneOf(layer: string) {
-  const n = norm(layer.trim());
-  if (n.startsWith("danger")) return "danger";
-  if (n.startsWith("effet")) return "effect";
-  if (n.startsWith("moyen")) return "means";
-  if (n.startsWith("mesure")) return "measure";
-  if (n.startsWith("emplacement")) return "site";
-  return "other";
-}
 
 const KIND_LABEL: Record<Place["kind"], string> = {
   point: "signe",
@@ -48,13 +38,17 @@ export function PlaceIcon({
   size?: number;
 }) {
   if (place.kind === "point")
-    return <Glyph symbol={place.symbol} color={place.color} size={size} />;
+    return (
+      <Glyph symbol={place.symbol} color={hexColor(place.color)} size={size} />
+    );
   const Icon =
     place.kind === "line" ? Spline : place.kind === "area" ? Pentagon : Type;
   return (
     <span
       className={`map-kind-icon tone-${toneOf(place.layer)}`}
-      style={place.color ? { color: place.color } : undefined}
+      style={
+        hexColor(place.color) ? { color: hexColor(place.color) } : undefined
+      }
     >
       <Icon size={Math.round(size * 0.6)} />
     </span>

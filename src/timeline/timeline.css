@@ -1,0 +1,485 @@
+/* ---------- Time machine ---------- */
+
+/* The whole interface shows it is in the past. */
+:root[data-past] .bar {
+  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.55);
+}
+:root[data-past] .main {
+  padding-bottom: 170px;
+}
+:root[data-past] .module {
+  filter: saturate(0.82);
+}
+:root[data-past] .fab {
+  display: none !important;
+}
+
+.timebar {
+  position: fixed;
+  left: calc(84px + 12px);
+  right: 16px;
+  bottom: 14px;
+  z-index: 45;
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--solid) 88%, transparent);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(var(--accent-rgb), 0.12),
+    0 18px 60px rgba(var(--accent-rgb), 0.18);
+  animation: timebar-in 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+}
+@keyframes timebar-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+}
+.timebar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.timebar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 99px;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.timebar.playing .timebar-badge svg {
+  animation: timebar-spin 2.4s linear infinite reverse;
+}
+@keyframes timebar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.timebar-when input {
+  height: 32px;
+  width: auto;
+  padding: 0 8px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.timebar-count {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.timebar-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.timebar-play {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.45);
+}
+.timebar-play:hover {
+  background: var(--gradient);
+  filter: brightness(1.1);
+}
+.timebar.playing .timebar-play {
+  animation: timebar-pulse 1.6s ease-in-out infinite;
+}
+@keyframes timebar-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(var(--accent-rgb), 0.15);
+  }
+}
+.timebar-speed button {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+.timebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.timebar .tb-narrow {
+  display: none;
+}
+.timebar-track {
+  position: relative;
+  padding-top: 26px;
+}
+.timebar-bins {
+  position: absolute;
+  inset: 0 9px auto;
+  height: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  pointer-events: none;
+}
+.timebar-bins i {
+  flex: 1;
+  min-width: 0;
+  border-radius: 2px 2px 0 0;
+  background: var(--line-2);
+  transition: background 0.2s;
+}
+.timebar-bins i.past {
+  background: linear-gradient(
+    to top,
+    rgba(var(--accent-rgb), 0.35),
+    rgba(var(--accent-rgb), 0.9)
+  );
+}
+.timebar-flag {
+  position: absolute;
+  top: -2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  padding: 0;
+  border: 1px solid var(--cyan);
+  border-radius: 50%;
+  background: var(--solid);
+  color: var(--cyan);
+  transition: transform 0.15s;
+}
+.timebar-flag:hover {
+  transform: scale(1.25);
+  background: var(--solid);
+}
+.timebar-range {
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.timebar-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: 10px;
+}
+@media (max-width: 1100px) {
+  .timebar .wide {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .timebar {
+    left: 8px;
+    right: 8px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    padding: 8px 10px 6px;
+  }
+  .timebar .timebar-speed,
+  .timebar .timebar-count,
+  .timebar .timebar-scale,
+  .timebar .tb-wide {
+    display: none;
+  }
+  .timebar .tb-narrow {
+    display: inline-flex;
+  }
+  .timebar .timebar-badge {
+    display: none;
+  }
+  .timebar-head {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .timebar-when input {
+    height: 30px;
+    padding: 0 4px;
+    font-size: 12.5px;
+  }
+  .timebar-play {
+    width: 34px;
+    height: 34px;
+  }
+  .timebar-controls .icon-button {
+    width: 24px;
+  }
+  .timebar-track {
+    padding-top: 22px;
+  }
+  .timebar-bins {
+    height: 20px;
+  }
+  .timebar-controls {
+    margin-left: 0;
+  }
+  .timebar-actions {
+    margin-left: auto;
+  }
+  :root[data-past] .main {
+    padding-bottom: 250px;
+  }
+}
+
+/* ---------- Audit trail ---------- */
+.audit-list {
+  display: grid;
+  gap: 2px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.audit-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 6px 12px;
+  border-radius: 12px;
+  animation: audit-in 0.3s ease both;
+}
+.audit-row:hover {
+  background: var(--bg-2);
+}
+.audit-row + .audit-row::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: -8px;
+  height: 14px;
+  border-left: 1px dashed var(--line-2);
+}
+@keyframes audit-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.audit-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: hsl(
+    var(--h) calc(70% * var(--kind-s)) calc(55% * var(--kind-l)) / 0.2
+  );
+  border: 1px solid
+    hsl(var(--h) calc(70% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.5);
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(72% * var(--kind-l)));
+  font-size: 11px;
+  font-weight: 700;
+}
+:root[data-theme="light"] .audit-avatar {
+  color: hsl(var(--h) calc(70% * var(--kind-s)) 35%);
+}
+.audit-avatar i {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--solid);
+  background: var(--accent);
+  color: #fff;
+}
+.audit-row.create .audit-avatar i {
+  background: var(--ok);
+}
+.audit-row.remove .audit-avatar i {
+  background: var(--crit);
+}
+.audit-main {
+  min-width: 0;
+}
+.audit-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.audit-line time {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.audit-kind {
+  color: var(--text-3);
+}
+.audit-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+button.audit-title {
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+}
+.audit-note {
+  margin-top: 3px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-style: italic;
+}
+.audit-diff {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.audit-diff li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+.audit-field {
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.audit-diff del {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: rgba(242, 86, 79, 0.6);
+  overflow-wrap: anywhere;
+}
+.audit-diff ins {
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.audit-row.remove .audit-title {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+.audit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.audit-empty {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  font-size: 12.5px;
+}
+.audit-empty svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.trace-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.trace-summary > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-1);
+  min-width: 0;
+}
+.trace-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.trace-summary small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.trace-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.trace-line span {
+  flex: 1;
+  min-width: 0;
+}
+
+.snapshot-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.snapshot-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-1);
+}
+.snapshot-list li > svg {
+  color: var(--cyan);
+  flex: none;
+}
+.snapshot-list span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.snapshot-list small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.banner.warn {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: var(--warn-bg);
+  color: var(--text);
+}

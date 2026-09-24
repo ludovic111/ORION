@@ -916,8 +916,9 @@ button.pill {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: hsl(var(--h) 85% 65%);
-  box-shadow: 0 0 10px hsl(var(--h) 85% 60% / 0.6);
+  background: hsl(var(--h) calc(85% * var(--kind-s)) calc(65% * var(--kind-l)));
+  box-shadow: 0 0 10px
+    hsl(var(--h) calc(85% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.6);
   flex: none;
 }
 
@@ -1370,8 +1371,12 @@ button.row-item:hover,
   font-size: 10.5px;
 }
 .link-chip:hover {
-  border-color: hsl(var(--h) 80% 65% / 0.6);
-  background: hsl(var(--h) 80% 60% / 0.1);
+  border-color: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.6
+  );
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.1
+  );
 }
 .links-panel {
   display: flex;
@@ -1746,8 +1751,11 @@ button.row-item:hover,
 }
 .hero-feature svg {
   flex: none;
-  color: hsl(var(--h) 85% 68%);
-  filter: drop-shadow(0 0 8px hsl(var(--h) 85% 60% / 0.6));
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(68% * var(--kind-l)));
+  filter: drop-shadow(
+    0 0 8px
+      hsl(var(--h) calc(85% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.6)
+  );
 }
 .hero-actions {
   display: flex;
@@ -1980,4 +1988,62 @@ button.row-item:hover,
 .auto-print .switch span {
   display: inline-flex;
   flex-direction: column;
+}
+
+/* ---------- Contact ---------- */
+.contact-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 0 0,
+      rgba(var(--accent-rgb), 0.18),
+      transparent 60%
+    ),
+    var(--bg-1);
+}
+.contact-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.4);
+}
+.contact-card h3 {
+  margin: 2px 0 6px;
+  font-size: 16px;
+}
+.contact-card p {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.contact-actions a.button.primary {
+  border: 0;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.35);
+}
+.landing-foot-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* The theme sets a display on every button: keep [hidden] effective. */
+[hidden] {
+  display: none !important;
 }

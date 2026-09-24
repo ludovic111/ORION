@@ -1,79 +1,114 @@
 :root {
-  /* orion aic · deep space theme (default) */
-  --bg: #05060d;
-  --bg-1: rgba(15, 17, 34, 0.72);
-  --bg-2: rgba(160, 170, 255, 0.055);
-  --bg-3: rgba(160, 170, 255, 0.1);
-  --field: rgba(4, 5, 14, 0.6);
-  --solid: #0d0f1e;
-  --line: rgba(150, 160, 255, 0.1);
-  --line-2: rgba(150, 160, 255, 0.19);
-  --text: #eceefe;
-  --text-2: #a7abcb;
-  --text-3: #6c7298;
-  --accent-rgb: 139, 123, 255;
-  --accent: #8b7bff;
-  --accent-2: #7462ff;
-  --accent-bg: rgba(139, 123, 255, 0.13);
-  --cyan: #3fdcff;
-  --pink: #ff72c8;
-  --amber: #ffb35c;
-  --rigel: #9dc1ff;
-  --gradient: linear-gradient(115deg, #3fdcff 0%, #8b7bff 48%, #ff72c8 100%);
-  --ok: #34e0a1;
-  --ok-bg: rgba(52, 224, 161, 0.11);
-  --warn: #ffb547;
-  --warn-bg: rgba(255, 181, 71, 0.11);
-  --crit: #ff5a7a;
-  --crit-bg: rgba(255, 90, 122, 0.11);
-  --crit-ink: #ffc2cf;
-  --shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-  --glass-blur: 18px;
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --display: "Space Grotesk Variable", "IBM Plex Sans", system-ui, sans-serif;
+  /* orion aic · warm editorial atelier (see DESIGN.md): cream paper,
+     charcoal ink, white cards, one ember-orange dot of emphasis. */
+  --color-cream-paper: #e4dfd9;
+  --color-pure-white: #ffffff;
+  --color-charcoal-ink: #000000;
+  --color-near-black: #050505;
+  --color-pressed-graphite: #171717;
+  --color-slate: #737373;
+  --color-iron: #4b4b4b;
+  --color-stone: #999694;
+  --color-pewter: #666666;
+  --color-fog: #c7c7c7;
+  --ember: #ff6a1f;
+  --shadow-xl: rgba(0, 0, 0, 0.07) 0px 6px 27px 0px;
+
+  --bg: var(--color-cream-paper);
+  --bg-1: var(--color-pure-white);
+  --bg-2: rgba(23, 23, 23, 0.045);
+  --bg-3: rgba(23, 23, 23, 0.085);
+  --field: var(--color-pure-white);
+  --solid: var(--color-pure-white);
+  --line: rgba(0, 0, 0, 0.1);
+  --line-2: var(--color-fog);
+  --text: var(--color-near-black);
+  --text-2: var(--color-slate);
+  --text-3: #86827e;
+  --accent-rgb: 23, 23, 23;
+  --accent: var(--color-pressed-graphite);
+  --accent-2: var(--color-charcoal-ink);
+  --accent-bg: rgba(23, 23, 23, 0.07);
+  --on-accent: #ffffff;
+  /* Former decorative hues, folded into the monochrome ink. */
+  --cyan: var(--color-iron);
+  --pink: var(--color-slate);
+  --amber: #9a6414;
+  --rigel: var(--color-slate);
+  --gradient: linear-gradient(
+    var(--color-pressed-graphite),
+    var(--color-pressed-graphite)
+  );
+  /* Operational states stay distinct, in muted earth tones. */
+  --ok: #3d6b4b;
+  --ok-bg: rgba(61, 107, 75, 0.1);
+  --warn: #9a6414;
+  --warn-bg: rgba(154, 100, 20, 0.1);
+  --crit: #b3261e;
+  --crit-bg: rgba(179, 38, 30, 0.08);
+  --crit-ink: #8f1d17;
+  /* Item kinds keep a faint tint of their hue. */
+  --kind-s: 0.32;
+  --kind-l: 0.62;
+  --shadow: var(--shadow-xl);
+  --glass-blur: 0px;
+  --sans:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: "Inter Variable", "Inter", var(--sans);
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
-  --radius: 10px;
-  --radius-lg: 18px;
-  --top: 60px;
+  --radius: 12px;
+  --radius-button: 8px;
+  --radius-lg: 20px;
+  --top: 64px;
   font-family: var(--sans);
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.5;
+  letter-spacing: -0.01em;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
   font-feature-settings: "tnum" 1;
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
 }
-:root[data-theme="light"] {
-  --bg: #eef0f9;
-  --bg-1: rgba(255, 255, 255, 0.74);
-  --bg-2: rgba(40, 44, 110, 0.045);
-  --bg-3: rgba(40, 44, 110, 0.085);
-  --field: rgba(255, 255, 255, 0.92);
-  --solid: #ffffff;
-  --line: rgba(40, 46, 120, 0.11);
-  --line-2: rgba(40, 46, 120, 0.2);
-  --text: #0f1127;
-  --text-2: #474c72;
-  --text-3: #7a7fa3;
-  --accent-rgb: 92, 69, 255;
-  --accent: #5c45ff;
-  --accent-2: #4a33ee;
-  --accent-bg: rgba(92, 69, 255, 0.1);
-  --cyan: #0098c7;
-  --pink: #d63b9c;
-  --amber: #c96f00;
-  --gradient: linear-gradient(115deg, #0098c7 0%, #5c45ff 50%, #d63b9c 100%);
-  --ok: #0c9b69;
-  --ok-bg: rgba(12, 155, 105, 0.1);
-  --warn: #b86e00;
-  --warn-bg: rgba(200, 120, 0, 0.1);
-  --crit: #d8214a;
-  --crit-bg: rgba(216, 33, 74, 0.09);
-  --crit-ink: #a3102f;
-  --shadow: 0 24px 60px rgba(30, 34, 90, 0.18);
-  color-scheme: light;
+:root[data-theme="dark"] {
+  /* Same atelier after dark: graphite paper, cream ink. */
+  --bg: #121110;
+  --bg-1: #1c1b1a;
+  --bg-2: rgba(228, 223, 217, 0.05);
+  --bg-3: rgba(228, 223, 217, 0.1);
+  --field: #1c1b1a;
+  --solid: #1c1b1a;
+  --line: rgba(228, 223, 217, 0.1);
+  --line-2: rgba(228, 223, 217, 0.2);
+  --text: #efebe6;
+  --text-2: #a8a39d;
+  --text-3: #8a857f;
+  --accent-rgb: 228, 223, 217;
+  --accent: var(--color-cream-paper);
+  --accent-2: #ffffff;
+  --accent-bg: rgba(228, 223, 217, 0.1);
+  --on-accent: var(--color-pressed-graphite);
+  --cyan: #b9b3ac;
+  --pink: #a8a39d;
+  --amber: #d9a24a;
+  --rigel: #a8a39d;
+  --gradient: linear-gradient(
+    var(--color-cream-paper),
+    var(--color-cream-paper)
+  );
+  --ok: #7fb08c;
+  --ok-bg: rgba(127, 176, 140, 0.12);
+  --warn: #d9a24a;
+  --warn-bg: rgba(217, 162, 74, 0.12);
+  --crit: #ef7a6c;
+  --crit-bg: rgba(239, 122, 108, 0.12);
+  --crit-ink: #f4a79e;
+  --kind-s: 0.4;
+  --kind-l: 1;
+  --shadow: rgba(0, 0, 0, 0.35) 0px 6px 27px 0px;
+  color-scheme: dark;
 }
 *,
 *::before,

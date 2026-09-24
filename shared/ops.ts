@@ -139,6 +139,7 @@ const latLng = z.tuple([
   z.number().min(-90).max(90),
   z.number().min(-180).max(180),
 ]);
+export const LINE_STYLES = ["solid", "dash", "dot"] as const;
 export const placeSchema = z
   .object({
     ...record,
@@ -147,8 +148,148 @@ export const placeSchema = z
     symbol: text(80),
     color: text(20),
     layer: text(80),
-    points: z.array(latLng).min(1).max(500),
+    points: z.array(latLng).min(1).max(2000),
     notes: text(4000),
+    // Maps showing this object; empty: every map.
+    maps: z.array(z.uuid()).max(50).default([]),
+    // Scale of a symbol or text (1 = standard size).
+    size: z.number().min(0.25).max(8).default(1),
+    // Rotation of a symbol or text, in degrees clockwise.
+    rotation: z.number().min(-360).max(360).default(0),
+    // Symbol drawn inside a round badge instead of on a transparent ground.
+    frame: z.boolean().default(false),
+    // Text written on a filled label instead of with a halo only.
+    boxed: z.boolean().default(true),
+    // Line and area outline.
+    weight: z.number().min(1).max(24).default(3),
+    dash: z.enum(LINE_STYLES).default("solid"),
+  })
+  .strict();
+
+// Several maps per operation: a general follow-up map, a detailed sector
+// map… Each keeps its own background, framing and hidden layers.
+export const mapSchema = z
+  .object({
+    ...record,
+    name: text(120).min(1),
+    purpose: text(300),
+    base: text(20),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    zoom: z.number().min(1).max(22),
+    hidden: z.array(text(80)).max(50).default([]),
+    order: z.number().int(),
+    notes: text(2000),
+  })
+  .strict();
+
+// Symbol added by the operators (transparent PNG, SVG, JPEG or WebP).
+export const symbolSchema = z
+  .object({
+    ...record,
+    name: text(120).min(1),
+    group: text(80),
+    image: z
+      .string()
+      .max(600_000)
+      .regex(/^data:image\/(png|svg\+xml|jpeg|webp);base64,[A-Za-z0-9+/=]+$/),
+  })
+  .strict();
+
+// Named point in time ("Point de situation 14:00"), reused by the time
+// machine, the presentations and the exports.
+export const snapshotSchema = z
+  .object({
+    ...record,
+    title: text(200).min(1),
+    at: instant,
+    notes: text(4000),
+  })
+  .strict();
+
+// Register of the files produced: who exported what, when, and the SHA-256
+// of the file to verify it later.
+export const exportLogSchema = z
+  .object({
+    ...record,
+    at: instant,
+    format: text(60),
+    scope: text(2000),
+    viewAt: optionalInstant,
+    name: text(300),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    bytes: z.number().int().min(0),
+    fingerprint: text(80),
+  })
+  .strict();
+
+// Register of the presentations given (who, to whom, which version).
+export const presentationSchema = z
+  .object({
+    ...record,
+    startedAt: instant,
+    endedAt: optionalInstant,
+    presenter: text(120),
+    audience: text(500),
+    viewAt: optionalInstant,
+    slides: z.number().int().min(0).max(1000),
+    mode: text(40),
+    notes: text(4000),
+  })
+  .strict();
+
+const reading = z.number().nullable();
+export const forecastDataSchema = z
+  .object({
+    model: z.string().max(80),
+    current: z.object({
+      at: z.number(),
+      temperature: reading,
+      humidity: reading,
+      precipitation: reading,
+      code: reading,
+      wind: reading,
+      direction: reading,
+      gusts: reading,
+    }),
+    hours: z
+      .array(
+        z.object({
+          at: z.number(),
+          temperature: reading,
+          precipitation: reading,
+          probability: reading,
+          code: reading,
+          wind: reading,
+          gusts: reading,
+        }),
+      )
+      .max(400),
+    days: z
+      .array(
+        z.object({
+          at: z.number(),
+          code: reading,
+          max: reading,
+          min: reading,
+          precipitation: reading,
+          gusts: reading,
+          sunrise: reading,
+          sunset: reading,
+        }),
+      )
+      .max(20),
+  })
+  .strict();
+// Every forecast received is kept: "at 14:00 the forecast said…".
+export const forecastSchema = z
+  .object({
+    ...record,
+    fetchedAt: instant,
+    place: text(200),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    data: forecastDataSchema,
   })
   .strict();
 
@@ -289,6 +430,13 @@ export const opsSchema = z
     observations: z.array(observationSchema).max(5000).default([]),
     alerts: z.array(alertSchema).max(500).default([]),
     links: z.array(linkSchema).max(20000).default([]),
+    maps: z.array(mapSchema).max(50).default([]),
+    symbols: z.array(symbolSchema).max(300).default([]),
+    snapshots: z.array(snapshotSchema).max(1000).default([]),
+    exports: z.array(exportLogSchema).max(20000).default([]),
+    presentations: z.array(presentationSchema).max(5000).default([]),
+    // Thinned on each reception (thinForecasts); merges of posts add up.
+    forecasts: z.array(forecastSchema).max(10000).default([]),
     settings: settingsSchema.default({
       lists: {},
       weatherPlace: null,
@@ -309,6 +457,13 @@ export type Board = z.infer<typeof boardSchema>;
 export type Observation = z.infer<typeof observationSchema>;
 export type WeatherAlert = z.infer<typeof alertSchema>;
 export type Link = z.infer<typeof linkSchema>;
+export type OpsMap = z.infer<typeof mapSchema>;
+export type CustomSymbol = z.infer<typeof symbolSchema>;
+export type Snapshot = z.infer<typeof snapshotSchema>;
+export type ExportLog = z.infer<typeof exportLogSchema>;
+export type Presentation = z.infer<typeof presentationSchema>;
+export type ForecastData = z.infer<typeof forecastDataSchema>;
+export type ForecastRecord = z.infer<typeof forecastSchema>;
 export type OpsSettings = z.infer<typeof settingsSchema>;
 export type Ops = z.infer<typeof opsSchema>;
 
@@ -326,9 +481,39 @@ export const COLLECTIONS = [
   "observations",
   "alerts",
   "links",
+  "maps",
+  "symbols",
+  "snapshots",
+  "exports",
+  "presentations",
+  "forecasts",
 ] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 export type RecordOf<C extends Collection> = Ops[C][number];
+
+/** Schema of one record of each collection. */
+export const RECORD_SCHEMAS = {
+  messages: messageSchema,
+  cells: cellSchema,
+  members: memberSchema,
+  resources: resourceSchema,
+  contacts: contactSchema,
+  places: placeSchema,
+  agenda: agendaSchema,
+  facts: factSchema,
+  boards: boardSchema,
+  observations: observationSchema,
+  alerts: alertSchema,
+  links: linkSchema,
+  maps: mapSchema,
+  symbols: symbolSchema,
+  snapshots: snapshotSchema,
+  exports: exportLogSchema,
+  presentations: presentationSchema,
+  forecasts: forecastSchema,
+} as const satisfies Record<Collection, z.ZodType>;
+/** A record as written by a form: optional fields may be left out. */
+export type InputOf<C extends Collection> = z.input<(typeof RECORD_SCHEMAS)[C]>;
 
 export const emptyOps = (): Ops => opsSchema.parse({});
 
@@ -510,24 +695,49 @@ export const listValues = (ops: Ops, name: string) =>
 
 export const nowIso = () => new Date().toISOString();
 
+/**
+ * Forecasts kept: every one of the last 24 hours, then one per hour and
+ * place, at most 1500 in all (the newest).
+ */
+export function thinForecasts(
+  list: ForecastRecord[],
+  now = Date.now(),
+): ForecastRecord[] {
+  const sorted = [...list].sort((a, b) =>
+    b.fetchedAt.localeCompare(a.fetchedAt),
+  );
+  const seen = new Set<string>();
+  const kept = sorted.filter((f) => {
+    const t = Date.parse(f.fetchedAt);
+    if (now - t < 86_400_000) return true;
+    const key = `${f.place}|${Math.floor(t / 3_600_000)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return kept.length === list.length && kept.length <= 1500
+    ? list
+    : kept.slice(0, 1500);
+}
+
 /** Create or replace a record; timestamps and author are filled in. */
 export function upsert<C extends Collection>(
   ops: Ops,
   collection: C,
-  value: Omit<RecordOf<C>, "id" | "createdAt" | "updatedAt" | "by"> &
+  value: Omit<InputOf<C>, "id" | "createdAt" | "updatedAt" | "by"> &
     Partial<Pick<RecordOf<C>, "id" | "createdAt" | "by">>,
   author: string,
 ): Ops {
   const at = nowIso();
   const list = ops[collection] as RecordOf<C>[];
   const previous = value.id ? list.find((r) => r.id === value.id) : undefined;
-  const next = {
+  const next = RECORD_SCHEMAS[collection].parse({
     ...value,
     id: value.id ?? crypto.randomUUID(),
     createdAt: previous?.createdAt ?? value.createdAt ?? at,
     updatedAt: at,
     by: previous?.by ?? value.by ?? author,
-  } as RecordOf<C>;
+  }) as RecordOf<C>;
   return {
     ...ops,
     [collection]: previous

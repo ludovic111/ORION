@@ -109,7 +109,9 @@
 }
 .contacts-card:hover {
   transform: translateY(-2px);
-  border-color: hsl(var(--hue) 70% 60% / 0.45);
+  border-color: hsl(
+    var(--hue) calc(70% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.45
+  );
 }
 .contacts-card.favorite {
   border-color: color-mix(in srgb, var(--amber) 35%, transparent);
@@ -128,10 +130,10 @@
   border-radius: 15px;
   background: linear-gradient(
     135deg,
-    hsl(var(--hue) 85% 62%),
+    hsl(var(--hue) calc(85% * var(--kind-s)) calc(62% * var(--kind-l))),
     hsl(calc(var(--hue) + 45) 80% 52%)
   );
-  box-shadow: 0 8px 22px hsl(var(--hue) 80% 45% / 0.35);
+  box-shadow: 0 8px 22px hsl(var(--hue) calc(80% * var(--kind-s)) 45% / 0.35);
   color: #fff;
   font-family: var(--display);
   font-size: 16px;

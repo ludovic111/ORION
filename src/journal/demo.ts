@@ -1,6 +1,7 @@
 import {
   addEntry,
   emptyFields,
+  journalSchema,
   newJournal,
   updateRadio,
   type Workspace,
@@ -18,10 +19,11 @@ import {
   type Message,
   type Ops,
   type Place,
-  type RecordOf,
+  type InputOf,
   type Resource,
 } from "../../shared/ops.ts";
 import { addLink, ref, type Ref } from "../../shared/links.ts";
+import type { HistoryEvent } from "../../shared/events.ts";
 import {
   emptyRadio,
   issueTerminal,
@@ -226,7 +228,9 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
   let ops = journal.ops;
   const put = <C extends Collection>(
     collection: C,
-    value: Omit<RecordOf<C>, "createdAt" | "updatedAt" | "by">,
+    value: Omit<InputOf<C>, "createdAt" | "updatedAt" | "by"> & {
+      id: string;
+    },
   ) => {
     ops = upsert(ops, collection, value as never, author);
     return value.id;
@@ -741,8 +745,13 @@ export function demoWorkspace(): Workspace {
     reference: "EX-2026-09",
     mode: "Exercice",
   });
+  // The exercise starts at 08:00, or earlier today so that its first two
+  // hours are already past (the time machine then has a story to replay).
   const base = new Date();
   base.setHours(8, 0, 0, 0);
+  const latest = Date.now() - 150 * 60_000;
+  if (base.getTime() > latest)
+    base.setTime(Math.floor(latest / 300_000) * 300_000);
   const at = (minutes: number) =>
     new Date(base.getTime() + minutes * 60_000).toISOString();
   const examples: Partial<Fields>[] = [
@@ -827,10 +836,484 @@ export function demoWorkspace(): Workspace {
   });
   journal = updateRadio(journal, demoRadio(at));
   journal = { ...journal, ops: demoOps(journal, at) };
+  journal = demoHistory(journal, at);
   return {
     version: 1,
     author: "Opérateur · démo",
     journals: [journal],
     activeId: journal.id,
   };
+}
+
+// ---------- History of the demonstration ----------
+
+type Step = { m: number; by: string; patch?: object; note?: string };
+const OPERATOR_A = "Opérateur A · fictif";
+const OPERATOR_B = "Opérateur B · fictif";
+const MAPPER = "Cartographe · fictif";
+
+/** Forecast as received at a time, rain increasing with `wet`. */
+function demoForecast(fetched: number, wet: number) {
+  const hour = 3_600_000;
+  const start = Math.floor(fetched / hour) * hour;
+  const hours = Array.from({ length: 72 }, (_, i) => {
+    const t = start + i * hour;
+    const h = new Date(t).getHours();
+    const rain = Math.max(
+      0,
+      wet * (1.6 + Math.sin(i / 5)) - (i > 30 ? 1.5 : 0),
+    );
+    return {
+      at: t,
+      temperature:
+        Math.round((10 + 3 * Math.sin(((h - 9) / 24) * 2 * Math.PI)) * 10) / 10,
+      precipitation: Math.round(rain * 10) / 10,
+      probability: Math.min(100, Math.round(40 + rain * 18)),
+      code: rain > 3 ? 65 : rain > 1 ? 63 : rain > 0.1 ? 61 : 3,
+      wind: Math.round(12 + wet * 4 + (i % 7)),
+      gusts: Math.round(28 + wet * 9 + (i % 11)),
+    };
+  });
+  const day = 86_400_000;
+  const midnight = new Date(start);
+  midnight.setHours(0, 0, 0, 0);
+  const days = [0, 1, 2].map((d) => {
+    const list = hours.filter(
+      (h) =>
+        h.at >= midnight.getTime() + d * day &&
+        h.at < midnight.getTime() + (d + 1) * day,
+    );
+    const temps = list.map((h) => h.temperature);
+    return {
+      at: midnight.getTime() + d * day,
+      code: d === 0 ? 63 : d === 1 ? 61 : 3,
+      max: temps.length ? Math.max(...temps) : 12,
+      min: temps.length ? Math.min(...temps) : 7,
+      precipitation:
+        Math.round(list.reduce((n, h) => n + h.precipitation, 0) * 10) / 10,
+      gusts: list.length ? Math.max(...list.map((h) => h.gusts)) : 40,
+      sunrise: midnight.getTime() + d * day + 7.3 * hour,
+      sunset: midnight.getTime() + d * day + 19.4 * hour,
+    };
+  });
+  return {
+    model: "MétéoSuisse ICON-CH2 (exemple fictif)",
+    current: {
+      at: fetched,
+      temperature: hours[0].temperature,
+      humidity: 88,
+      precipitation: hours[0].precipitation,
+      code: hours[0].code,
+      wind: hours[0].wind,
+      direction: 225,
+      gusts: hours[0].gusts,
+    },
+    hours,
+    days,
+  };
+}
+
+/**
+ * Give the demonstration a believable past: records created one after the
+ * other by several operators, statuses that evolve, a PC that moves, an
+ * area that grows, a road block placed then lifted, forecasts received
+ * every hour, two frozen points and a presentation.
+ */
+function demoHistory(
+  journal: Journal,
+  at: (minutes: number) => string,
+): Journal {
+  const events: HistoryEvent[] = [];
+  const push = (
+    scope: string,
+    target: string,
+    state: unknown,
+    minutes: number,
+    by: string,
+    action: HistoryEvent["action"],
+    note = "",
+  ) =>
+    events.push({
+      id: crypto.randomUUID(),
+      at: at(minutes),
+      by,
+      action,
+      scope,
+      target,
+      state,
+      rev: 0,
+      note,
+    });
+  /** Record the steps of a record; returns its final state. */
+  const track = <T extends { id: string }>(
+    scope: string,
+    record: T,
+    steps: Step[],
+  ): T => {
+    const createdAt = at(steps[0].m);
+    let state = record;
+    steps.forEach((step, i) => {
+      state = {
+        ...record,
+        ...(step.patch ?? {}),
+        createdAt,
+        updatedAt: at(step.m),
+        by: steps[0].by,
+      };
+      push(
+        scope,
+        record.id,
+        state,
+        step.m,
+        step.by,
+        i ? "update" : "create",
+        step.note,
+      );
+    });
+    return state;
+  };
+  const minutesOf = (iso: string, fallback: number) => {
+    const t = Date.parse(iso);
+    const start = Date.parse(at(0));
+    return Number.isNaN(t)
+      ? fallback
+      : Math.min(130, Math.round((t - start) / 60_000));
+  };
+
+  // Journal header and entries: created when received.
+  push(
+    "meta",
+    "meta",
+    {
+      title: journal.title,
+      organization: journal.organization,
+      location: journal.location,
+      reference: journal.reference,
+      mode: journal.mode,
+      classification: journal.classification,
+      createdAt: at(-30),
+      closedAt: "",
+    },
+    -30,
+    OPERATOR_A,
+    "create",
+  );
+  const entries = journal.entries.map((e, i) => {
+    const t = at(i * 9 + 1);
+    const revisions = e.revisions.map((r) => ({ ...r, at: t }));
+    if (i === 1)
+      revisions.push({
+        ...revisions[0],
+        id: crypto.randomUUID(),
+        at: at(40),
+        author: OPERATOR_B,
+        reason: "Niveau confirmé par la patrouille sur place",
+        fields: {
+          ...revisions[0].fields,
+          reliability: "Confirmé",
+          status: "En cours",
+        },
+      });
+    return { ...e, createdAt: t, revisions };
+  });
+
+  // Records of the modules.
+  const o = journal.ops;
+  const simple = <T extends { id: string }>(
+    scope: string,
+    list: T[],
+    minute: (r: T, i: number) => number,
+    by: string,
+  ) => list.map((r, i) => track(scope, r, [{ m: minute(r, i), by }]));
+  const statuses: Record<string, Step[]> = {
+    "Équipe Bravo": [
+      {
+        m: -15,
+        by: OPERATOR_B,
+        patch: { status: "Disponible", location: "PC Carouge", mission: "" },
+      },
+      {
+        m: 10,
+        by: OPERATOR_B,
+        patch: { status: "Alerté", location: "PC Carouge", mission: "" },
+      },
+      {
+        m: 25,
+        by: OPERATOR_B,
+        patch: { status: "En route", mission: "Sécuriser l’accès aux berges." },
+      },
+      { m: 45, by: OPERATOR_A },
+    ],
+    "Patrouille Alpha": [
+      { m: -15, by: OPERATOR_B, patch: { status: "Alerté" } },
+      { m: 5, by: OPERATOR_B },
+    ],
+    "Camions de transport PCi": [
+      {
+        m: -15,
+        by: OPERATOR_B,
+        patch: {
+          status: "Disponible",
+          location: "Arsenal",
+          mission: "",
+          eta: "",
+        },
+      },
+      {
+        m: 50,
+        by: OPERATOR_A,
+        patch: { status: "Alerté", location: "Arsenal" },
+      },
+      { m: 70, by: OPERATOR_B },
+    ],
+    "Sacs de sable": [
+      {
+        m: -15,
+        by: OPERATOR_B,
+        patch: { status: "Disponible", location: "Arsenal" },
+      },
+      { m: 70, by: OPERATOR_B },
+    ],
+    "Tonne-pompe SIS (fictif)": [
+      { m: 30, by: OPERATOR_A, patch: { status: "Alerté", mission: "" } },
+      { m: 60, by: OPERATOR_A },
+    ],
+    "Section appui (réserve)": [
+      { m: -15, by: OPERATOR_B, patch: { status: "Disponible" } },
+      { m: 100, by: OPERATOR_A },
+    ],
+  };
+  const resources = o.resources.map((r) =>
+    track("ops.resources", r, statuses[r.name] ?? [{ m: -15, by: OPERATOR_B }]),
+  );
+  const factSteps: Record<string, Step[]> = {
+    "Personnes évacuées": [
+      { m: -10, by: OPERATOR_A, patch: { value: "0" } },
+      { m: 35, by: OPERATOR_A, patch: { value: "5" } },
+      { m: 85, by: OPERATOR_B },
+    ],
+    "Niveau de l’Arve (Acacias)": [
+      { m: -10, by: OPERATOR_A, patch: { value: "+ 10" } },
+      { m: 30, by: OPERATOR_B, patch: { value: "+ 25" } },
+      { m: 90, by: OPERATOR_B },
+    ],
+    "Personnel engagé": [
+      { m: -10, by: OPERATOR_A, patch: { value: "12" } },
+      { m: 40, by: OPERATOR_A, patch: { value: "20" } },
+      { m: 95, by: OPERATOR_A },
+    ],
+    "Bâtiments touchés": [
+      { m: -10, by: OPERATOR_A, patch: { value: "0" } },
+      { m: 55, by: OPERATOR_B },
+    ],
+  };
+  const facts = o.facts.map((f) =>
+    track("ops.facts", f, factSteps[f.label] ?? [{ m: -10, by: OPERATOR_A }]),
+  );
+  const boards = o.boards.map((b, i) =>
+    track(
+      "ops.boards",
+      b,
+      i === 0
+        ? [
+            {
+              m: 0,
+              by: OPERATOR_A,
+              patch: {
+                body: "Crue de l’Arve après de fortes pluies. Montée du niveau signalée au pont des Acacias.",
+              },
+            },
+            { m: 75, by: OPERATOR_A },
+          ]
+        : [{ m: 5 + i * 10, by: OPERATOR_A }],
+    ),
+  );
+
+  // Maps: a general follow-up map and a detailed sector map.
+  const general = crypto.randomUUID();
+  const detail = crypto.randomUUID();
+  const maps = [
+    track(
+      "ops.maps",
+      {
+        id: general,
+        name: "Suivi général",
+        purpose: "Vue d’ensemble pour le rapport de conduite",
+        base: "gray",
+        lat: 46.1895,
+        lng: 6.1445,
+        zoom: 15,
+        hidden: [],
+        order: 0,
+        notes: "",
+      },
+      [{ m: -20, by: MAPPER }],
+    ),
+    track(
+      "ops.maps",
+      {
+        id: detail,
+        name: "Secteur Acacias (détail)",
+        purpose: "Engagement au pont des Acacias et au quai Charles-Page",
+        base: "color",
+        lat: 46.1938,
+        lng: 6.1415,
+        zoom: 17,
+        hidden: [],
+        order: 1,
+        notes: "",
+      },
+      [{ m: 12, by: MAPPER }],
+    ),
+  ];
+  const shrink = (points: [number, number][], k: number) => {
+    const lat = points.reduce((n, p) => n + p[0], 0) / points.length;
+    const lng = points.reduce((n, p) => n + p[1], 0) / points.length;
+    return points.map(
+      ([a, b]) =>
+        [lat + (a - lat) * k, lng + (b - lng) * k] as [number, number],
+    );
+  };
+  const placeSteps = (p: (typeof o.places)[number], i: number): Step[] => {
+    if (p.label === "PC front")
+      return [
+        { m: 20, by: MAPPER, patch: { points: [[46.1962, 6.1432]] } },
+        { m: 65, by: MAPPER, note: "" },
+      ];
+    if (p.label === "Zone inondée Acacias")
+      return [
+        { m: 15, by: MAPPER, patch: { points: shrink(p.points, 0.55) } },
+        { m: 40, by: MAPPER, patch: { points: shrink(p.points, 0.8) } },
+        { m: 88, by: MAPPER },
+      ];
+    if (p.label === "Tonne-pompe SIS") return [{ m: 62, by: MAPPER }];
+    if (p.label === "Route de Veyrier inondée")
+      return [{ m: 72, by: OPERATOR_B }];
+    return [{ m: 8 + i * 5, by: MAPPER }];
+  };
+  const onMaps: Record<string, string[]> = {
+    "PC Carouge": [general],
+    "Route de Veyrier inondée": [general],
+    "Point de rassemblement Acacias": [detail],
+    "Tonne-pompe SIS": [detail],
+  };
+  const places = o.places.map((p, i) =>
+    track(
+      "ops.places",
+      { ...p, maps: onMaps[p.label] ?? [] },
+      placeSteps(p, i),
+    ),
+  );
+  // A road block placed, then lifted: only the history remembers it.
+  const block = crypto.randomUUID();
+  const blockState = {
+    ...o.places[0],
+    id: block,
+    label: "Barrage provisoire quai Ernest-Ansermet",
+    kind: "point",
+    layer: "Mesures",
+    symbol: "b:barrage",
+    color: "",
+    points: [[46.1931, 6.1449]],
+    notes: "Levé après l’ouverture de la déviation.",
+    maps: [],
+  };
+  track("ops.places", blockState, [{ m: 25, by: MAPPER }]);
+  push("ops.places", block, null, 78, OPERATOR_B, "remove");
+
+  const own = (r: { receivedAt?: string; at?: string }, fallback: number) =>
+    minutesOf(r.receivedAt ?? r.at ?? "", fallback);
+  const ops = {
+    ...o,
+    cells: simple("ops.cells", o.cells, (_, i) => -26 + i, OPERATOR_A),
+    members: simple("ops.members", o.members, (_, i) => -24 + i, OPERATOR_A),
+    contacts: simple("ops.contacts", o.contacts, () => -28, OPERATOR_A),
+    messages: simple("ops.messages", o.messages, (r) => own(r, 10), OPERATOR_B),
+    agenda: simple("ops.agenda", o.agenda, () => -20, OPERATOR_A),
+    observations: simple(
+      "ops.observations",
+      o.observations,
+      (r) => own(r, 30),
+      OPERATOR_B,
+    ),
+    alerts: simple("ops.alerts", o.alerts, (_, i) => -5 + i * 50, OPERATOR_B),
+    links: simple("ops.links", o.links, () => 96, OPERATOR_A),
+    resources,
+    facts,
+    boards,
+    maps,
+    places,
+    snapshots: [
+      track(
+        "ops.snapshots",
+        {
+          id: crypto.randomUUID(),
+          title: "Point de situation de 08:30",
+          at: at(30),
+          notes: "État transmis à la centrale d’engagement.",
+        },
+        [{ m: 31, by: OPERATOR_A }],
+      ),
+      track(
+        "ops.snapshots",
+        {
+          id: crypto.randomUUID(),
+          title: "Rapport de conduite",
+          at: at(120),
+          notes: "Présenté aux chefs de cellule.",
+        },
+        [{ m: 121, by: OPERATOR_A }],
+      ),
+    ],
+    presentations: [
+      track(
+        "ops.presentations",
+        {
+          id: crypto.randomUUID(),
+          startedAt: at(122),
+          endedAt: at(134),
+          presenter: "Fictive Bernasconi",
+          audience: "Maire de Carouge et préfet (fictifs)",
+          viewAt: at(120),
+          slides: 9,
+          mode: "Présentation",
+          notes: "",
+        },
+        [{ m: 134, by: OPERATOR_A }],
+      ),
+    ],
+    forecasts: [-15, 45, 105].map((m, i) => ({
+      id: crypto.randomUUID(),
+      createdAt: at(m),
+      updatedAt: at(m),
+      by: OPERATOR_B,
+      fetchedAt: at(m),
+      place: "Carouge (GE)",
+      lat: 46.1839,
+      lng: 6.1397,
+      data: demoForecast(Date.parse(at(m)), 0.8 + i * 0.9),
+    })),
+  };
+  push("settings", "settings", ops.settings, -30, OPERATOR_A, "create");
+  for (const [k, list] of Object.entries(journal.radio) as [
+    string,
+    { id: string; at?: string }[],
+  ][])
+    for (const r of list)
+      push(
+        `radio.${k}`,
+        r.id,
+        r,
+        r.at ? minutesOf(r.at, -25) : -25,
+        OPERATOR_A,
+        "create",
+      );
+  events.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+  return journalSchema.parse({
+    ...journal,
+    createdAt: at(-30),
+    entries,
+    ops,
+    history: events,
+  });
 }

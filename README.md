@@ -7,6 +7,7 @@ Locale et chiffrée, sans compte ni base de données, synchronisée en direct en
 - Licence : AGPL-3.0-only (le code source complet est téléchargeable depuis l’application)
 - Version : 2.0
 - Documentation d’utilisation : dans l’application, module **Aide** (trois niveaux de détail).
+- Une idée, un besoin, quelque chose à changer ? Écrire à <ludo47j@gmail.com> (aussi dans l’application : menu opérateur → « Une idée, un besoin ? »).
 
 > Logiciel indépendant. Aucune affiliation, homologation ni approbation de l’OFPP, de l’OCPPAM ou de l’État de Genève. L’emploi de données réelles exige un poste, une installation et une autorisation de l’organisation.
 
@@ -25,7 +26,7 @@ Locale et chiffrée, sans compte ni base de données, synchronisée en direct en
 9. [Journal d’intervention](#journal-dintervention)
 10. [Plan du réseau radio](#plan-du-réseau-radio)
 11. [Téléphone, tablette et QR codes](#téléphone-tablette-et-qr-codes)
-12. [Import, export et fusion](#import-export-et-fusion)
+12. [Présenter, remonter le temps, exporter](#présenter-remonter-le-temps-exporter)
 13. [Sécurité](#sécurité)
 14. [Limites](#limites)
 15. [Installation et hébergement](#installation-et-hébergement)
@@ -61,21 +62,22 @@ Le bouton **Ouvrir l’exercice de démonstration** charge un scénario fictif c
 
 ## Les modules
 
-| Module                 | À quoi il sert                                                                                                                                                                                                                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Situation**          | Accueil. Renseignements clés modifiables (+/−), tableaux de situation (situation générale, dangers, intention, points ouverts), échéances, derniers messages, moyens par état, présences, radios, rendez-vous, météo, réseau.                                                               |
-| **Journal**            | Registre chronologique numéroté : saisie rapide, modèles, suivi, échéances, versions, fiches A4, rapport de situation, relève (détail ci-dessous).                                                                                                                                          |
-| **Messages**           | Réception et synthèse des messages avant le journal : saisie standardisée (De, À, canal, priorité, catégorie en un clic, texte libre toujours possible), tableau Nouveau → En traitement → Transmis → Classé, **Inscrire au journal** (entrée préremplie et reliée), formule de message A4. |
-| **Missions**           | Tableau des entrées à suivre (À traiter, En cours, Terminé, Annulé) par glisser-déposer, filtres par type et responsable, retards, report d’échéance, suites.                                                                                                                               |
-| **Carte**              | Fonds swisstopo (couleur, gris, aérien, nuit) et OpenStreetMap, signes conventionnels civils OFPP, lignes, zones, textes, mesures, coordonnées MN95, recherche d’adresse, calques. Au **survol**, chaque objet montre tout ce qui lui est lié.                                              |
-| **Moyens**             | Véhicules, personnel et matériel par état (Disponible, Alerté, En route, Engagé, De retour, Hors service), glisser-déposer, arrivée prévue, consignation des changements, placement sur la carte, tableau A4.                                                                               |
-| **Équipe**             | Postes et cellules (PC front, PC arrière, cellules…) et personnes (grade, nom, fonction, nom d’appel, téléphone, présence, horaires) en organigramme ou en liste, impression A4.                                                                                                            |
-| **Réseau radio**       | Plan Polycom : groupes, noms d’appel, terminaux, remises et retours, quittances, contrôles de liaison, étiquettes QR (détail ci-dessous).                                                                                                                                                   |
-| **Contacts**           | Annuaire par catégories, favoris, appel en un clic sur téléphone, numéros d’urgence suisses en un clic, import vCard / CSV, export CSV, impression.                                                                                                                                         |
-| **Météo**              | Prévisions MétéoSuisse (ICON-CH via Open-Meteo, sur demande), graphique 48 h, trois jours, observations sur place, alertes de danger degré 1 à 5.                                                                                                                                           |
-| **Rythme de conduite** | Rapports, orientations, relèves et rendez-vous avec compte à rebours ; génération d’un rythme (« toutes les 4 h »), consignation au journal, impression.                                                                                                                                    |
-| **Réseau des liens**   | Graphe animé de tous les éléments et de leurs liens, « comme un réseau de neurones » : survol, filtres, recherche, ajout de liens.                                                                                                                                                          |
-| **Aide**               | Documentation intégrée pour tous, en trois niveaux : En bref, Guide, Tout le détail. Chaque module a son bouton « ? ».                                                                                                                                                                      |
+| Module                 | À quoi il sert                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Situation**          | Accueil. Renseignements clés modifiables (+/−), tableaux de situation (situation générale, dangers, intention, points ouverts), échéances, derniers messages, moyens par état, présences, radios, rendez-vous, météo, réseau.                                                                                                                                                                                                                       |
+| **Journal**            | Registre chronologique numéroté : saisie rapide, modèles, suivi, échéances, versions, fiches A4, rapport de situation, relève (détail ci-dessous).                                                                                                                                                                                                                                                                                                  |
+| **Messages**           | Réception et synthèse des messages avant le journal : saisie standardisée (De, À, canal, priorité, catégorie en un clic, texte libre toujours possible), tableau Nouveau → En traitement → Transmis → Classé, **Inscrire au journal** (entrée préremplie et reliée), formule de message A4.                                                                                                                                                         |
+| **Missions**           | Tableau des entrées à suivre (À traiter, En cours, Terminé, Annulé) par glisser-déposer, filtres par type et responsable, retards, report d’échéance, suites.                                                                                                                                                                                                                                                                                       |
+| **Carte**              | Plusieurs cartes (suivi général, secteur détaillé…), fonds swisstopo (couleur, gris, aérien, nuit) et OpenStreetMap, 268 signes civils OFPP et plus de 100 marqueurs simples sur fond transparent, taille et rotation à la souris ou au doigt, signes personnalisés (fond effacé automatiquement), lignes, zones, textes, dessin libre, mesures, MN95, import KML/GeoJSON/GPX, calques. Au **survol**, chaque objet montre tout ce qui lui est lié. |
+| **Moyens**             | Véhicules, personnel et matériel par état (Disponible, Alerté, En route, Engagé, De retour, Hors service), glisser-déposer, arrivée prévue, consignation des changements, placement sur la carte, tableau A4.                                                                                                                                                                                                                                       |
+| **Équipe**             | Postes et cellules (PC front, PC arrière, cellules…) et personnes (grade, nom, fonction, nom d’appel, téléphone, présence, horaires) en organigramme ou en liste, impression A4.                                                                                                                                                                                                                                                                    |
+| **Réseau radio**       | Plan Polycom : groupes, noms d’appel, terminaux, remises et retours, quittances, contrôles de liaison, étiquettes QR (détail ci-dessous).                                                                                                                                                                                                                                                                                                           |
+| **Contacts**           | Annuaire par catégories, favoris, appel en un clic sur téléphone, numéros d’urgence suisses en un clic, import vCard / CSV, export CSV, impression.                                                                                                                                                                                                                                                                                                 |
+| **Météo**              | Prévisions MétéoSuisse (ICON-CH via Open-Meteo, sur demande), graphique 48 h, trois jours, observations sur place, alertes de danger degré 1 à 5 ; chaque prévision reçue est gardée (« à 14 h, on annonçait… »).                                                                                                                                                                                                                                   |
+| **Rythme de conduite** | Rapports, orientations, relèves et rendez-vous avec compte à rebours ; génération d’un rythme (« toutes les 4 h »), consignation au journal, impression.                                                                                                                                                                                                                                                                                            |
+| **Réseau des liens**   | Graphe animé de tous les éléments et de leurs liens, « comme un réseau de neurones » : survol, filtres, recherche, ajout de liens.                                                                                                                                                                                                                                                                                                                  |
+| **Traçabilité**        | Qui a fait quoi et quand, versions de tout, comparaison de deux moments, points figés, registres des exports et des présentations, vérification d’un document.                                                                                                                                                                                                                                                                                      |
+| **Aide**               | Documentation intégrée pour tous, en trois niveaux : En bref, Guide, Tout le détail. Chaque module a son bouton « ? ».                                                                                                                                                                                                                                                                                                                              |
 
 ## Tout est relié
 
@@ -368,29 +370,41 @@ Sous 900 px de large, le dock passe en bas de l’écran. Boutons et champs sont
 
 Pour rejoindre une session depuis un téléphone : scanner le QR code affiché dans Réglages → Synchronisation du poste qui partage.
 
-## Import, export et fusion
+## Présenter, remonter le temps, exporter
 
-Les exports portent sur **tout le journal**, quels que soient les filtres.
+### Mode présentation et affichage mural
 
-| Format                  | Extension            | Contenu                                                                  | Réimportable                |
-| ----------------------- | -------------------- | ------------------------------------------------------------------------ | --------------------------- |
-| Archive orion aic       | `.orionaic`          | Chiffrée : entrées, versions, suppressions, plan radio, tous les modules | Oui, sans perte             |
-| Archive JSON            | `.json`              | En clair : idem                                                          | Oui, sans perte             |
-| Fiches messages A4      | `.pdf`               | Une fiche par entrée                                                     | Non                         |
-| Journal PDF             | `.pdf`               | Tableau chronologique A4                                                 | Non                         |
-| Plan du réseau radio    | `.pdf`               | Plan, groupes, terminaux, remises, contrôles                             | Non                         |
-| Excel                   | `.xlsx`              | Filtres, en-tête figé                                                    | Non                         |
-| Word                    | `.docx`              | Document modifiable                                                      | Non                         |
-| OpenDocument            | `.ods`               | Tableur LibreOffice                                                      | Non                         |
-| CSV / TSV               | `.csv` `.tsv`        | UTF-8, point-virgule / tabulation                                        | Oui, état actuel uniquement |
-| HTML / Texte / Markdown | `.html` `.txt` `.md` | Lecture                                                                  | Non                         |
+Bouton **Présenter la situation** (en haut à droite, ou `⌘K` → « Présenter ») : un écran de préparation (présentateur, public, version présentée, choix et ordre des diapositives), puis un diaporama plein écran construit à partir des données : titre, situation générale et intention, chiffres clés et leur évolution, chaque carte, ce qui a changé depuis le dernier point, faits marquants du journal, missions, moyens, organisation, radio, météo, échéances. Transitions et apparitions animées, stylo, surligneur et pointeur laser (souris, doigt, stylet), vue d’ensemble, écran noir, vue orateur dans une seconde fenêtre (notes, diapositive suivante, chronomètre), PDF des annotations. **Affichage mural** (`⌘K`) : rotation automatique, données en direct, horloge, fil du journal, écran maintenu allumé. Chaque présentation est inscrite au registre (qui, à qui, quand, quelle version).
 
-Les modules ont leurs propres impressions A4 / PDF : formule de message, tableau des moyens, équipe et postes, annuaire, rythme de conduite. Tous les formats sauf `.orionaic` sont **en clair** ; l’interface demande de le reconnaître avant téléchargement.
+### Traçabilité et versions
+
+Chaque création, modification et suppression, dans tous les modules, est enregistrée avec son auteur, l’heure et l’état complet de l’élément ; l’historique est synchronisé et inclus dans les archives. Chaque fiche montre « Créé par … · modifié par … » et un bouton **Historique** (toutes les versions, champs modifiés, restauration d’une version antérieure, elle-même tracée). Le module **Traçabilité** liste qui a fait quoi (filtres par personne, module, action, période), compare deux moments (ajouts, modifications champ par champ, suppressions, cartes côte à côte, impression) et tient les registres des points figés, des exports et des présentations.
+
+**Remonter le temps** (horloge en haut à droite) : toute l’application montre l’opération telle qu’elle était à l’heure choisie, en lecture seule (carte, moyens, journal dans ses versions d’alors, météo reçue à cette heure). **▶** rejoue l’opération changement par changement. **Figer un point de situation** donne un nom à un moment, repris ensuite par la comparaison, la présentation et l’export.
+
+### Centre d’export
+
+**Exporter (tous formats)** : trois choix — _quoi_ (toute l’opération, des parties, ou des éléments précis), _quand_ (maintenant, un point figé, une heure précise), _format_ — puis **Télécharger** ou **Imprimer**.
+
+| Famille               | Formats                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| Présentation          | PowerPoint `.pptx` animé (transitions, apparitions, notes), `.odp`, PDF diaporama, HTML diaporama  |
+| Documents imprimables | PDF dossier (couverture, sommaire, chapitres, cartes), Word `.docx`, `.odt`, HTML, Markdown, texte |
+| Impressions A4        | Fiches messages, journal en tableau, plan radio, étiquettes                                        |
+| Tableurs et données   | Excel `.xlsx`, `.ods` (une feuille par partie), CSV, TSV, JSON                                     |
+| Carte                 | PNG de chaque carte, GeoJSON, KML, GPX                                                             |
+| Agenda et contacts    | `.ics`, vCard `.vcf`                                                                               |
+| Archive               | `.orionaic` chiffrée et JSON, réimportables, historique compris                                    |
+| Pack complet          | `.zip` des principaux formats avec la liste des empreintes                                         |
+
+Filigrane automatique « EXERCICE » / « CONFIDENTIEL ». Chaque fichier porte une ligne d’identification et, quand la place le permet, un QR code ; il est inscrit au **registre des exports** avec son SHA-256. **Traçabilité → Exports → Vérifier un document** dit si un fichier reçu est authentique et intact.
 
 **Import** (`.orionaic`, `.orion`, `.json`, `.csv`, `.tsv`, 32 Mo maximum) : fichier lu localement, aperçu avant toute modification, puis au choix :
 
-- **Journal séparé** : le journal actuel reste intact.
-- **Fusionner** : ajoute les nouvelles entrées (renumérotées à la suite), ignore les doublons exacts, applique les suppressions, complète les remises radio clôturées ailleurs et combine les données des modules (la modification la plus récente l’emporte). Deux versions divergentes d’une même entrée **bloquent** la fusion : importer alors en journal séparé pour comparer.
+- **Journal séparé** : le journal actuel reste intact ; l’opération importée se rejoue avec la machine à remonter le temps.
+- **Fusionner** : ajoute les nouvelles entrées (renumérotées à la suite), ignore les doublons exacts, applique les suppressions, complète les remises radio clôturées ailleurs, combine les données des modules (la modification la plus récente l’emporte) et réunit les historiques. Deux versions divergentes d’une même entrée **bloquent** la fusion : importer alors en journal séparé pour comparer.
+
+La carte importe aussi des fichiers **KML, KMZ, GeoJSON et GPX** reçus de partenaires (carte → `⋯` → Importer).
 
 Les anciens exports `orion-export-v1` (ORION 0.3) sont reconnus : seules les entrées de journal sont converties.
 
@@ -464,7 +478,7 @@ npm run lan           # réseau local en HTTPS
 
 La CI GitHub (`.github/workflows`) exécute format, typecheck, tests, build, `npm audit` et le build Docker à chaque push. Guide du kit d’interface pour écrire un module : [docs/UI.md](docs/UI.md).
 
-Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion, plan radio, chiffrement, CSV/TSV, formats bureautiques, exports, serveur statique, **fusion de synchronisation** (convergence, numéros disputés, versions, suppressions, journaux retirés), **liens** explicites et implicites, **relais WebSocket** (salles, grands messages, refus), échange chiffré de bout en bout entre deux postes.
+Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion, plan radio, chiffrement, CSV/TSV, formats bureautiques, exports, serveur statique, **fusion de synchronisation** (convergence, numéros disputés, versions, suppressions, journaux retirés), **liens** explicites et implicites, **relais WebSocket** (salles, grands messages, refus), échange chiffré de bout en bout entre deux postes, **historique** (enregistrement, regroupement, fusion commutative, machine à remonter le temps, restauration), **formats géographiques** (aller-retour GeoJSON / KML / GPX), **exports** (dossier, formats bureautiques, agenda, contacts, empreintes), **présentations** (diapositives, PowerPoint et ODP bien formés).
 
 ## Structure du code
 
@@ -475,6 +489,9 @@ shared/            Modèle validé, sans dépendance au navigateur
                    renseignements, météo, liens, référentiels
   links.ts         Éléments, liens explicites et implicites, voisins, recherche
   sync.ts          Horodatage des changements, fusion de synchronisation, empreintes
+  events.ts        Schéma d’un changement (historique)
+  history.ts       Traçabilité : enregistrement, fusion, machine à remonter le temps,
+                   comparaison de versions, restauration
   room.ts          Code de session, clé et salle, enveloppes chiffrées
   radio.ts         Groupes, noms d’appel, terminaux, remises, contrôles, fusion radio
   workflow.ts      Entrées liées et fil, clôture par quittance, relance d’échéance, modèles
@@ -485,7 +502,12 @@ src/
   App.tsx          Coque : dock, barre, palette ⌘K, dialogues, session, synchronisation
   app/             Contexte, modules, réglages du poste, dialogue Réglages
   modules/         Un dossier par module (situation, journal, messages, missions, map,
-                   resources, team, contacts, weather, agenda, network, docs)
+                   resources, team, contacts, weather, agenda, network, trace, docs)
+  timeline/        Barre du temps et relecture, fiche Historique, points figés
+  export/          Centre d’export : périmètre, dossier, écrivains (PDF, Word, ODT, Excel,
+                   ODS, HTML, texte, agenda, contacts), empreintes, vérification
+  present/         Mode présentation, affichage mural, vue orateur, annotations,
+                   PowerPoint / ODP / PDF / HTML animés
   ui/              Kit : champs standardisés, fiche générique, liens, effets, ciel étoilé
   sync/            Synchronisation en direct (useSync)
   journal/ radio/  Journal, réseau radio

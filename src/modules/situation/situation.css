@@ -287,7 +287,7 @@
   background:
     radial-gradient(
       120% 100% at 0% 0%,
-      hsl(var(--fh) 85% 62% / 0.13),
+      hsl(var(--fh) calc(85% * var(--kind-s)) calc(62% * var(--kind-l)) / 0.13),
       transparent 65%
     ),
     var(--bg-2);
@@ -305,12 +305,17 @@
   bottom: 14px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: hsl(var(--fh) 85% 62%);
-  box-shadow: 0 0 10px hsl(var(--fh) 85% 62% / 0.7);
+  background: hsl(
+    var(--fh) calc(85% * var(--kind-s)) calc(62% * var(--kind-l))
+  );
+  box-shadow: 0 0 10px
+    hsl(var(--fh) calc(85% * var(--kind-s)) calc(62% * var(--kind-l)) / 0.7);
 }
 .situation-fact:hover {
   transform: translateY(-2px);
-  border-color: hsl(var(--fh) 85% 62% / 0.45);
+  border-color: hsl(
+    var(--fh) calc(85% * var(--kind-s)) calc(62% * var(--kind-l)) / 0.45
+  );
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
 }
 .situation-fact[draggable="true"] {
@@ -342,14 +347,14 @@
   background: none;
 }
 .situation-fact-cat {
-  color: hsl(var(--fh) 70% 70%);
+  color: hsl(var(--fh) calc(70% * var(--kind-s)) calc(70% * var(--kind-l)));
   font-family: var(--mono);
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 :root[data-theme="light"] .situation-fact-cat {
-  color: hsl(var(--fh) 60% 38%);
+  color: hsl(var(--fh) calc(60% * var(--kind-s)) 38%);
 }
 .situation-fact-value {
   display: flex;
@@ -390,8 +395,10 @@
   background: var(--bg-2);
 }
 .situation-fact-steps .icon-button:hover:not(:disabled) {
-  border-color: hsl(var(--fh) 85% 62% / 0.6);
-  color: hsl(var(--fh) 85% 68%);
+  border-color: hsl(
+    var(--fh) calc(85% * var(--kind-s)) calc(62% * var(--kind-l)) / 0.6
+  );
+  color: hsl(var(--fh) calc(85% * var(--kind-s)) calc(68% * var(--kind-l)));
 }
 .situation-fact-log {
   display: flex;

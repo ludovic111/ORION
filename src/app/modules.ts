@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CloudSun,
   Contact,
+  History,
   Inbox,
   KanbanSquare,
   LifeBuoy,
@@ -149,6 +150,16 @@ export const MODULES: ModuleInfo[] = [
     group: 3,
     description:
       "Toutes les informations et ce qui les relie, comme un réseau de neurones.",
+  },
+  {
+    id: "trace",
+    label: "Traçabilité et versions",
+    short: "Traçabilité",
+    icon: History,
+    hue: 175,
+    group: 3,
+    description:
+      "Qui a fait quoi et quand, versions de tout, comparaisons, exports et présentations.",
   },
   {
     id: "docs",

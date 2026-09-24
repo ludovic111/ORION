@@ -27,10 +27,11 @@ import { Modal } from "../journal/Modal";
 import { SessionPanel } from "../journal/SessionSettings";
 import { ChoiceField, Segmented, TextField, Toggle } from "../ui/fields";
 import { useApp } from "./context";
+import { ContactCard } from "./contact";
 import { MODULES, moduleInfo } from "./modules";
 import type { useSync } from "../sync/useSync";
 
-export type SettingsTab = "post" | "lists" | "sync" | "session";
+export type SettingsTab = "post" | "lists" | "sync" | "session" | "contact";
 
 export function SettingsDialog({
   tab,
@@ -72,10 +73,12 @@ export function SettingsDialog({
             { value: "lists", label: "Référentiels" },
             { value: "sync", label: "Synchronisation" },
             { value: "session", label: "Session et journal" },
+            { value: "contact", label: "Une idée ?" },
           ]}
         />
       </div>
       {tab === "post" && <PostSettings />}
+      {tab === "contact" && <ContactCard topic="Réglages" />}
       {tab === "lists" && <ListsSettings />}
       {tab === "sync" && (
         <SyncSettings sync={sync} onUpdateWorkspace={onUpdateWorkspace} />

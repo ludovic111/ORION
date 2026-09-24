@@ -23,6 +23,7 @@ import {
   MapPin,
   Minus,
   MousePointer2,
+  Pencil,
   Pentagon,
   Pin,
   Plus,
@@ -35,7 +36,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { current } from "../../../shared/journal";
-import { upsert, type Place } from "../../../shared/ops";
+import {
+  upsert,
+  type InputOf,
+  type OpsMap,
+  type Place,
+} from "../../../shared/ops";
 import {
   KIND_INFO,
   addLink,
@@ -57,7 +63,7 @@ import {
   type LatLng,
 } from "./geo";
 import { MapSearch } from "./MapSearch";
-import { PlaceSheet } from "./PlaceSheet";
+import { PlaceSheet, clampSize, normalizeAngle } from "./PlaceSheet";
 import { LayersPanel, PlacesList, layerKey, toneOf } from "./panels";
 import {
   Glyph,
@@ -66,7 +72,13 @@ import {
   recentSymbols,
   rememberSymbol,
   useCatalog,
+  useCustomSymbolsSync,
 } from "./symbols";
+import { BASES, GENEVA, SWISS_BOUNDS, isBase, type BaseId } from "./bases";
+import { MAIN_MAP, hexColor, onMap, simplify, sortMaps } from "./maps";
+import { MapTabs } from "./MapTabs";
+import { MapDialog } from "./MapDialog";
+import { ImportDialog } from "./ImportDialog";
 import "./map.css";
 
 // Situation map: swisstopo background, official civil symbols, lines and
@@ -74,64 +86,20 @@ import "./map.css";
 // imperatively; marker contents are React portals so they follow the data
 // without rebuilding the map.
 
-type Tool = "select" | "point" | "line" | "area" | "text" | "measure";
+type Tool =
+  "select" | "point" | "line" | "area" | "freehand" | "text" | "measure";
 type Panel = "list" | "symbols" | "layers" | null;
-type BaseId = keyof typeof BASES;
 type Hover = { target: Ref; x: number; y: number; hint: string };
 type Ghost = { target: Ref; lat: number; lng: number; title: string };
+type View = { lat: number; lng: number; zoom: number };
+type Style = Pick<Place, "size" | "rotation">;
+/** Background or hidden layers chosen while the journal is read-only. */
+type Override = { base?: BaseId; hidden?: string[] };
 
-const WMTS = (layer: string) =>
-  `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.jpeg`;
 const SWISSTOPO =
   '© <a href="https://www.swisstopo.admin.ch/fr/" target="_blank" rel="noopener noreferrer">swisstopo</a>';
 const OSM =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">les contributeurs d’OpenStreetMap</a>';
-const SWISS_BOUNDS: L.LatLngBoundsExpression = [
-  [45.3, 5.0],
-  [48.4, 11.6],
-];
-const BASES = {
-  color: {
-    label: "Carte couleur",
-    hint: "swisstopo",
-    url: WMTS("ch.swisstopo.pixelkarte-farbe"),
-    native: 19,
-    swiss: true,
-    className: "",
-  },
-  gray: {
-    label: "Carte grise",
-    hint: "swisstopo",
-    url: WMTS("ch.swisstopo.pixelkarte-grau"),
-    native: 19,
-    swiss: true,
-    className: "",
-  },
-  aerial: {
-    label: "Vue aérienne",
-    hint: "SWISSIMAGE",
-    url: WMTS("ch.swisstopo.swissimage"),
-    native: 20,
-    swiss: true,
-    className: "",
-  },
-  night: {
-    label: "Nuit",
-    hint: "carte grise inversée",
-    url: WMTS("ch.swisstopo.pixelkarte-grau"),
-    native: 19,
-    swiss: true,
-    className: "map-night",
-  },
-  osm: {
-    label: "OpenStreetMap",
-    hint: "hors de Suisse",
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    native: 19,
-    swiss: false,
-    className: "",
-  },
-} as const;
 
 const TOOLS: {
   id: Tool;
@@ -169,6 +137,13 @@ const TOOLS: {
     hint: "Dessiner une zone",
   },
   {
+    id: "freehand",
+    label: "Dessin",
+    icon: Pencil,
+    write: true,
+    hint: "Dessin libre, à la souris ou au doigt",
+  },
+  {
     id: "text",
     label: "Texte",
     icon: Type,
@@ -184,13 +159,18 @@ const TOOLS: {
   },
 ];
 const DRAWING: Tool[] = ["line", "area", "measure"];
-const GENEVA = { lat: 46.2044, lng: 6.1432, zoom: 13 };
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const reducedMotion = () =>
   document.documentElement.dataset.motion === "reduced" ||
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const narrow = () => window.innerWidth <= 900;
+const isView = (v: unknown): v is View =>
+  !!v &&
+  typeof v === "object" &&
+  Number.isFinite((v as View).lat) &&
+  Number.isFinite((v as View).lng) &&
+  Number.isFinite((v as View).zoom);
 
 function readStore<T>(
   key: string,
@@ -227,37 +207,188 @@ const symbolForKind = (kind: string) =>
       ? "b:incident"
       : "b:point";
 
+/**
+ * Direct manipulation of a selected symbol or text: drag the corner to
+ * resize, the knob to rotate. Native listeners, so that neither the marker
+ * nor the map starts dragging (pointer events work with mouse and touch).
+ */
+function Handles({
+  value,
+  onPreview,
+  onCommit,
+}: {
+  value: Style;
+  onPreview: (v: Style | null) => void;
+  onCommit: (v: Style) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const latest = useRef({ value, onPreview, onCommit });
+  latest.current = { value, onPreview, onCommit };
+  useEffect(() => {
+    const root = ref.current;
+    const host = root?.parentElement;
+    if (!root || !host) return;
+    const stop = (e: Event) => e.stopPropagation();
+    const blocked = ["mousedown", "touchstart", "click", "dblclick"];
+    const knobs = [...root.querySelectorAll<HTMLElement>("[data-handle]")];
+    const offs: (() => void)[] = [];
+    for (const knob of knobs) {
+      const mode = knob.dataset.handle;
+      const down = (e: PointerEvent) => {
+        if (e.button > 0) return;
+        e.stopPropagation();
+        e.preventDefault();
+        const box = host.getBoundingClientRect();
+        const cx = box.left + box.width / 2;
+        const cy = box.top + box.height / 2;
+        const start = latest.current.value;
+        const d0 = Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy));
+        const a0 = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI;
+        let last: Style | null = null;
+        knob.setPointerCapture?.(e.pointerId);
+        root.classList.add("active");
+        const move = (ev: PointerEvent) => {
+          ev.stopPropagation();
+          const dx = ev.clientX - cx;
+          const dy = ev.clientY - cy;
+          if (mode === "size") {
+            const k = Math.hypot(dx, dy) / d0;
+            last = {
+              ...start,
+              size: clampSize(Math.round(start.size * k * 20) / 20),
+            };
+          } else {
+            let deg =
+              start.rotation + (Math.atan2(dy, dx) * 180) / Math.PI - a0;
+            // Snap to 15° steps when close: straight lines are easy.
+            const snap = Math.round(deg / 15) * 15;
+            if (Math.abs(deg - snap) < 4 || ev.shiftKey) deg = snap;
+            last = { ...start, rotation: normalizeAngle(deg) };
+          }
+          latest.current.onPreview(last);
+        };
+        const up = (ev: PointerEvent) => {
+          ev.stopPropagation();
+          knob.removeEventListener("pointermove", move);
+          knob.removeEventListener("pointerup", up);
+          knob.removeEventListener("pointercancel", up);
+          root.classList.remove("active");
+          if (last && ev.type === "pointerup") latest.current.onCommit(last);
+          else latest.current.onPreview(null);
+        };
+        knob.addEventListener("pointermove", move);
+        knob.addEventListener("pointerup", up);
+        knob.addEventListener("pointercancel", up);
+      };
+      knob.addEventListener("pointerdown", down);
+      blocked.forEach((t) => knob.addEventListener(t, stop));
+      offs.push(() => {
+        knob.removeEventListener("pointerdown", down);
+        blocked.forEach((t) => knob.removeEventListener(t, stop));
+      });
+    }
+    return () => offs.forEach((off) => off());
+  }, []);
+  return (
+    <div ref={ref} className="map-handles" aria-hidden="true">
+      <span
+        data-handle="rotate"
+        className="map-handle rotate"
+        title="Glisser pour tourner"
+      />
+      <span
+        data-handle="size"
+        className="map-handle size"
+        title="Glisser pour agrandir ou réduire"
+      />
+    </div>
+  );
+}
+
 /** Content of a point or text marker, rendered into Leaflet's icon element. */
 const PinBody = memo(function PinBody({
   place,
   hot,
   links,
+  editable,
+  onStyle,
 }: {
   place: Place;
   hot: boolean;
   links: number;
+  /** Selected and editable: resize and rotate handles. */
+  editable: boolean;
+  onStyle: (id: string, style: Style) => void;
 }) {
+  const [draft, setDraft] = useState<Style | null>(null);
+  // A saved change (or a change from another post) replaces the preview.
+  useEffect(() => setDraft(null), [place.updatedAt]);
+  const size = draft?.size ?? place.size;
+  const color = hexColor(place.color);
+  const rotation = draft?.rotation ?? place.rotation;
+  const handles = editable && (
+    <Handles
+      value={{ size, rotation }}
+      onPreview={setDraft}
+      onCommit={(v) => {
+        setDraft(v);
+        onStyle(place.id, v);
+      }}
+    />
+  );
   if (place.kind === "text")
     return (
       <div
-        className={`map-text${hot ? " hot" : ""}`}
+        className={`map-text${place.boxed ? " boxed" : ""}${hot ? " hot" : ""}${editable ? " editing" : ""}`}
         style={
-          place.color ? ({ "--c": place.color } as CSSProperties) : undefined
+          {
+            ...(color ? { "--c": color } : {}),
+            "--rot": `${rotation}deg`,
+            fontSize: `${15 * size}px`,
+            maxWidth: `${Math.round(280 * Math.max(1, size))}px`,
+          } as CSSProperties
         }
       >
         {place.label || "Texte"}
+        {handles}
       </div>
     );
+  const box = Math.round(34 * size);
   return (
     <div
-      className={`map-pin${hot ? " hot" : ""}`}
+      className={`map-pin${hot ? " hot" : ""}${place.frame ? " framed" : ""}${editable ? " editing" : ""}`}
       style={
-        place.color ? ({ "--ring": place.color } as CSSProperties) : undefined
+        {
+          "--box": `${box}px`,
+          ...(color ? { "--ring": color } : {}),
+        } as CSSProperties
       }
     >
-      <Glyph symbol={place.symbol} color={place.color} size={36} />
+      <div
+        className="map-pin-symbol"
+        style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined }}
+      >
+        <Glyph
+          symbol={place.symbol}
+          color={color}
+          size={box}
+          frame={place.frame}
+        />
+        {handles}
+      </div>
       {links > 0 && <span className="map-pin-badge">{links}</span>}
-      {place.label && <span className="map-pin-label">{place.label}</span>}
+      {place.label && (
+        <span
+          className="map-pin-label"
+          style={
+            size > 1.2
+              ? { fontSize: `${11.5 * Math.min(2, size * 0.85)}px` }
+              : undefined
+          }
+        >
+          {place.label}
+        </span>
+      )}
     </div>
   );
 });
@@ -291,6 +422,8 @@ type Entry = {
 export function MapModule() {
   const {
     journal,
+    live,
+    viewAt,
     author,
     readOnly,
     graph,
@@ -300,9 +433,11 @@ export function MapModule() {
     setFocus,
     open,
     toast,
+    exportCenter,
   } = useApp();
   const catalog = useCatalog();
-  const places = journal.ops.places;
+  useCustomSymbolsSync(journal.ops.symbols, live.ops.symbols);
+  const allPlaces = journal.ops.places;
   const settingsCenter = journal.ops.settings.mapCenter;
 
   const shell = useRef<HTMLDivElement>(null);
@@ -325,12 +460,9 @@ export function MapModule() {
   const baseButton = useRef<HTMLButtonElement>(null);
 
   const [height, setHeight] = useState(560);
-  const [base, setBase] = useState<BaseId>(() =>
-    readStore<BaseId>(
-      "orion.map.base",
-      "color",
-      (v) => typeof v === "string" && v in BASES,
-    ),
+  // Background of the implicit main map (before any map record).
+  const [localBase, setLocalBase] = useState<BaseId>(() =>
+    readStore<BaseId>("orion.map.base", "color", isBase),
   );
   const [baseMenu, setBaseMenu] = useState(false);
   const [tool, setTool] = useState<Tool>("select");
@@ -347,14 +479,21 @@ export function MapModule() {
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(
-    () =>
-      new Set(
-        readStore<string[]>("orion.map.hidden", [], (v) =>
-          Array.isArray(v),
-        ).filter((x) => typeof x === "string"),
-      ),
+  const [localHidden, setLocalHidden] = useState<string[]>(() =>
+    readStore<string[]>("orion.map.hidden", [], (v) => Array.isArray(v)).filter(
+      (x) => typeof x === "string",
+    ),
   );
+  const [overrides, setOverrides] = useState<Record<string, Override>>({});
+  const [chosenMap, setChosenMap] = useState(() =>
+    readStore(
+      `orion.map.current.${journal.id}`,
+      MAIN_MAP,
+      (v) => typeof v === "string",
+    ),
+  );
+  const [mapDialog, setMapDialog] = useState<"new" | "edit" | null>(null);
+  const [importing, setImporting] = useState(false);
   const [showGhosts, setShowGhosts] = useState(() =>
     readStore("orion.map.ghosts", true, (v) => typeof v === "boolean"),
   );
@@ -369,7 +508,43 @@ export function MapModule() {
   const [slots, setSlots] = useState<{ id: string; el: HTMLElement }[]>([]);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const byId = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
+  /* ---------- Maps of the operation ---------- */
+  const maps = useMemo(() => sortMaps(journal.ops.maps), [journal.ops.maps]);
+  const known = useMemo(() => new Set(maps.map((m) => m.id)), [maps]);
+  const currentMap: OpsMap | null =
+    maps.find((m) => m.id === chosenMap) ?? maps[0] ?? null;
+  const mapId = currentMap?.id ?? MAIN_MAP;
+  const override = overrides[mapId];
+  const base: BaseId = currentMap
+    ? (override?.base ?? (isBase(currentMap.base) ? currentMap.base : "color"))
+    : localBase;
+  const hiddenList = currentMap
+    ? (override?.hidden ?? currentMap.hidden)
+    : localHidden;
+  const hidden = useMemo(() => new Set(hiddenList), [hiddenList]);
+  // Back to the present: the records speak again.
+  useEffect(() => {
+    if (!readOnly) setOverrides({});
+    else {
+      // Entering the time machine (or a closed journal): drop any drawing
+      // or editing in progress.
+      setTool("select");
+      setDraft([]);
+      setMeasureDone(false);
+      setShapeEdit(null);
+      setPending(null);
+      setPanel((p) => (p === "symbols" ? (narrow() ? null : "list") : p));
+    }
+  }, [readOnly]);
+
+  const places = useMemo(
+    () => (mapId ? allPlaces.filter((p) => onMap(p, mapId, known)) : allPlaces),
+    [allPlaces, mapId, known],
+  );
+  const byId = useMemo(
+    () => new Map(allPlaces.map((p) => [p.id, p])),
+    [allPlaces],
+  );
   const sheetPlace = sheetId ? byId.get(sheetId) : undefined;
   const visible = useMemo(
     () =>
@@ -404,8 +579,24 @@ export function MapModule() {
   panelOpen.current = !!panel;
 
   // Latest state for Leaflet callbacks registered once.
-  const state = useRef({ tool, draft, measureDone, readOnly, canDrag, byId });
-  state.current = { tool, draft, measureDone, readOnly, canDrag, byId };
+  const state = useRef({
+    tool,
+    draft,
+    measureDone,
+    readOnly,
+    canDrag,
+    byId,
+    mapId,
+  });
+  state.current = {
+    tool,
+    draft,
+    measureDone,
+    readOnly,
+    canDrag,
+    byId,
+    mapId,
+  };
 
   /* ---------- Layout ---------- */
   useLayoutEffect(() => {
@@ -434,21 +625,20 @@ export function MapModule() {
   }, []);
 
   /* ---------- Map ---------- */
-  const viewKey = `orion.map.view.${journal.id}`;
+  // Last view of each map in this browser; the saved framing of the map
+  // (shared by every post) otherwise.
+  const viewKey = (id: string) =>
+    id ? `orion.map.view.${journal.id}.${id}` : `orion.map.view.${journal.id}`;
+  const framingOf = (m: OpsMap | null): View | null =>
+    m ? { lat: m.lat, lng: m.lng, zoom: m.zoom } : settingsCenter;
+  const viewOf = (m: OpsMap | null): View =>
+    readStore<View | null>(viewKey(m?.id ?? MAIN_MAP), null, isView) ??
+    framingOf(m) ??
+    GENEVA;
   // Created once per journal (the module remounts on a journal switch).
   useEffect(() => {
     if (!root.current) return;
-    const saved = readStore<{ lat: number; lng: number; zoom: number } | null>(
-      viewKey,
-      null,
-      (v) =>
-        !!v &&
-        typeof v === "object" &&
-        Number.isFinite((v as { lat: number }).lat) &&
-        Number.isFinite((v as { lng: number }).lng) &&
-        Number.isFinite((v as { zoom: number }).zoom),
-    );
-    const start = saved ?? settingsCenter ?? GENEVA;
+    const start = viewOf(currentMap);
     const m = L.map(root.current, {
       center: [start.lat, start.lng],
       zoom: start.zoom,
@@ -512,7 +702,7 @@ export function MapModule() {
     m.on("mouseout", () => drawSketch(null));
     m.on("moveend", () => {
       const c = m.getCenter().wrap();
-      writeStore(viewKey, {
+      writeStore(viewKey(state.current.mapId), {
         lat: round6(c.lat),
         lng: round6(c.lng),
         zoom: m.getZoom(),
@@ -537,6 +727,20 @@ export function MapModule() {
     };
   }, []);
 
+  // Another map chosen: its own view.
+  const shownMap = useRef(mapId);
+  useEffect(() => {
+    if (shownMap.current === mapId) return;
+    shownMap.current = mapId;
+    const m = map.current;
+    if (!m) return;
+    const v = viewOf(currentMap);
+    if (reducedMotion()) m.setView([v.lat, v.lng], v.zoom);
+    else m.flyTo([v.lat, v.lng], v.zoom, { duration: 0.8 });
+    setDraft([]);
+    setShapeEdit(null);
+  }, [mapId]);
+
   /* ---------- Base layer ---------- */
   useEffect(() => {
     const m = map.current;
@@ -551,7 +755,7 @@ export function MapModule() {
       crossOrigin: true,
       className: b.className,
       attribution: b.swiss ? SWISSTOPO : OSM,
-      ...(b.swiss ? { bounds: SWISS_BOUNDS } : {}),
+      ...(b.swiss ? { bounds: L.latLngBounds(SWISS_BOUNDS) } : {}),
     });
     layer.on("loading", () => {
       loaded = 0;
@@ -568,7 +772,6 @@ export function MapModule() {
     });
     layer.addTo(m);
     layer.bringToBack();
-    writeStore("orion.map.base", base);
     return () => {
       layer.off();
       layer.remove();
@@ -579,6 +782,8 @@ export function MapModule() {
   const handlers = useRef({
     mapClick: (_: L.LatLng) => {},
     finish: () => {},
+    freehand: (_points: LatLng[]) => {},
+    style: (_id: string, _style: Style) => {},
     placeClick: (_id: string, _at: L.LatLng) => {},
     placeOver: (_id: string, _e: MouseEvent) => {},
     placeOut: () => {},
@@ -589,15 +794,22 @@ export function MapModule() {
 
   function makeShape(p: Place) {
     const tone = toneOf(p.layer);
+    const w = p.weight;
+    const color = hexColor(p.color);
     const options: L.PolylineOptions = {
-      className: `map-shape tone-${tone}${p.color ? " custom" : ""}${p.kind === "area" ? " area" : ""}`,
-      weight: p.kind === "area" ? 2.5 : 4,
+      className: `map-shape tone-${tone}${color ? " custom" : ""}${p.kind === "area" ? " area" : ""}`,
+      weight: w,
       opacity: 0.95,
       fillOpacity: 0.16,
       lineCap: "round",
       lineJoin: "round",
-      dashArray: tone === "danger" ? "10 8" : undefined,
-      ...(p.color ? { color: p.color, fillColor: p.color } : {}),
+      dashArray:
+        p.dash === "dash"
+          ? `${w * 3} ${w * 2.2}`
+          : p.dash === "dot"
+            ? `0.1 ${w * 2}`
+            : undefined,
+      ...(color ? { color, fillColor: color } : {}),
     };
     const shape =
       p.kind === "area"
@@ -629,12 +841,14 @@ export function MapModule() {
     const el = document.createElement("div");
     el.className = "map-pin-host";
     const text = p.kind === "text";
+    // Zero-sized anchor: the content is centred on the point by CSS, so a
+    // new size or rotation never rebuilds the marker.
     const marker = L.marker(p.points[0], {
       icon: L.divIcon({
         html: el,
         className: text ? "map-icon text" : "map-icon",
-        iconSize: text ? [0, 0] : [40, 40],
-        iconAnchor: text ? [0, 0] : [20, 20],
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
       }),
       draggable: state.current.canDrag,
       keyboard: true,
@@ -663,6 +877,9 @@ export function MapModule() {
     return { marker, el };
   }
 
+  const moving = useRef(
+    new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>(),
+  ).current;
   useEffect(() => {
     const g = groups.current;
     if (!g) return;
@@ -676,6 +893,23 @@ export function MapModule() {
         continue;
       if (known && known.kind === p.kind && known.el) {
         const marker = known.layer as L.Marker;
+        const was = marker.getLatLng();
+        const [lat, lng] = p.points[0];
+        const icon = marker.getElement();
+        // Moved by another post or by the replay: glide to the new place.
+        if (
+          icon &&
+          (was.lat !== lat || was.lng !== lng) &&
+          !icon.classList.contains("leaflet-drag-target") &&
+          !reducedMotion()
+        ) {
+          icon.classList.add("map-moving");
+          clearTimeout(moving.get(icon));
+          moving.set(
+            icon,
+            setTimeout(() => icon.classList.remove("map-moving"), 700),
+          );
+        }
         marker.setLatLng(p.points[0]);
         marker
           .getElement()
@@ -835,6 +1069,81 @@ export function MapModule() {
     else m.doubleClickZoom.enable();
   }, [draft, tool, measureDone]);
 
+  /* ---------- Freehand drawing ---------- */
+  useEffect(() => {
+    const m = map.current;
+    const g = groups.current;
+    if (!m || !g || tool !== "freehand") return;
+    const el = m.getContainer();
+    m.dragging.disable();
+    m.doubleClickZoom.disable();
+    el.classList.add("map-drawing");
+    let pointer: number | null = null;
+    let pts: L.Point[] = [];
+    let stroke: L.Polyline | null = null;
+    const reset = () => {
+      pointer = null;
+      pts = [];
+      stroke?.remove();
+      stroke = null;
+    };
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // A second finger: pinch to zoom, not a stroke.
+      if (pointer !== null) return reset();
+      pointer = e.pointerId;
+      pts = [m.mouseEventToContainerPoint(e as unknown as MouseEvent)];
+      stroke = L.polyline([m.containerPointToLatLng(pts[0])], {
+        className: "map-sketch freehand",
+        weight: 3,
+        interactive: false,
+      }).addTo(g.sketch);
+      el.setPointerCapture?.(e.pointerId);
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointer || !stroke) return;
+      const p = m.mouseEventToContainerPoint(e as unknown as MouseEvent);
+      if (p.distanceTo(pts[pts.length - 1]) < 2) return;
+      pts.push(p);
+      stroke.addLatLng(m.containerPointToLatLng(p));
+    };
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pointer) return;
+      const drawn = pts;
+      reset();
+      if (e.type !== "pointerup" || drawn.length < 2) return;
+      let simple = simplify(
+        drawn.map((p) => [p.x, p.y] as [number, number]),
+        1.4,
+      );
+      if (simple.length > 2000) simple = simplify(simple, 4).slice(0, 2000);
+      const latlngs = simple.map(([x, y]) => {
+        const at = m.containerPointToLatLng([x, y]).wrap();
+        return [round6(at.lat), round6(at.lng)] as LatLng;
+      });
+      const length = Math.hypot(
+        drawn[drawn.length - 1].x - drawn[0].x,
+        drawn[drawn.length - 1].y - drawn[0].y,
+      );
+      if (latlngs.length < 2 || (latlngs.length === 2 && length < 6)) return;
+      handlers.current.freehand(latlngs);
+    };
+    el.addEventListener("pointerdown", down);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+    return () => {
+      reset();
+      el.removeEventListener("pointerdown", down);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+      el.classList.remove("map-drawing");
+      m.dragging.enable();
+      m.doubleClickZoom.enable();
+    };
+  }, [tool]);
+
   /* ---------- Shape editing ---------- */
   const editKind = shapeEdit ? byId.get(shapeEdit.id)?.kind : undefined;
   useEffect(() => {
@@ -948,13 +1257,14 @@ export function MapModule() {
     (p: Place, withSheet: boolean) => {
       const m = map.current;
       if (!m) return;
-      if (hidden.has(layerKey(p)))
-        setHidden((h) => {
-          const next = new Set(h);
-          next.delete(layerKey(p));
-          writeStore("orion.map.hidden", [...next]);
-          return next;
-        });
+      // Not on this map: open a map that shows it.
+      if (mapId && !onMap(p, mapId, known)) {
+        const other = p.maps.find((id) => known.has(id));
+        if (other) {
+          shownMap.current = other;
+          selectMap(other);
+        }
+      } else if (hidden.has(layerKey(p))) setLayerHidden(layerKey(p), false);
       // Keep the object in the part of the map not covered by the side
       // panel and the sheet.
       const size = m.getSize();
@@ -984,17 +1294,21 @@ export function MapModule() {
       }
       if (withSheet) setSheetId(p.id);
     },
-    [hidden],
+    [hidden, mapId, known],
   );
 
   function create(
-    place: Omit<Place, "id" | "createdAt" | "updatedAt" | "by">,
+    place: Omit<InputOf<"places">, "id" | "createdAt" | "updatedAt" | "by">,
     link?: Ref,
   ) {
+    // Past version or closed journal: nothing is written.
+    if (state.current.readOnly) return null;
     const id = crypto.randomUUID();
+    // Drawn on a given map: belongs to it (while there are several maps).
+    const own = maps.length > 1 && currentMap ? [currentMap.id] : [];
     try {
       updateOps((ops) => {
-        const next = upsert(ops, "places", { ...place, id }, author);
+        const next = upsert(ops, "places", { maps: own, ...place, id }, author);
         return link
           ? addLink(next, ref("place", id), link, "position", author)
           : next;
@@ -1042,8 +1356,8 @@ export function MapModule() {
 
   function finish() {
     const m = map.current;
-    const { tool: t, draft: raw } = state.current;
-    if (!m || !DRAWING.includes(t)) return;
+    const { tool: t, draft: raw, readOnly: locked } = state.current;
+    if (!m || !DRAWING.includes(t) || (locked && t !== "measure")) return;
     // A double click adds the same vertex twice.
     const pts = raw.filter((p, i) => {
       if (!i) return true;
@@ -1075,6 +1389,7 @@ export function MapModule() {
 
   function saveShape() {
     if (!shapeEdit) return;
+    if (readOnly) return setShapeEdit(null);
     const p = byId.get(shapeEdit.id);
     if (!p) return setShapeEdit(null);
     try {
@@ -1109,7 +1424,10 @@ export function MapModule() {
   handlers.current = {
     mapClick: (at) => {
       setGhostMenu(null);
-      if (tool === "select") return;
+      // The sheet of an object stays beside the map: a click elsewhere
+      // on the map closes it.
+      if (tool === "select") return setSheetId(null);
+      if (tool === "freehand") return;
       if (readOnly && tool !== "measure") return;
       const pt: LatLng = [round6(at.lat), round6(at.wrap().lng)];
       if (tool === "point") placePoint(at.wrap());
@@ -1133,6 +1451,27 @@ export function MapModule() {
       } else if (draft.length < 500) setDraft((d) => [...d, pt]);
     },
     finish,
+    freehand: (points) => {
+      if (readOnly) return;
+      create({
+        label: "",
+        kind: "line",
+        symbol: "",
+        color: "",
+        layer: drawLayer,
+        points,
+        notes: "",
+      });
+    },
+    style: (id, style) => {
+      const p = byId.get(id);
+      if (!p || readOnly) return;
+      try {
+        updateOps((ops) => upsert(ops, "places", { ...p, ...style }, author));
+      } catch (err) {
+        toast((err as Error).message);
+      }
+    },
     placeClick: (id, at) => {
       if (tool === "select") {
         clearTimeout(hoverTimer.current);
@@ -1141,7 +1480,8 @@ export function MapModule() {
       } else handlers.current.mapClick(at);
     },
     placeOver: (id, e) => {
-      if (DRAWING.includes(tool) && draft.length) return;
+      if ((DRAWING.includes(tool) && draft.length) || tool === "freehand")
+        return;
       clearTimeout(hoverTimer.current);
       const x = e.clientX;
       const y = e.clientY;
@@ -1230,8 +1570,12 @@ export function MapModule() {
   /* ---------- Keyboard ---------- */
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, select, [contenteditable=true]")) return;
+      const t = e.target;
+      if (
+        t instanceof Element &&
+        t.closest("input, textarea, select, [contenteditable=true]")
+      )
+        return;
       if (document.querySelector(".sheet-panel, dialog[open]")) return;
       if (e.key === "Escape") {
         if (ghostMenu) setGhostMenu(null);
@@ -1256,15 +1600,52 @@ export function MapModule() {
     return () => window.removeEventListener("keydown", key);
   });
 
-  /* ---------- Misc ---------- */
+  /* ---------- Maps, backgrounds, layers ---------- */
+  function selectMap(id: string) {
+    setChosenMap(id);
+    writeStore(`orion.map.current.${journal.id}`, id);
+    setSheetId(null);
+  }
+
+  function updateMap(m: OpsMap, patch: Partial<OpsMap>) {
+    try {
+      updateOps((ops) => upsert(ops, "maps", { ...m, ...patch }, author));
+    } catch (err) {
+      toast((err as Error).message);
+    }
+  }
+
+  // Past versions and closed journals: changes stay on this screen.
+  function chooseBase(id: BaseId) {
+    if (!currentMap) {
+      setLocalBase(id);
+      writeStore("orion.map.base", id);
+    } else if (readOnly)
+      setOverrides((o) => ({ ...o, [mapId]: { ...o[mapId], base: id } }));
+    else updateMap(currentMap, { base: id });
+  }
+
+  function setHiddenLayers(next: string[]) {
+    if (!currentMap) {
+      setLocalHidden(next);
+      writeStore("orion.map.hidden", next);
+    } else if (readOnly)
+      setOverrides((o) => ({ ...o, [mapId]: { ...o[mapId], hidden: next } }));
+    else updateMap(currentMap, { hidden: next.slice(0, 50) });
+  }
+  function setLayerHidden(layer: string, off: boolean) {
+    const next = new Set(hiddenList);
+    if (off) next.add(layer);
+    else next.delete(layer);
+    setHiddenLayers([...next]);
+  }
   const toggleLayer = (layer: string) =>
-    setHidden((h) => {
-      const next = new Set(h);
-      if (next.has(layer)) next.delete(layer);
-      else next.add(layer);
-      writeStore("orion.map.hidden", [...next]);
-      return next;
-    });
+    setLayerHidden(layer, !hidden.has(layer));
+
+  const onStyle = useCallback(
+    (id: string, style: Style) => handlers.current.style(id, style),
+    [],
+  );
 
   function fitAll() {
     const m = map.current;
@@ -1279,7 +1660,7 @@ export function MapModule() {
   }
 
   function home() {
-    const c = settingsCenter ?? GENEVA;
+    const c = framingOf(currentMap) ?? GENEVA;
     map.current?.setView([c.lat, c.lng], c.zoom, { animate: !reducedMotion() });
   }
 
@@ -1299,26 +1680,43 @@ export function MapModule() {
     );
   }
 
-  function saveDefaultView() {
+  /** Framing of the map shown, for every post. */
+  function saveFraming() {
     const m = map.current;
     if (!m) return;
+    if (readOnly)
+      return toast("Lecture seule : le cadrage n’est pas enregistré.");
     const c = m.getCenter().wrap();
+    const view = {
+      lat: round6(c.lat),
+      lng: round6(c.lng),
+      zoom: Math.min(22, Math.max(1, m.getZoom())),
+    };
     try {
-      updateOps((ops) => ({
-        ...ops,
-        settings: {
-          ...ops.settings,
-          mapCenter: {
-            lat: round6(c.lat),
-            lng: round6(c.lng),
-            zoom: Math.min(22, Math.max(1, m.getZoom())),
-          },
-        },
-      }));
-      toast("Vue par défaut enregistrée pour ce journal.");
+      if (currentMap) updateMap(currentMap, view);
+      else
+        updateOps((ops) => ({
+          ...ops,
+          settings: { ...ops.settings, mapCenter: view },
+        }));
+      toast(
+        currentMap
+          ? `Cadrage enregistré pour « ${currentMap.name} ».`
+          : "Vue par défaut enregistrée pour ce journal.",
+      );
     } catch (err) {
       toast((err as Error).message);
     }
+  }
+
+  function fitPoints(points: LatLng[]) {
+    const m = map.current;
+    if (!m || !points.length) return;
+    m.fitBounds(L.latLngBounds(points), {
+      padding: [60, 60],
+      maxZoom: 17,
+      animate: !reducedMotion(),
+    });
   }
 
   const armedInfo = describeSymbol(armed, catalog);
@@ -1360,6 +1758,38 @@ export function MapModule() {
           type="button"
           className="icon-button"
           aria-label="Annuler le placement"
+          onClick={() => chooseTool("select")}
+        >
+          <X size={15} />
+        </button>
+      </>
+    );
+  else if (tool === "freehand")
+    hint = (
+      <>
+        <Pencil size={15} aria-hidden="true" />
+        <span>
+          Dessinez à la souris ou au doigt · chaque trait devient un tracé
+        </span>
+        <select
+          className="map-hint-layer"
+          value={drawLayer}
+          aria-label="Calque des traits"
+          onChange={(e) => {
+            setDrawLayer(e.target.value);
+            writeStore("orion.map.drawLayer", e.target.value);
+          }}
+        >
+          {[...new Set([...layerOptions, drawLayer])].map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Fermer le dessin libre"
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -1449,18 +1879,18 @@ export function MapModule() {
           !readOnly && (
             <button
               type="button"
-              onClick={saveDefaultView}
-              title="La carte s’ouvrira ici pour tous les postes"
+              onClick={saveFraming}
+              title={`${currentMap ? `« ${currentMap.name} »` : "La carte"} s’ouvrira ici pour tous les postes`}
             >
               <Pin size={14} />
-              Vue par défaut
+              Enregistrer le cadrage
             </button>
           )
         }
       />
       <div
         ref={shell}
-        className={`map-shell tool-${tool}${base === "night" ? " night dark-base" : base === "aerial" ? " dark-base" : ""}${panel ? " with-panel" : ""}${hint ? " has-hint" : ""}`}
+        className={`map-shell tool-${tool}${base === "night" ? " night dark-base" : base === "aerial" ? " dark-base" : ""}${panel ? " with-panel" : ""}${hint ? " has-hint" : ""}${viewAt !== null ? " past" : ""}`}
         style={{ height }}
       >
         <div
@@ -1471,6 +1901,17 @@ export function MapModule() {
         />
 
         <div className="map-top-left">
+          <MapTabs
+            maps={maps}
+            current={mapId}
+            readOnly={readOnly}
+            onSelect={selectMap}
+            onNew={() => setMapDialog("new")}
+            onEdit={() => setMapDialog("edit")}
+            onFrame={saveFraming}
+            onImport={() => setImporting(true)}
+            onExport={() => exportCenter({ sections: ["map"], viewAt })}
+          />
           <MapSearch onGo={goTo} />
           {panel && (
             <aside
@@ -1542,10 +1983,7 @@ export function MapModule() {
                     places={places}
                     hidden={hidden}
                     onToggle={toggleLayer}
-                    onShowAll={() => {
-                      setHidden(new Set());
-                      writeStore("orion.map.hidden", []);
-                    }}
+                    onShowAll={() => setHiddenLayers([])}
                     ghosts={ghosts.length}
                     showGhosts={showGhosts}
                     onGhosts={(on) => {
@@ -1700,6 +2138,8 @@ export function MapModule() {
             place={p}
             hot={s.id === highlight || s.id === sheetId || s.id === hot}
             links={graph.degree.get(ref("place", p.id)) ?? 0}
+            editable={s.id === sheetId && canDrag}
+            onStyle={onStyle}
           />,
           s.el,
           s.id,
@@ -1720,7 +2160,7 @@ export function MapModule() {
               aria-checked={base === id}
               data-close
               className={base === id ? "active" : ""}
-              onClick={() => setBase(id)}
+              onClick={() => chooseBase(id)}
             >
               <span className={`map-base-swatch ${id}`} aria-hidden="true" />
               <span className="row-main">
@@ -1794,6 +2234,7 @@ export function MapModule() {
         <PlaceSheet
           key={sheetPlace.id}
           place={sheetPlace}
+          maps={maps}
           onClose={() => setSheetId(null)}
           onCenter={(p) => showPlace(p, true)}
           onEditShape={(p) => {
@@ -1805,6 +2246,37 @@ export function MapModule() {
             });
             showPlace(p, false);
           }}
+        />
+      )}
+
+      {mapDialog && (
+        <MapDialog
+          map={mapDialog === "edit" ? currentMap : null}
+          main={mapDialog === "edit" && !currentMap}
+          current={{
+            base,
+            hidden: hiddenList,
+            view: (() => {
+              const m = map.current;
+              if (!m) return viewOf(currentMap);
+              const c = m.getCenter().wrap();
+              return { lat: c.lat, lng: c.lng, zoom: m.getZoom() };
+            })(),
+          }}
+          onClose={() => setMapDialog(null)}
+          onSelect={(id) => {
+            // A new map starts from the view shown: no flight.
+            if (!known.has(id)) shownMap.current = id;
+            selectMap(id);
+          }}
+        />
+      )}
+      {importing && (
+        <ImportDialog
+          maps={maps}
+          current={mapId}
+          onClose={() => setImporting(false)}
+          onDone={fitPoints}
         />
       )}
     </>

@@ -712,3 +712,46 @@
     display: none;
   }
 }
+
+/* Versions of the forecast */
+.weather-versions-intro {
+  margin: -4px 0 10px;
+  font-size: 12px;
+}
+.weather-version-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.weather-version {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px 8px;
+  flex: none;
+  height: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-1);
+  text-align: left;
+}
+.weather-version .mono {
+  grid-column: 1 / -1;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.weather-version strong {
+  font-family: var(--display);
+  font-size: 20px;
+}
+.weather-version small {
+  grid-column: 1 / -1;
+  font-size: 11px;
+}
+.weather-version.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}

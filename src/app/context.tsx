@@ -1,9 +1,18 @@
 import { createContext, useContext } from "react";
 import type { Fields, Journal, Workspace } from "../../shared/journal";
-import type { Ops } from "../../shared/ops";
+import type { InputOf, Ops } from "../../shared/ops";
 import type { Edge, Item, Module, Ref } from "../../shared/links";
 import type { PrintJob } from "../print/PrintPreview";
 import type { Prefs } from "./prefs";
+import type { ExportScope } from "../export/scope";
+
+/** Registers written even on a closed journal or from the time machine. */
+export type LogCollection =
+  "exports" | "presentations" | "snapshots" | "forecasts";
+export type ExportPreset = Partial<ExportScope> & {
+  /** Format id selected when the export centre opens. */
+  format?: string;
+};
 
 export type Graph = {
   items: Item[];
@@ -15,10 +24,29 @@ export type Graph = {
 
 export type AppContext = {
   workspace: Workspace;
+  /** Journal shown: the live one, or a past version in the time machine. */
   journal: Journal;
+  /** The live journal, whatever the time machine shows. */
+  live: Journal;
   author: string;
-  /** Journal closed: reading and exports only. */
+  /** Journal closed or past version shown: reading and exports only. */
   readOnly: boolean;
+  /** Moment shown by the time machine (ms since epoch); null: live. */
+  viewAt: number | null;
+  setViewAt: (at: number | null) => void;
+  /** Show who changed a record (or entry) and when, with its versions. */
+  trace: (target: string) => void;
+  /** Append to a register of the live journal; returns the new id. */
+  record: <C extends LogCollection>(
+    collection: C,
+    value: Omit<InputOf<C>, "id" | "createdAt" | "updatedAt" | "by"> & {
+      id?: string;
+    },
+  ) => string;
+  /** Open the export centre, optionally preset. */
+  exportCenter: (preset?: ExportPreset) => void;
+  /** Start the presentation mode or the wall display. */
+  present: (mode?: "present" | "wall", preset?: Partial<ExportScope>) => void;
   /** Updated every 30 seconds. */
   now: number;
   graph: Graph;

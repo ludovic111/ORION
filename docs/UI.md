@@ -9,6 +9,8 @@ Référence pour écrire un module. Tout est en français dans l’interface, en
 - **Valeurs standards + texte libre** : `ComboField` (ou `kind: "combo"` dans un `FieldSpec`) propose les valeurs d’un référentiel en un clic et accepte toute saisie.
 - **Tout est relié** : chaque fiche montre ses liens (`LinksPanel`), chaque référence s’affiche avec `LinkChip` (aperçu au survol, clic = ouvrir).
 - **Journal clôturé = lecture seule** : `readOnly` du contexte ; `updateOps` lève une erreur.
+- **Machine à remonter le temps** : `journal` peut être une version passée (`viewAt !== null`) ; `readOnly` est alors vrai. Afficher depuis `journal`, écrire dans les registres avec `record`, lire l’état actuel avec `live`.
+- **Tout est tracé** : ne rien faire de spécial, `updateOps` suffit ; la fiche générique montre déjà « Créé par… » et le bouton Historique. Pour une fiche maison : `<TraceLine target={id} />` (`src/timeline/TraceLine.tsx`) ou `trace(id)`.
 - Lisible avant tout : les animations accompagnent, elles ne gênent pas (`data-motion="reduced"` les coupe).
 
 ## Contexte (`src/app/context.tsx`)
@@ -50,6 +52,11 @@ const {
 | `compose(preset)`          | Ouvre le formulaire d’entrée prérempli (l’opérateur valide).                                                                                                                                |
 | `queuePrint(job)`          | Impression directe sans aperçu (impression automatique).                                                                                                                                    |
 | `print(job)`               | Aperçu A4 : `{ kind: "forms", journal, sheets, title, name }` ou `{ kind: "tables", journal, title, extra, tables, landscape, name }`.                                                      |
+| `live` / `viewAt`          | Journal actuel / moment affiché par la machine à remonter le temps (ms, `null` = direct). `setViewAt(ms)` y envoie l’utilisateur.                                                           |
+| `trace(id)`                | Ouvre l’historique d’un élément (versions, restauration).                                                                                                                                   |
+| `record(collection, v)`    | Ajoute à un registre (`snapshots`, `exports`, `presentations`, `forecasts`), même journal clôturé ou dans le passé.                                                                         |
+| `exportCenter(preset)`     | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                      |
+| `present(mode, preset)`    | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                              |
 | `help(topic)`              | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                |
 | `prefs`                    | Réglages du poste : thème, modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).                                                                   |
 

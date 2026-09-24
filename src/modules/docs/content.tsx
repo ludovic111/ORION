@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import {
   CircleHelp,
   FileDown,
+  History,
+  Lightbulb,
+  MonitorPlay,
   Keyboard,
   LayoutDashboard,
   Link2,
@@ -17,6 +20,7 @@ import {
 } from "lucide-react";
 import type { Module } from "../../../shared/links";
 import { moduleInfo } from "../../app/modules";
+import { CONTACT_EMAIL, ContactCard, feedbackLink } from "../../app/contact";
 import {
   Example,
   Faq,
@@ -245,7 +249,7 @@ export const TOPICS: Topic[] = [
           <li>
             <strong>Journal actif</strong> (titre et mode). Un clic ouvre le
             menu des journaux : changer de journal, <Ui>Nouveau journal</Ui>,{" "}
-            <Ui>Importer un fichier</Ui>, <Ui>Exporter ce journal</Ui>,{" "}
+            <Ui>Importer un fichier</Ui>, <Ui>Exporter (tous formats)</Ui>,{" "}
             <Ui>Propriétés, clôture</Ui>,{" "}
             <Ui>Retirer ce journal de la session</Ui>.
           </li>
@@ -1060,6 +1064,43 @@ export const TOPICS: Topic[] = [
           </li>
           <li>Donnez un nom et une couleur dans la fiche.</li>
         </Steps>
+        <H>Plusieurs cartes</H>
+        <Steps>
+          <li>
+            Les onglets en haut de la carte : par exemple « Suivi général » et «
+            Secteur Acacias (détail) ». Le <Ui>+</Ui> en ajoute une.
+          </li>
+          <li>
+            Chaque carte garde son fond, son cadrage et ses calques masqués (
+            <Ui>⋯</Ui> → <Ui>Enregistrer ce cadrage pour cette carte</Ui>).
+          </li>
+          <li>
+            Un objet posé sur une carte n’apparaît que sur elle. Dans sa fiche,
+            <Ui>Cartes</Ui> permet de le montrer sur d’autres cartes, ou sur{" "}
+            <Ui>Toutes les cartes</Ui>.
+          </li>
+        </Steps>
+        <H>Taille, rotation, texte</H>
+        <ul>
+          <li>
+            Les signes sont posés <strong>sur fond transparent</strong>. Pour
+            l’ancienne pastille ronde : <Ui>Pastille</Ui> dans la fiche.
+          </li>
+          <li>
+            Sélectionnez un objet : tirez le <strong>coin</strong> pour
+            l’agrandir, la <strong>poignée ronde</strong> pour le tourner. Ou
+            dans la fiche, rubrique <Ui>Apparence</Ui> : taille S, M, L, XL,
+            rotation, couleur, épaisseur et style du trait.
+          </li>
+          <li>
+            Outil <Ui>Texte</Ui> : écrivez directement sur la carte, avec ou
+            sans fond d’étiquette, dans la taille et la couleur voulues.
+          </li>
+          <li>
+            Outil <Ui>Dessin</Ui> (crayon) : tracez à main levée, à la souris ou
+            au doigt.
+          </li>
+        </ul>
         <H>Trouver un endroit</H>
         <ul>
           <li>
@@ -1104,6 +1145,7 @@ export const TOPICS: Topic[] = [
             ["Ligne", "Un trajet, une déviation, une limite."],
             ["Zone", "Une surface : zone inondée, périmètre de sécurité."],
             ["Texte", "Une étiquette écrite directement sur la carte."],
+            ["Dessin", "Un trait à main levée (souris, doigt, stylet)."],
             ["Mesurer", "Une distance sur la carte."],
           ]}
         />
@@ -1135,6 +1177,37 @@ export const TOPICS: Topic[] = [
           <li>
             <strong>Vue par défaut</strong> : enregistrez le cadrage de
             l’événement pour y revenir en un clic.
+          </li>
+        </ul>
+        <H>Tous les signes</H>
+        <ul>
+          <li>
+            Les 268 <strong>signes conventionnels civils OFPP</strong>, par
+            groupe.
+          </li>
+          <li>
+            Plus d’une centaine de <strong>marqueurs simples</strong> : PC
+            front, PC arrière, poste collecteur, place sinistrés, héliport,
+            ambulance, barrage, déviation, point d’eau, électricité, dangers
+            chimiques… Tapez un mot (« collecteur », « hélico ») pour les
+            trouver.
+          </li>
+          <li>
+            <Ui>Ajouter un signe</Ui> : une image à vous (PNG, SVG, JPEG, WebP).{" "}
+            <Ui>Rendre le fond transparent</Ui> efface le fond uni ; le signe
+            est ensuite partagé avec tous les postes.
+          </li>
+        </ul>
+        <H>Importer et exporter</H>
+        <ul>
+          <li>
+            <Ui>⋯</Ui> → <Ui>Importer</Ui> : un fichier KML, KMZ (Google Earth),
+            GeoJSON ou GPX reçu d’un partenaire (police, pompiers, géomètre). Un
+            aperçu montre ce qui sera ajouté, sur quelle carte et quel calque.
+          </li>
+          <li>
+            Exporter : image PNG de chaque carte, GeoJSON, KML, GPX, depuis le{" "}
+            <Ui>centre d’export</Ui>.
           </li>
         </ul>
         <H>Placer depuis un autre module</H>
@@ -1620,6 +1693,20 @@ export const TOPICS: Topic[] = [
             Un lien ouvre le site de MétéoSuisse pour les alertes officielles.
           </li>
         </ul>
+        <H>Prévisions reçues : la météo d’avant</H>
+        <ul>
+          <li>
+            Chaque prévision chargée est <strong>gardée dans la session</strong>{" "}
+            (au plus une toutes les 5 minutes) et partagée avec les postes
+            synchronisés : la rubrique <Ui>Prévisions reçues</Ui> les liste, un
+            clic affiche celle de l’heure choisie.
+          </li>
+          <li>
+            Dans la <Ui>machine à remonter le temps</Ui>, la météo montre
+            automatiquement la dernière prévision reçue avant l’heure affichée :
+            « à 14 h, on annonçait 40 mm ».
+          </li>
+        </ul>
         <Note kind="warn">
           Les alertes officielles sont celles de MétéoSuisse et des autorités.
           orion aic aide à les noter et à les partager, il ne les remplace pas.
@@ -1738,6 +1825,121 @@ export const TOPICS: Topic[] = [
     ),
   },
 
+  {
+    id: "trace",
+    group: "modules",
+    ...mod("trace", "Ouvrir la traçabilité"),
+    short: (
+      <p>
+        Qui a fait quoi, et quand : chaque création, modification et suppression
+        est notée avec son auteur, l’heure et le détail. Rien ne s’efface. On
+        peut aussi comparer deux moments, retrouver les points de situation
+        figés et les registres des exports et des présentations.
+      </p>
+    ),
+    guide: (
+      <>
+        <H>Retrouver qui a fait quoi</H>
+        <Steps>
+          <li>
+            Ouvrez <Ui>Traçabilité</Ui> dans la barre de gauche (ou <K>⌘K</K> →
+            « Traçabilité »).
+          </li>
+          <li>
+            L’onglet <Ui>Qui a fait quoi</Ui> liste tous les changements, du
+            plus récent au plus ancien, groupés par heure.
+          </li>
+          <li>
+            Filtrez : cliquez une <strong>personne</strong>, choisissez un{" "}
+            <strong>module</strong>, un type d’action ou une période, ou tapez
+            un mot (un nom, une valeur, un lieu).
+          </li>
+          <li>
+            Cliquez le nom d’un élément pour l’ouvrir, ou{" "}
+            <Ui>Voir l’opération à ce moment</Ui> pour tout revoir tel que
+            c’était.
+          </li>
+        </Steps>
+        <H>L’historique d’un seul élément</H>
+        <p>
+          Chaque fiche (moyen, message, objet de la carte, personne…) montre en
+          bas : « Créé par … le … · modifié par … il y a 5 min ». Le bouton{" "}
+          <Ui>Historique</Ui> ouvre toutes ses versions, avec ce qui a changé
+          (ancienne valeur barrée, nouvelle valeur surlignée).
+        </p>
+        <Example>
+          <p>
+            Qui a déplacé le PC front ? Ouvrez l’objet sur la carte →{" "}
+            <Ui>Historique</Ui> : « Cartographe a modifié Position / tracé à
+            09:05 ».
+          </p>
+        </Example>
+        <H>Restaurer une ancienne version</H>
+        <p>
+          Dans l’historique d’un élément, <Ui>Restaurer cette version</Ui> remet
+          ses anciennes valeurs. Un élément supprimé peut revenir ainsi. La
+          restauration est elle-même notée, avec votre nom : l’historique ne
+          perd jamais rien.
+        </p>
+      </>
+    ),
+    full: (
+      <>
+        <H>Ce qui est tracé</H>
+        <ul>
+          <li>
+            Tout ce qui se modifie dans orion aic : journal (ses versions et
+            suppressions), messages, missions, carte (objets, cartes, signes
+            personnalisés), moyens, équipe et postes, réseau radio, contacts,
+            météo (observations, alertes, prévisions reçues), agenda,
+            renseignements clés, tableaux de situation, liens, référentiels,
+            propriétés du journal, points figés, exports et présentations.
+          </li>
+          <li>
+            « Qui » est le nom d’opérateur déclaré sur le poste (menu en haut à
+            droite). Il n’est pas signé : chaque poste doit utiliser son vrai
+            nom ou sa fonction.
+          </li>
+          <li>
+            Plusieurs petites retouches d’une même personne sur le même élément
+            en moins de 20 secondes comptent comme une seule version.
+          </li>
+          <li>
+            L’historique voyage avec la session : il est synchronisé entre les
+            postes et inclus dans l’archive <code>.orionaic</code>.
+          </li>
+          <li>
+            Les données créées avant cette version d’orion aic gardent leur date
+            de création et leur dernière modification ; leur historique complet
+            commence au premier changement suivant.
+          </li>
+        </ul>
+        <H>Les onglets</H>
+        <Table
+          head={["Onglet", "Contenu"]}
+          rows={[
+            [
+              "Qui a fait quoi",
+              "Tous les changements, filtres par personne, module, action, période, recherche",
+            ],
+            [
+              "Comparer",
+              "Ce qui a été ajouté, modifié, supprimé entre deux moments, par module ; cartes côte à côte ; impression",
+            ],
+            [
+              "Points figés",
+              "Les moments nommés : revoir, comparer, présenter, exporter",
+            ],
+            [
+              "Exports",
+              "Registre des fichiers produits : qui, quand, quoi, empreinte ; vérifier un document",
+            ],
+            ["Présentations", "Qui a présenté, à qui, quand, quelle version"],
+          ]}
+        />
+      </>
+    ),
+  },
   // ---------------------------------------------------------------- together
   {
     id: "links",
@@ -2095,122 +2297,395 @@ export const TOPICS: Topic[] = [
     ),
   },
   {
-    id: "exports",
+    id: "present",
     group: "together",
-    title: "Exports et imports",
-    icon: FileDown,
-    hue: 160,
+    title: "Présenter la situation",
+    icon: MonitorPlay,
+    hue: 300,
     short: (
       <p>
-        Exporter, c’est enregistrer une copie du journal dans un fichier : pour
-        l’archiver, le transmettre ou l’ouvrir dans Excel ou Word. Importer,
-        c’est l’inverse.
+        Quand des autorités ou des invités arrivent au poste de conduite, le{" "}
+        <strong>mode présentation</strong> montre la situation en plein écran,
+        clairement, avec des animations, sans rien préparer : les diapositives
+        se construisent seules à partir des données. L’
+        <strong>affichage mural</strong> fait défiler la situation en direct sur
+        un écran fixe.
       </p>
     ),
     guide: (
       <>
-        <H>Exporter</H>
+        <H>Présenter en 3 étapes</H>
         <Steps>
           <li>
-            Cliquez le titre du journal en haut → <Ui>Exporter ce journal</Ui>{" "}
-            (ou <K>⌘K</K> → « Exporter le journal »).
+            Bouton écran <Ui>Présenter la situation</Ui> en haut à droite (ou{" "}
+            <K>⌘K</K> → « Présenter »).
           </li>
           <li>
-            Choisissez le format. Pour archiver ou transmettre : l’archive{" "}
-            <code>.orionaic</code>, chiffrée.
+            Préparez en quelques secondes : votre nom, le public (« Maire,
+            préfet »), la version (<Ui>Maintenant</Ui>, un point figé ou une
+            heure), et cochez ou glissez les diapositives dans l’ordre voulu.
           </li>
-          <li>Rangez le fichier selon les règles de votre organisation.</li>
+          <li>
+            <Ui>Présenter</Ui> : plein écran. Flèche droite, espace ou un clic
+            pour avancer ; flèche gauche pour revenir ; <K>Échap</K> pour finir.
+          </li>
         </Steps>
+        <H>Les diapositives</H>
+        <p>
+          Titre, situation générale et intention, chiffres clés (avec leur
+          évolution depuis le dernier point), chaque carte en grand, ce qui a
+          changé depuis le dernier point, faits marquants du journal, missions
+          en cours ou en retard, moyens, organisation (PC front, PC arrière,
+          cellules), réseau radio, météo, prochaines échéances, questions. Une
+          diapositive sans données n’apparaît pas.
+        </p>
+        <H>Dessiner et montrer pendant la présentation</H>
+        <ul>
+          <li>
+            <K>P</K> stylo (souris, doigt ou stylet), <K>H</K> surligneur,{" "}
+            <K>E</K> gomme, <K>1</K>–<K>5</K> couleur, <K>⌘Z</K> annuler,{" "}
+            <K>Maj</K>+<K>E</K> tout effacer.
+          </li>
+          <li>
+            <K>L</K> pointeur laser, <K>B</K> écran noir, <K>O</K> vue
+            d’ensemble des diapositives, <K>T</K> chronomètre, <K>N</K> notes,{" "}
+            <K>F</K> plein écran.
+          </li>
+          <li>
+            À la fin, <Ui>Enregistrer les annotations</Ui> produit un PDF des
+            diapositives annotées.
+          </li>
+        </ul>
+        <H>Vue orateur</H>
+        <p>
+          <Ui>Ouvrir la vue orateur</Ui> ouvre une seconde fenêtre (sur
+          l’ordinateur, pendant que le projecteur montre les diapositives) :
+          diapositive en cours et suivante, notes, temps écoulé, horloge. Si le
+          navigateur bloque la fenêtre, autorisez-la ou utilisez <K>N</K>.
+        </p>
+        <H>Affichage mural</H>
+        <p>
+          <K>⌘K</K> → « Affichage mural » : la situation défile seule (toutes
+          les 10, 20, 30 ou 60 secondes), se met à jour en direct, avec une
+          grande horloge et les dernières entrées du journal. L’écran ne se met
+          pas en veille. <K>Espace</K> pause, <K>Échap</K> quitter.
+        </p>
+      </>
+    ),
+    full: (
+      <>
+        <H>Exporter la présentation</H>
+        <ul>
+          <li>
+            Depuis l’écran de préparation, ou dans le centre d’export (famille
+            Présentation) : <strong>PowerPoint</strong> (.pptx) avec transitions
+            et apparitions automatiques, <strong>OpenDocument</strong> (.odp),{" "}
+            <strong>PDF</strong> (une diapositive par page) et{" "}
+            <strong>HTML</strong> (un seul fichier qui se présente dans
+            n’importe quel navigateur, touche <K>N</K> pour les notes).
+          </li>
+          <li>
+            Le fichier porte les notes de l’orateur, le filigrane EXERCICE ou
+            CONFIDENTIEL et, en pied de page, l’empreinte vérifiable.
+          </li>
+          <li>
+            On peut exporter une seule partie (par exemple la carte et les
+            moyens) ou toute l’opération, à l’heure de son choix.
+          </li>
+        </ul>
+        <H>Registre des présentations</H>
+        <p>
+          Chaque présentation et chaque affichage mural sont inscrits dans{" "}
+          <Path steps={["Traçabilité", "Présentations"]} /> : qui a présenté, à
+          qui, quand, combien de temps, quelle version et quelles diapositives.
+        </p>
         <Note kind="tip">
-          Une pastille <span className="pill warn">à faire</span> à côté de{" "}
-          <Ui>Exporter ce journal</Ui> signale des changements depuis le dernier
-          export.
+          Avant une visite, figez un point de situation (« Visite du préfet ») :
+          la présentation, l’export et la comparaison avec la suite reprennent
+          exactement la même version.
         </Note>
-        <H>Importer</H>
+      </>
+    ),
+  },
+  {
+    id: "timemachine",
+    group: "together",
+    title: "Remonter le temps",
+    icon: History,
+    hue: 250,
+    short: (
+      <p>
+        Revoir toute l’opération telle qu’elle était à n’importe quelle heure :
+        la carte, les moyens, le journal, la météo… Et la{" "}
+        <strong>rejouer</strong> comme un film, changement après changement.
+      </p>
+    ),
+    guide: (
+      <>
+        <H>Revenir à une heure précise</H>
         <Steps>
           <li>
-            Titre du journal → <Ui>Importer un fichier</Ui> (ou{" "}
-            <Ui>Importer</Ui> sur la page d’accueil).
+            Cliquez l’horloge <Ui>Remonter le temps</Ui> en haut à droite (ou{" "}
+            <K>⌘K</K> → « Remonter le temps »). Une barre apparaît en bas.
           </li>
           <li>
-            Un aperçu montre ce que contient le fichier, avant toute
-            modification.
+            Glissez le curseur, ou tapez une date et une heure. Les petites
+            barres montrent quand il s’est passé beaucoup de choses ; les
+            flocons sont les points de situation figés.
           </li>
           <li>
-            Choisissez <Ui>Journal séparé</Ui> (rien n’est touché) ou{" "}
-            <Ui>Fusionner</Ui> avec le journal actuel.
+            Parcourez les modules normalement : tout montre l’état de cette
+            heure-là. On ne peut rien modifier dans le passé.
+          </li>
+          <li>
+            <Ui>direct</Ui> (bouton violet) revient à l’état actuel.
           </li>
         </Steps>
+        <H>Rejouer l’opération</H>
+        <p>
+          <Ui>▶</Ui> rejoue les changements un par un depuis le début : les
+          objets apparaissent et bougent sur la carte, les moyens changent
+          d’état, les chiffres évoluent. Vitesse <Ui>Lent</Ui>, <Ui>Normal</Ui>{" "}
+          ou <Ui>Rapide</Ui> ; <Ui>«</Ui> et <Ui>»</Ui> avancent d’un
+          changement.
+        </p>
+        <H>Figer un point de situation</H>
+        <Steps>
+          <li>
+            <Ui>Figer</Ui> (dans la barre du temps, dans <Ui>Traçabilité</Ui>,
+            ou <K>⌘K</K> → « Figer un point de situation »).
+          </li>
+          <li>
+            Donnez un nom : « Rapport de conduite 14:00 ». L’heure proposée est
+            celle affichée ; vous pouvez la changer.
+          </li>
+          <li>
+            Ce moment se choisit ensuite en un clic pour le revoir, le comparer
+            à maintenant, le présenter ou l’exporter.
+          </li>
+        </Steps>
+        <Example>
+          <p>
+            Le préfet arrive à 15 h et demande ce qui a changé depuis le rapport
+            de 14 h : <Ui>Traçabilité</Ui> → <Ui>Comparer</Ui> → « Depuis
+            Rapport de conduite 14:00 ». La liste montre les moyens engagés, les
+            objets posés sur la carte et les nouvelles entrées.
+          </p>
+        </Example>
+      </>
+    ),
+    full: (
+      <>
+        <H>Ce qui est reconstitué</H>
+        <ul>
+          <li>
+            Tous les éléments : ceux créés après l’heure choisie disparaissent,
+            ceux modifiés reprennent leurs valeurs d’alors, ceux supprimés
+            depuis réapparaissent.
+          </li>
+          <li>
+            Le journal montre les entrées existantes à cette heure, dans leur
+            version d’alors. Une entrée supprimée ne revient pas : son contenu
+            est effacé par principe, seule la trace de sa suppression reste.
+          </li>
+          <li>
+            La météo affiche la dernière prévision reçue avant cette heure.
+          </li>
+          <li>
+            Depuis la barre du temps, <Ui>Exporter</Ui> et <Ui>Présenter</Ui>{" "}
+            reprennent directement la version affichée.
+          </li>
+        </ul>
+        <Note kind="info">
+          La machine à remonter le temps ne change rien pour les autres postes :
+          chacun peut regarder le passé pendant que les autres continuent de
+          travailler en direct.
+        </Note>
+      </>
+    ),
+  },
+  {
+    id: "exports",
+    group: "together",
+    title: "Exporter, imprimer, importer",
+    icon: FileDown,
+    hue: 160,
+    short: (
+      <p>
+        Le <strong>centre d’export</strong> produit en un clic tout ou partie de
+        l’opération, à l’heure de votre choix, dans près de 30 formats :
+        PowerPoint animé, PDF, Word, Excel, carte, archive orion aic… Tout est
+        aussi imprimable. Chaque fichier est inscrit au registre avec son
+        empreinte pour pouvoir le vérifier plus tard.
+      </p>
+    ),
+    guide: (
+      <>
+        <H>Exporter en trois choix</H>
+        <Steps>
+          <li>
+            Ouvrez le centre d’export : titre du journal en haut →{" "}
+            <Ui>Exporter (tous formats)</Ui>, ou <K>⌘K</K> → « Exporter ».
+          </li>
+          <li>
+            <strong>Quoi</strong> : <Ui>Toute l’opération</Ui>, ou cochez les
+            parties voulues (journal, carte, moyens, météo…).{" "}
+            <Ui>Choisir des éléments</Ui> permet de n’en garder que quelques-uns
+            (trois objets de la carte, une entrée…).
+          </li>
+          <li>
+            <strong>Quand</strong> : <Ui>Maintenant</Ui>, un{" "}
+            <strong>point figé</strong> (« Rapport de conduite 14:00 ») ou une{" "}
+            <strong>heure précise</strong>. Le fichier montre l’opération telle
+            qu’elle était à ce moment.
+          </li>
+          <li>
+            <strong>Format</strong> : choisissez une carte, puis{" "}
+            <Ui>Télécharger</Ui> ou <Ui>Imprimer</Ui>.
+          </li>
+        </Steps>
+        <Example>
+          <p>
+            Pour la visite du préfet : Quoi = Situation, Carte, Moyens ; Quand =
+            « Rapport de conduite 14:00 » ; Format = PowerPoint animé. La
+            présentation est prête, les animations se jouent seules.
+          </p>
+        </Example>
+        <H>Revoir une opération sur un autre poste</H>
+        <Steps>
+          <li>
+            Exportez l’<strong>archive orion aic</strong> (
+            <code>.orionaic</code>, chiffrée par une phrase secrète) de toute
+            l’opération.
+          </li>
+          <li>
+            Sur l’autre poste : page d’accueil → <Ui>Importer</Ui>, ou titre du
+            journal → <Ui>Importer un fichier</Ui>, puis <Ui>Journal séparé</Ui>
+            .
+          </li>
+          <li>
+            Tout est là, historique compris : la{" "}
+            <Ui>machine à remonter le temps</Ui> rejoue l’opération du début à
+            la fin.
+          </li>
+        </Steps>
+        <H>Vérifier un document</H>
+        <p>
+          Chaque fichier porte en pied de page une ligne « export … · empreinte
+          … » et, quand la place le permet, un QR code. Dans{" "}
+          <Path steps={["Traçabilité", "Exports", "Vérifier un document"]} />,
+          déposez le fichier reçu : orion aic dit s’il est authentique (qui l’a
+          exporté, quand, quoi) ou s’il a été modifié depuis.
+        </p>
       </>
     ),
     full: (
       <>
         <H>Les formats</H>
         <Table
-          head={["Format", "Extension", "Contenu", "Réimportable"]}
+          head={["Famille", "Formats", "Pour quoi faire"]}
           rows={[
             [
-              "Archive orion aic",
-              ".orionaic",
-              "Chiffrée : tout le journal",
-              "Oui, sans perte",
+              "Présentation",
+              "PowerPoint .pptx animé, OpenDocument .odp, PDF diaporama, HTML diaporama",
+              "Présenter la situation, avec transitions et apparitions automatiques",
             ],
-            ["Archive JSON", ".json", "En clair : idem", "Oui, sans perte"],
-            ["Fiches messages A4", ".pdf", "Une fiche par entrée", "Non"],
-            ["Journal PDF", ".pdf", "Tableau chronologique A4", "Non"],
             [
-              "Plan du réseau radio",
-              ".pdf",
-              "Plan, groupes, terminaux, remises, contrôles",
-              "Non",
+              "Documents imprimables",
+              "PDF dossier, Word .docx, OpenDocument .odt, page HTML, Markdown, texte",
+              "Dossier complet : couverture, sommaire, chapitres, cartes, filigrane",
             ],
-            ["Excel", ".xlsx", "Filtres, en-tête figé", "Non"],
-            ["Word", ".docx", "Document modifiable", "Non"],
-            ["OpenDocument", ".ods", "Tableur LibreOffice", "Non"],
             [
-              "CSV / TSV",
-              ".csv .tsv",
-              "Point-virgule ou tabulation",
-              "Oui, état actuel",
+              "Impressions A4",
+              "Fiches messages, journal en tableau, plan radio, étiquettes",
+              "Les impressions habituelles du poste",
             ],
-            ["HTML, texte, Markdown", ".html .txt .md", "Lecture", "Non"],
+            [
+              "Tableurs et données",
+              "Excel .xlsx, OpenDocument .ods, CSV, TSV, JSON",
+              "Une feuille par partie, filtres, en-tête figé",
+            ],
+            [
+              "Carte",
+              "Image PNG de chaque carte, GeoJSON, KML (Google Earth), GPX (GPS)",
+              "Transmettre la carte à un partenaire ou à un appareil",
+            ],
+            [
+              "Agenda et contacts",
+              "Agenda .ics, contacts vCard .vcf",
+              "Importer dans un agenda ou un téléphone",
+            ],
+            [
+              "Archive",
+              "orion aic .orionaic (chiffrée), JSON réimportable",
+              "Garder ou transmettre toute l’opération, historique compris",
+            ],
+            [
+              "Pack complet",
+              ".zip",
+              "Les principaux formats d’un coup, avec la liste des empreintes",
+            ],
           ]}
         />
+        <H>Options</H>
         <ul>
           <li>
-            Les anciennes archives <code>.orion</code> se lisent toujours.
+            <strong>Filigrane</strong> : « EXERCICE » et/ou « CONFIDENTIEL »
+            selon le journal, sur chaque page et chaque diapositive ; on peut le
+            retirer.
           </li>
           <li>
-            Un export porte sur tout le journal, quels que soient les filtres
-            affichés.
+            <strong>Orientation</strong> du PDF (portrait ou paysage),{" "}
+            <strong>versions des entrées</strong> (tout ce qui a été corrigé),{" "}
+            <strong>animations</strong> des présentations.
           </li>
           <li>
-            Tous les formats sauf <code>.orionaic</code> sont{" "}
-            <strong>en clair</strong> : orion aic demande de le confirmer avant
-            le téléchargement.
+            Une partie absente d’un format est grisée : par exemple l’agenda
+            .ics demande la partie Rythme de conduite.
           </li>
         </ul>
-        <H>Fusionner</H>
+        <H>Registre et empreintes</H>
         <ul>
           <li>
-            Les nouvelles entrées sont ajoutées et renumérotées à la suite ; les
-            doublons exacts sont ignorés.
+            Chaque export est inscrit dans{" "}
+            <Path steps={["Traçabilité", "Exports"]} /> : qui, quand, quel
+            contenu, quelle version, nom du fichier et empreinte SHA-256.
           </li>
-          <li>Les suppressions faites ailleurs s’appliquent ici.</li>
           <li>
-            Si la même entrée a été modifiée différemment des deux côtés, la
-            fusion s’arrête : importez alors en journal séparé pour comparer.
+            Un fichier modifié, même d’un seul caractère, n’a plus la même
+            empreinte : la vérification le signale.
           </li>
+          <li>
+            Le pack complet inscrit chaque fichier qu’il contient, pour pouvoir
+            les vérifier séparément.
+          </li>
+        </ul>
+        <H>Importer et fusionner</H>
+        <ul>
           <li>
             Fichiers acceptés : <code>.orionaic</code>, <code>.orion</code>,{" "}
             <code>.json</code>, <code>.csv</code>, <code>.tsv</code>, 32 Mo au
             plus. Le fichier est lu sur le poste, il n’est envoyé nulle part.
           </li>
+          <li>
+            <Ui>Journal séparé</Ui> : rien n’est touché, l’opération importée
+            s’ouvre à côté.
+          </li>
+          <li>
+            <Ui>Fusionner</Ui> : les nouvelles entrées sont ajoutées et
+            renumérotées ; les doublons exacts sont ignorés ; les suppressions
+            faites ailleurs s’appliquent ; les historiques sont réunis.
+          </li>
+          <li>
+            Pour la carte, les fichiers KML, KMZ, GeoJSON et GPX s’importent
+            depuis la carte (<Ui>⋯</Ui> → <Ui>Importer</Ui>).
+          </li>
         </ul>
-        <Note kind="tip">
-          Pour transmettre un journal à un poste non synchronisé : envoyez
-          l’archive <code>.orionaic</code> par un moyen, et la phrase par un{" "}
-          <strong>autre</strong> moyen (téléphone, papier).
+        <Note kind="warn">
+          Tous les formats sauf <code>.orionaic</code> sont{" "}
+          <strong>en clair</strong>. Pour un journal confidentiel, orion aic
+          demande de le confirmer. Transmettez la phrase secrète d’une archive
+          par un <strong>autre</strong> moyen que le fichier.
         </Note>
       </>
     ),
@@ -2226,8 +2701,8 @@ export const TOPICS: Topic[] = [
     short: (
       <p>
         Les réglages sont dans le menu opérateur (vos initiales, en haut à
-        droite). Quatre rubriques : Ce poste, Référentiels, Synchronisation,
-        Session et journal.
+        droite). Cinq rubriques : Ce poste, Référentiels, Synchronisation,
+        Session et journal, et « Une idée ? » pour contacter l’auteur.
       </p>
     ),
     guide: (
@@ -2543,6 +3018,24 @@ export const TOPICS: Topic[] = [
             "Passer au champ suivant / précédent",
           ],
           [<K>Tab</K>, "Au tout début de la page : « Aller au contenu »"],
+          [
+            <>
+              <K>→</K> <K>Espace</K> / <K>←</K>
+            </>,
+            "Présentation : diapositive suivante / précédente",
+          ],
+          [
+            <>
+              <K>P</K> <K>H</K> <K>E</K> <K>L</K>
+            </>,
+            "Présentation : stylo, surligneur, gomme, pointeur laser",
+          ],
+          [
+            <>
+              <K>O</K> <K>B</K> <K>N</K> <K>T</K> <K>F</K>
+            </>,
+            "Présentation : vue d’ensemble, écran noir, notes, chronomètre, plein écran",
+          ],
         ]}
       />
     ),
@@ -2555,7 +3048,9 @@ export const TOPICS: Topic[] = [
           </li>
           <li>
             <strong>Les actions</strong> : nouvelle entrée au journal, nouveau
-            message reçu, rapport de situation A4, exporter le journal, importer
+            message reçu, rapport de situation A4, exporter (tous formats),
+            présenter la situation, affichage mural, remonter le temps, figer un
+            point de situation, traçabilité, proposer une amélioration, importer
             un fichier, synchroniser avec d’autres postes, activer ou désactiver
             l’impression automatique, thème clair ou sombre, réglages et
             référentiels, nouveau journal dans la session.
@@ -2566,6 +3061,44 @@ export const TOPICS: Topic[] = [
             accents ne comptent pas.
           </li>
         </ul>
+      </>
+    ),
+  },
+  {
+    id: "contact",
+    group: "reference",
+    title: "Une idée, un besoin ?",
+    icon: Lightbulb,
+    hue: 45,
+    short: (
+      <p>
+        orion aic évolue avec ceux qui l’utilisent. Pour demander une fonction,
+        signaler un problème ou proposer ce qui vous faciliterait la vie,
+        écrivez à <a href={feedbackLink("Aide")}>{CONTACT_EMAIL}</a>.
+      </p>
+    ),
+    guide: (
+      <>
+        <ContactCard topic="Aide" />
+        <H>Où trouver ce contact</H>
+        <ul>
+          <li>
+            Menu opérateur (vos initiales, en haut à droite) →{" "}
+            <Ui>Une idée, un besoin ?</Ui>
+          </li>
+          <li>
+            <Path steps={["Réglages", "Une idée ?"]} />
+          </li>
+          <li>
+            <K>⌘K</K> → « Proposer une amélioration »
+          </li>
+          <li>Le bas de la page d’accueil.</li>
+        </ul>
+        <Note kind="tip">
+          Décrivez la situation (« pendant le rapport de conduite, il faudrait…
+          ») plutôt que la solution : c’est le meilleur moyen d’obtenir ce qui
+          vous aide vraiment. N’envoyez jamais le contenu d’un journal réel.
+        </Note>
       </>
     ),
   },
@@ -2584,6 +3117,20 @@ export const TOPICS: Topic[] = [
     ),
     guide: (
       <div className="docs-faqs">
+        <Faq q="Qui a modifié cet élément ?">
+          Ouvrez sa fiche : en bas, « Créé par … · modifié par … », et le bouton{" "}
+          <Ui>Historique</Ui> montre toutes ses versions. Pour toute l’opération
+          : module <Ui>Traçabilité</Ui>.
+        </Faq>
+        <Faq q="Peut-on revoir la situation telle qu’elle était à 10 h ?">
+          Oui : l’horloge <Ui>Remonter le temps</Ui> en haut à droite, puis
+          choisissez 10:00. Tous les modules montrent l’état de ce moment, la
+          météo comprise.
+        </Faq>
+        <Faq q="Comment proposer une amélioration ?">
+          Écrivez à <a href={feedbackLink("FAQ")}>{CONTACT_EMAIL}</a> (menu
+          opérateur → <Ui>Une idée, un besoin ?</Ui>).
+        </Faq>
         <Faq q="Faut-il créer un compte ?">
           Non. Ouvrez le site, créez une session, c’est tout. Il n’y a ni
           compte, ni mot de passe de connexion.

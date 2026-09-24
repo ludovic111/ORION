@@ -96,10 +96,10 @@
 }
 .docs-toc-item svg {
   flex: none;
-  color: hsl(var(--h) 70% 62%);
+  color: hsl(var(--h) calc(70% * var(--kind-s)) calc(62% * var(--kind-l)));
 }
 :root[data-theme="light"] .docs-toc-item svg {
-  color: hsl(var(--h) 70% 42%);
+  color: hsl(var(--h) calc(70% * var(--kind-s)) 42%);
 }
 .docs-toc-item:hover {
   background: var(--bg-2);
@@ -162,7 +162,11 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 2px;
-  background: linear-gradient(90deg, hsl(var(--h) 85% 65%), transparent 70%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--h) calc(85% * var(--kind-s)) calc(65% * var(--kind-l))),
+    transparent 70%
+  );
   opacity: 0.7;
 }
 .docs-topic-head {
@@ -179,13 +183,16 @@
   width: 42px;
   height: 42px;
   border-radius: 13px;
-  background: hsl(var(--h) 85% 65% / 0.14);
-  color: hsl(var(--h) 85% 70%);
-  box-shadow: inset 0 0 0 1px hsl(var(--h) 85% 65% / 0.25);
+  background: hsl(
+    var(--h) calc(85% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.14
+  );
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(70% * var(--kind-l)));
+  box-shadow: inset 0 0 0 1px
+    hsl(var(--h) calc(85% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.25);
 }
 :root[data-theme="light"] .docs-topic-icon {
-  background: hsl(var(--h) 80% 50% / 0.1);
-  color: hsl(var(--h) 75% 38%);
+  background: hsl(var(--h) calc(80% * var(--kind-s)) 50% / 0.1);
+  color: hsl(var(--h) calc(75% * var(--kind-s)) 38%);
 }
 .docs-topic-title {
   flex: 1;
@@ -204,15 +211,22 @@
   height: 34px;
   padding: 0 14px;
   border-radius: 99px;
-  border: 1px solid hsl(var(--h) 80% 65% / 0.4);
-  background: hsl(var(--h) 80% 65% / 0.1);
+  border: 1px solid
+    hsl(var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.4);
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.1
+  );
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
 }
 .docs-open:hover {
-  background: hsl(var(--h) 80% 65% / 0.2);
-  border-color: hsl(var(--h) 80% 65% / 0.7);
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.2
+  );
+  border-color: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.7
+  );
 }
 .docs-open svg {
   transition: transform 0.2s var(--ease);
@@ -242,10 +256,10 @@
   background: var(--bg-2);
 }
 .docs-layer-full .docs-layer-tag {
-  color: hsl(var(--h) 80% 68%);
+  color: hsl(var(--h) calc(80% * var(--kind-s)) calc(68% * var(--kind-l)));
 }
 :root[data-theme="light"] .docs-layer-full .docs-layer-tag {
-  color: hsl(var(--h) 70% 38%);
+  color: hsl(var(--h) calc(70% * var(--kind-s)) 38%);
 }
 .docs-article p + p,
 .docs-article p + ul,
@@ -261,7 +275,7 @@
   margin: 4px 0;
 }
 .docs-article ul li::marker {
-  color: hsl(var(--h) 80% 65%);
+  color: hsl(var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)));
 }
 .docs-article strong {
   font-weight: 600;
@@ -682,8 +696,11 @@
   min-width: 0;
   padding: 14px 12px;
   border-radius: 14px;
-  border: 1px solid hsl(var(--h) 80% 65% / 0.35);
-  background: hsl(var(--h) 80% 65% / 0.08);
+  border: 1px solid
+    hsl(var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.35);
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.08
+  );
   text-align: center;
 }
 .docs-node strong {
@@ -701,16 +718,19 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: hsl(var(--h) 80% 65% / 0.18);
-  color: hsl(var(--h) 85% 70%);
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.18
+  );
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(70% * var(--kind-l)));
   animation: docs-glow 3.2s ease-in-out infinite;
 }
 :root[data-theme="light"] .docs-node-icon {
-  color: hsl(var(--h) 75% 38%);
+  color: hsl(var(--h) calc(75% * var(--kind-s)) 38%);
 }
 @keyframes docs-glow {
   50% {
-    box-shadow: 0 0 0 6px hsl(var(--h) 80% 65% / 0.1);
+    box-shadow: 0 0 0 6px
+      hsl(var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.1);
   }
 }
 .docs-wire {
@@ -820,8 +840,12 @@
   font-size: 12px;
 }
 .docs-svg-node circle {
-  fill: hsl(var(--h) 80% 65% / 0.16);
-  stroke: hsl(var(--h) 80% 65% / 0.6);
+  fill: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.16
+  );
+  stroke: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.6
+  );
   stroke-width: 1.5;
 }
 .docs-svg-center circle {
@@ -834,10 +858,10 @@
   }
 }
 .docs-svg-node svg {
-  color: hsl(var(--h) 85% 72%);
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(72% * var(--kind-l)));
 }
 :root[data-theme="light"] .docs-svg-node svg {
-  color: hsl(var(--h) 75% 36%);
+  color: hsl(var(--h) calc(75% * var(--kind-s)) 36%);
 }
 .docs-svg-node text {
   fill: var(--text);
@@ -998,7 +1022,9 @@
   animation: docs-fade 0.3s var(--ease) both;
 }
 .docs-result:hover {
-  border-color: hsl(var(--h) 80% 65% / 0.5);
+  border-color: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.5
+  );
   background: var(--bg-2);
 }
 .docs-result .docs-topic-icon {

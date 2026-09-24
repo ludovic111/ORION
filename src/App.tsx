@@ -15,19 +15,25 @@ import {
   Download,
   FileText,
   FileUp,
+  History,
   Inbox,
+  Lightbulb,
   LockKeyhole,
   LogOut,
   Moon,
   MonitorSmartphone,
+  MonitorPlay,
   Plus,
+  Presentation,
   Printer,
   RefreshCw,
   Search,
   Settings2,
   Shield,
+  Snowflake,
   Sun,
   Trash2,
+  Tv,
   Wifi,
 } from "lucide-react";
 import {
@@ -48,7 +54,14 @@ import {
   type Journal,
   type Workspace,
 } from "../shared/journal";
-import { listValues, opsSchema, type Ops } from "../shared/ops";
+import {
+  listValues,
+  opsSchema,
+  thinForecasts,
+  upsert,
+  type Ops,
+} from "../shared/ops";
+import { journalAt } from "../shared/history";
 import {
   KIND_INFO,
   addLink,
@@ -71,7 +84,7 @@ import { Landing, type JoinRequest } from "./journal/Landing";
 import { Modal } from "./journal/Modal";
 import { Privacy } from "./journal/Privacy";
 import { Handover } from "./journal/Handover";
-import { ExportModal, ImportModal } from "./journal/Transfer";
+import { ImportModal } from "./journal/Transfer";
 import { ReportDialog } from "./journal/ReportDialog";
 import { RadioView } from "./radio/RadioView";
 import { AutoPrint, PrintPreview, type PrintJob } from "./print/PrintPreview";
@@ -84,7 +97,13 @@ import { Palette, type Command } from "./ui/Palette";
 import { Popover } from "./ui/Popover";
 import { ModuleHead } from "./ui/ModuleHead";
 import { InstallHelp, useInstall } from "./ui/Install";
-import { Ctx, type AppContext, type Graph } from "./app/context";
+import {
+  Ctx,
+  type AppContext,
+  type ExportPreset,
+  type Graph,
+  type LogCollection,
+} from "./app/context";
 import { MODULE_IDS, moduleInfo } from "./app/modules";
 import { usePrefs } from "./app/prefs";
 import { SettingsDialog, type SettingsTab } from "./app/Settings";
@@ -99,9 +118,20 @@ import { Contacts } from "./modules/contacts/Contacts";
 import { Weather } from "./modules/weather/Weather";
 import { Agenda } from "./modules/agenda/Agenda";
 import { Docs } from "./modules/docs/Docs";
+import { TimeBar } from "./timeline/TimeBar";
+import { TraceSheet } from "./timeline/TraceSheet";
+import { SnapshotDialog } from "./timeline/SnapshotDialog";
+import type { ExportScope } from "./export/scope";
 
 const MapModule = lazy(() => import("./modules/map/MapModule"));
 const NetworkModule = lazy(() => import("./modules/network/NetworkModule"));
+const PresentationMode = lazy(() => import("./present/Presentation"));
+const Trace = lazy(() =>
+  import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
+);
+const ExportCenter = lazy(() =>
+  import("./export/ExportCenter").then((m) => ({ default: m.ExportCenter })),
+);
 
 type Dialog =
   | "create"
@@ -113,6 +143,7 @@ type Dialog =
   | "deleted"
   | "report"
   | "install"
+  | "snapshot"
   | null;
 
 const moduleFromHash = (): Module => {
@@ -145,6 +176,16 @@ export default function App() {
     "view",
   );
   const [focus, setFocus] = useState<Ref | null>(null);
+  // Time machine: moment shown (ms), null = live.
+  const [viewAt, setViewAt] = useState<number | null>(null);
+  const viewAtRef = useRef(viewAt);
+  viewAtRef.current = viewAt;
+  const [traceTarget, setTraceTarget] = useState<string | null>(null);
+  const [exportPreset, setExportPreset] = useState<ExportPreset>({});
+  const [presenting, setPresenting] = useState<{
+    mode: "present" | "wall";
+    preset?: Partial<ExportScope>;
+  } | null>(null);
   const [print, setPrint] = useState<PrintJob | null>(null);
   const [autoQueue, setAutoQueue] = useState<PrintJob[]>([]);
   const [scan, setScan] = useState(scanFromHash);
@@ -172,9 +213,15 @@ export default function App() {
   } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const journal = workspace?.journals.find((j) => j.id === workspace.activeId);
+  // What the modules show: the live journal or its version at viewAt.
+  const shown = useMemo(
+    () => (journal && viewAt !== null ? journalAt(journal, viewAt) : journal),
+    [journal, viewAt],
+  );
   const latestJournal = useRef(journal);
   latestJournal.current = journal;
-  const selected = journal?.entries.find((e) => e.id === entryId);
+  // In the time machine, an entry opens in its version of that time.
+  const selected = shown?.entries.find((e) => e.id === entryId);
   const dirty = !!journal && backups[journal.id] !== JSON.stringify(journal);
   const draftExists = draft || !!workspace?.drafts?.[workspace.activeId];
   const hasDraft = useRef(draftExists);
@@ -299,10 +346,10 @@ export default function App() {
 
   // ---------- Derived data ----------
   const graph = useMemo<Graph>(() => {
-    if (!journal)
+    if (!shown)
       return { items: [], byRef: new Map(), edges: [], degree: new Map() };
-    const list = allItems(journal);
-    const links = allEdges(journal);
+    const list = allItems(shown);
+    const links = allEdges(shown);
     const degree = new Map<string, number>();
     for (const e of links) {
       degree.set(e.a, (degree.get(e.a) ?? 0) + 1);
@@ -314,7 +361,7 @@ export default function App() {
       edges: links,
       degree,
     };
-  }, [journal]);
+  }, [shown]);
   const follow = journal?.entries.filter(needsFollowUp) ?? [];
   const late = follow.filter((e) => overdue(e, minute));
   const suggestions = useMemo(() => {
@@ -388,6 +435,10 @@ export default function App() {
       if (!base) return;
       if (base.closedAt)
         throw new Error("Ce journal est clôturé. Rouvrez-le pour modifier.");
+      if (viewAtRef.current !== null)
+        throw new Error(
+          "Version passée affichée : revenez au direct pour modifier.",
+        );
       // Validate first: an invalid change is refused with its message.
       opsSchema.parse(change(base.ops));
       setWorkspace((previous) =>
@@ -405,6 +456,45 @@ export default function App() {
     },
     [setWorkspace],
   );
+  const authorRef = useRef(workspace?.author ?? "");
+  authorRef.current = workspace?.author ?? "";
+  // Registers (exports, presentations, frozen points) are written to the
+  // live journal, even closed or while the time machine shows the past.
+  const record = useCallback(
+    <C extends LogCollection>(
+      collection: C,
+      value: Parameters<AppContext["record"]>[1],
+    ) => {
+      // An id given by the caller is kept (e.g. the id printed in a QR code).
+      const id = (value as { id?: string }).id ?? crypto.randomUUID();
+      const author = authorRef.current;
+      const apply = (ops: Ops) => {
+        let next = upsert(ops, collection, { ...value, id } as never, author);
+        if (collection === "forecasts")
+          next = { ...next, forecasts: thinForecasts(next.forecasts) };
+        return opsSchema.parse(next);
+      };
+      // Validated first: an invalid value never reaches the state.
+      const base = latestJournal.current;
+      if (base) apply(base.ops);
+      setWorkspace((previous) =>
+        previous
+          ? {
+              ...previous,
+              journals: previous.journals.map((j) =>
+                j.id === previous.activeId ? { ...j, ops: apply(j.ops) } : j,
+              ),
+            }
+          : previous,
+      );
+      return id;
+    },
+    [setWorkspace],
+  ) as AppContext["record"];
+  const openExportCenter = useCallback((preset: ExportPreset = {}) => {
+    setExportPreset(preset);
+    setDialog("export");
+  }, []);
   function saveRadio(radio: Radio, log?: Partial<Fields>) {
     if (!journal || !workspace) return;
     let value = updateRadio(journal, radio);
@@ -568,7 +658,12 @@ export default function App() {
         const merged = mergeJournals(journal, value);
         // Operational records follow the synchronisation rules.
         const combined = mergeJournal(journal, value);
-        updateJournal({ ...merged, ops: combined.ops, sync: combined.sync });
+        updateJournal({
+          ...merged,
+          ops: combined.ops,
+          sync: combined.sync,
+          history: combined.history,
+        });
       } else {
         const copy = {
           ...value,
@@ -662,6 +757,7 @@ export default function App() {
     setWorkspace((previous) =>
       previous ? { ...previous, activeId: id } : previous,
     );
+    setViewAt(null);
     setEntryId(null);
     setMenu(null);
   }
@@ -738,22 +834,30 @@ export default function App() {
     );
 
   // ---------- Session open ----------
+  const view = shown ?? journal;
   const radio = radioSummary(journal.radio);
-  const readOnly = !!journal.closedAt;
+  const readOnly = !!journal.closedAt || viewAt !== null;
   const unread = journal.ops.messages.filter(
     (m) => m.status === "Nouveau",
   ).length;
   const ctx: AppContext = {
     workspace,
-    journal,
+    journal: view,
+    live: journal,
     author: workspace.author,
     readOnly,
-    now: minute,
+    viewAt,
+    setViewAt,
+    trace: setTraceTarget,
+    record,
+    exportCenter: openExportCenter,
+    present: (mode = "present", preset) => setPresenting({ mode, preset }),
+    now: viewAt ?? minute,
     graph,
     module,
     updateJournal,
     updateOps,
-    lists: (name) => listValues(journal.ops, name),
+    lists: (name) => listValues(view.ops, name),
     go,
     focus,
     setFocus,
@@ -794,10 +898,45 @@ export default function App() {
     },
     {
       id: "export",
-      label: "Exporter le journal",
+      label: "Exporter (tous formats)",
       icon: <Download size={16} />,
-      run: () => setDialog("export"),
-      keywords: "archive pdf excel word",
+      run: () => openExportCenter(),
+      keywords: "archive pdf excel word powerpoint pptx imprimer",
+    },
+    {
+      id: "time-machine",
+      label: viewAt === null ? "Remonter le temps" : "Revenir à l’état actuel",
+      icon: <History size={16} />,
+      run: () => setViewAt(viewAt === null ? Date.now() : null),
+      keywords: "historique versions heure rejouer replay passé",
+    },
+    {
+      id: "snapshot",
+      label: "Figer un point de situation",
+      icon: <Snowflake size={16} />,
+      run: () => setDialog("snapshot"),
+      keywords: "version nommée point situation heure",
+    },
+    {
+      id: "present",
+      label: "Présenter la situation",
+      icon: <Presentation size={16} />,
+      run: () => setPresenting({ mode: "present" }),
+      keywords: "présentation diaporama autorités visite powerpoint",
+    },
+    {
+      id: "wall",
+      label: "Affichage mural",
+      icon: <Tv size={16} />,
+      run: () => setPresenting({ mode: "wall" }),
+      keywords: "écran projecteur salle kiosque",
+    },
+    {
+      id: "trace",
+      label: "Traçabilité : qui a fait quoi",
+      icon: <History size={16} />,
+      run: () => go("trace"),
+      keywords: "historique audit comparer vérifier export",
     },
     {
       id: "import",
@@ -833,6 +972,13 @@ export default function App() {
       icon: <Settings2 size={16} />,
       run: () => setSettings("post"),
       keywords: "listes standards destinataires modules",
+    },
+    {
+      id: "contact",
+      label: "Proposer une amélioration (contacter l’auteur)",
+      icon: <Lightbulb size={16} />,
+      run: () => setSettings("contact"),
+      keywords: "idée besoin contact email suggestion bug demande",
     },
     {
       id: "new-journal",
@@ -952,6 +1098,22 @@ export default function App() {
               )}
               <Clock />
               <button
+                className={`icon-button${viewAt !== null ? " active" : ""}`}
+                onClick={() => setViewAt(viewAt === null ? Date.now() : null)}
+                aria-label="Remonter le temps"
+                title="Remonter le temps : revoir l’opération à n’importe quelle heure"
+              >
+                <History size={16} />
+              </button>
+              <button
+                className="icon-button hide-narrow"
+                onClick={() => setPresenting({ mode: "present" })}
+                aria-label="Présenter la situation"
+                title="Présenter la situation (plein écran)"
+              >
+                <MonitorPlay size={16} />
+              </button>
+              <button
                 className="icon-button"
                 onClick={() =>
                   setPrefs({
@@ -1013,7 +1175,7 @@ export default function App() {
                     Fermer
                   </button>
                 ) : (
-                  <button className="link" onClick={() => setDialog("export")}>
+                  <button className="link" onClick={() => openExportCenter()}>
                     Exporter une copie
                   </button>
                 )}
@@ -1127,6 +1289,8 @@ export default function App() {
                   <Agenda />
                 ) : module === "network" ? (
                   <NetworkModule />
+                ) : module === "trace" ? (
+                  <Trace />
                 ) : (
                   <Docs topic={docsTopic} />
                 )}
@@ -1186,9 +1350,9 @@ export default function App() {
             <FileUp size={15} />
             Importer un fichier
           </button>
-          <button data-close onClick={() => setDialog("export")}>
+          <button data-close onClick={() => openExportCenter()}>
             <Download size={15} />
-            Exporter ce journal
+            Exporter (tous formats)
             {dirty && <span className="pill warn">à faire</span>}
           </button>
           <button data-close onClick={() => setSettings("session")}>
@@ -1237,6 +1401,13 @@ export default function App() {
             <Shield size={15} />
             Sécurité et données
           </button>
+          <button data-close onClick={() => setSettings("contact")}>
+            <Lightbulb size={15} />
+            <span>
+              Une idée, un besoin ?
+              <small>Proposer une amélioration à l’auteur</small>
+            </span>
+          </button>
           {!install.installed && (
             <button
               data-close
@@ -1281,7 +1452,7 @@ export default function App() {
           key={`${selected.id}-${entryMode}`}
           entry={selected}
           mode={entryMode}
-          entries={journal.entries}
+          entries={view.entries}
           onOpen={(id) => openEntry(id)}
           onSnooze={(minutes) => snoozeEntry(selected.id, minutes)}
           onDelete={(reason) => {
@@ -1329,9 +1500,12 @@ export default function App() {
         <PrintPreview
           job={{
             ...print,
+            // A past version (time machine) is printed as it was.
             journal:
-              workspace.journals.find((j) => j.id === print.journal.id) ??
-              print.journal,
+              viewAt !== null
+                ? print.journal
+                : (workspace.journals.find((j) => j.id === print.journal.id) ??
+                  print.journal),
           }}
           onClose={() => setPrint(null)}
         />
@@ -1390,7 +1564,7 @@ export default function App() {
               setToast("Session effacée de ce poste.");
             }
           }}
-          onExport={() => setDialog("export")}
+          onExport={() => openExportCenter()}
           sync={sync}
         />
       )}
@@ -1400,17 +1574,34 @@ export default function App() {
         </Modal>
       )}
       {dialog === "export" && (
-        <ExportModal
-          journal={journal}
-          author={workspace.author}
-          onClose={() => setDialog(null)}
-          onBackup={() =>
-            setBackups((prev) => ({
-              ...prev,
-              [journal.id]: JSON.stringify(journal),
-            }))
-          }
-        />
+        <Suspense fallback={null}>
+          <ExportCenter
+            preset={exportPreset}
+            onClose={() => setDialog(null)}
+            onBackup={() =>
+              setBackups((prev) => ({
+                ...prev,
+                [journal.id]: JSON.stringify(journal),
+              }))
+            }
+          />
+        </Suspense>
+      )}
+      {dialog === "snapshot" && (
+        <SnapshotDialog onClose={() => setDialog(null)} />
+      )}
+      {traceTarget && (
+        <TraceSheet target={traceTarget} onClose={() => setTraceTarget(null)} />
+      )}
+      {viewAt !== null && <TimeBar />}
+      {presenting && (
+        <Suspense fallback={null}>
+          <PresentationMode
+            mode={presenting.mode}
+            preset={presenting.preset}
+            onClose={() => setPresenting(null)}
+          />
+        </Suspense>
       )}
       {dialog === "import" && (
         <ImportModal
@@ -1422,13 +1613,13 @@ export default function App() {
       {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
       {dialog === "report" && (
         <ReportDialog
-          journal={journal}
+          journal={view}
           onClose={() => setDialog(null)}
           onPreview={(range) => {
             setDialog(null);
             setPrint({
               kind: "report",
-              journal,
+              journal: view,
               author: workspace.author,
               range,
             });
@@ -1465,7 +1656,7 @@ export default function App() {
           journal={journal}
           at={minute}
           onClose={() => setDialog(null)}
-          onExport={() => setDialog("export")}
+          onExport={() => openExportCenter()}
           onOpen={(id) => {
             setDialog(null);
             openEntry(id);

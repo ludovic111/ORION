@@ -35,16 +35,35 @@ Workspace
    │  ├─ cells, members            postes / cellules et personnes
    │  ├─ resources                 moyens
    │  ├─ contacts                  annuaire
-   │  ├─ places                    objets de la carte (point, ligne, zone, texte)
+   │  ├─ places                    objets de la carte (point, ligne, zone, texte, dessin libre)
+   │  ├─ maps, symbols             cartes nommées (suivi général, détail…), signes personnalisés
    │  ├─ agenda                    rythme de conduite
    │  ├─ facts, boards             renseignements clés, tableaux de situation
    │  ├─ observations, alerts      météo
    │  ├─ links                     liens explicites entre deux éléments
+   │  ├─ snapshots                 points de situation figés (moment nommé)
+   │  ├─ exports, presentations    registres : fichiers produits (SHA-256), présentations données
+   │  ├─ forecasts                 prévisions météo reçues (une version par réception)
    │  └─ settings                  référentiels, lieu météo, vue de carte
-   └─ sync { clock, removed }      horodatage des changements locaux, suppressions
+   ├─ sync { clock, removed }      horodatage des changements locaux, suppressions
+   └─ history[]                    chaque changement de chaque élément : qui, quand, état après
 ```
 
 Chaque élément des modules porte un identifiant, sa date de création, de modification et son auteur. Les anciens journaux (1.x) se chargent avec des modules vides.
+
+## Traçabilité et versions
+
+`shared/events.ts` (schéma) et `shared/history.ts` (logique).
+
+- **Enregistrement.** `stampJournal` (appelé par `setWorkspace` pour tout changement local) compare l’ancienne et la nouvelle version, horodate les éléments touchés pour la synchronisation, puis `appendHistory` ajoute un événement par élément : `{ id, at, by, action: create | update | remove, scope, target, state, rev, note }`. `state` est l’élément complet après le changement (`null` s’il est supprimé), `by` l’opérateur du poste. Les entrées du journal ne sont pas dupliquées : leurs versions (`revisions`) et suppressions (`deleted`) jouent ce rôle.
+- **Regroupement.** Les retouches d’une même personne sur un même élément en moins de 20 s remplacent l’événement précédent (`rev` + 1) au lieu d’en créer un nouveau.
+- **Éléments antérieurs.** Un élément modifié pour la première fois depuis l’existence de l’historique reçoit d’abord un événement « état connu » dont l’identifiant est dérivé de l’élément (`stableId`) : deux postes produisent le même.
+- **Fusion.** `mergeHistory` fait l’union par identifiant ; pour un même identifiant, le `rev` le plus haut, puis le plus récent, gagne. Commutative et idempotente, comme le reste de `mergeJournal`.
+- **Machine à remonter le temps.** `journalAt(journal, t)` reconstruit un journal valide à l’instant `t` : pour chaque élément, le dernier événement antérieur à `t` ; les éléments sans historique comptent depuis leur `createdAt` ; les entrées gardent leurs versions antérieures à `t` ; les prévisions reçues avant `t`. L’application passe ce journal à tous les modules (`useApp().journal`), en lecture seule ; `useApp().live` reste le journal actuel.
+- **Lecture.** `auditTrail` (tout, du plus récent au plus ancien), `trailOf` (un élément), `changesBetween`, `compareVersions` (ajouts, modifications champ par champ, suppressions entre deux versions), `moments` (les pas de la relecture), `restoreState` (remet une version antérieure, comme un nouveau changement signé et annoté).
+- **Registres.** Points figés, exports et présentations sont des collections ordinaires (`useApp().record`), écrites même sur un journal clôturé ou depuis la machine à remonter le temps.
+
+Interface : `src/timeline/` (barre du temps et relecture, fiche Historique, ligne « Créé par… » de chaque fiche, points figés), `src/modules/trace/` (module Traçabilité : qui a fait quoi, comparer, points figés, registres).
 
 ## Liens
 

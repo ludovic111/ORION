@@ -20,6 +20,7 @@ import { normalizeCode, validCode } from "../../shared/room";
 import type { SyncStatus } from "../sync/useSync";
 import { Brand } from "../ui/Mark";
 import { JournalSetup } from "./JournalSetup";
+import { CONTACT_EMAIL, feedbackLink } from "../app/contact";
 
 export type JoinRequest = { code: string; author: string; password?: string };
 
@@ -377,9 +378,14 @@ export function Landing({
           Logiciel indépendant. Sans affiliation ni homologation OFPP ou État de
           Genève.
         </span>
-        <a href="/source/orion-aic-source.tar.gz" download>
-          Code source · AGPL-3.0
-        </a>
+        <span className="landing-foot-links">
+          <a href={feedbackLink("Accueil")}>
+            Une idée, un besoin ? {CONTACT_EMAIL}
+          </a>
+          <a href="/source/orion-aic-source.tar.gz" download>
+            Code source · AGPL-3.0
+          </a>
+        </span>
       </footer>
     </div>
   );

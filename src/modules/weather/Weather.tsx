@@ -12,6 +12,7 @@ import {
   Crosshair,
   Droplets,
   ExternalLink,
+  History,
   LocateFixed,
   Map as MapIcon,
   MapPin,
@@ -172,11 +173,41 @@ export function Weather() {
     addEntry,
     toast,
     now,
+    viewAt,
+    record,
+    live,
   } = useApp();
   const place = journal.ops.settings.weatherPlace;
-  const [data, setData] = useState<CachedForecast | null>(() =>
+  const [fetched, setData] = useState<CachedForecast | null>(() =>
     readCachedForecast(journal.id),
   );
+  // Every forecast received is kept in the journal (and synchronised): the
+  // time machine shows the forecast known at that time.
+  const received = useMemo(
+    () =>
+      [...journal.ops.forecasts].sort((a, b) =>
+        b.fetchedAt.localeCompare(a.fetchedAt),
+      ),
+    [journal.ops.forecasts],
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const asCached = (f: (typeof received)[number]): CachedForecast => ({
+    place: { name: f.place, lat: f.lat, lng: f.lng },
+    fetchedAt: Date.parse(f.fetchedAt),
+    forecast: f.data as Forecast,
+  });
+  const chosen = picked ? received.find((f) => f.id === picked) : undefined;
+  const data: CachedForecast | null = chosen
+    ? asCached(chosen)
+    : viewAt !== null
+      ? received[0]
+        ? asCached(received[0])
+        : null
+      : received[0] &&
+          Date.parse(received[0].fetchedAt) > (fetched?.fetchedAt ?? 0)
+        ? asCached(received[0])
+        : fetched;
+  const archived = !!chosen || viewAt !== null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [auto, setAuto] = useState(() => readAutoRefresh(journal.id));
@@ -208,7 +239,25 @@ export function Weather() {
     setLoading(true);
     setError("");
     try {
-      setData(await fetchForecast(journal.id, place));
+      const result = await fetchForecast(journal.id, place);
+      setData(result);
+      setPicked(null);
+      const last = live.ops.forecasts.reduce<string>(
+        (top, f) =>
+          f.place === result.place.name && f.fetchedAt > top
+            ? f.fetchedAt
+            : top,
+        "",
+      );
+      // Keep at most one version every 5 minutes per place.
+      if (!last || result.fetchedAt - Date.parse(last) > 5 * 60_000)
+        record("forecasts", {
+          fetchedAt: new Date(result.fetchedAt).toISOString(),
+          place: result.place.name.slice(0, 200),
+          lat: result.place.lat,
+          lng: result.place.lng,
+          data: result.forecast,
+        });
     } catch (err) {
       setError(
         !navigator.onLine
@@ -221,12 +270,12 @@ export function Weather() {
       busy.current = false;
       setLoading(false);
     }
-  }, [journal.id, place]);
+  }, [journal.id, place, live.ops.forecasts, record]);
 
   // Opt-in automatic refresh, only while the page is visible.
   const fetchedAt = data?.fetchedAt ?? 0;
   useEffect(() => {
-    if (!auto || !place) return;
+    if (!auto || !place || viewAt !== null) return;
     const check = () => {
       if (
         document.visibilityState === "visible" &&
@@ -242,7 +291,7 @@ export function Weather() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", check);
     };
-  }, [auto, place, fetchedAt, refresh]);
+  }, [auto, place, fetchedAt, refresh, viewAt]);
 
   useEffect(() => {
     if (!focus) return;
@@ -358,7 +407,7 @@ export function Weather() {
               <ExternalLink size={14} />
               Carte des dangers MétéoSuisse
             </a>
-            {place && (
+            {place && viewAt === null && (
               <button
                 className="primary"
                 onClick={() => void refresh()}
@@ -396,7 +445,13 @@ export function Weather() {
                 )}
               </div>
               <div className="weather-place-status">
-                {data ? (
+                {data && archived ? (
+                  <span className="pill accent">
+                    <History size={11} />
+                    Prévision reçue le{" "}
+                    {dateTime(new Date(data.fetchedAt).toISOString())}
+                  </span>
+                ) : data ? (
                   <span
                     className={`pill ${Date.now() - data.fetchedAt > 3 * HOUR ? "warn" : "ok"}`}
                   >
@@ -472,6 +527,63 @@ export function Weather() {
               <Chart key={data.fetchedAt} hours={forecast.hours} at={now} />
             </section>
           </>
+        )}
+        {received.length > 0 && (
+          <section
+            className="card w-12 weather-versions"
+            aria-label="Prévisions reçues"
+          >
+            <div className="card-head">
+              <History size={15} />
+              <h2>Prévisions reçues</h2>
+              <span className="pill plain">{received.length}</span>
+              {picked && (
+                <button className="small" onClick={() => setPicked(null)}>
+                  {viewAt !== null ? "Version du moment" : "Dernière prévision"}
+                </button>
+              )}
+            </div>
+            <p className="muted weather-versions-intro">
+              Chaque prévision chargée est gardée : on retrouve ce qui était
+              annoncé à chaque heure.
+            </p>
+            <div className="weather-version-list">
+              {received.slice(0, 48).map((f) => {
+                const d = f.data as Forecast;
+                const rain = d.hours
+                  .filter(
+                    (h) =>
+                      h.at >= Date.parse(f.fetchedAt) &&
+                      h.at < Date.parse(f.fetchedAt) + 24 * HOUR,
+                  )
+                  .reduce((sum, h) => sum + (h.precipitation ?? 0), 0);
+                const Icon = weatherIcon(d.current.code, false);
+                const active = data?.fetchedAt === Date.parse(f.fetchedAt);
+                return (
+                  <button
+                    key={f.id}
+                    className={`weather-version${active ? " active" : ""}`}
+                    onClick={() => setPicked(f.id)}
+                    title={`${f.place} · ${d.model} · reçue par ${f.by || "—"}`}
+                  >
+                    <span className="mono">{time(f.fetchedAt)}</span>
+                    <Icon size={18} />
+                    <strong>{round(d.current.temperature)}°</strong>
+                    <small>
+                      {round(rain)} mm/24 h · {round(d.current.gusts)} km/h
+                    </small>
+                    <small className="muted">
+                      {new Date(f.fetchedAt).toLocaleDateString("fr-CH", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}{" "}
+                      · {f.by || "—"}
+                    </small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         )}
         {place && !forecast && (
           <section className="card w-12">

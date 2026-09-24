@@ -1,184 +1,19 @@
 import { useState } from "react";
-import { Download, FileCheck2, FileUp, LockKeyhole } from "lucide-react";
-import { planMerge, type Archive, type Journal } from "../../shared/journal";
+import { FileUp, History, LockKeyhole } from "lucide-react";
+import {
+  dateTime,
+  planMerge,
+  type Archive,
+  type Journal,
+} from "../../shared/journal";
+import { firstMoment, moments } from "../../shared/history";
 import {
   importCsv,
   importJson,
   MAX_IMPORT_BYTES,
 } from "../../shared/interchange";
 import { decrypt } from "../../shared/crypto";
-import {
-  download,
-  exportFormats,
-  fileName,
-  makeExport,
-  type ExportFormat,
-} from "./exports";
 import { Modal } from "./Modal";
-const suffixes: Partial<Record<ExportFormat, string>> = {
-  sheets: "fiches",
-  radio: "radio",
-};
-export function ExportModal({
-  journal,
-  author,
-  onClose,
-  onBackup,
-}: {
-  journal: Journal;
-  author: string;
-  onClose: () => void;
-  onBackup: () => void;
-}) {
-  const [format, setFormat] = useState<ExportFormat>("orion");
-  const [password, setPassword] = useState("");
-  const [repeat, setRepeat] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [done, setDone] = useState("");
-  const [acknowledged, setAcknowledged] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setDone("");
-    setBusy(true);
-    try {
-      if (format === "orion" && password !== repeat)
-        throw new Error("Les deux phrases secrètes ne correspondent pas.");
-      const blob = await makeExport(journal, format, password, author);
-      const name = fileName(
-        journal,
-        exportFormats.find((f) => f.id === format)!.extension,
-        suffixes[format],
-      );
-      download(blob, name);
-      if (format === "orion" || format === "json") onBackup();
-      setDone(`${name} · vérifiez le dossier de téléchargement.`);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Modal
-      title="Exporter"
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-      wide
-    >
-      <p className="modal-intro mono">
-        {journal.title} · {journal.entries.length} entrées ·{" "}
-        {journal.radio.terminals.length} terminaux · journal entier, sans filtre
-      </p>
-      <form onSubmit={submit} className="stack">
-        {[...new Set(exportFormats.map((f) => f.group))].map((group) => (
-          <fieldset className="format-group" key={group}>
-            <legend className="section-label">{group}</legend>
-            <div className="format-grid">
-              {exportFormats
-                .filter((f) => f.group === group)
-                .map((f) => (
-                  <label className="format" key={f.id}>
-                    <input
-                      type="radio"
-                      name="format"
-                      value={f.id}
-                      checked={format === f.id}
-                      onChange={() => {
-                        setFormat(f.id);
-                        setDone("");
-                        setAcknowledged(false);
-                      }}
-                    />
-                    <span>
-                      <strong>
-                        {f.name}
-                        <code>{f.extension}</code>
-                      </strong>
-                      <small>{f.detail}</small>
-                    </span>
-                  </label>
-                ))}
-            </div>
-          </fieldset>
-        ))}
-        {format === "orion" ? (
-          <div className="inset">
-            <div className="form-pair">
-              <label>
-                Phrase secrète
-                <input
-                  type="password"
-                  required
-                  minLength={12}
-                  maxLength={256}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-              <label>
-                Répéter la phrase
-                <input
-                  type="password"
-                  required
-                  minLength={12}
-                  maxLength={256}
-                  autoComplete="new-password"
-                  value={repeat}
-                  onChange={(e) => setRepeat(e.target.value)}
-                />
-              </label>
-            </div>
-            <small>
-              <LockKeyhole size={11} /> 12 caractères min. Transmise par un
-              autre canal que le fichier. Irrécupérable.
-            </small>
-          </div>
-        ) : (
-          <div className="inset">
-            <label className="check-label">
-              <input
-                required
-                type="checkbox"
-                checked={acknowledged}
-                onChange={(e) => setAcknowledged(e.target.checked)}
-              />
-              <span>Fichier en clair : je choisis où il est conservé.</span>
-            </label>
-            {format !== "json" && (
-              <small>
-                État actuel uniquement, non réimportable sans perte.
-              </small>
-            )}
-          </div>
-        )}
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        {done && (
-          <p role="status" className="success">
-            <FileCheck2 size={18} />
-            {done}
-          </p>
-        )}
-        <div className="modal-actions">
-          <button type="button" onClick={onClose} disabled={busy}>
-            Fermer
-          </button>
-          <button className="primary" disabled={busy}>
-            <Download size={14} />
-            {busy ? "Préparation…" : "Télécharger"}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
 export function ImportModal({
   target,
   onClose,
@@ -199,6 +34,20 @@ export function ImportModal({
   const [merge, setMerge] = useState(false);
   const plan =
     candidate && target ? planMerge(target, candidate.journal) : null;
+  // What the time machine can replay once imported.
+  const replay = candidate
+    ? (() => {
+        const steps = moments(candidate.journal);
+        return {
+          steps: steps.length,
+          events: candidate.journal.history.length,
+          from: firstMoment(candidate.journal),
+          to: steps.length
+            ? new Date(steps[steps.length - 1]).toISOString()
+            : "",
+        };
+      })()
+    : null;
   function accept(value: unknown) {
     const result = importJson(value);
     setCandidate(result.archive);
@@ -222,6 +71,10 @@ export function ImportModal({
         setNotice("CSV : entrées recréées sans leurs versions antérieures.");
       } else {
         const value = JSON.parse(text);
+        if (value?.format === "orion-dossier")
+          throw new Error(
+            "Ce fichier contient les tableaux d’un export (JSON données), pas une archive. Importez l’archive orion aic (.orionaic) ou l’archive JSON réimportable.",
+          );
         if (value?.format === "orion-encrypted") setEncrypted(value);
         else accept(value);
       }
@@ -242,6 +95,12 @@ export function ImportModal({
         if (!busy) onClose();
       }}
     >
+      <p className="modal-intro">
+        Une archive orion aic (.orionaic ou JSON réimportable) contient toute
+        l’opération et son historique. Importée dans un journal séparé, elle
+        permet à chacun de la rejouer pas à pas avec la machine à remonter le
+        temps.
+      </p>
       <label className="dropzone">
         <FileUp size={20} />
         <strong>Choisir un fichier</strong>
@@ -300,6 +159,14 @@ export function ImportModal({
             {candidate.journal.mode} · {candidate.journal.classification}
           </p>
           <p className="muted">{notice}</p>
+          {replay && (
+            <p className="hint">
+              <History size={12} />{" "}
+              {replay.steps > 1
+                ? `Rejouable : ${replay.steps} moments de changement, du ${dateTime(replay.from)} au ${dateTime(replay.to)}${replay.events ? ` · ${replay.events} changements d’éléments` : " · versions des entrées seulement"}.`
+                : "Aucun historique à rejouer : l’état du fichier est importé tel quel."}
+            </p>
+          )}
           {!target && (
             <label>
               <span>
@@ -321,7 +188,11 @@ export function ImportModal({
               onChange={() => setMerge(false)}
             />
             <span>
-              Journal séparé <small>Le journal actuel reste intact.</small>
+              Journal séparé
+              <small>
+                Le journal actuel reste intact. Idéal pour relire ou rejouer
+                l’opération.
+              </small>
             </span>
           </label>
           {target && (

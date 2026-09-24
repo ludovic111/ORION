@@ -9,6 +9,7 @@ import {
 } from "./journal.ts";
 import { callsignKey, radioSchema, type Radio } from "./radio.ts";
 import { COLLECTIONS, type Ops } from "./ops.ts";
+import { appendHistory, mergeHistory, type Change } from "./history.ts";
 
 // Live synchronisation between posts without a database.
 //
@@ -55,15 +56,20 @@ function keyed(j: Journal): [string, Keyed[]][] {
   ];
 }
 
-/** Record the local changes between two versions of a journal. */
+/**
+ * Record the local changes between two versions of a journal: stamps for
+ * the synchronisation and events for the history (signed by `by`).
+ */
 export function stampJournal(
   previous: Journal | undefined,
   next: Journal,
   at = new Date().toISOString(),
+  by = "",
 ): Journal {
   if (previous === next) return next;
   const clock = { ...next.sync.clock };
   const removed = { ...next.sync.removed };
+  const changes: Change[] = [];
   let changed = false;
   const touch = (key: string) => {
     clock[key] = at;
@@ -73,10 +79,36 @@ export function stampJournal(
   if (!previous) {
     touch("meta");
     touch("settings");
-    for (const [, items] of keyed(next)) items.forEach((i) => touch(i.id));
+    changes.push({
+      scope: "meta",
+      target: "meta",
+      prior: undefined,
+      item: metaOf(next),
+    });
+    for (const [name, items] of keyed(next))
+      items.forEach((i) => {
+        touch(i.id);
+        changes.push({ scope: name, target: i.id, prior: undefined, item: i });
+      });
   } else {
-    if (!same(metaOf(previous), metaOf(next))) touch("meta");
-    if (!same(previous.ops.settings, next.ops.settings)) touch("settings");
+    if (!same(metaOf(previous), metaOf(next))) {
+      touch("meta");
+      changes.push({
+        scope: "meta",
+        target: "meta",
+        prior: metaOf(previous),
+        item: metaOf(next),
+      });
+    }
+    if (!same(previous.ops.settings, next.ops.settings)) {
+      touch("settings");
+      changes.push({
+        scope: "settings",
+        target: "settings",
+        prior: previous.ops.settings,
+        item: next.ops.settings,
+      });
+    }
     const before = new Map(keyed(previous));
     for (const [name, items] of keyed(next)) {
       const old = before.get(name)!;
@@ -84,17 +116,22 @@ export function stampJournal(
       const map = new Map(old.map((i) => [i.id, i]));
       for (const item of items) {
         const prior = map.get(item.id);
-        if (!prior || !same(prior, item)) touch(item.id);
+        if (!prior || !same(prior, item)) {
+          touch(item.id);
+          changes.push({ scope: name, target: item.id, prior, item });
+        }
         map.delete(item.id);
       }
-      for (const id of map.keys()) {
+      for (const [id, prior] of map) {
         removed[id] = at;
         delete clock[id];
         changed = true;
+        changes.push({ scope: name, target: id, prior, item: null });
       }
     }
   }
-  return changed ? { ...next, sync: { clock, removed } } : next;
+  if (!changed) return next;
+  return appendHistory({ ...next, sync: { clock, removed } }, changes, at, by);
 }
 
 /** Stamp every journal changed by a local update of the workspace. */
@@ -107,7 +144,7 @@ export function stampWorkspace(
   const old = new Map(previous.journals.map((j) => [j.id, j]));
   let changed = false;
   const journals = next.journals.map((j) => {
-    const stamped = stampJournal(old.get(j.id), j, at);
+    const stamped = stampJournal(old.get(j.id), j, at, next.author);
     if (stamped !== j) changed = true;
     return stamped;
   });
@@ -310,6 +347,7 @@ export function mergeJournal(mine: Journal, theirs: Journal): Journal {
     radio,
     ops: { ...ops, settings },
     sync: { clock, removed },
+    history: mergeHistory(mine.history, theirs.history),
   });
 }
 

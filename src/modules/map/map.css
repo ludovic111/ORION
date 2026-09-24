@@ -52,8 +52,19 @@
 .map-shell.tool-line .leaflet-container,
 .map-shell.tool-area .leaflet-container,
 .map-shell.tool-text .leaflet-container,
-.map-shell.tool-measure .leaflet-container {
+.map-shell.tool-measure .leaflet-container,
+.map-shell.tool-freehand .leaflet-container {
   cursor: crosshair;
+}
+.leaflet-container.map-drawing {
+  touch-action: none;
+}
+/* Past version shown by the time machine. */
+.map-shell.past {
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--line-2));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--amber) 35%, transparent),
+    var(--shadow);
 }
 
 .map-glass {
@@ -727,6 +738,8 @@
 }
 
 /* ---------- Marks on the map ---------- */
+/* Markers are zero-sized anchors on the point; their content is centred
+   by CSS so that size and rotation never rebuild them. */
 .map-icon {
   background: none;
   border: 0;
@@ -735,9 +748,12 @@
   outline: none;
 }
 .map-icon:focus-visible .map-glyph {
-  box-shadow:
-    0 0 0 3px var(--accent),
-    0 2px 8px rgba(0, 0, 0, 0.45);
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.leaflet-marker-icon.map-moving {
+  transition: transform 0.6s cubic-bezier(0.22, 0.8, 0.24, 1);
 }
 .map-glyph {
   display: grid;
@@ -745,19 +761,25 @@
   flex: none;
   box-sizing: border-box;
 }
-.map-glyph.official {
-  padding: 3px;
-  border-radius: 9px;
-  background: #fff;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+.map-glyph.image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.map-glyph.official img {
+.map-glyph.image img {
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   object-fit: contain;
   pointer-events: none;
 }
-.map-glyph.simple {
+/* Framed: a white badge (images) or a coloured disc (simple markers). */
+.map-glyph.image.framed {
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+.map-glyph.simple.framed {
   border: 2px solid #fff;
   border-radius: 50%;
   background: radial-gradient(
@@ -770,49 +792,91 @@
     0 2px 8px rgba(0, 0, 0, 0.4),
     0 0 14px color-mix(in srgb, var(--c) 45%, transparent);
 }
+/* Transparent ground: the symbol alone, with a thin light halo and a soft
+   shadow so it stays readable on maps and aerial images. */
+.map-glyph.bare.image img {
+  filter: drop-shadow(0 0 0.6px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.map-glyph.simple.bare {
+  color: var(--c);
+  filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
 .map-glyph.simple.dot {
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
   transform: scale(0.62);
+  filter: none;
+}
+/* Lists and palettes use the framed look (readable on any theme). */
+.map-palette .map-glyph.image.framed,
+.map-list .map-glyph.image.framed,
+.map-symbol-field .map-glyph.image.framed {
+  box-shadow: 0 0 0 1px var(--line-2);
 }
 
 .map-pin-host {
-  width: 40px;
-  height: 40px;
+  width: 0;
+  height: 0;
 }
 .map-pin {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  --box: 34px;
+}
+.map-pin-symbol {
+  position: absolute;
+  left: calc(var(--box) / -2);
+  top: calc(var(--box) / -2);
+  width: var(--box);
+  height: var(--box);
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  transition: transform 0.18s var(--ease);
   animation: map-pop 280ms var(--ease);
 }
 @keyframes map-pop {
   from {
     opacity: 0;
-    transform: scale(0.5);
+    scale: 0.5;
   }
 }
 .map-pin .map-glyph {
   transition:
-    transform 0.18s var(--ease),
-    box-shadow 0.18s;
+    scale 0.18s var(--ease),
+    box-shadow 0.18s,
+    filter 0.18s;
 }
-.map-pin .map-glyph.official {
+.map-pin.framed .map-glyph.image {
   box-shadow:
     0 0 0 2px var(--ring, transparent),
     0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .map-pin.hot .map-glyph,
 .map-icon:hover .map-glyph {
-  transform: scale(1.12);
+  scale: 1.1;
+}
+.map-pin.hot.framed .map-glyph,
+.map-icon:hover .map-pin.framed .map-glyph {
   box-shadow:
     0 0 0 3px var(--ring, var(--accent)),
     0 0 22px rgba(var(--accent-rgb), 0.75);
 }
+.map-pin.hot:not(.framed) .map-glyph.image img,
+.map-pin.hot:not(.framed) .map-glyph.simple:not(.dot) {
+  filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1.5px #fff)
+    drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.95));
+}
 .map-pin-label {
   position: absolute;
-  top: 42px;
-  left: 50%;
+  top: calc(var(--box) / 2 + 3px);
+  left: 0;
   max-width: 190px;
   padding: 2px 7px;
   overflow: hidden;
@@ -836,8 +900,8 @@
 }
 .map-pin-badge {
   position: absolute;
-  top: -5px;
-  right: -7px;
+  top: calc(var(--box) / -2 - 6px);
+  left: calc(var(--box) / 2 - 10px);
   display: grid;
   place-items: center;
   min-width: 17px;
@@ -850,10 +914,11 @@
   font: 700 9.5px/1 var(--mono);
 }
 .map-text {
+  --rot: 0deg;
   position: absolute;
-  transform: translate(-50%, -50%);
-  max-width: 280px;
+  transform: translate(-50%, -50%) rotate(var(--rot));
   width: max-content;
+  max-width: 280px;
   padding: 2px 4px;
   color: var(--c, #111427);
   font: 700 15px/1.15 var(--display);
@@ -867,12 +932,20 @@
   cursor: pointer;
   animation: map-fade 240ms var(--ease);
 }
-.map-shell.dark-base .map-text {
+.map-shell.dark-base .map-text:not(.boxed) {
   color: var(--c, #fff);
   text-shadow:
     0 0 3px #000,
     0 0 3px #000,
     0 0 7px #000;
+}
+/* Label: the text on a light plate, whatever the background. */
+.map-text.boxed {
+  padding: 0.18em 0.45em;
+  border-radius: 0.4em;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+  text-shadow: none;
 }
 .map-text.hot {
   outline: 2px solid var(--accent);
@@ -883,6 +956,74 @@
   from {
     opacity: 0;
   }
+}
+
+/* Handles of the selected symbol or text: resize and rotate. */
+.map-handles {
+  position: absolute;
+  inset: -7px;
+  border: 1.5px dashed var(--map-ink);
+  border-radius: 10px;
+  pointer-events: none;
+  animation: map-fade 180ms var(--ease);
+}
+.map-handles::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  height: 16px;
+  border-left: 1.5px solid var(--map-ink);
+}
+.map-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--map-ink);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  touch-action: none;
+  transition: scale 0.12s var(--ease);
+}
+/* Larger invisible target for fingers. */
+.map-handle::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+}
+.map-handle:hover,
+.map-handles.active .map-handle {
+  scale: 1.2;
+}
+.map-handle.rotate {
+  left: calc(50% - 8px);
+  top: -30px;
+  cursor: grab;
+}
+.map-handles.active .map-handle.rotate {
+  cursor: grabbing;
+}
+.map-handle.size {
+  right: -9px;
+  bottom: -9px;
+  border-radius: 5px;
+  cursor: nwse-resize;
+}
+.map-text .map-handles {
+  inset: -6px;
+}
+.map-pin.editing .map-pin-symbol {
+  z-index: 2;
+}
+.map-pin-symbol:has(> .map-handles.active) {
+  transition: none;
+}
+.map-sketch.freehand {
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Lines and areas: colour by layer unless the object has its own. */
@@ -896,8 +1037,8 @@
   fill: var(--map-other);
 }
 .map-shape.hot {
-  stroke-width: 6px;
-  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.8));
+  filter: drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
 }
 
 .map-sketch {
@@ -942,9 +1083,11 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 2px dashed hsl(var(--h) 80% 50%);
+  border: 2px dashed hsl(var(--h) calc(80% * var(--kind-s)) 50%);
   border-radius: 50%;
-  background: hsl(var(--h) 85% 60% / 0.18);
+  background: hsl(
+    var(--h) calc(85% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.18
+  );
   cursor: pointer;
   animation: map-breathe 2.6s ease-in-out infinite;
 }
@@ -952,7 +1095,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: hsl(var(--h) 80% 50%);
+  background: hsl(var(--h) calc(80% * var(--kind-s)) 50%);
 }
 @keyframes map-breathe {
   50% {
@@ -1017,6 +1160,14 @@
 }
 
 /* ---------- Sheet fields ---------- */
+/* The sheet of a map object is an inspector beside the map, not a modal:
+   the map stays usable (handles, other objects, panning). */
+.sheet-backdrop:has(+ .sheet-panel .map-sheet-geo) {
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
 .map-field {
   display: flex;
   flex-direction: column;
@@ -1125,6 +1276,373 @@ label.map-swatch.custom {
   gap: 8px;
 }
 
+/* ---------- Maps of the operation ---------- */
+.map-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 14px;
+}
+.map-tabs-strip {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+.map-tabs-strip::-webkit-scrollbar {
+  display: none;
+}
+.map-tab {
+  flex: none;
+  gap: 6px;
+  max-width: 220px;
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  scroll-snap-align: start;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.map-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-tab svg {
+  flex: none;
+  opacity: 0.7;
+}
+.map-tab:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.map-tab.on {
+  background: var(--accent-bg);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.45);
+}
+.map-tab.on svg {
+  color: var(--accent);
+  opacity: 1;
+}
+.map-tabs .icon-button {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+/* ---------- Sheet: maps, appearance ---------- */
+.map-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-chip {
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.map-chip.on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: var(--accent-bg);
+  color: var(--text);
+}
+.map-sheet-style {
+  margin-top: 18px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-2);
+}
+.map-sheet-style header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.map-sheet-style header small {
+  font-size: 11px;
+}
+.map-sheet-style fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.map-style-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.map-style-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.map-style-controls input[type="range"],
+.map-range input[type="range"] {
+  flex: 1;
+  min-width: 120px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--accent);
+}
+.map-style-controls output {
+  min-width: 44px;
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: right;
+}
+.map-seg.seg button {
+  min-width: 38px;
+  padding: 0 10px;
+}
+.map-sheet-style .seg button svg {
+  margin-right: 4px;
+}
+.map-angle {
+  height: 30px;
+  min-width: 52px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* ---------- Dialogs: maps, import, custom symbols ---------- */
+.map-dialog,
+.map-symbol-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(520px, 100%);
+}
+.map-dialog label:not(.switch),
+.map-symbol-form label:not(.switch) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.map-dialog-note,
+.map-symbol-used {
+  font-size: 12.5px;
+}
+.map-dialog-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.map-dialog-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.map-dialog-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.map-dialog-foot .push {
+  margin-left: auto;
+}
+.map-warn {
+  color: var(--warn);
+  font-size: 12.5px;
+}
+.map-drop {
+  flex-direction: column;
+  gap: 6px;
+  height: auto;
+  min-height: 118px;
+  padding: 18px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: 16px;
+  background: var(--bg-2);
+  white-space: normal;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.map-drop:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.map-drop svg {
+  color: var(--accent);
+}
+.map-drop small {
+  color: var(--text-3);
+  font-weight: 400;
+}
+.map-import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-import-summary .pill {
+  gap: 4px;
+}
+.map-checker {
+  display: grid;
+  place-items: center;
+  height: 190px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d9dce4 25%, transparent 25%),
+    linear-gradient(-45deg, #d9dce4 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d9dce4 75%),
+    linear-gradient(-45deg, transparent 75%, #d9dce4 75%);
+  background-size: 18px 18px;
+  background-position:
+    0 0,
+    0 9px,
+    9px -9px,
+    -9px 0;
+  color: #3a3f55;
+}
+.map-checker img {
+  max-width: 150px;
+  max-height: 150px;
+  object-fit: contain;
+  animation: map-fade 200ms var(--ease);
+}
+.map-checker-pick {
+  flex-direction: column;
+  gap: 6px;
+  height: auto;
+  padding: 16px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1d2033;
+  white-space: normal;
+}
+.map-checker-pick small {
+  color: #555a70;
+  font-weight: 400;
+}
+.map-symbol-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.map-symbol-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.map-symbol-bg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+.map-range span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.map-range small {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+/* Palette: custom symbols */
+.map-palette-cell {
+  position: relative;
+  display: flex;
+}
+.map-palette-cell > .map-palette-item {
+  flex: 1;
+}
+.map-palette-edit.icon-button {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--solid);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.map-palette-cell:hover .map-palette-edit,
+.map-palette-edit:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .map-palette-edit.icon-button {
+    opacity: 1;
+  }
+}
+.map-palette-add {
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1.5px dashed rgba(var(--accent-rgb), 0.5);
+  border-radius: 12px;
+  background: var(--accent-bg);
+  text-align: left;
+  white-space: normal;
+}
+.map-palette-add svg {
+  flex: none;
+  color: var(--accent);
+}
+.map-palette-add span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.map-palette-add small {
+  color: var(--text-3);
+  font-weight: 400;
+  font-size: 11.5px;
+}
+.map-palette-tabs button small {
+  margin-left: 4px;
+  font-family: var(--mono);
+  color: var(--text-3);
+}
+
 /* ---------- Phones ---------- */
 @media (max-width: 900px) {
   .map-shell {
@@ -1150,6 +1668,13 @@ label.map-swatch.custom {
   }
   .map-top-left:has(.map-panel) {
     right: 8px;
+  }
+  .map-top-left:has(.map-panel) > .map-tabs,
+  .map-top-left:has(.map-panel) > .map-search-wrap {
+    margin-right: 50px;
+  }
+  .map-tab {
+    height: 34px;
   }
   .map-shell.with-panel .map-top-left {
     bottom: 132px;
@@ -1206,8 +1731,4 @@ label.map-swatch.custom {
   .map-shell .leaflet-bottom.leaflet-left .leaflet-control-scale {
     display: none;
   }
-}
-.map-icon.text .map-pin-host {
-  width: 0;
-  height: 0;
 }

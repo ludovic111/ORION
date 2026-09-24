@@ -56,9 +56,12 @@
   gap: 7px;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid hsl(var(--h) 80% 65% / 0.35);
+  border: 1px solid
+    hsl(var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.35);
   border-radius: 99px;
-  background: hsl(var(--h) 80% 60% / 0.1);
+  background: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.1
+  );
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
@@ -71,8 +74,9 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: hsl(var(--h) 85% 65%);
-  box-shadow: 0 0 10px hsl(var(--h) 85% 60% / 0.7);
+  background: hsl(var(--h) calc(85% * var(--kind-s)) calc(65% * var(--kind-l)));
+  box-shadow: 0 0 10px
+    hsl(var(--h) calc(85% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.7);
 }
 .net-kind small {
   font-family: var(--mono);
@@ -87,13 +91,16 @@
 }
 .net-kind[aria-pressed="false"] i {
   background: transparent;
-  box-shadow: inset 0 0 0 1.5px hsl(var(--h) 60% 60% / 0.7);
+  box-shadow: inset 0 0 0 1.5px
+    hsl(var(--h) calc(60% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.7);
 }
 .net-kind:hover {
-  border-color: hsl(var(--h) 80% 65% / 0.7);
+  border-color: hsl(
+    var(--h) calc(80% * var(--kind-s)) calc(65% * var(--kind-l)) / 0.7
+  );
 }
 :root[data-theme="light"] .net-kind i {
-  background: hsl(var(--h) 72% 46%);
+  background: hsl(var(--h) calc(72% * var(--kind-s)) 46%);
 }
 
 .net-stage {
@@ -232,13 +239,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: hsl(var(--h) 85% 68%);
+  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(68% * var(--kind-l)));
 }
 .net-panel-head .icon-button {
   margin-left: auto;
 }
 :root[data-theme="light"] .net-panel-head {
-  color: hsl(var(--h) 72% 42%);
+  color: hsl(var(--h) calc(72% * var(--kind-s)) 42%);
 }
 .net-panel h3 {
   font-size: 17px;

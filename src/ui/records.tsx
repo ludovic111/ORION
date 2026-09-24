@@ -1,6 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
-import { dateTime } from "../../shared/journal";
 import {
   removeRecords,
   upsert,
@@ -10,6 +9,7 @@ import {
 import { KIND_INFO, ref as makeRef } from "../../shared/links";
 import { useApp } from "../app/context";
 import { Sheet } from "./Sheet";
+import { TraceLine } from "../timeline/TraceLine";
 import { LinksPanel, KIND_ICON } from "./links";
 import {
   ChoiceField,
@@ -240,7 +240,7 @@ export function RecordSheet<T extends Value>({
   extraOptions?: Record<string, string[]>;
   footer?: ReactNode;
 }) {
-  const { updateOps, author, readOnly, toast } = useApp();
+  const { updateOps, author, readOnly, toast, viewAt } = useApp();
   const [value, setValue] = useState<T>(initial);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -278,7 +278,11 @@ export function RecordSheet<T extends Value>({
       title={title}
       footer={
         readOnly ? (
-          <span className="muted">Journal clôturé : lecture seule.</span>
+          <span className="muted">
+            {viewAt !== null
+              ? "Version passée : lecture seule."
+              : "Journal clôturé : lecture seule."}
+          </span>
         ) : confirming ? (
           <>
             <span className="crit-text">Supprimer définitivement ?</span>
@@ -347,14 +351,13 @@ export function RecordSheet<T extends Value>({
           <LinksPanel target={makeRef(kind, existing)} />
         </div>
       )}
-      {existing && typeof initial.createdAt === "string" && (
-        <p className="muted" style={{ marginTop: 18, fontSize: 11.5 }}>
-          Créé le {dateTime(initial.createdAt as string)}
-          {initial.by ? ` par ${initial.by as string}` : ""}
-          {typeof initial.updatedAt === "string" &&
-            initial.updatedAt !== initial.createdAt &&
-            ` · modifié le ${dateTime(initial.updatedAt as string)}`}
-        </p>
+      {existing && (
+        <TraceLine
+          target={existing}
+          createdAt={initial.createdAt as string | undefined}
+          createdBy={initial.by as string | undefined}
+          updatedAt={initial.updatedAt as string | undefined}
+        />
       )}
     </Sheet>
   );

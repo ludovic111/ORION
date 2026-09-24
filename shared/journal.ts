@@ -6,6 +6,7 @@ import {
   type Radio,
 } from "./radio.ts";
 import { emptyOps, opsSchema } from "./ops.ts";
+import { eventSchema } from "./events.ts";
 
 export const TYPES = [
   "Renseignement",
@@ -117,6 +118,9 @@ export const journalSchema = z
     // Live synchronisation: last local change per record id ("meta" for the
     // journal header, "settings" for the référentiels) and removals.
     sync: syncSchema.default(() => ({ clock: {}, removed: {} })),
+    // Every change of every record except the entries (whose versions are
+    // kept in their revisions): see shared/history.ts.
+    history: z.array(eventSchema).max(500000).default([]),
   })
   .strict()
   .superRefine((journal, ctx) => {
