@@ -21,7 +21,13 @@ export function Cosmos() {
       t = 0;
     let stars: { x: number; y: number; z: number; r: number; p: number }[] = [];
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-    let meteor: { x: number; y: number; vx: number; vy: number; life: number } | null = null;
+    let meteor: {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+    } | null = null;
     function resize() {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       w = el!.clientWidth;
@@ -61,7 +67,9 @@ export function Cosmos() {
         x: ox + (ORION_STARS[i].x / 32) * size,
         y: oy + (ORION_STARS[i].y / 32) * size,
       });
-      ctx!.strokeStyle = light() ? "rgba(92, 69, 255, 0.14)" : "rgba(157, 170, 255, 0.16)";
+      ctx!.strokeStyle = light()
+        ? "rgba(92, 69, 255, 0.14)"
+        : "rgba(157, 170, 255, 0.16)";
       ctx!.lineWidth = 1;
       ctx!.setLineDash([2, 6]);
       ctx!.beginPath();
@@ -76,7 +84,14 @@ export function Cosmos() {
       ORION_STARS.forEach((s, i) => {
         const p = at(i);
         const pulse = 0.8 + 0.2 * Math.sin(t * 0.03 + i);
-        const color = i === 0 ? "255, 179, 92" : i === 7 ? "157, 193, 255" : light() ? "92, 69, 255" : "230, 234, 255";
+        const color =
+          i === 0
+            ? "255, 179, 92"
+            : i === 7
+              ? "157, 193, 255"
+              : light()
+                ? "92, 69, 255"
+                : "230, 234, 255";
         const glow = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, s.r * 9);
         glow.addColorStop(0, `rgba(${color}, ${0.55 * pulse})`);
         glow.addColorStop(1, `rgba(${color}, 0)`);
@@ -99,7 +114,12 @@ export function Cosmos() {
         };
       if (meteor) {
         const m = meteor;
-        const grad = ctx!.createLinearGradient(m.x, m.y, m.x - m.vx * 14, m.y - m.vy * 14);
+        const grad = ctx!.createLinearGradient(
+          m.x,
+          m.y,
+          m.x - m.vx * 14,
+          m.y - m.vy * 14,
+        );
         grad.addColorStop(0, `rgba(255,255,255,${m.life})`);
         grad.addColorStop(1, "rgba(139,123,255,0)");
         ctx!.strokeStyle = grad;

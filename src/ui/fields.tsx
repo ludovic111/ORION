@@ -25,7 +25,13 @@ type Base = {
   required?: boolean;
 };
 
-const Label = ({ label, required }: { label: ReactNode; required?: boolean }) => (
+const Label = ({
+  label,
+  required,
+}: {
+  label: ReactNode;
+  required?: boolean;
+}) => (
   <span>
     {label}
     {required && <span className="required"> *</span>}
@@ -106,7 +112,12 @@ export function NumberField({
         min={min}
         max={max}
         onChange={(e) =>
-          onChange(Math.max(min, Math.min(max, Math.round(Number(e.target.value) || 0))))
+          onChange(
+            Math.max(
+              min,
+              Math.min(max, Math.round(Number(e.target.value) || 0)),
+            ),
+          )
         }
       />
       {hint && <small>{hint}</small>}
@@ -176,7 +187,11 @@ export function ComboField({
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
   const unique = useMemo(
-    () => [...new Map(options.filter(Boolean).map((o) => [o.toLocaleLowerCase("fr"), o])).values()],
+    () => [
+      ...new Map(
+        options.filter(Boolean).map((o) => [o.toLocaleLowerCase("fr"), o]),
+      ).values(),
+    ],
     [options],
   );
   const needle = value.trim().toLocaleLowerCase("fr");
@@ -184,7 +199,9 @@ export function ComboField({
     () =>
       (needle
         ? unique.filter(
-            (o) => o.toLocaleLowerCase("fr").includes(needle) && o.toLocaleLowerCase("fr") !== needle,
+            (o) =>
+              o.toLocaleLowerCase("fr").includes(needle) &&
+              o.toLocaleLowerCase("fr") !== needle,
           )
         : unique
       ).slice(0, 40),
@@ -294,7 +311,8 @@ export function DateTimeField({
           value={localInput(value)}
           required={required}
           onChange={(e) => {
-            if (e.target.value || !required) onChange(fromInput(e.target.value));
+            if (e.target.value || !required)
+              onChange(fromInput(e.target.value));
           }}
         />
         <button
@@ -386,7 +404,12 @@ export function TagsField({
             }
           }}
         />
-        <button type="button" className="icon-button" aria-label="Ajouter" onClick={add}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Ajouter"
+          onClick={add}
+        >
           <Plus size={16} />
         </button>
       </div>

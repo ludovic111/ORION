@@ -31,7 +31,9 @@ export function Sheet({
     window.addEventListener("keydown", key);
     requestAnimationFrame(() =>
       panel.current
-        ?.querySelector<HTMLElement>("input:not([type=checkbox]), textarea, select, button")
+        ?.querySelector<HTMLElement>(
+          "input:not([type=checkbox]), textarea, select, button",
+        )
         ?.focus({ preventScroll: true }),
     );
     return () => {
@@ -54,7 +56,11 @@ export function Sheet({
             {eyebrow && <div className="eyebrow">{eyebrow}</div>}
             <h2 id={id}>{title}</h2>
           </div>
-          <button className="icon-button" onClick={() => close.current()} aria-label="Fermer">
+          <button
+            className="icon-button"
+            onClick={() => close.current()}
+            aria-label="Fermer"
+          >
             <X size={18} />
           </button>
         </header>

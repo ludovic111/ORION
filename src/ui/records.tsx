@@ -102,7 +102,8 @@ export function RecordFields({
               {f.render(value, onChange)}
             </div>
           );
-        const cls = f.wide || f.kind === "area" || f.kind === "tags" ? "span-2" : "";
+        const cls =
+          f.wide || f.kind === "area" || f.kind === "tags" ? "span-2" : "";
         const set = (v: unknown) => onChange({ [f.key]: v });
         const v = value[f.key];
         switch (f.kind) {
@@ -178,8 +179,17 @@ export function RecordFields({
             );
           case "toggle":
             return (
-              <div key={f.key} className={cls} style={{ alignSelf: "end", paddingBottom: 6 }}>
-                <Toggle label={f.label} hint={f.hint} checked={!!v} onChange={set} />
+              <div
+                key={f.key}
+                className={cls}
+                style={{ alignSelf: "end", paddingBottom: 6 }}
+              >
+                <Toggle
+                  label={f.label}
+                  hint={f.hint}
+                  checked={!!v}
+                  onChange={set}
+                />
               </div>
             );
           case "tags":
@@ -313,7 +323,10 @@ export function RecordSheet<T extends Value>({
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save(e);
         }}
       >
-        <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <fieldset
+          disabled={readOnly}
+          style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+        >
           <RecordFields
             spec={spec}
             value={value}

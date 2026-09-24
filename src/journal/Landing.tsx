@@ -59,7 +59,11 @@ export function Landing({
   relayCount: number;
   onJoin: (request: JoinRequest) => void;
   onCancelJoin: () => void;
-  onCreate: (journal: Journal, author: string, password?: string) => Promise<void> | void;
+  onCreate: (
+    journal: Journal,
+    author: string,
+    password?: string,
+  ) => Promise<void> | void;
   onDemo: () => void;
   onImport: () => void;
   onPrivacy: () => void;
@@ -132,10 +136,16 @@ export function Landing({
             </button>
           </div>
         </section>
-        <section className="panel start spot reveal" style={{ animationDelay: "120ms" }}>
+        <section
+          className="panel start spot reveal"
+          style={{ animationDelay: "120ms" }}
+        >
           <div className="tabs" role="tablist">
             {stored && (
-              <button aria-pressed={tab === "resume"} onClick={() => setTab("resume")}>
+              <button
+                aria-pressed={tab === "resume"}
+                onClick={() => setTab("resume")}
+              >
                 <LockKeyhole size={14} />
                 Reprendre
               </button>
@@ -143,7 +153,10 @@ export function Landing({
             <button aria-pressed={tab === "new"} onClick={() => setTab("new")}>
               Nouvelle session
             </button>
-            <button aria-pressed={tab === "join"} onClick={() => setTab("join")}>
+            <button
+              aria-pressed={tab === "join"}
+              onClick={() => setTab("join")}
+            >
               <Wifi size={14} />
               Rejoindre
             </button>
@@ -215,10 +228,15 @@ export function Landing({
                 </details>
               </>
             )}
-            {tab === "new" && <JournalSetup recovery={!stored} onCreate={onCreate} />}
+            {tab === "new" && (
+              <JournalSetup recovery={!stored} onCreate={onCreate} />
+            )}
             {tab === "join" &&
               (joining ? (
-                <div className="stack" style={{ alignItems: "center", textAlign: "center" }}>
+                <div
+                  className="stack"
+                  style={{ alignItems: "center", textAlign: "center" }}
+                >
                   <div className="empty-state" style={{ padding: "12px 0" }}>
                     <div className="orbit">
                       <Wifi size={28} />
@@ -250,7 +268,9 @@ export function Landing({
                       return;
                     }
                     if (protect && secret !== repeat) {
-                      setFailure("Les phrases de récupération ne correspondent pas.");
+                      setFailure(
+                        "Les phrases de récupération ne correspondent pas.",
+                      );
                       return;
                     }
                     onJoin({

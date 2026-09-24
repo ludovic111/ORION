@@ -41,10 +41,12 @@ export function usePrefs() {
     const apply = () => {
       const light =
         prefs.theme === "light" ||
-        (prefs.theme === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+        (prefs.theme === "auto" &&
+          matchMedia("(prefers-color-scheme: light)").matches);
       root.dataset.theme = light ? "light" : "dark";
       root.dataset.motion =
-        prefs.motion === "reduced" || matchMedia("(prefers-reduced-motion: reduce)").matches
+        prefs.motion === "reduced" ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches
           ? "reduced"
           : "full";
       document

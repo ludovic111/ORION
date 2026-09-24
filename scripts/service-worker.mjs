@@ -56,7 +56,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.origin !== self.location.origin || url.pathname === '/sync') return;
-  if (url.pathname.startsWith('/symbols/')) {
+  if (url.pathname.startsWith('/symbols/') && url.pathname.endsWith('.svg')) {
     event.respondWith(cacheFirst(SYMBOLS, event.request));
     return;
   }

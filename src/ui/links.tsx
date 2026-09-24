@@ -58,11 +58,19 @@ export const hueStyle = (kind: RefKind) =>
   ({ "--h": KIND_INFO[kind].hue }) as CSSProperties;
 
 export function KindDot({ kind }: { kind: RefKind }) {
-  return <span className="kind-dot" style={hueStyle(kind)} aria-hidden="true" />;
+  return (
+    <span className="kind-dot" style={hueStyle(kind)} aria-hidden="true" />
+  );
 }
 
 /** Item summary and everything it is linked to. */
-export function ItemPreview({ target, limit = 8 }: { target: Ref; limit?: number }) {
+export function ItemPreview({
+  target,
+  limit = 8,
+}: {
+  target: Ref;
+  limit?: number;
+}) {
   const { journal, graph } = useApp();
   const item = graph.byRef.get(target);
   const around = useMemo(
@@ -94,7 +102,9 @@ export function ItemPreview({ target, limit = 8 }: { target: Ref; limit?: number
           })}
           {around.length > limit && (
             <li>
-              <span className="muted">+ {around.length - limit} autre(s) lien(s)</span>
+              <span className="muted">
+                + {around.length - limit} autre(s) lien(s)
+              </span>
             </li>
           )}
         </ul>
@@ -103,7 +113,15 @@ export function ItemPreview({ target, limit = 8 }: { target: Ref; limit?: number
   );
 }
 
-export function HoverCard({ target, x, y }: { target: Ref; x: number; y: number }) {
+export function HoverCard({
+  target,
+  x,
+  y,
+}: {
+  target: Ref;
+  x: number;
+  y: number;
+}) {
   const left = Math.max(8, Math.min(x, window.innerWidth - 336));
   const top = y + 280 > window.innerHeight ? Math.max(8, y - 290) : y;
   return createPortal(
@@ -140,7 +158,10 @@ export function LinkChip({
         onMouseEnter={(e) => {
           const box = e.currentTarget.getBoundingClientRect();
           clearTimeout(timer.current);
-          timer.current = setTimeout(() => setHover({ x: box.left, y: box.bottom + 6 }), 350);
+          timer.current = setTimeout(
+            () => setHover({ x: box.left, y: box.bottom + 6 }),
+            350,
+          );
         }}
         onMouseLeave={() => {
           clearTimeout(timer.current);
@@ -152,7 +173,13 @@ export function LinkChip({
         }}
         onBlur={() => setHover(null)}
       >
-        <Icon size={13} style={{ color: `hsl(${KIND_INFO[item.kind].hue} 85% 68%)`, flex: "none" }} />
+        <Icon
+          size={13}
+          style={{
+            color: `hsl(${KIND_INFO[item.kind].hue} 85% 68%)`,
+            flex: "none",
+          }}
+        />
         <span className="title">{item.title}</span>
         {label && <small>{label}</small>}
       </button>
@@ -208,8 +235,18 @@ export function ItemSearch({
         {results.map((item) => {
           const Icon = KIND_ICON[item.kind];
           return (
-            <button key={item.ref} className="row-item" onClick={() => onPick(item)}>
-              <Icon size={15} style={{ color: `hsl(${KIND_INFO[item.kind].hue} 85% 68%)`, flex: "none" }} />
+            <button
+              key={item.ref}
+              className="row-item"
+              onClick={() => onPick(item)}
+            >
+              <Icon
+                size={15}
+                style={{
+                  color: `hsl(${KIND_INFO[item.kind].hue} 85% 68%)`,
+                  flex: "none",
+                }}
+              />
               <span className="row-main">
                 <strong>{item.title}</strong>
                 <small>
@@ -231,7 +268,13 @@ export function ItemSearch({
 }
 
 /** Everything linked to an item, with adding and removing of links. */
-export function LinksPanel({ target, compact = false }: { target: Ref; compact?: boolean }) {
+export function LinksPanel({
+  target,
+  compact = false,
+}: {
+  target: Ref;
+  compact?: boolean;
+}) {
   const { journal, graph, updateOps, author, readOnly } = useApp();
   const [picking, setPicking] = useState(false);
   const [label, setLabel] = useState("");
@@ -262,9 +305,9 @@ export function LinksPanel({ target, compact = false }: { target: Ref; compact?:
       </div>
       {!around.length && !compact && (
         <p className="muted" style={{ fontSize: 12 }}>
-          Aucun lien. « Lier » relie cet élément à une entrée, un message, un moyen,
-          une personne, un objet de la carte… Les noms d’appel, émetteurs et
-          références (#012) sont reliés automatiquement.
+          Aucun lien. « Lier » relie cet élément à une entrée, un message, un
+          moyen, une personne, un objet de la carte… Les noms d’appel, émetteurs
+          et références (#012) sont reliés automatiquement.
         </p>
       )}
       {grouped.map(([kind, list]) => (
@@ -301,7 +344,9 @@ export function LinksPanel({ target, compact = false }: { target: Ref; compact?:
             <ItemSearch
               exclude={[target, ...around.map((n) => n.ref)]}
               onPick={(item) => {
-                updateOps((ops) => addLink(ops, target, item.ref as Ref, label.trim(), author));
+                updateOps((ops) =>
+                  addLink(ops, target, item.ref as Ref, label.trim(), author),
+                );
                 setPicking(false);
                 setLabel("");
               }}

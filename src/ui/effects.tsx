@@ -5,7 +5,9 @@ export function useSpotlight() {
   useEffect(() => {
     let last: HTMLElement | null = null;
     const move = (e: PointerEvent) => {
-      const target = (e.target as HTMLElement | null)?.closest?.(".spot") as HTMLElement | null;
+      const target = (e.target as HTMLElement | null)?.closest?.(
+        ".spot",
+      ) as HTMLElement | null;
       if (last && last !== target) {
         last.style.removeProperty("--mx");
         last.style.removeProperty("--my");
@@ -28,7 +30,14 @@ export function ClickSparks() {
     const el = canvas.current;
     const ctx = el?.getContext("2d");
     if (!el || !ctx) return;
-    type Spark = { x: number; y: number; a: number; v: number; life: number; hue: number };
+    type Spark = {
+      x: number;
+      y: number;
+      a: number;
+      v: number;
+      life: number;
+      hue: number;
+    };
     let sparks: Spark[] = [];
     let frame = 0;
     const size = () => {
@@ -49,7 +58,10 @@ export function ClickSparks() {
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(x + Math.cos(s.a) * 7 * s.life, y + Math.sin(s.a) * 7 * s.life);
+        ctx.lineTo(
+          x + Math.cos(s.a) * 7 * s.life,
+          y + Math.sin(s.a) * 7 * s.life,
+        );
         ctx.stroke();
         s.life -= 0.045;
       }
@@ -57,7 +69,9 @@ export function ClickSparks() {
     };
     const click = (e: MouseEvent) => {
       if (document.documentElement.dataset.motion === "reduced") return;
-      const target = (e.target as HTMLElement | null)?.closest?.("button.primary, .spark");
+      const target = (e.target as HTMLElement | null)?.closest?.(
+        "button.primary, .spark",
+      );
       if (!target || e.detail === 0) return;
       const hues = [190, 250, 320];
       for (let i = 0; i < 10; i++)
@@ -84,7 +98,13 @@ export function ClickSparks() {
 
 const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#*+<>/";
 /** Title that decodes itself when it appears. */
-export function DecryptText({ text, speed = 28 }: { text: string; speed?: number }) {
+export function DecryptText({
+  text,
+  speed = 28,
+}: {
+  text: string;
+  speed?: number;
+}) {
   const [shown, setShown] = useState(text);
   useEffect(() => {
     if (document.documentElement.dataset.motion === "reduced") {
@@ -100,7 +120,9 @@ export function DecryptText({ text, speed = 28 }: { text: string; speed?: number
         text
           .split("")
           .map((c, i) =>
-            i < done || c === " " ? c : GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
+            i < done || c === " "
+              ? c
+              : GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
           )
           .join(""),
       );
@@ -116,7 +138,13 @@ export function DecryptText({ text, speed = 28 }: { text: string; speed?: number
 }
 
 /** Number that counts up to its value. */
-export function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
+export function CountUp({
+  value,
+  duration = 900,
+}: {
+  value: number;
+  duration?: number;
+}) {
   const [shown, setShown] = useState(value);
   const from = useRef(0);
   useEffect(() => {

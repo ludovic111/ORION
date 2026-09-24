@@ -1,0 +1,342 @@
+/* Réseau des liens */
+.net-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  overflow: hidden;
+}
+.net-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 14px 8px;
+}
+.net-search {
+  flex: 1 1 240px;
+  max-width: 360px;
+  height: 34px;
+  border-radius: var(--radius);
+}
+.net-found {
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 11px;
+}
+.net-toggle {
+  font-size: 12.5px;
+}
+.net-stats {
+  margin-left: auto;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.net-stats strong {
+  color: var(--text);
+  font-family: var(--display);
+  font-weight: 600;
+}
+.net-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.net-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid hsl(var(--h) 80% 65% / 0.35);
+  border-radius: 99px;
+  background: hsl(var(--h) 80% 60% / 0.1);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    opacity 160ms,
+    background 160ms,
+    border-color 160ms;
+}
+.net-kind i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--h) 85% 65%);
+  box-shadow: 0 0 10px hsl(var(--h) 85% 60% / 0.7);
+}
+.net-kind small {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.net-kind[aria-pressed="false"] {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--text-3);
+  opacity: 0.65;
+}
+.net-kind[aria-pressed="false"] i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px hsl(var(--h) 60% 60% / 0.7);
+}
+.net-kind:hover {
+  border-color: hsl(var(--h) 80% 65% / 0.7);
+}
+:root[data-theme="light"] .net-kind i {
+  background: hsl(var(--h) 72% 46%);
+}
+
+.net-stage {
+  position: relative;
+  height: calc(100vh - 220px);
+  min-height: 480px;
+  overflow: hidden;
+  background: radial-gradient(
+    80% 70% at 50% 50%,
+    rgba(var(--accent-rgb), 0.06),
+    transparent 70%
+  );
+}
+.net-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+.net-stage canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.net-note {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: 360px;
+  padding: 14px 18px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-1);
+  color: var(--text-2);
+  text-align: center;
+}
+.net-controls {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.net-controls .icon-button {
+  width: 32px;
+  height: 32px;
+}
+.net-fit {
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.net-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-1) 80%, transparent);
+  pointer-events: none;
+}
+.net-legend div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.net-legend dt {
+  display: flex;
+  letter-spacing: 0;
+}
+.net-legend dd {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.net-line {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background: color-mix(in srgb, var(--text-2) 45%, transparent);
+}
+.net-line.strong {
+  height: 2px;
+  background: var(--text-2);
+}
+.net-ring {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--crit);
+  border-radius: 50%;
+}
+.net-size {
+  display: block;
+  width: 14px;
+  height: 8px;
+  background:
+    radial-gradient(circle at 3px 5px, var(--text-3) 2.5px, transparent 3px),
+    radial-gradient(circle at 10px 4px, var(--text-3) 4px, transparent 4.5px);
+}
+
+.net-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--solid) 88%, transparent);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  box-shadow: var(--shadow);
+  animation: net-slide 260ms var(--ease);
+}
+.net-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: hsl(var(--h) 85% 68%);
+}
+.net-panel-head .icon-button {
+  margin-left: auto;
+}
+:root[data-theme="light"] .net-panel-head {
+  color: hsl(var(--h) 72% 42%);
+}
+.net-panel h3 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+.net-panel > p {
+  margin-top: -6px;
+  font-size: 12px;
+}
+.net-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+@keyframes net-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.net-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+}
+.net-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.net-top .link-chip {
+  max-width: 240px;
+}
+.net-hint {
+  margin-left: auto;
+  font-size: 11.5px;
+}
+
+@media (max-width: 900px) {
+  .net-stats {
+    margin-left: 0;
+    width: 100%;
+  }
+  .net-search {
+    max-width: none;
+  }
+  .net-kinds {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .net-kind {
+    flex: none;
+  }
+  .net-stage {
+    height: calc(100vh - 260px);
+    min-height: 420px;
+  }
+  .net-legend,
+  .net-hint {
+    display: none;
+  }
+  .net-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 58%;
+    animation-name: net-rise;
+  }
+  .net-controls {
+    left: auto;
+    right: 8px;
+    top: 8px;
+    bottom: auto;
+  }
+}
+@keyframes net-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

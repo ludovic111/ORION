@@ -119,11 +119,16 @@ const moduleFromHash = (): Module => {
   const hash = location.hash.slice(1);
   if (hash.startsWith("scan=")) return "radio";
   const [name] = hash.split("/");
-  return (MODULE_IDS as string[]).includes(name) ? (name as Module) : "situation";
+  return (MODULE_IDS as string[]).includes(name)
+    ? (name as Module)
+    : "situation";
 };
-const scanFromHash = () => (location.hash.startsWith("#scan=") ? location.hash : "");
+const scanFromHash = () =>
+  location.hash.startsWith("#scan=") ? location.hash : "";
 const joinFromHash = () =>
-  location.hash.startsWith("#join=") ? decodeURIComponent(location.hash.slice(6)) : "";
+  location.hash.startsWith("#join=")
+    ? decodeURIComponent(location.hash.slice(6))
+    : "";
 
 export default function App() {
   const store = useWorkspace();
@@ -136,7 +141,9 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [docsTopic, setDocsTopic] = useState("start");
   const [entryId, setEntryId] = useState<string | null>(null);
-  const [entryMode, setEntryMode] = useState<"view" | "edit" | "delete">("view");
+  const [entryMode, setEntryMode] = useState<"view" | "edit" | "delete">(
+    "view",
+  );
   const [focus, setFocus] = useState<Ref | null>(null);
   const [print, setPrint] = useState<PrintJob | null>(null);
   const [autoQueue, setAutoQueue] = useState<PrintJob[]>([]);
@@ -144,9 +151,10 @@ export default function App() {
   const [joinCode] = useState(joinFromHash);
   const [joining, setJoining] = useState<JoinRequest | null>(null);
   const [joinError, setJoinError] = useState("");
-  const [closeOffer, setCloseOffer] = useState<{ receipt: string; ids: string[] } | null>(
-    null,
-  );
+  const [closeOffer, setCloseOffer] = useState<{
+    receipt: string;
+    ids: string[];
+  } | null>(null);
   const install = useInstall();
   const [online, setOnline] = useState(navigator.onLine);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -158,9 +166,10 @@ export default function App() {
   const [preset, setPreset] = useState<Fields | undefined>();
   const [formGeneration, setFormGeneration] = useState(0);
   const [backups, setBackups] = useState<Record<string, string>>({});
-  const [menu, setMenu] = useState<{ kind: "journal" | "operator"; anchor: HTMLElement } | null>(
-    null,
-  );
+  const [menu, setMenu] = useState<{
+    kind: "journal" | "operator";
+    anchor: HTMLElement;
+  } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const journal = workspace?.journals.find((j) => j.id === workspace.activeId);
   const latestJournal = useRef(journal);
@@ -188,11 +197,15 @@ export default function App() {
         author: joining.author,
         journals: remote.journals,
         activeId: remote.journals[0].id,
-        gone: remote.gone && Object.keys(remote.gone).length ? remote.gone : undefined,
+        gone:
+          remote.gone && Object.keys(remote.gone).length
+            ? remote.gone
+            : undefined,
         room: joining.code,
       };
       try {
-        if (joining.password) await store.startProtected(value, joining.password);
+        if (joining.password)
+          await store.startProtected(value, joining.password);
         else store.start(value);
         setJoining(null);
         setJoinError("");
@@ -211,7 +224,10 @@ export default function App() {
         if (!source || source.id !== journalId) return;
         const entries = source.entries.filter((e) => ids.includes(e.id));
         if (entries.length)
-          setAutoQueue((q) => [...q, { kind: "messages", journal: source, entries }]);
+          setAutoQueue((q) => [
+            ...q,
+            { kind: "messages", journal: source, entries },
+          ]);
       }, 300);
     },
   });
@@ -283,7 +299,8 @@ export default function App() {
 
   // ---------- Derived data ----------
   const graph = useMemo<Graph>(() => {
-    if (!journal) return { items: [], byRef: new Map(), edges: [], degree: new Map() };
+    if (!journal)
+      return { items: [], byRef: new Map(), edges: [], degree: new Map() };
     const list = allItems(journal);
     const links = allEdges(journal);
     const degree = new Map<string, number>();
@@ -291,7 +308,12 @@ export default function App() {
       degree.set(e.a, (degree.get(e.a) ?? 0) + 1);
       degree.set(e.b, (degree.get(e.b) ?? 0) + 1);
     }
-    return { items: list, byRef: new Map(list.map((i) => [i.ref, i])), edges: links, degree };
+    return {
+      items: list,
+      byRef: new Map(list.map((i) => [i.ref, i])),
+      edges: links,
+      degree,
+    };
   }, [journal]);
   const follow = journal?.entries.filter(needsFollowUp) ?? [];
   const late = follow.filter((e) => overdue(e, minute));
@@ -319,14 +341,20 @@ export default function App() {
 
   // ---------- Actions ----------
   const go = useCallback((value: Module) => {
-    history.replaceState(null, "", value === "situation" ? location.pathname : `#${value}`);
+    history.replaceState(
+      null,
+      "",
+      value === "situation" ? location.pathname : `#${value}`,
+    );
     setModule(value);
     setMenu(null);
   }, []);
   function discardDraft() {
     if (
       draftExists &&
-      !window.confirm("Une entrée n’est pas encore consignée. Abandonner cette saisie ?")
+      !window.confirm(
+        "Une entrée n’est pas encore consignée. Abandonner cette saisie ?",
+      )
     )
       return false;
     setDraft(false);
@@ -346,7 +374,9 @@ export default function App() {
         previous
           ? workspaceSchema.parse({
               ...previous,
-              journals: previous.journals.map((j) => (j.id === value.id ? value : j)),
+              journals: previous.journals.map((j) =>
+                j.id === value.id ? value : j,
+              ),
             })
           : previous,
       ),
@@ -356,7 +386,8 @@ export default function App() {
     (change: (ops: Ops) => Ops) => {
       const base = latestJournal.current;
       if (!base) return;
-      if (base.closedAt) throw new Error("Ce journal est clôturé. Rouvrez-le pour modifier.");
+      if (base.closedAt)
+        throw new Error("Ce journal est clôturé. Rouvrez-le pour modifier.");
       // Validate first: an invalid change is refused with its message.
       opsSchema.parse(change(base.ops));
       setWorkspace((previous) =>
@@ -364,7 +395,9 @@ export default function App() {
           ? {
               ...previous,
               journals: previous.journals.map((j) =>
-                j.id === previous.activeId ? { ...j, ops: opsSchema.parse(change(j.ops)) } : j,
+                j.id === previous.activeId
+                  ? { ...j, ops: opsSchema.parse(change(j.ops)) }
+                  : j,
               ),
             }
           : previous,
@@ -395,12 +428,15 @@ export default function App() {
     if (!journal) return;
     setDraft(true);
     setWorkspace((previous) =>
-      previous ? { ...previous, drafts: { ...previous.drafts, [journal.id]: fields } } : previous,
+      previous
+        ? { ...previous, drafts: { ...previous.drafts, [journal.id]: fields } }
+        : previous,
     );
   }
   function queueEntryPrint(j: Journal, entryIds: string[]) {
     const entries = j.entries.filter((e) => entryIds.includes(e.id));
-    if (entries.length) setAutoQueue((q) => [...q, { kind: "messages", journal: j, entries }]);
+    if (entries.length)
+      setAutoQueue((q) => [...q, { kind: "messages", journal: j, entries }]);
   }
   function add(fields: Fields) {
     if (!journal || !workspace) return;
@@ -411,41 +447,77 @@ export default function App() {
     setWorkspace({
       ...workspace,
       drafts,
-      journals: workspace.journals.map((j) => (j.id === journal.id ? updated : j)),
+      journals: workspace.journals.map((j) =>
+        j.id === journal.id ? updated : j,
+      ),
     });
     setDraft(false);
     setFormGeneration((value) => value + 1);
     const entry = updated.entries.at(-1)!;
     const receipt = numberLabel(entry);
-    setToast(`Entrée ${receipt} consignée.${prefs.autoPrint ? " Impression lancée." : ""}`);
-    setCloseOffer(closable.length ? { receipt, ids: closable.map((e) => e.id) } : null);
+    setToast(
+      `Entrée ${receipt} consignée.${prefs.autoPrint ? " Impression lancée." : ""}`,
+    );
+    setCloseOffer(
+      closable.length ? { receipt, ids: closable.map((e) => e.id) } : null,
+    );
     if (prefs.autoPrint) queueEntryPrint(updated, [entry.id]);
   }
   const addEntryFrom = (partial: Partial<Fields>, links: Ref[] = []) => {
     const base = latestJournal.current;
     if (!base || !workspace) return null;
     const fields = fieldsSchema.parse({ ...emptyFields(), ...partial });
-    const updated = addEntry(base, fields, workspace.author);
-    const entry = updated.entries.at(-1)!;
-    let ops = updated.ops;
-    for (const l of links) ops = addLink(ops, ref("entry", entry.id), l, "", workspace.author);
-    const next = { ...updated, ops };
-    updateJournal(next);
-    if (prefs.autoPrint) queueEntryPrint(next, [entry.id]);
-    return entry.id;
+    // Fail early (closed journal…) before touching the state.
+    addEntry(base, fields, workspace.author);
+    const id = crypto.randomUUID();
+    const author = workspace.author;
+    // Built from the latest state: a change made just before is kept.
+    setWorkspace((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        journals: previous.journals.map((j) => {
+          if (j.id !== base.id) return j;
+          const updated = addEntry(j, fields, author);
+          const entries = updated.entries.map((e, i, all) =>
+            i === all.length - 1 ? { ...e, id } : e,
+          );
+          let ops = updated.ops;
+          for (const l of links)
+            ops = addLink(ops, ref("entry", id), l, "", author);
+          return { ...updated, entries, ops };
+        }),
+      };
+    });
+    if (prefs.autoPrint)
+      setTimeout(() => {
+        const latest = latestJournal.current;
+        if (latest) queueEntryPrint(latest, [id]);
+      }, 80);
+    return id;
   };
   function revise(id: string, change: Partial<Fields>, reason: string) {
     if (!journal || !workspace) return;
     const entry = journal.entries.find((e) => e.id === id);
     if (!entry) return;
     updateJournal(
-      reviseEntry(journal, id, { ...current(entry), ...change }, workspace.author, reason),
+      reviseEntry(
+        journal,
+        id,
+        { ...current(entry), ...change },
+        workspace.author,
+        reason,
+      ),
     );
   }
   function snoozeEntry(id: string, minutes: number) {
     const entry = journal?.entries.find((e) => e.id === id);
     if (!entry) return;
-    revise(id, { dueAt: snooze(current(entry).dueAt, minutes) }, `Échéance reportée de ${minutes} min`);
+    revise(
+      id,
+      { dueAt: snooze(current(entry).dueAt, minutes) },
+      `Échéance reportée de ${minutes} min`,
+    );
     setToast(`${numberLabel(entry)} : échéance reportée de ${minutes} min.`);
   }
   function closeEntries(ids: string[], reason: string) {
@@ -479,7 +551,13 @@ export default function App() {
         { version: 1, author, journals: [value], activeId: value.id },
         password,
       );
-    else store.start({ version: 1, author, journals: [value], activeId: value.id });
+    else
+      store.start({
+        version: 1,
+        author,
+        journals: [value],
+        activeId: value.id,
+      });
     setDialog(null);
     setEntryId(null);
     go("situation");
@@ -494,7 +572,9 @@ export default function App() {
       } else {
         const copy = {
           ...value,
-          id: workspace.journals.some((j) => j.id === value.id) ? crypto.randomUUID() : value.id,
+          id: workspace.journals.some((j) => j.id === value.id)
+            ? crypto.randomUUID()
+            : value.id,
         };
         setWorkspace(
           workspaceSchema.parse({
@@ -522,7 +602,9 @@ export default function App() {
       return;
     }
     if (module === "journal" && matchMedia("(min-width: 1200px)").matches)
-      requestAnimationFrame(() => document.getElementById("quick-message")?.focus());
+      requestAnimationFrame(() =>
+        document.getElementById("quick-message")?.focus(),
+      );
     else setDialog("compose");
   }
   async function closeSession() {
@@ -549,10 +631,13 @@ export default function App() {
   const openImport = () => {
     if (discardDraft()) setDialog("import");
   };
-  const openEntry = useCallback((id: string, mode: "view" | "edit" | "delete" = "view") => {
-    setEntryMode(mode);
-    setEntryId(id);
-  }, []);
+  const openEntry = useCallback(
+    (id: string, mode: "view" | "edit" | "delete" = "view") => {
+      setEntryMode(mode);
+      setEntryId(id);
+    },
+    [],
+  );
   const open = useCallback(
     (target: Ref) => {
       const { kind, id } = parseRef(target);
@@ -574,14 +659,18 @@ export default function App() {
   );
   function switchJournal(id: string) {
     if (!journal || id === journal.id || !discardDraft()) return;
-    setWorkspace((previous) => (previous ? { ...previous, activeId: id } : previous));
+    setWorkspace((previous) =>
+      previous ? { ...previous, activeId: id } : previous,
+    );
     setEntryId(null);
     setMenu(null);
   }
   function removeJournal() {
     if (!workspace || !journal) return;
     if (workspace.journals.length < 2) {
-      setError("Une session garde au moins un journal. Utilisez Session → Effacer la session.");
+      setError(
+        "Une session garde au moins un journal. Utilisez Session → Effacer la session.",
+      );
       return;
     }
     if (
@@ -593,7 +682,12 @@ export default function App() {
     const rest = workspace.journals.filter((j) => j.id !== journal.id);
     const drafts = { ...workspace.drafts };
     delete drafts[journal.id];
-    setWorkspace({ ...workspace, journals: rest, activeId: rest[0].id, drafts });
+    setWorkspace({
+      ...workspace,
+      journals: rest,
+      activeId: rest[0].id,
+      drafts,
+    });
     setToast(`Journal « ${journal.title} » retiré.`);
   }
 
@@ -628,11 +722,16 @@ export default function App() {
           onUnlock={store.unlock}
           onForget={store.forget}
           theme={prefs.theme}
-          onTheme={() => setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" })}
+          onTheme={() =>
+            setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" })
+          }
           error={joinError || store.error || sync.error}
         />
         {dialog === "import" && (
-          <ImportModal onClose={() => setDialog(null)} onImport={importJournal} />
+          <ImportModal
+            onClose={() => setDialog(null)}
+            onImport={importJournal}
+          />
         )}
         {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
       </>
@@ -641,7 +740,9 @@ export default function App() {
   // ---------- Session open ----------
   const radio = radioSummary(journal.radio);
   const readOnly = !!journal.closedAt;
-  const unread = journal.ops.messages.filter((m) => m.status === "Nouveau").length;
+  const unread = journal.ops.messages.filter(
+    (m) => m.status === "Nouveau",
+  ).length;
   const ctx: AppContext = {
     workspace,
     journal,
@@ -723,7 +824,8 @@ export default function App() {
       id: "theme",
       label: prefs.theme === "light" ? "Thème sombre" : "Thème clair",
       icon: prefs.theme === "light" ? <Moon size={16} /> : <Sun size={16} />,
-      run: () => setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" }),
+      run: () =>
+        setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" }),
     },
     {
       id: "settings",
@@ -766,15 +868,22 @@ export default function App() {
             <Brand />
             <button
               className="journal-switch"
-              onClick={(e) => setMenu({ kind: "journal", anchor: e.currentTarget })}
+              onClick={(e) =>
+                setMenu({ kind: "journal", anchor: e.currentTarget })
+              }
               title="Journaux de la session"
             >
-              <span className={`state-dot ${journal.closedAt ? "closed" : ""}`} />
+              <span
+                className={`state-dot ${journal.closedAt ? "closed" : ""}`}
+              />
               <strong>{journal.title}</strong>
               <small>{journal.mode}</small>
               <ChevronDown size={14} />
             </button>
-            <button className="command-trigger" onClick={() => setPalette(true)}>
+            <button
+              className="command-trigger"
+              onClick={() => setPalette(true)}
+            >
               <Search size={15} />
               <span>
                 Rechercher ou agir<span className="wide">… partout</span>
@@ -791,7 +900,9 @@ export default function App() {
                     : `Synchronisation ${sync.status === "live" ? "active" : "en reconnexion"} · ${sync.relayCount} autre(s) poste(s)`
                 }
               >
-                <span className={`radar ${sync.status === "live" ? "" : "idle"}`} />
+                <span
+                  className={`radar ${sync.status === "live" ? "" : "idle"}`}
+                />
                 {sync.status === "off"
                   ? "Seul"
                   : sync.status === "live"
@@ -803,7 +914,9 @@ export default function App() {
                       <span
                         key={p.peer}
                         title={`${p.name} · ${moduleInfo(p.module).short}`}
-                        style={{ ["--h" as string]: (p.name.charCodeAt(0) * 47) % 360 }}
+                        style={{
+                          ["--h" as string]: (p.name.charCodeAt(0) * 47) % 360,
+                        }}
                       >
                         {p.name.slice(0, 2).toUpperCase()}
                       </span>
@@ -829,7 +942,10 @@ export default function App() {
                       : "Temporaire"}
               </span>
               {!online && (
-                <span className="status-chip warn hide-narrow" title="Hors ligne">
+                <span
+                  className="status-chip warn hide-narrow"
+                  title="Hors ligne"
+                >
                   <span className="dot" />
                   Hors ligne
                 </span>
@@ -837,18 +953,32 @@ export default function App() {
               <Clock />
               <button
                 className="icon-button"
-                onClick={() => setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" })}
-                aria-label={prefs.theme === "light" ? "Thème sombre" : "Thème clair"}
+                onClick={() =>
+                  setPrefs({
+                    theme: prefs.theme === "light" ? "dark" : "light",
+                  })
+                }
+                aria-label={
+                  prefs.theme === "light" ? "Thème sombre" : "Thème clair"
+                }
                 title={prefs.theme === "light" ? "Thème sombre" : "Thème clair"}
               >
-                {prefs.theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+                {prefs.theme === "light" ? (
+                  <Moon size={16} />
+                ) : (
+                  <Sun size={16} />
+                )}
               </button>
               <button
                 className="operator"
-                onClick={(e) => setMenu({ kind: "operator", anchor: e.currentTarget })}
+                onClick={(e) =>
+                  setMenu({ kind: "operator", anchor: e.currentTarget })
+                }
                 title="Opérateur, réglages et session"
               >
-                <span className="avatar">{workspace.author.slice(0, 2).toUpperCase()}</span>
+                <span className="avatar">
+                  {workspace.author.slice(0, 2).toUpperCase()}
+                </span>
                 <span className="operator-name">{workspace.author}</span>
               </button>
             </div>
@@ -889,7 +1019,11 @@ export default function App() {
                 )}
               </div>
             )}
-            <div className="module reveal" key={`${module}-${journal.id}`} data-module={info.id}>
+            <div
+              className="module reveal"
+              key={`${module}-${journal.id}`}
+              data-module={info.id}
+            >
               <Suspense
                 fallback={
                   <div className="empty-state">
@@ -912,12 +1046,17 @@ export default function App() {
                     suggestions={suggestions}
                     onDraft={saveDraft}
                     onAdd={add}
-                    onDialog={(d) => (d === "settings" ? setSettings("session") : setDialog(d))}
+                    onDialog={(d) =>
+                      d === "settings" ? setSettings("session") : setDialog(d)
+                    }
                     dirty={dirty}
                     closeOffer={closeOffer}
                     onCloseOffer={(accept) => {
                       if (accept && closeOffer) {
-                        closeEntries(closeOffer.ids, `Clos par la quittance ${closeOffer.receipt}`);
+                        closeEntries(
+                          closeOffer.ids,
+                          `Clos par la quittance ${closeOffer.receipt}`,
+                        );
                         setToast("Suivi terminé.");
                       }
                       setCloseOffer(null);
@@ -932,7 +1071,11 @@ export default function App() {
                       actions={
                         <button
                           onClick={() =>
-                            setPrint({ kind: "radio", journal, author: workspace.author })
+                            setPrint({
+                              kind: "radio",
+                              journal,
+                              author: workspace.author,
+                            })
                           }
                         >
                           <FileText size={14} />
@@ -948,7 +1091,12 @@ export default function App() {
                       onSave={saveRadio}
                       onError={setError}
                       onPrint={(terminalId, assignmentId) =>
-                        setPrint({ kind: "handout", journal, terminalId, assignmentId })
+                        setPrint({
+                          kind: "handout",
+                          journal,
+                          terminalId,
+                          assignmentId,
+                        })
                       }
                       onLabels={() => setPrint({ kind: "labels", journal })}
                       scan={scan}
@@ -988,7 +1136,11 @@ export default function App() {
         </div>
       </div>
       {module === "journal" && !readOnly && (
-        <button className="fab" onClick={() => compose()} aria-label="Nouvelle entrée">
+        <button
+          className="fab"
+          onClick={() => compose()}
+          aria-label="Nouvelle entrée"
+        >
           <Plus size={22} />
         </button>
       )}
@@ -998,7 +1150,9 @@ export default function App() {
           {toast}
         </div>
       )}
-      {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
+      {palette && (
+        <Palette commands={commands} onClose={() => setPalette(false)} />
+      )}
       {menu?.kind === "journal" && (
         <Popover anchor={menu.anchor} onClose={() => setMenu(null)}>
           <div className="menu-label">Journaux de la session</div>
@@ -1012,8 +1166,8 @@ export default function App() {
               <span>
                 {j.title}
                 <small>
-                  {j.closedAt ? "Clôturé" : j.mode} · {j.entries.length} entrées ·{" "}
-                  {j.ops.messages.length} messages
+                  {j.closedAt ? "Clôturé" : j.mode} · {j.entries.length} entrées
+                  · {j.ops.messages.length} messages
                 </small>
               </span>
             </button>
@@ -1086,23 +1240,38 @@ export default function App() {
           {!install.installed && (
             <button
               data-close
-              onClick={() => (install.install ? void install.install() : setDialog("install"))}
+              onClick={() =>
+                install.install ? void install.install() : setDialog("install")
+              }
             >
               <MonitorSmartphone size={15} />
               Installer l’application
             </button>
           )}
-          <a className="menu-link" href="/source/orion-aic-source.tar.gz" download>
+          <a
+            className="menu-link"
+            href="/source/orion-aic-source.tar.gz"
+            download
+          >
             <Download size={15} />
             Code source · AGPL-3.0
           </a>
           <hr />
           <button data-close onClick={() => void closeSession()}>
-            {store.persistent ? <LockKeyhole size={15} /> : <LogOut size={15} />}
+            {store.persistent ? (
+              <LockKeyhole size={15} />
+            ) : (
+              <LogOut size={15} />
+            )}
             {store.persistent ? "Verrouiller" : "Fermer la session"}
           </button>
           <div className="menu-label">
-            orion aic 2.0 · {offlineReady ? "hors ligne prêt" : online ? "en ligne" : "hors ligne"}{" "}
+            orion aic 2.0 ·{" "}
+            {offlineReady
+              ? "hors ligne prêt"
+              : online
+                ? "en ligne"
+                : "hors ligne"}{" "}
             · {radio.issued}/{radio.terminals} radios
           </div>
         </Popover>
@@ -1116,7 +1285,9 @@ export default function App() {
           onOpen={(id) => openEntry(id)}
           onSnooze={(minutes) => snoozeEntry(selected.id, minutes)}
           onDelete={(reason) => {
-            updateJournal(deleteEntry(journal, selected.id, workspace.author, reason));
+            updateJournal(
+              deleteEntry(journal, selected.id, workspace.author, reason),
+            );
             setEntryId(null);
             setToast(`Entrée ${numberLabel(selected)} supprimée.`);
           }}
@@ -1128,7 +1299,15 @@ export default function App() {
             setPrint({ kind: "messages", journal, entries: [selected] });
           }}
           onRevise={(fields, reason) => {
-            updateJournal(reviseEntry(journal, selected.id, fields, workspace.author, reason));
+            updateJournal(
+              reviseEntry(
+                journal,
+                selected.id,
+                fields,
+                workspace.author,
+                reason,
+              ),
+            );
             setToast("Modification enregistrée. Version précédente conservée.");
           }}
           onReply={() => {
@@ -1150,7 +1329,9 @@ export default function App() {
         <PrintPreview
           job={{
             ...print,
-            journal: workspace.journals.find((j) => j.id === print.journal.id) ?? print.journal,
+            journal:
+              workspace.journals.find((j) => j.id === print.journal.id) ??
+              print.journal,
           }}
           onClose={() => setPrint(null)}
         />
@@ -1168,7 +1349,9 @@ export default function App() {
           persistent={store.persistent}
           stored={!!store.stored}
           onProtect={store.protect}
-          onUpdateWorkspace={(value) => setWorkspace(workspaceSchema.parse(value))}
+          onUpdateWorkspace={(value) =>
+            setWorkspace(workspaceSchema.parse(value))
+          }
           onJournal={(value) => {
             const reopened = { ...journal, closedAt: "" };
             const noted = addEntry(
@@ -1176,7 +1359,9 @@ export default function App() {
               {
                 ...emptyFields(),
                 type: "Observation",
-                message: value.closedAt ? "Clôture du journal." : "Réouverture du journal.",
+                message: value.closedAt
+                  ? "Clôture du journal."
+                  : "Réouverture du journal.",
                 reliability: "Confirmé",
               },
               workspace.author,
@@ -1220,12 +1405,19 @@ export default function App() {
           author={workspace.author}
           onClose={() => setDialog(null)}
           onBackup={() =>
-            setBackups((prev) => ({ ...prev, [journal.id]: JSON.stringify(journal) }))
+            setBackups((prev) => ({
+              ...prev,
+              [journal.id]: JSON.stringify(journal),
+            }))
           }
         />
       )}
       {dialog === "import" && (
-        <ImportModal target={journal} onClose={() => setDialog(null)} onImport={importJournal} />
+        <ImportModal
+          target={journal}
+          onClose={() => setDialog(null)}
+          onImport={importJournal}
+        />
       )}
       {dialog === "privacy" && <Privacy onClose={() => setDialog(null)} />}
       {dialog === "report" && (
@@ -1234,7 +1426,12 @@ export default function App() {
           onClose={() => setDialog(null)}
           onPreview={(range) => {
             setDialog(null);
-            setPrint({ kind: "report", journal, author: workspace.author, range });
+            setPrint({
+              kind: "report",
+              journal,
+              author: workspace.author,
+              range,
+            });
           }}
         />
       )}
@@ -1287,7 +1484,11 @@ export default function App() {
       )}
       {dialog === "compose" && (
         <Modal
-          title={preset?.type === "Relève" ? "Consigner la relève" : "Nouvelle entrée"}
+          title={
+            preset?.type === "Relève"
+              ? "Consigner la relève"
+              : "Nouvelle entrée"
+          }
           onClose={() => {
             if (discardDraft()) {
               setDialog(null);

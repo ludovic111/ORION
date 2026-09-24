@@ -10,9 +10,18 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { journalSchema, type Journal, type Workspace } from "../../shared/journal";
+import {
+  journalSchema,
+  type Journal,
+  type Workspace,
+} from "../../shared/journal";
 import { DEFAULT_LISTS } from "../../shared/ops";
-import { joinUrl, newRoomCode, normalizeCode, validCode } from "../../shared/room";
+import {
+  joinUrl,
+  newRoomCode,
+  normalizeCode,
+  validCode,
+} from "../../shared/room";
 import { qrMatrix, qrPath } from "../print/qr";
 import { Modal } from "../journal/Modal";
 import { SessionPanel } from "../journal/SessionSettings";
@@ -155,7 +164,12 @@ function PostSettings() {
           Masquez ce que vous n’utilisez pas. Les données restent intactes et
           les autres postes gardent leur propre choix.
         </p>
-        <div className="tile-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+        <div
+          className="tile-grid"
+          style={{
+            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          }}
+        >
           {MODULES.map((m) => {
             const Icon = m.icon;
             const shown = m.core || !prefs.hidden.includes(m.id);
@@ -202,7 +216,10 @@ function ListsSettings() {
   const save = (next: string[]) =>
     updateOps((ops) => ({
       ...ops,
-      settings: { ...ops.settings, lists: { ...ops.settings.lists, [name]: next } },
+      settings: {
+        ...ops.settings,
+        lists: { ...ops.settings.lists, [name]: next },
+      },
     }));
   return (
     <div className="stack">
@@ -240,22 +257,37 @@ function ListsSettings() {
             disabled={readOnly}
             onChange={(e) => setValue(e.target.value)}
           />
-          <button className="icon-button" aria-label="Ajouter" disabled={readOnly}>
+          <button
+            className="icon-button"
+            aria-label="Ajouter"
+            disabled={readOnly}
+          >
             <Plus size={16} />
           </button>
         </form>
       </div>
       <div className="tag-list" style={{ gap: 6 }}>
         {values.map((v, i) => (
-          <span key={v} className="pill plain" style={{ height: 30, paddingRight: 4 }}>
+          <span
+            key={v}
+            className="pill plain"
+            style={{ height: 30, paddingRight: 4 }}
+          >
             <input
               aria-label={`Modifier ${v}`}
               defaultValue={v}
               disabled={readOnly}
-              style={{ height: 24, border: 0, background: "none", width: `${Math.max(4, v.length + 1)}ch`, padding: 0 }}
+              style={{
+                height: 24,
+                border: 0,
+                background: "none",
+                width: `${Math.max(4, v.length + 1)}ch`,
+                padding: 0,
+              }}
               onBlur={(e) => {
                 const next = e.target.value.trim();
-                if (next && next !== v) save(values.map((x, j) => (j === i ? next : x)));
+                if (next && next !== v)
+                  save(values.map((x, j) => (j === i ? next : x)));
               }}
             />
             {!readOnly && (
@@ -317,8 +349,8 @@ function SyncSettings({
         Plusieurs ordinateurs, tablettes ou téléphones travaillent sur la même
         session, en direct, sans compte ni base de données : chaque poste garde
         toute la session et les postes s’échangent les changements, chiffrés de
-        bout en bout avec le code de session. Le serveur ne fait que relayer
-        des messages illisibles et ne garde rien.
+        bout en bout avec le code de session. Le serveur ne fait que relayer des
+        messages illisibles et ne garde rien.
       </p>
       {!secure && (
         <p className="hint warn">
@@ -328,12 +360,23 @@ function SyncSettings({
         </p>
       )}
       {room ? (
-        <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 20 }}>
+        <div
+          className="card"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0,1fr) auto",
+            gap: 20,
+          }}
+        >
           <div className="stack">
             <span className="label">Code de session</span>
             <strong
               className="display"
-              style={{ fontSize: 30, letterSpacing: "0.08em", fontFamily: "var(--mono)" }}
+              style={{
+                fontSize: 30,
+                letterSpacing: "0.08em",
+                fontFamily: "var(--mono)",
+              }}
             >
               {room}
             </strong>
@@ -424,7 +467,11 @@ function SyncSettings({
               Crée un code unique. Les postes qui le saisissent reçoivent toute
               la session et restent synchronisés.
             </p>
-            <button className="primary" disabled={!secure} onClick={() => start(newRoomCode())}>
+            <button
+              className="primary"
+              disabled={!secure}
+              onClick={() => start(newRoomCode())}
+            >
               Créer un code de session
             </button>
           </div>
@@ -482,14 +529,21 @@ function JournalProperties() {
       className="settings-section"
       onSubmit={(e) => {
         e.preventDefault();
-        const parsed = journalSchema.safeParse({ ...journal, ...value, title: value.title.trim() });
+        const parsed = journalSchema.safeParse({
+          ...journal,
+          ...value,
+          title: value.title.trim(),
+        });
         if (!parsed.success) return;
         updateJournal(parsed.data);
         toast("Journal modifié.");
       }}
     >
       <h3 className="section-label">Journal · propriétés</h3>
-      <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0 }}>
+      <fieldset
+        disabled={readOnly}
+        style={{ border: 0, padding: 0, margin: 0 }}
+      >
         <div className="form-grid">
           <TextField
             className="span-2"
@@ -522,7 +576,9 @@ function JournalProperties() {
           <ChoiceField
             label="Diffusion"
             value={value.classification}
-            onChange={(classification) => setValue({ ...value, classification })}
+            onChange={(classification) =>
+              setValue({ ...value, classification })
+            }
             options={["Interne", "Confidentiel"] as const}
           />
         </div>
@@ -533,4 +589,3 @@ function JournalProperties() {
     </form>
   );
 }
-

@@ -31,9 +31,7 @@ async function acquireWriter(): Promise<() => void> {
   });
 }
 type Update =
-  | Workspace
-  | null
-  | ((previous: Workspace | null) => Workspace | null);
+  Workspace | null | ((previous: Workspace | null) => Workspace | null);
 export function useWorkspace() {
   const [workspace, setRaw] = useState<Workspace | null>(null);
   // Journals changed on this post since the last synchronisation message.

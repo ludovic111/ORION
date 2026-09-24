@@ -31,7 +31,9 @@ export function ModuleHead({
         <h1>
           <DecryptText text={title ?? info.label} />
         </h1>
-        {(description ?? info.description) && <p>{description ?? info.description}</p>}
+        {(description ?? info.description) && (
+          <p>{description ?? info.description}</p>
+        )}
       </div>
       <div className="module-actions">
         {actions}

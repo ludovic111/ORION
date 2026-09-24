@@ -37,8 +37,16 @@ h3,
   overflow: hidden;
   pointer-events: none;
   background:
-    radial-gradient(120% 80% at 80% -10%, rgba(var(--accent-rgb), 0.16), transparent 60%),
-    radial-gradient(90% 70% at -10% 110%, rgba(63, 220, 255, 0.08), transparent 60%),
+    radial-gradient(
+      120% 80% at 80% -10%,
+      rgba(var(--accent-rgb), 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at -10% 110%,
+      rgba(63, 220, 255, 0.08),
+      transparent 60%
+    ),
     var(--bg);
 }
 .cosmos canvas {
@@ -64,19 +72,31 @@ h3,
 .aurora span:nth-child(1) {
   left: 55%;
   top: 0%;
-  background: radial-gradient(circle, rgba(139, 123, 255, 0.55), transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(139, 123, 255, 0.55),
+    transparent 65%
+  );
 }
 .aurora span:nth-child(2) {
   left: 5%;
   top: 45%;
-  background: radial-gradient(circle, rgba(63, 220, 255, 0.35), transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(63, 220, 255, 0.35),
+    transparent 65%
+  );
   animation-duration: 46s;
   animation-delay: -12s;
 }
 .aurora span:nth-child(3) {
   left: 35%;
   top: 60%;
-  background: radial-gradient(circle, rgba(255, 114, 200, 0.28), transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 114, 200, 0.28),
+    transparent 65%
+  );
   animation-duration: 54s;
   animation-delay: -24s;
 }
@@ -101,8 +121,16 @@ h3,
 }
 :root[data-theme="light"] .cosmos {
   background:
-    radial-gradient(120% 80% at 80% -10%, rgba(92, 69, 255, 0.12), transparent 60%),
-    radial-gradient(90% 70% at -10% 110%, rgba(0, 152, 199, 0.1), transparent 60%),
+    radial-gradient(
+      120% 80% at 80% -10%,
+      rgba(92, 69, 255, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at -10% 110%,
+      rgba(0, 152, 199, 0.1),
+      transparent 60%
+    ),
     var(--bg);
 }
 :root[data-theme="light"] .aurora {
@@ -262,7 +290,11 @@ h3,
 }
 .dock-item[aria-current="page"] {
   color: var(--text);
-  background: linear-gradient(140deg, rgba(var(--accent-rgb), 0.35), rgba(63, 220, 255, 0.12));
+  background: linear-gradient(
+    140deg,
+    rgba(var(--accent-rgb), 0.35),
+    rgba(63, 220, 255, 0.12)
+  );
   border-color: rgba(var(--accent-rgb), 0.45);
   box-shadow:
     0 0 24px rgba(var(--accent-rgb), 0.35),
@@ -779,13 +811,23 @@ button.status-chip {
 }
 button.primary {
   border: 0;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 60%, #b76bff 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    var(--accent-2) 60%,
+    #b76bff 100%
+  );
   box-shadow:
     0 6px 20px rgba(var(--accent-rgb), 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 button.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #9d8fff 0%, var(--accent) 60%, #c47dff 100%);
+  background: linear-gradient(
+    135deg,
+    #9d8fff 0%,
+    var(--accent) 60%,
+    #c47dff 100%
+  );
   box-shadow:
     0 8px 28px rgba(var(--accent-rgb), 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);

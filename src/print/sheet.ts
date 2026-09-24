@@ -325,7 +325,11 @@ export function intakeSheet(message: Message, number: number): FormSheet {
             { label: "À", value: or(message.to), strong: true, span: 2 },
           ],
           [
-            { label: "Reçu le", value: dateTime(message.receivedAt), mono: true },
+            {
+              label: "Reçu le",
+              value: dateTime(message.receivedAt),
+              mono: true,
+            },
             { label: "Canal", value: or(message.via) },
             { label: "Reçu par", value: or(message.by) },
           ],
@@ -343,7 +347,11 @@ export function intakeSheet(message: Message, number: number): FormSheet {
         rows: [
           [
             { label: "Lieu / secteur", value: or(message.location), span: 2 },
-            { label: "Coordonnées", value: or(message.coordinates), mono: true },
+            {
+              label: "Coordonnées",
+              value: or(message.coordinates),
+              mono: true,
+            },
           ],
         ],
       },

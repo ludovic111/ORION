@@ -59,7 +59,9 @@ export function JournalView({
   suggestions: string[];
   onDraft: (fields: Fields) => void;
   onAdd: (fields: Fields) => void;
-  onDialog: (dialog: "report" | "handover" | "export" | "deleted" | "settings") => void;
+  onDialog: (
+    dialog: "report" | "handover" | "export" | "deleted" | "settings",
+  ) => void;
   dirty: boolean;
   closeOffer: { receipt: string; ids: string[] } | null;
   onCloseOffer: (accept: boolean) => void;
@@ -67,8 +69,18 @@ export function JournalView({
   onSnooze: (id: string, minutes: number) => void;
   searchRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  const { journal, author, now, readOnly, compose, openEntry, print, prefs, setPrefs, toast } =
-    useApp();
+  const {
+    journal,
+    author,
+    now,
+    readOnly,
+    compose,
+    openEntry,
+    print,
+    prefs,
+    setPrefs,
+    toast,
+  } = useApp();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [newest, setNewest] = useState(true);
@@ -79,15 +91,19 @@ export function JournalView({
   const seen = useRef<Set<string>>(new Set(journal.entries.map((e) => e.id)));
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   useEffect(() => {
-    const added = journal.entries.filter((e) => !seen.current.has(e.id)).map((e) => e.id);
+    const added = journal.entries
+      .filter((e) => !seen.current.has(e.id))
+      .map((e) => e.id);
     journal.entries.forEach((e) => seen.current.add(e.id));
     if (added.length) setFresh(new Set(added));
   }, [journal.entries]);
   const visible = useMemo(() => {
     let entries = searchEntries(journal.entries, query);
     if (filter === "follow") entries = entries.filter(needsFollowUp);
-    if (filter === "urgent") entries = entries.filter((e) => current(e).priority === "Urgent");
-    if (filter === "decisions") entries = entries.filter((e) => current(e).type === "Décision");
+    if (filter === "urgent")
+      entries = entries.filter((e) => current(e).priority === "Urgent");
+    if (filter === "decisions")
+      entries = entries.filter((e) => current(e).type === "Décision");
     if (date)
       entries = entries.filter(
         (e) =>
@@ -106,12 +122,19 @@ export function JournalView({
   }, [journal.id]);
   const follow = journal.entries.filter(needsFollowUp);
   const late = follow.filter((e) => overdue(e, now));
-  const urgent = journal.entries.filter((e) => current(e).priority === "Urgent").length;
-  const decisions = journal.entries.filter((e) => current(e).type === "Décision").length;
+  const urgent = journal.entries.filter(
+    (e) => current(e).priority === "Urgent",
+  ).length;
+  const decisions = journal.entries.filter(
+    (e) => current(e).type === "Décision",
+  ).length;
   const radio = radioSummary(journal.radio);
-  const pickedEntries = chronological(journal.entries.filter((e) => picked.has(e.id)));
+  const pickedEntries = chronological(
+    journal.entries.filter((e) => picked.has(e.id)),
+  );
   const shownIds = visible.slice(0, limit).map((e) => e.id);
-  const allShownPicked = shownIds.length > 0 && shownIds.every((id) => picked.has(id));
+  const allShownPicked =
+    shownIds.length > 0 && shownIds.every((id) => picked.has(id));
   const togglePick = (id: string) =>
     setPicked((previous) => {
       const next = new Set(previous);
@@ -132,7 +155,11 @@ export function JournalView({
           </>
         }
         title={journal.title}
-        description={[journal.organization, journal.location, day(journal.createdAt)]
+        description={[
+          journal.organization,
+          journal.location,
+          day(journal.createdAt),
+        ]
           .filter(Boolean)
           .join(" · ")}
         topic="journal"
@@ -150,7 +177,11 @@ export function JournalView({
               <Download size={14} />
               Exporter
             </button>
-            <button className="primary" disabled={readOnly} onClick={() => compose()}>
+            <button
+              className="primary"
+              disabled={readOnly}
+              onClick={() => compose()}
+            >
               <Plus size={15} />
               Nouvelle entrée
             </button>
@@ -308,12 +339,16 @@ export function JournalView({
               </span>
               <button
                 className="primary"
-                onClick={() => print({ kind: "messages", journal, entries: pickedEntries })}
+                onClick={() =>
+                  print({ kind: "messages", journal, entries: pickedEntries })
+                }
               >
                 <FileText size={14} />
                 Fiches A4
               </button>
-              <button onClick={() => setPicked(new Set())}>Désélectionner</button>
+              <button onClick={() => setPicked(new Set())}>
+                Désélectionner
+              </button>
             </div>
           )}
           <div className="table-scroll">
@@ -361,7 +396,8 @@ export function JournalView({
                   const f = current(entry);
                   const newDay =
                     index === 0 ||
-                    day(current(visible[index - 1]).happenedAt) !== day(f.happenedAt);
+                    day(current(visible[index - 1]).happenedAt) !==
+                      day(f.happenedAt);
                   return (
                     <JournalRow
                       key={entry.id}
@@ -382,7 +418,11 @@ export function JournalView({
             </table>
             {!visible.length && (
               <div className="empty">
-                <p>{journal.entries.length ? "Aucune entrée ne correspond." : "Journal vide."}</p>
+                <p>
+                  {journal.entries.length
+                    ? "Aucune entrée ne correspond."
+                    : "Journal vide."}
+                </p>
                 {journal.entries.length ? (
                   <button
                     onClick={() => {
@@ -407,7 +447,8 @@ export function JournalView({
           <footer className="panel-foot">
             <span>
               {visible.length}
-              {visible.length !== journal.entries.length && ` / ${journal.entries.length}`}{" "}
+              {visible.length !== journal.entries.length &&
+                ` / ${journal.entries.length}`}{" "}
               entrée{visible.length !== 1 ? "s" : ""}
             </span>
             {journal.deleted.length > 0 && (

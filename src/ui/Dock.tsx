@@ -18,7 +18,11 @@ export function Dock({
   onLogo: () => void;
 }) {
   const rail = useRef<HTMLDivElement>(null);
-  const [tip, setTip] = useState<{ m: ModuleInfo; top: number; left: number } | null>(null);
+  const [tip, setTip] = useState<{
+    m: ModuleInfo;
+    top: number;
+    left: number;
+  } | null>(null);
   const visible = MODULES.filter((m) => m.core || !hidden.includes(m.id));
   function magnify(y: number | null) {
     const items = rail.current?.querySelectorAll<HTMLElement>(".dock-item");
@@ -34,7 +38,12 @@ export function Dock({
   let group = -1;
   return (
     <nav className="dock" aria-label="Modules">
-      <button className="dock-logo" onClick={onLogo} aria-label="Situation" title="orion aic">
+      <button
+        className="dock-logo"
+        onClick={onLogo}
+        aria-label="Situation"
+        title="orion aic"
+      >
         <Mark size={34} />
       </button>
       <div
@@ -62,12 +71,20 @@ export function Dock({
                 onMouseEnter={(e) => {
                   const box = e.currentTarget.getBoundingClientRect();
                   if (!matchMedia("(max-width: 900px)").matches)
-                    setTip({ m, top: box.top + box.height / 2 - 18, left: box.right + 16 });
+                    setTip({
+                      m,
+                      top: box.top + box.height / 2 - 18,
+                      left: box.right + 16,
+                    });
                 }}
                 onFocus={(e) => {
                   const box = e.currentTarget.getBoundingClientRect();
                   if (!matchMedia("(max-width: 900px)").matches)
-                    setTip({ m, top: box.top + box.height / 2 - 18, left: box.right + 16 });
+                    setTip({
+                      m,
+                      top: box.top + box.height / 2 - 18,
+                      left: box.right + 16,
+                    });
                 }}
                 onBlur={() => setTip(null)}
               >

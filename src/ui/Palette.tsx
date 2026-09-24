@@ -15,10 +15,19 @@ export type Command = {
 };
 
 const norm = (s: string) =>
-  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr");
+  s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("fr");
 
 /** ⌘K: search everything and run any action from the keyboard. */
-export function Palette({ commands, onClose }: { commands: Command[]; onClose: () => void }) {
+export function Palette({
+  commands,
+  onClose,
+}: {
+  commands: Command[];
+  onClose: () => void;
+}) {
   const { graph, go, open } = useApp();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -26,7 +35,9 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
   const results = useMemo(() => {
     const q = norm(query.trim());
     const actions = commands.filter(
-      (c) => !q || norm(`${c.label} ${c.hint ?? ""} ${c.keywords ?? ""}`).includes(q),
+      (c) =>
+        !q ||
+        norm(`${c.label} ${c.hint ?? ""} ${c.keywords ?? ""}`).includes(q),
     );
     const modules = MODULES.filter(
       (m) => !q || norm(`${m.label} ${m.description}`).includes(q),
@@ -49,7 +60,12 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
               id: i.ref,
               label: i.title,
               hint: `${KIND_INFO[i.kind].label}${i.subtitle ? ` · ${i.subtitle}` : ""}`,
-              icon: <Icon size={16} style={{ color: `hsl(${KIND_INFO[i.kind].hue} 85% 68%)` }} />,
+              icon: (
+                <Icon
+                  size={16}
+                  style={{ color: `hsl(${KIND_INFO[i.kind].hue} 85% 68%)` }}
+                />
+              ),
               run: () => open(i.ref as Ref),
             };
           })
@@ -80,7 +96,12 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
       className="palette-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Rechercher et agir">
+      <div
+        className="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Rechercher et agir"
+      >
         <div className="palette-input">
           <Search size={18} />
           <input
