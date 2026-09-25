@@ -70,3 +70,19 @@ test("static server refuses writes, old API routes and files outside the build",
   assert.equal(head.status, 200);
   assert.equal(await head.text(), "");
 });
+
+test("behind the HTTPS proxy the site enforces HTTPS", async () => {
+  const secure = await fetch(`${base}/`, {
+    headers: { "x-forwarded-proto": "https" },
+  });
+  assert.match(
+    secure.headers.get("strict-transport-security") ?? "",
+    /max-age=31536000/,
+  );
+  const policy = secure.headers.get("content-security-policy") ?? "";
+  assert.match(policy, /upgrade-insecure-requests/);
+  assert.doesNotMatch(policy, /ws:\/\//);
+  const plain = await fetch(`${base}/`);
+  assert.equal(plain.headers.get("strict-transport-security"), null);
+  assert.match(plain.headers.get("content-security-policy") ?? "", /ws:\/\//);
+});

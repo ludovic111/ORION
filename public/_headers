@@ -1,10 +1,11 @@
 /*
   X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
   X-Robots-Tag: noindex, nofollow, noarchive
   Permissions-Policy: camera=(self), microphone=(), geolocation=(self), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wmts.geo.admin.ch https://tile.openstreetmap.org; connect-src 'self' https://api.open-meteo.com https://api3.geo.admin.ch; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wmts.geo.admin.ch https://tile.openstreetmap.org; connect-src 'self' https://api.open-meteo.com https://api3.geo.admin.ch; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; upgrade-insecure-requests
 /index.html
   Cache-Control: no-cache
 /sw.js

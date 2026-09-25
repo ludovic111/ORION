@@ -21,16 +21,37 @@ export const MAP_ORIGINS =
   "https://wmts.geo.admin.ch https://tile.openstreetmap.org";
 export const API_ORIGINS =
   "https://api.open-meteo.com https://api3.geo.admin.ch";
-export function contentSecurityPolicy(host = "") {
-  const sockets = host ? ` wss://${host} ws://${host}` : "";
-  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${MAP_ORIGINS}; connect-src 'self'${sockets} ${API_ORIGINS}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'`;
+/**
+ * Content security policy. Over HTTPS the relay is reached with wss:// only
+ * and any http:// sub-request is upgraded, so browsers never flag the page
+ * as "not secure".
+ */
+export function contentSecurityPolicy(host = "", secure = false) {
+  const sockets = host
+    ? secure
+      ? ` wss://${host}`
+      : ` wss://${host} ws://${host}`
+    : "";
+  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${MAP_ORIGINS}; connect-src 'self'${sockets} ${API_ORIGINS}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'${secure ? "; upgrade-insecure-requests" : ""}`;
 }
 
 export async function handle(req, res) {
+  // Behind the hosting proxy (Railway), TLS ends at the proxy.
+  const proxied = String(req.headers["x-forwarded-proto"] ?? "")
+    .split(",")[0]
+    .trim();
+  const secure = proxied === "https" || !!req.socket?.encrypted;
   res.setHeader(
     "Content-Security-Policy",
-    contentSecurityPolicy(req.headers.host),
+    contentSecurityPolicy(req.headers.host, secure),
   );
+  // Public site: browsers must always come back over HTTPS (not sent on the
+  // local-network server, whose certificate is self-signed).
+  if (proxied === "https")
+    res.setHeader(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("X-Frame-Options", "DENY");
