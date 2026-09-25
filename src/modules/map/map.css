@@ -597,8 +597,10 @@
   bottom: 96px;
   left: 50%;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
+  width: max-content;
   max-width: calc(100% - 24px);
   padding: 7px 8px 7px 16px;
   transform: translateX(-50%);

@@ -35,6 +35,7 @@ import {
   Trash2,
   Tv,
   Wifi,
+  Palette as Swatch,
 } from "lucide-react";
 import {
   addEntry,
@@ -106,6 +107,7 @@ import {
 } from "./app/context";
 import { MODULE_IDS, moduleInfo } from "./app/modules";
 import { usePrefs } from "./app/prefs";
+import { PALETTES } from "./app/palettes";
 import { SettingsDialog, type SettingsTab } from "./app/Settings";
 import { useSync } from "./sync/useSync";
 import { JournalView } from "./modules/journal/JournalView";
@@ -966,6 +968,18 @@ export default function App() {
       run: () =>
         setPrefs({ theme: prefs.theme === "light" ? "dark" : "light" }),
     },
+    ...PALETTES.map((p): Command => ({
+      id: `palette-${p.id}`,
+      label: `Thème ${p.label}`,
+      icon: <Swatch size={16} />,
+      run: () =>
+        setPrefs(
+          p.mode === "light"
+            ? { lightPalette: p.id, theme: "light" }
+            : { darkPalette: p.id, theme: "dark" },
+        ),
+      keywords: `couleurs apparence ${p.mode === "light" ? "clair" : "sombre"} ${p.hint}`,
+    })),
     {
       id: "settings",
       label: "Réglages et référentiels",

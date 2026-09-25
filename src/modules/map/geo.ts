@@ -1,4 +1,4 @@
-import { formatMN95, fromMN95, toMN95 } from "../../../shared/coordinates";
+import { formatMN95, fromMN95, toMN95 } from "../../../shared/coordinates.ts";
 
 export type LatLng = [number, number];
 
@@ -133,3 +133,35 @@ const valid = ([lat, lng]: LatLng): LatLng | null =>
   Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0)
     ? [lat, lng]
     : null;
+
+/**
+ * Circle of `radius` metres around `center`, as a closed polygon of `steps`
+ * vertices (great-circle destinations, so the radius holds at any
+ * latitude). Used for the perimeters: an area like any other.
+ */
+export function circlePoints(
+  center: LatLng,
+  radius: number,
+  steps = 72,
+): LatLng[] {
+  const d = radius / R;
+  const lat1 = rad(center[0]);
+  const lng1 = rad(center[1]);
+  const deg = (r: number) => (r * 180) / Math.PI;
+  const round = (n: number) => Math.round(n * 1e6) / 1e6;
+  const out: LatLng[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = (2 * Math.PI * i) / steps;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(t),
+    );
+    const lng2 =
+      lng1 +
+      Math.atan2(
+        Math.sin(t) * Math.sin(d) * Math.cos(lat1),
+        Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+      );
+    out.push([round(deg(lat2)), round(deg(lng2))]);
+  }
+  return out;
+}

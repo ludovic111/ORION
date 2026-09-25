@@ -14,12 +14,15 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Check,
+  CircleDashed,
   Crosshair,
   Expand,
   House,
   Layers,
   List,
   LocateFixed,
+  Lock,
+  LockOpen,
   MapPin,
   Minus,
   MousePointer2,
@@ -55,6 +58,7 @@ import { ItemPreview } from "../../ui/links";
 import { Popover } from "../../ui/Popover";
 import {
   areaOf,
+  circlePoints,
   formatArea,
   formatDistance,
   formatPosition,
@@ -87,7 +91,14 @@ import "./map.css";
 // without rebuilding the map.
 
 type Tool =
-  "select" | "point" | "line" | "area" | "freehand" | "text" | "measure";
+  | "select"
+  | "point"
+  | "line"
+  | "area"
+  | "circle"
+  | "freehand"
+  | "text"
+  | "measure";
 type Panel = "list" | "symbols" | "layers" | null;
 type Hover = { target: Ref; x: number; y: number; hint: string };
 type Ghost = { target: Ref; lat: number; lng: number; title: string };
@@ -137,6 +148,13 @@ const TOOLS: {
     hint: "Dessiner une zone",
   },
   {
+    id: "circle",
+    label: "Périmètre",
+    icon: CircleDashed,
+    write: true,
+    hint: "Périmètre circulaire : un centre, un rayon",
+  },
+  {
     id: "freehand",
     label: "Dessin",
     icon: Pencil,
@@ -158,13 +176,23 @@ const TOOLS: {
     hint: "Mesurer une distance ou une surface",
   },
 ];
-const DRAWING: Tool[] = ["line", "area", "measure"];
+const DRAWING: Tool[] = ["line", "area", "circle", "measure"];
+/** Radii offered once the centre of a perimeter is placed, in metres. */
+const RADII = [50, 100, 200, 300, 500, 1000];
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const reducedMotion = () =>
   document.documentElement.dataset.motion === "reduced" ||
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const narrow = () => window.innerWidth <= 900;
+/** Touch screen: an object is moved only once selected. */
+const coarse = () =>
+  typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+/**
+ * Below this distance (screen pixels) a drag is a shaky click, not a move:
+ * the object stays exactly where it was.
+ */
+const DRAG_THRESHOLD = 8;
 const isView = (v: unknown): v is View =>
   !!v &&
   typeof v === "object" &&
@@ -504,7 +532,17 @@ export function MapModule() {
     id: string;
     points: LatLng[];
   } | null>(null);
-  const [tileError, setTileError] = useState(false);
+  // Objects locked in place (this browser): no accidental move while
+  // panning or zooming.
+  const [locked, setLocked] = useState(() =>
+    readStore("orion.map.locked", false, (v) => typeof v === "boolean"),
+  );
+  // Why the background is missing: the device is offline, or it is online
+  // but the tile server does not answer.
+  const [tileError, setTileError] = useState<"offline" | "unreachable" | null>(
+    null,
+  );
+  const baseLayer = useRef<L.TileLayer | null>(null);
   const [slots, setSlots] = useState<{ id: string; el: HTMLElement }[]>([]);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -551,7 +589,7 @@ export function MapModule() {
       places.filter((p) => !hidden.has(layerKey(p)) && p.id !== shapeEdit?.id),
     [places, hidden, shapeEdit?.id],
   );
-  const canDrag = tool === "select" && !readOnly;
+  const canDrag = tool === "select" && !readOnly && !locked;
 
   // Items citing coordinates that no map object stands for yet.
   const ghosts = useMemo(() => {
@@ -714,6 +752,13 @@ export function MapModule() {
     );
     m.on("dblclick", () => handlers.current.finish());
     m.on("movestart", () => setGhostMenu(null));
+    // A glide in progress would fight the zoom animation: land at once.
+    m.on("zoomstart", () => {
+      for (const el of m
+        .getContainer()
+        .querySelectorAll<HTMLElement>(".map-moving"))
+        el.classList.remove("map-moving");
+    });
 
     const observer = new ResizeObserver(() => m.invalidateSize());
     observer.observe(root.current);
@@ -746,7 +791,7 @@ export function MapModule() {
     const m = map.current;
     if (!m) return;
     const b = BASES[base];
-    setTileError(false);
+    setTileError(null);
     let loaded = 0;
     let failed = 0;
     const layer = L.tileLayer(b.url, {
@@ -763,16 +808,29 @@ export function MapModule() {
     });
     layer.on("tileload", () => {
       loaded++;
-      setTileError(false);
+      setTileError(null);
     });
     layer.on("tileerror", () => {
       failed++;
-      if (!navigator.onLine || (failed >= 2 && loaded === 0))
-        setTileError(true);
+      if (!navigator.onLine) setTileError("offline");
+      // A few isolated misses (edge of the coverage) are not an outage.
+      else if (failed >= 4 && loaded === 0) setTileError("unreachable");
     });
+    // Back online: fetch the missing tiles again at once.
+    const online = () => {
+      setTileError(null);
+      layer.redraw();
+    };
+    const offline = () => setTileError("offline");
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
     layer.addTo(m);
     layer.bringToBack();
+    baseLayer.current = layer;
     return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+      baseLayer.current = null;
       layer.off();
       layer.remove();
     };
@@ -870,10 +928,42 @@ export function MapModule() {
       handlers.current.placeOver(p.id, e.originalEvent),
     );
     marker.on("mouseout", () => handlers.current.placeOut());
-    marker.on("dragstart", () => handlers.current.placeOut());
-    marker.on("dragend", () =>
-      handlers.current.placeMoved(p.id, marker.getLatLng()),
-    );
+    // A drag moves the object only when it is deliberate: a shaky click,
+    // a second finger (pinch to zoom) or a zoom during the drag puts the
+    // object back exactly where it was.
+    let origin: L.LatLng | null = null;
+    let cancelled = false;
+    const cancel = () => {
+      cancelled = true;
+    };
+    const touch = (e: TouchEvent) => {
+      if (e.touches.length > 1) cancel();
+    };
+    marker.on("dragstart", () => {
+      handlers.current.placeOut();
+      origin = marker.getLatLng();
+      cancelled = false;
+      document.addEventListener("touchstart", touch, true);
+      map.current?.on("zoomstart", cancel);
+    });
+    marker.on("dragend", () => {
+      document.removeEventListener("touchstart", touch, true);
+      map.current?.off("zoomstart", cancel);
+      const from = origin;
+      origin = null;
+      // Leaflet may still apply the last pointer position in the next
+      // animation frame: decide once it has.
+      requestAnimationFrame(() => {
+        const m = map.current;
+        if (!m || !from) return;
+        const to = marker.getLatLng();
+        const moved = m
+          .latLngToContainerPoint(to)
+          .distanceTo(m.latLngToContainerPoint(from));
+        if (cancelled || moved < DRAG_THRESHOLD) marker.setLatLng(from);
+        else handlers.current.placeMoved(p.id, to);
+      });
+    });
     return { marker, el };
   }
 
@@ -897,9 +987,17 @@ export function MapModule() {
         const [lat, lng] = p.points[0];
         const icon = marker.getElement();
         // Moved by another post or by the replay: glide to the new place.
+        // A move made here (drag) is already in place: no glide, or the
+        // symbol would lag behind the map during the next zoom.
+        const m = map.current;
+        const far =
+          !!m &&
+          m
+            .latLngToContainerPoint(was)
+            .distanceTo(m.latLngToContainerPoint([lat, lng])) > 2;
         if (
           icon &&
-          (was.lat !== lat || was.lng !== lng) &&
+          far &&
           !icon.classList.contains("leaflet-drag-target") &&
           !reducedMotion()
         ) {
@@ -949,15 +1047,18 @@ export function MapModule() {
       );
   }, [visible]);
 
-  // Dragging only with the selection tool.
+  // Dragging only with the selection tool, objects unlocked; on a touch
+  // screen only the selected object, so that panning or pinching over a
+  // symbol never moves it.
   useEffect(() => {
-    for (const e of registry.current.values()) {
+    const touch = coarse();
+    for (const [id, e] of registry.current) {
       const dragging = (e.layer as L.Marker).dragging;
       if (!e.el || !dragging) continue;
-      if (canDrag) dragging.enable();
+      if (canDrag && (!touch || id === sheetId)) dragging.enable();
       else dragging.disable();
     }
-  }, [canDrag, slots]);
+  }, [canDrag, slots, sheetId]);
 
   // Hovered or opened object stands out.
   const hot = hover?.target.startsWith("place:")
@@ -1022,6 +1123,18 @@ export function MapModule() {
       g.poly.setLatLngs([]);
       g.rubber.setLatLngs([]);
       if (liveEl.current) liveEl.current.textContent = "";
+      return;
+    }
+    if (t === "circle") {
+      const center = pts[0];
+      const r = cursor && !done ? lengthOf([center, live[live.length - 1]]) : 0;
+      g.line.setLatLngs([]);
+      g.poly.setLatLngs(r ? circlePoints(center, r) : []);
+      g.rubber.setLatLngs(r ? [center, live[live.length - 1]] : []);
+      if (liveEl.current)
+        liveEl.current.textContent = r
+          ? `rayon ${formatDistance(r)} · surface ${formatArea(Math.PI * r * r)}`
+          : "";
       return;
     }
     if (t === "area") {
@@ -1357,7 +1470,13 @@ export function MapModule() {
   function finish() {
     const m = map.current;
     const { tool: t, draft: raw, readOnly: locked } = state.current;
-    if (!m || !DRAWING.includes(t) || (locked && t !== "measure")) return;
+    if (
+      !m ||
+      !DRAWING.includes(t) ||
+      t === "circle" ||
+      (locked && t !== "measure")
+    )
+      return;
     // A double click adds the same vertex twice.
     const pts = raw.filter((p, i) => {
       if (!i) return true;
@@ -1381,6 +1500,23 @@ export function MapModule() {
       layer: drawLayer,
       points: pts.slice(0, 500),
       notes: "",
+    });
+    if (!id) return;
+    chooseTool("select");
+    setSheetId(id);
+  }
+
+  /** A perimeter: an area drawn as a circle, labelled with its radius. */
+  function createCircle(center: LatLng, radius: number) {
+    if (radius < 5) return toast("Rayon trop petit : au moins 5 m.");
+    const id = create({
+      label: `Périmètre ${formatDistance(radius)}`,
+      kind: "area",
+      symbol: "",
+      color: "",
+      layer: drawLayer,
+      points: circlePoints(center, radius),
+      notes: `Centre ${formatPosition(center[0], center[1])} · rayon ${formatDistance(radius)}`,
     });
     if (!id) return;
     chooseTool("select");
@@ -1445,6 +1581,9 @@ export function MapModule() {
           chooseTool("select");
           setSheetId(id);
         }
+      } else if (tool === "circle") {
+        if (!draft.length) setDraft([pt]);
+        else createCircle(draft[0], lengthOf([draft[0], pt]));
       } else if (tool === "measure" && measureDone) {
         setDraft([pt]);
         setMeasureDone(false);
@@ -1493,7 +1632,7 @@ export function MapModule() {
             y,
             hint:
               tool === "select"
-                ? readOnly
+                ? readOnly || locked
                   ? "Cliquer pour ouvrir"
                   : "Cliquer pour ouvrir · glisser pour déplacer"
                 : "",
@@ -1810,6 +1949,54 @@ export function MapModule() {
         </button>
       </>
     );
+  else if (tool === "circle")
+    hint = (
+      <>
+        <span>
+          {draft.length
+            ? "Cliquez pour fixer le rayon, ou choisissez :"
+            : "Cliquez le centre du périmètre"}
+        </span>
+        {draft.length > 0 && (
+          <>
+            {RADII.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className="small"
+                onClick={() => createCircle(draft[0], r)}
+              >
+                {r < 1000 ? `${r} m` : `${r / 1000} km`}
+              </button>
+            ))}
+            <strong className="mono map-live" ref={liveEl} />
+          </>
+        )}
+        <select
+          className="map-hint-layer"
+          value={drawLayer}
+          aria-label="Calque du périmètre"
+          onChange={(e) => {
+            setDrawLayer(e.target.value);
+            writeStore("orion.map.drawLayer", e.target.value);
+          }}
+        >
+          {[...new Set([...layerOptions, drawLayer])].map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Fermer l’outil"
+          onClick={() => chooseTool("select")}
+        >
+          <X size={15} />
+        </button>
+      </>
+    );
   else if (drawing)
     hint = (
       <>
@@ -2029,6 +2216,35 @@ export function MapModule() {
               <Minus size={17} />
             </button>
           </div>
+          {!readOnly && (
+            <div className="map-glass map-control-stack">
+              <button
+                type="button"
+                className="icon-button"
+                aria-pressed={locked}
+                aria-label={
+                  locked ? "Déverrouiller les objets" : "Verrouiller les objets"
+                }
+                title={
+                  locked
+                    ? "Objets verrouillés : aucun déplacement possible. Cliquer pour déverrouiller."
+                    : "Verrouiller les objets (évite de les déplacer par erreur)"
+                }
+                onClick={() => {
+                  const next = !locked;
+                  setLocked(next);
+                  writeStore("orion.map.locked", next);
+                  toast(
+                    next
+                      ? "Objets verrouillés : ils ne bougent plus, même en glissant dessus."
+                      : "Objets déverrouillés : glisser un objet le déplace.",
+                  );
+                }}
+              >
+                {locked ? <Lock size={16} /> : <LockOpen size={16} />}
+              </button>
+            </div>
+          )}
           <div className="map-glass map-control-stack">
             <button
               type="button"
@@ -2069,14 +2285,27 @@ export function MapModule() {
           <div className="map-offline map-glass" role="status">
             <WifiOff size={15} />
             <span>
-              Fond indisponible hors ligne. Les objets restent visibles ; les
-              zones déjà consultées restent en cache.
+              {tileError === "offline"
+                ? "Hors ligne : le fond de carte n’est plus téléchargé. Les objets restent visibles ; les zones déjà consultées restent en cache."
+                : `Le serveur du fond (${BASES[base].swiss ? "swisstopo" : "OpenStreetMap"}) ne répond pas. Les objets restent visibles.`}
             </span>
+            {tileError === "unreachable" && (
+              <button
+                type="button"
+                className="small"
+                onClick={() => {
+                  setTileError(null);
+                  baseLayer.current?.redraw();
+                }}
+              >
+                Réessayer
+              </button>
+            )}
             <button
               type="button"
               className="icon-button"
               aria-label="Masquer"
-              onClick={() => setTileError(false)}
+              onClick={() => setTileError(null)}
             >
               <X size={14} />
             </button>

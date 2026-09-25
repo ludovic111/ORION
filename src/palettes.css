@@ -1,0 +1,188 @@
+/* orion aic · colour themes
+   Each palette only redefines the design tokens of styles.css; layout,
+   type and components never change. Papier (light) and Graphite (dark) are
+   the tokens of styles.css themselves. The palettes are listed, with their
+   purpose, in src/app/palettes.ts and docs/DESIGN.md. Loaded last. */
+
+/* ---------- Ardoise: blue-grey paper, navy ink ---------- */
+:root[data-palette="ardoise"] {
+  --bg: #dde2e6;
+  --bg-1: #ffffff;
+  --bg-2: rgba(16, 27, 38, 0.045);
+  --bg-3: rgba(16, 27, 38, 0.085);
+  --field: #ffffff;
+  --solid: #ffffff;
+  --line: rgba(16, 27, 38, 0.1);
+  --line-2: #bcc5cd;
+  --text: #101b26;
+  --text-2: #56636f;
+  --text-3: #74808b;
+  --accent-rgb: 31, 59, 87;
+  --accent: #1f3b57;
+  --accent-2: #142a40;
+  --accent-bg: rgba(31, 59, 87, 0.08);
+  --on-accent: #ffffff;
+  --ember: #d9531e;
+  --cyan: #3f5a73;
+  --pink: #56636f;
+  --rigel: #56636f;
+  --gradient: linear-gradient(#1f3b57, #1f3b57);
+  --shadow-xl: rgba(16, 27, 38, 0.08) 0px 6px 24px 0px;
+}
+
+/* ---------- Signal PC: the blue and orange of civil protection ---------- */
+:root[data-palette="signal"] {
+  --bg: #eeece6;
+  --bg-1: #ffffff;
+  --bg-2: rgba(13, 27, 46, 0.045);
+  --bg-3: rgba(13, 27, 46, 0.085);
+  --field: #ffffff;
+  --solid: #ffffff;
+  --line: rgba(13, 27, 46, 0.1);
+  --line-2: #c9c8c2;
+  --text: #0d1b2e;
+  --text-2: #5a6472;
+  --text-3: #7a818b;
+  --accent-rgb: 11, 74, 143;
+  --accent: #0b4a8f;
+  --accent-2: #083a72;
+  --accent-bg: rgba(11, 74, 143, 0.08);
+  --on-accent: #ffffff;
+  --ember: #f08a00;
+  --cyan: #0b4a8f;
+  --pink: #5a6472;
+  --rigel: #5a6472;
+  --gradient: linear-gradient(#0b4a8f, #0b4a8f);
+}
+
+/* ---------- Contraste élevé: pure black on pure white ---------- */
+:root[data-palette="contraste"] {
+  --bg: #ffffff;
+  --bg-1: #ffffff;
+  --bg-2: rgba(0, 0, 0, 0.06);
+  --bg-3: rgba(0, 0, 0, 0.12);
+  --field: #ffffff;
+  --solid: #ffffff;
+  --line: #000000;
+  --line-2: #000000;
+  --text: #000000;
+  --text-2: #1a1a1a;
+  --text-3: #333333;
+  --accent-rgb: 0, 0, 0;
+  --accent: #000000;
+  --accent-2: #000000;
+  --accent-bg: rgba(0, 0, 0, 0.1);
+  --on-accent: #ffffff;
+  --ember: #c4000c;
+  --cyan: #000000;
+  --pink: #1a1a1a;
+  --amber: #6b4200;
+  --rigel: #1a1a1a;
+  --gradient: linear-gradient(#000, #000);
+  --ok: #0b5a24;
+  --ok-bg: rgba(11, 90, 36, 0.12);
+  --warn: #6b4200;
+  --warn-bg: rgba(107, 66, 0, 0.12);
+  --crit: #b00000;
+  --crit-bg: rgba(176, 0, 0, 0.1);
+  --crit-ink: #8a0000;
+  --kind-s: 0.5;
+  --kind-l: 0.4;
+  --shadow-xl: none;
+  --shadow: none;
+}
+:root[data-palette="contraste"] :is(.card, .panel, .tile, .modal, .palette) {
+  border: 1.5px solid #000;
+}
+:root[data-palette="contraste"]
+  :is(button, a, summary, [tabindex]):focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px #ffd400;
+}
+
+/* ---------- Minuit: deep navy, light ink ---------- */
+:root[data-palette="minuit"] {
+  --bg: #0d1318;
+  --bg-1: #151d24;
+  --bg-2: rgba(205, 220, 234, 0.05);
+  --bg-3: rgba(205, 220, 234, 0.1);
+  --field: #151d24;
+  --solid: #151d24;
+  --line: rgba(205, 220, 234, 0.1);
+  --line-2: rgba(205, 220, 234, 0.2);
+  --text: #e3eaf0;
+  --text-2: #9eabb7;
+  --text-3: #7f8c98;
+  --accent-rgb: 205, 220, 234;
+  --accent: #cddcea;
+  --accent-2: #ffffff;
+  --accent-bg: rgba(205, 220, 234, 0.1);
+  --on-accent: #0d1318;
+  --ember: #ff8a3d;
+  --cyan: #9eb8cf;
+  --pink: #9eabb7;
+  --rigel: #9eabb7;
+  --gradient: linear-gradient(#cddcea, #cddcea);
+  --shadow: rgba(0, 0, 0, 0.4) 0px 6px 27px 0px;
+}
+
+/* ---------- Nuit tactique: red on black, keeps night vision ---------- */
+/* Only long wavelengths: no white, no blue. States keep their words and
+   differ by brightness rather than by hue. */
+:root[data-palette="nuit"] {
+  --bg: #0a0504;
+  --bg-1: #150a08;
+  --bg-2: rgba(240, 98, 74, 0.06);
+  --bg-3: rgba(240, 98, 74, 0.12);
+  --field: #150a08;
+  --solid: #150a08;
+  --line: rgba(240, 98, 74, 0.16);
+  --line-2: rgba(240, 98, 74, 0.3);
+  --text: #f0624a;
+  --text-2: #b8482f;
+  --text-3: #93391f;
+  --accent-rgb: 210, 74, 51;
+  --accent: #d24a33;
+  --accent-2: #f0624a;
+  --accent-bg: rgba(210, 74, 51, 0.14);
+  --on-accent: #0a0504;
+  --ember: #ff3b24;
+  --cyan: #c4543a;
+  --pink: #b8482f;
+  --amber: #e0703a;
+  --rigel: #b8482f;
+  --gradient: linear-gradient(#d24a33, #d24a33);
+  --ok: #c8603e;
+  --ok-bg: rgba(200, 96, 62, 0.12);
+  --warn: #ff8a4a;
+  --warn-bg: rgba(255, 138, 74, 0.14);
+  --crit: #ff2e1a;
+  --crit-bg: rgba(255, 46, 26, 0.16);
+  --crit-ink: #ff5a44;
+  --kind-s: 0;
+  --kind-l: 0.8;
+  --shadow: none;
+  --shadow-xl: none;
+}
+:root[data-palette="nuit"] ::selection {
+  background: rgba(240, 98, 74, 0.28);
+}
+/* Map tiles are inverted (black ground, red lines); drawings, symbols and
+   photos pass through the same red filter. */
+:root[data-palette="nuit"] .leaflet-tile-pane {
+  filter: grayscale(1) invert(1) sepia(1) saturate(4) hue-rotate(-48deg)
+    brightness(0.42);
+}
+:root[data-palette="nuit"] :is(.leaflet-overlay-pane, .map-glyph),
+:root[data-palette="nuit"] img:not(.map-glyph img, .leaflet-tile) {
+  filter: grayscale(1) brightness(0.7) sepia(1) saturate(5) hue-rotate(-38deg);
+}
+:root[data-palette="nuit"] .leaflet-container {
+  background: #0a0504;
+}
+:root[data-palette="nuit"] .map-pin-label,
+:root[data-palette="nuit"] .map-text.boxed {
+  background: rgba(21, 10, 8, 0.92);
+  color: #f0624a;
+}

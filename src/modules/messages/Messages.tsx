@@ -9,7 +9,7 @@ import {
   Plus,
   Printer,
   Search,
-  Sparkles,
+  FileText,
   X,
 } from "lucide-react";
 import { time } from "../../../shared/journal";
@@ -309,7 +309,7 @@ export function Messages() {
                 </li>
                 <li>
                   <span className="msg-flow-icon">
-                    <Sparkles size={18} />
+                    <FileText size={18} />
                   </span>
                   <strong>Synthèse</strong>
                   <small>Relecture, mise en forme, priorité</small>

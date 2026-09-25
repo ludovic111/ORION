@@ -13,7 +13,7 @@ Quatre services réseau sont **facultatifs** et n’existent que si l’opérate
 | Recherche de lieu              | `api3.geo.admin.ch`                           | Le texte recherché (adresse, lieu).                                                            |
 | Prévisions météo (sur demande) | `api.open-meteo.com`                          | Les coordonnées du lieu météo choisi.                                                          |
 
-La politique CSP n’autorise aucune autre connexion (`connect-src 'self'` + ces deux API, `img-src` + ces deux serveurs de tuiles). Aucun script, style ou police externe.
+La politique CSP n’autorise aucune autre connexion (`connect-src 'self'` + ces deux API + les deux serveurs de tuiles, `img-src` + ces deux serveurs de tuiles). Les serveurs de tuiles figurent aussi dans `connect-src` parce que le service worker les télécharge lui-même pour les garder hors ligne : sans eux, toutes les tuiles échouent et la carte affiche à tort « hors ligne ». Aucun script, style ou police externe.
 
 Le choix d’une installation institutionnelle, d’un poste autorisé et du droit de traiter les données appartient à l’organisation. Ce logiciel n’est pas certifié ni homologué. Le chiffrement ne constitue pas à lui seul une conformité à la LIPAD/LPD, un plan d’archivage ou une analyse d’impact.
 

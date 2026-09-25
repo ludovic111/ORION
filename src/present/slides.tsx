@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
+  Gauge,
+  Minus,
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
@@ -12,7 +14,6 @@ import {
   Map as MapIcon,
   MessageCircleQuestion,
   Radio,
-  Sparkles,
   Sun,
   Truck,
   Users,
@@ -29,7 +30,7 @@ import type { Deck, Slide, SlideKind, Tone } from "./deck";
 export const KIND_ICON: Record<SlideKind, LucideIcon> = {
   title: Flag,
   situation: LayoutGrid,
-  facts: Sparkles,
+  facts: Gauge,
   map: MapIcon,
   changes: Clock3,
   highlights: CircleDot,
@@ -260,7 +261,7 @@ function FactsView({
                 ) : f.trend === "down" ? (
                   <ArrowDownRight size={26} />
                 ) : (
-                  <Sparkles size={22} />
+                  <Minus size={22} />
                 )}
                 {f.delta}
               </span>

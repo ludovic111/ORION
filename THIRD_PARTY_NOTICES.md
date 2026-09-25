@@ -16,12 +16,11 @@ Le code orion aic est sous AGPL-3.0-only. Les dépendances conservent leurs lice
 - selfsigned, @peculiar/x509 (MIT) et PKI.js (BSD-3-Clause) — certificat du mode réseau local (`npm run lan`), jamais servis au navigateur.
 - Vite, TypeScript, Prettier et leurs dépendances — licences propres aux paquets, outils de développement uniquement.
 
-Le design (« atelier éditorial » : papier crème, encre, un seul point braise) suit la référence `docs/DESIGN.md` ; il est écrit pour ce projet.
+Le design (« atelier éditorial » : papier, encre, un seul point braise, sept thèmes de couleur) est décrit dans `docs/DESIGN.md` ; il est écrit pour ce projet.
 
 ## Polices
 
-- IBM Plex Sans / Mono — SIL Open Font License 1.1 ; texte dans `docs/licenses/`.
-- Inter (titres) — SIL Open Font License 1.1 ; texte dans `docs/licenses/Inter.txt`.
+- IBM Plex Sans / Mono (toute l’interface et les fiches imprimées) — SIL Open Font License 1.1 ; texte dans `docs/licenses/`.
 
 Toutes les polices sont hébergées avec l’application.
 

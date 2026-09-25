@@ -1731,32 +1731,6 @@ button.row-item:hover,
   font-size: 16px;
   line-height: 1.6;
 }
-.hero-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px;
-  margin-top: 30px;
-}
-.hero-feature {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--bg-1);
-  backdrop-filter: blur(10px);
-  color: var(--text-2);
-  font-size: 12.5px;
-}
-.hero-feature svg {
-  flex: none;
-  color: hsl(var(--h) calc(85% * var(--kind-s)) calc(68% * var(--kind-l)));
-  filter: drop-shadow(
-    0 0 8px
-      hsl(var(--h) calc(85% * var(--kind-s)) calc(60% * var(--kind-l)) / 0.6)
-  );
-}
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

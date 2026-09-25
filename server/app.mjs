@@ -16,7 +16,10 @@ const types = {
   ".png": "image/png",
 };
 // Map tiles (swisstopo), weather (Open-Meteo) and place search (geo.admin.ch)
-// are optional services queried from the browser on demand.
+// are optional services queried from the browser on demand. The map tiles
+// are listed in connect-src too: the service worker fetches them (to keep
+// them offline) and a worker's fetch() is governed by connect-src, not
+// img-src. Without it every tile fails and the map claims to be offline.
 export const MAP_ORIGINS =
   "https://wmts.geo.admin.ch https://tile.openstreetmap.org";
 export const API_ORIGINS =
@@ -32,7 +35,7 @@ export function contentSecurityPolicy(host = "", secure = false) {
       ? ` wss://${host}`
       : ` wss://${host} ws://${host}`
     : "";
-  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${MAP_ORIGINS}; connect-src 'self'${sockets} ${API_ORIGINS}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'${secure ? "; upgrade-insecure-requests" : ""}`;
+  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${MAP_ORIGINS}; connect-src 'self'${sockets} ${API_ORIGINS} ${MAP_ORIGINS}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'${secure ? "; upgrade-insecure-requests" : ""}`;
 }
 
 export async function handle(req, res) {

@@ -1134,6 +1134,15 @@ export const TOPICS: Topic[] = [
           OpenStreetMap. Choisissez le plus lisible pour l’usage : gris pour
           faire ressortir vos dessins, aérien pour voir le terrain.
         </p>
+        <p>
+          Les zones déjà vues sont gardées sur le poste : hors ligne, elles
+          restent affichées. Si le fond manque, un bandeau dit pourquoi :{" "}
+          <Ui>Hors ligne</Ui> quand l’appareil n’a plus de réseau, ou « le
+          serveur du fond ne répond pas » quand internet marche mais que
+          swisstopo ou OpenStreetMap ne répond pas (bouton <Ui>Réessayer</Ui>).
+          Dès que le réseau revient, les tuiles manquantes se rechargent seules.
+          Les objets restent toujours visibles.
+        </p>
         <H>Outils</H>
         <Table
           head={["Outil", "Usage"]}
@@ -1143,7 +1152,11 @@ export const TOPICS: Topic[] = [
               "Un lieu : signe conventionnel civil (OFPP) ou marqueur simple.",
             ],
             ["Ligne", "Un trajet, une déviation, une limite."],
-            ["Zone", "Une surface : zone inondée, périmètre de sécurité."],
+            ["Zone", "Une surface : zone inondée, secteur, zone interdite."],
+            [
+              "Périmètre",
+              "Un cercle autour d’un point : bouclage, évacuation, sécurité. Cliquez le centre, puis cliquez le bord ou choisissez 50 m, 100 m, 200 m, 300 m, 500 m ou 1 km. Le périmètre devient une zone normale, nommée avec son rayon.",
+            ],
             ["Texte", "Une étiquette écrite directement sur la carte."],
             ["Dessin", "Un trait à main levée (souris, doigt, stylet)."],
             ["Mesurer", "Une distance sur la carte."],
@@ -1152,7 +1165,21 @@ export const TOPICS: Topic[] = [
         <H>Travailler avec les objets</H>
         <ul>
           <li>
-            <strong>Déplacer</strong> : glissez l’objet.
+            <strong>Déplacer</strong> : glissez l’objet. Un petit glissement de
+            quelques pixels ne compte pas (clic un peu tremblé) : l’objet reste
+            exactement où il était. Si un deuxième doigt se pose (pincer pour
+            zoomer) ou si la carte zoome pendant le glissement, l’objet revient
+            à sa place.
+          </li>
+          <li>
+            <strong>Sur tablette et téléphone</strong> : touchez d’abord l’objet
+            pour le sélectionner, puis glissez-le. Déplacer ou pincer la carte
+            par-dessus un signe ne le bouge donc jamais.
+          </li>
+          <li>
+            <strong>Cadenas</strong> (à droite, sous le zoom) : verrouille tous
+            les objets sur ce poste. Glisser déplace alors toujours la carte,
+            jamais un objet. Pratique pendant une présentation ou un briefing.
           </li>
           <li>
             <strong>Clic</strong> : ouvre sa fiche (nom, calque, signe, couleur,
@@ -2749,8 +2776,22 @@ export const TOPICS: Topic[] = [
         <H>Ce poste</H>
         <ul>
           <li>
-            <strong>Thème</strong> : Clair · papier (par défaut), Sombre ·
-            graphite, ou Comme le système.
+            <strong>Mode</strong> : Clair, Sombre, ou Comme le système (clair le
+            jour, sombre la nuit).
+          </li>
+          <li>
+            <strong>Thème clair</strong> : <em>Papier</em> (crème, par défaut),{" "}
+            <em>Ardoise</em> (gris bleuté, plus froid), <em>Signal PC</em> (bleu
+            et orange de la protection civile) ou <em>Contraste élevé</em> (noir
+            sur blanc, traits épais : plein soleil, vue fatiguée).
+          </li>
+          <li>
+            <strong>Thème sombre</strong> : <em>Graphite</em> (par défaut),{" "}
+            <em>Minuit</em> (bleu nuit) ou <em>Nuit tactique</em> : tout en
+            rouge sur noir, carte comprise, pour garder la vision de nuit sur le
+            terrain. Le bouton soleil / lune passe de l’un à l’autre ; les
+            thèmes s’essaient aussi depuis la recherche (<kbd>⌘K</kbd>, « thème
+            »).
           </li>
           <li>
             <strong>Animations</strong> : Toutes, ou Réduites (poste lent,
@@ -3195,8 +3236,9 @@ export const TOPICS: Topic[] = [
           <Path steps={["Réglages", "Ce poste", "Modules affichés"]} />.
         </Faq>
         <Faq q="Les couleurs ou les animations me gênent.">
-          Passez au thème clair (bouton soleil en haut), et choisissez des
-          animations réduites dans <Path steps={["Réglages", "Ce poste"]} />.
+          Choisissez un autre thème (par exemple <em>Contraste élevé</em> ou{" "}
+          <em>Nuit tactique</em>) et des animations réduites dans{" "}
+          <Path steps={["Réglages", "Ce poste"]} />.
         </Faq>
       </div>
     ),

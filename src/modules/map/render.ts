@@ -58,7 +58,7 @@ const SWITZERLAND: [LatLng, LatLng] = [
 const INK = "#111427";
 const SANS =
   'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-const DISPLAY = '"Inter Variable", system-ui, sans-serif';
+const DISPLAY = '"IBM Plex Sans", system-ui, sans-serif';
 
 /* ---------- Web Mercator ---------- */
 

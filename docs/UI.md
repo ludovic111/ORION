@@ -58,7 +58,7 @@ const {
 | `exportCenter(preset)`     | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                      |
 | `present(mode, preset)`    | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                              |
 | `help(topic)`              | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                |
-| `prefs`                    | Réglages du poste : thème, modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).                                                                   |
+| `prefs`                    | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).       |
 
 ## Composants
 
@@ -70,7 +70,7 @@ const {
 | `ui/links.tsx`      | `LinkChip`, `LinksPanel`, `ItemPreview`, `HoverCard`, `ItemSearch`, `KindDot`, `KIND_ICON`, `hueStyle`                                  |
 | `ui/Sheet.tsx`      | `Sheet` (panneau latéral)                                                                                                               |
 | `ui/Popover.tsx`    | `Popover` (menu ancré, classe `.menu`)                                                                                                  |
-| `ui/effects.tsx`    | `CountUp`, `DecryptText`, `useSpotlight` (classe `.spot`), `ClickSparks`                                                                |
+| `ui/effects.tsx`    | `CountUp` (affiche la valeur telle quelle), `DecryptText`, `useSpotlight`, `ClickSparks` : signatures gardées, sans effet visuel        |
 | `journal/Modal.tsx` | `Modal` (boîte de dialogue)                                                                                                             |
 
 ### Fiche générique
@@ -110,6 +110,6 @@ const {
 | `.panel`, `.panel-head`, `.panel-foot`, `.toolbar`, `.search`, `.grid` | Hérités du journal                                   |
 | `.label`, `.muted`, `.mono`, `.gradient-text`, `.display`              | Texte                                                |
 
-Design : « atelier éditorial » de [DESIGN.md](DESIGN.md) — papier crème `--bg`, cartes blanches `--bg-1` / `--solid` (rayon `--radius-lg` 20 px, ombre `--shadow-xl`), encre `--text` / `--text-2` / `--text-3`, bordures `--line` / `--line-2`, boutons pleins graphite `--accent` avec `--on-accent` (rayon `--radius-button` 8 px), champs `--radius` 12 px, pastilles en pilule, titres `--display` (Inter 500, jamais gras), texte fonctionnel `--sans` (police système), `--mono` pour les heures et les codes. Un seul point orange `--ember` pour ce qui est en direct. États `--ok`, `--warn`, `--crit` (tons terre, sans néon). Teinte discrète d’un type d’élément : `hsl(var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)))`. Couche globale : `src/atelier.css`. Thème sombre « graphite » : `:root[data-theme="dark"]` ; toutes les couleurs passent par les variables.
+Design : voir [DESIGN.md](DESIGN.md), à lire avant d’écrire un écran (parti pris, motifs proscrits, jetons, thèmes). En bref : papier `--bg`, cartes `--bg-1` / `--solid` (rayon `--radius-lg` 20 px, ombre `--shadow-xl`), encre `--text` / `--text-2` / `--text-3`, filets `--line` / `--line-2`, bouton principal `--accent` / `--on-accent` (rayon `--radius-button` 8 px), champs `--radius` 12 px. Police unique IBM Plex Sans (`--sans`, `--display`, titres en 500) et IBM Plex Mono (`--mono`) pour les heures, codes et chiffres. Un seul point `--ember` pour ce qui est en direct. États `--ok`, `--warn`, `--crit`. Teinte discrète d’un type d’élément : `hsl(var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)))`. Couche globale : `src/atelier.css`. Mode : `:root[data-theme="light" | "dark"]` ; thème de couleur : `:root[data-palette="papier" | "ardoise" | "signal" | "contraste" | "graphite" | "minuit" | "nuit"]` (`src/palettes.css`). Toutes les couleurs passent par les variables : un écran qui écrit une couleur en dur casse les thèmes.
 
 Un module peut avoir sa feuille `src/modules/<nom>/<nom>.css`, importée par le module, avec des classes préfixées (`.map-…`, `.net-…`).

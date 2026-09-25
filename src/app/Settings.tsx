@@ -29,6 +29,7 @@ import { ChoiceField, Segmented, TextField, Toggle } from "../ui/fields";
 import { useApp } from "./context";
 import { ContactCard } from "./contact";
 import { MODULES, moduleInfo } from "./modules";
+import { DARK_PALETTES, LIGHT_PALETTES, type Palette } from "./palettes";
 import type { useSync } from "../sync/useSync";
 
 export type SettingsTab = "post" | "lists" | "sync" | "session" | "contact";
@@ -105,6 +106,56 @@ export function SettingsDialog({
   );
 }
 
+/** Colour themes of one mode, each shown as a strip of its own colours. */
+function PalettePicker({
+  title,
+  palettes,
+  value,
+  onPick,
+}: {
+  title: string;
+  palettes: Palette[];
+  value: string;
+  onPick: (palette: Palette) => void;
+}) {
+  return (
+    <fieldset className="palette-picker">
+      <legend>{title}</legend>
+      <div className="palette-grid">
+        {palettes.map((p) => {
+          const [bg, card, ink, accent, dot] = p.swatch;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              className="palette-card"
+              aria-pressed={value === p.id}
+              onClick={() => onPick(p)}
+            >
+              <span
+                className="palette-sample"
+                style={{ background: bg }}
+                aria-hidden="true"
+              >
+                <span style={{ background: card, color: ink }}>
+                  Aa
+                  <i style={{ background: dot }} />
+                </span>
+                <b style={{ background: accent }} />
+              </span>
+              <span className="palette-name">
+                {p.label}
+                {value === p.id && <Check size={14} />}
+              </span>
+              <small>{p.hint}</small>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function PostSettings() {
   const { prefs, setPrefs } = useApp();
   return (
@@ -113,13 +164,13 @@ function PostSettings() {
         <h3 className="section-label">Apparence</h3>
         <div className="form-grid">
           <ChoiceField
-            label="Thème"
+            label="Mode"
             value={prefs.theme}
             onChange={(theme) => setPrefs({ theme })}
             options={[
-              { value: "dark", label: "Sombre · graphite" },
-              { value: "light", label: "Clair · papier" },
-              { value: "auto", label: "Comme le système" },
+              { value: "light", label: "Clair" },
+              { value: "dark", label: "Sombre" },
+              { value: "auto", label: "Comme le système (jour / nuit)" },
             ]}
           />
           <ChoiceField
@@ -132,6 +183,32 @@ function PostSettings() {
             ]}
           />
         </div>
+        <PalettePicker
+          title="Thème clair"
+          palettes={LIGHT_PALETTES}
+          value={prefs.lightPalette}
+          onPick={(p) =>
+            setPrefs({
+              lightPalette: p.id,
+              ...(prefs.theme === "auto" ? {} : { theme: "light" }),
+            })
+          }
+        />
+        <PalettePicker
+          title="Thème sombre"
+          palettes={DARK_PALETTES}
+          value={prefs.darkPalette}
+          onPick={(p) =>
+            setPrefs({
+              darkPalette: p.id,
+              ...(prefs.theme === "auto" ? {} : { theme: "dark" }),
+            })
+          }
+        />
+        <p className="hint">
+          Le bouton soleil / lune de la barre du haut passe du thème clair au
+          thème sombre choisis ici. Chaque poste garde son propre thème.
+        </p>
       </section>
       <section className="settings-section">
         <h3 className="section-label">Impression automatique</h3>

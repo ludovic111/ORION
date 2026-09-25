@@ -86,3 +86,24 @@ test("behind the HTTPS proxy the site enforces HTTPS", async () => {
   assert.equal(plain.headers.get("strict-transport-security"), null);
   assert.match(plain.headers.get("content-security-policy") ?? "", /ws:\/\//);
 });
+
+test("the service worker may fetch map tiles (connect-src), in the server and in _headers", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const hosts = ["https://wmts.geo.admin.ch", "https://tile.openstreetmap.org"];
+  const directive = (policy, name) =>
+    policy
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith(`${name} `)) ?? "";
+  const served = (await fetch(`${base}/`)).headers.get(
+    "content-security-policy",
+  );
+  const file = (await readFile("public/_headers", "utf8")).match(
+    /Content-Security-Policy: (.+)/,
+  )[1];
+  for (const policy of [served, file])
+    for (const host of hosts) {
+      assert.ok(directive(policy, "connect-src").includes(host), host);
+      assert.ok(directive(policy, "img-src").includes(host), host);
+    }
+});

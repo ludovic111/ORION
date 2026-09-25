@@ -22,7 +22,7 @@ import {
   Pencil,
   Plus,
   Radio,
-  Sparkles,
+  ListPlus,
   Truck,
   Users,
   X,
@@ -349,20 +349,6 @@ function Pulse() {
       className={`card w-12 situation-pulse ${journal.mode === "Intervention" ? "real" : ""} ${journal.closedAt ? "closed" : ""}`}
       aria-label="Engagement"
     >
-      <svg
-        className="situation-ecg"
-        viewBox="0 0 600 80"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d="M0 40 H120 L135 40 L145 18 L155 62 L165 10 L178 70 L188 40 H320 L335 40 L345 22 L355 58 L365 14 L378 66 L388 40 H600" />
-      </svg>
-      <div className="situation-pulse-core" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <i />
-      </div>
       <div className="situation-pulse-text">
         <div className="situation-pulse-tags">
           <span
@@ -379,7 +365,10 @@ function Pulse() {
             <span className="pill warn">Confidentiel</span>
           )}
         </div>
-        <span className="label">Engagement depuis</span>
+        <span className="label situation-live">
+          {!journal.closedAt && <i aria-hidden="true" />}
+          Engagement depuis
+        </span>
         <strong className="situation-since">{since}</strong>
         <small>
           {[
@@ -396,7 +385,7 @@ function Pulse() {
         {kpis.map((k) => (
           <button
             key={k.label}
-            className={`situation-kpi ${k.tone ?? ""}`}
+            className={`situation-kpi ${k.tone ?? ""}${k.value ? "" : " zero"}`}
             onClick={() => go(k.to)}
           >
             <strong>
@@ -641,7 +630,7 @@ function Facts({
             !readOnly && (
               <>
                 <button className="primary" onClick={addStandard}>
-                  <Sparkles size={14} />
+                  <ListPlus size={14} />
                   Ajouter les renseignements standards
                 </button>
                 <button onClick={() => onEdit(blankFact(journal.ops))}>
@@ -872,7 +861,7 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
             !readOnly && (
               <>
                 <button className="primary" onClick={addStandard}>
-                  <Sparkles size={14} />
+                  <ListPlus size={14} />
                   Créer les rubriques standards
                 </button>
                 <button onClick={() => onEdit(blankBoard(journal.ops))}>

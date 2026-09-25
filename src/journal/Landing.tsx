@@ -1,18 +1,11 @@
 import { useState } from "react";
 import {
-  Activity,
   ArrowRight,
-  BookOpen,
   FileUp,
-  Inbox,
   LockKeyhole,
-  Map,
   Moon,
-  Network,
-  Radio,
-  Sparkles,
+  Play,
   Sun,
-  Users,
   Wifi,
 } from "lucide-react";
 import type { Journal } from "../../shared/journal";
@@ -24,15 +17,16 @@ import { CONTACT_EMAIL, feedbackLink } from "../app/contact";
 
 export type JoinRequest = { code: string; author: string; password?: string };
 
-const FEATURES = [
-  { icon: BookOpen, label: "Journal d’intervention", h: 212 },
-  { icon: Inbox, label: "Messages et synthèse", h: 265 },
-  { icon: Map, label: "Carte de situation", h: 160 },
-  { icon: Users, label: "Équipe et postes", h: 330 },
-  { icon: Radio, label: "Réseau radio Polycom", h: 120 },
-  { icon: Activity, label: "Renseignements clés", h: 250 },
-  { icon: Network, label: "Tout est relié", h: 285 },
-  { icon: Wifi, label: "Multi-postes en direct", h: 190 },
+// What the tool holds, as a table of contents: plain words, no badges.
+const CONTENTS: [string, string][] = [
+  ["Journal", "Main courante horodatée, suivis, retards, relèves."],
+  ["Messages", "Formule de message, tri, synthèse et impression A4."],
+  ["Carte", "Fonds swisstopo, signes OFPP, zones, périmètres, mesures."],
+  ["Moyens et équipe", "Engagements, états, présences et fonctions."],
+  ["Radio", "Plan de réseau Polycom et contrôles de liaison."],
+  ["Renseignements", "Chiffres clés, météo, agenda et rythme de conduite."],
+  ["Liens", "Chaque élément se relie aux autres, dans les deux sens."],
+  ["Multi-postes", "Synchronisation chiffrée entre les postes du PC."],
 ];
 
 export function Landing({
@@ -89,7 +83,7 @@ export function Landing({
     <div className="landing">
       <header className="landing-bar">
         <Brand size={28} />
-        <span className="pill plain">2.0</span>
+        <span className="landing-version">version 2.0</span>
         <button className="link push" onClick={onPrivacy}>
           Sécurité et données
         </button>
@@ -104,34 +98,25 @@ export function Landing({
       <main className="landing-main">
         <section className="hero reveal">
           <h1>
-            Aide à la conduite,
-            <br />
-            tout relié<span className="ember-dot">.</span>
+            Tenir la conduite<span className="ember-dot">.</span>
           </h1>
           <p className="lead">
-            Journal d’intervention, messages, carte, moyens, équipe, radio,
-            météo et rythme de conduite dans un seul outil. Local et chiffré,
-            sans compte ni base de données, synchronisé en direct entre les
-            postes d’un même poste de conduite.
+            Le journal, les messages, la carte, les moyens, l’équipe et la radio
+            d’un poste de conduite de protection civile, au même endroit. Tout
+            reste dans le navigateur, chiffré et sans compte ; les postes d’un
+            même PC se synchronisent en direct.
           </p>
-          <div className="hero-features stagger">
-            {FEATURES.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  className="hero-feature"
-                  key={f.label}
-                  style={{ ["--h" as string]: f.h }}
-                >
-                  <Icon size={17} />
-                  {f.label}
-                </div>
-              );
-            })}
-          </div>
+          <dl className="hero-index stagger">
+            {CONTENTS.map(([term, what]) => (
+              <div key={term}>
+                <dt>{term}</dt>
+                <dd>{what}</dd>
+              </div>
+            ))}
+          </dl>
           <div className="hero-actions">
             <button className="spark" onClick={onDemo}>
-              <Sparkles size={15} />
+              <Play size={14} />
               Ouvrir l’exercice de démonstration
               <ArrowRight size={14} />
             </button>

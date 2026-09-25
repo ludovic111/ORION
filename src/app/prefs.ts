@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  isDarkPalette,
+  isLightPalette,
+  paletteOf,
+  type PaletteId,
+} from "./palettes";
 
 // Preferences of this post (this browser). Not part of the session: another
 // post keeps its own theme, printer options and visible modules.
 export type Prefs = {
   theme: "dark" | "light" | "auto";
+  /** Colour theme used in light mode (see palettes.ts). */
+  lightPalette: PaletteId;
+  /** Colour theme used in dark mode. */
+  darkPalette: PaletteId;
   motion: "full" | "reduced";
   /** Modules hidden from the dock. */
   hidden: string[];
@@ -19,6 +29,8 @@ export type Prefs = {
 const KEY = "orion-aic-prefs";
 export const DEFAULT_PREFS: Prefs = {
   theme: "light",
+  lightPalette: "papier",
+  darkPalette: "graphite",
   motion: "full",
   hidden: [],
   autoPrint: false,
@@ -35,6 +47,11 @@ function read(): Prefs {
     const prefs: Prefs = raw
       ? { ...DEFAULT_PREFS, ...JSON.parse(raw) }
       : DEFAULT_PREFS;
+    // A palette removed or mistyped falls back to the default of its mode.
+    if (!isLightPalette(prefs.lightPalette))
+      prefs.lightPalette = DEFAULT_PREFS.lightPalette;
+    if (!isDarkPalette(prefs.darkPalette))
+      prefs.darkPalette = DEFAULT_PREFS.darkPalette;
     if (localStorage.getItem(DESIGN) !== "atelier") {
       localStorage.setItem(DESIGN, "atelier");
       if (prefs.theme === "dark") return { ...prefs, theme: "light" };
@@ -54,6 +71,8 @@ export function usePrefs() {
         (prefs.theme === "auto" &&
           matchMedia("(prefers-color-scheme: light)").matches);
       root.dataset.theme = light ? "light" : "dark";
+      const palette = light ? prefs.lightPalette : prefs.darkPalette;
+      root.dataset.palette = palette;
       root.dataset.motion =
         prefs.motion === "reduced" ||
         matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -61,13 +80,16 @@ export function usePrefs() {
           : "full";
       document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute("content", light ? "#e4dfd9" : "#121110");
+        ?.setAttribute(
+          "content",
+          paletteOf(palette)?.swatch[0] ?? (light ? "#e4dfd9" : "#121110"),
+        );
     };
     apply();
     const media = matchMedia("(prefers-color-scheme: light)");
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [prefs.theme, prefs.motion]);
+  }, [prefs.theme, prefs.motion, prefs.lightPalette, prefs.darkPalette]);
   const setPrefs = useCallback((patch: Partial<Prefs>) => {
     set((previous) => {
       const next = { ...previous, ...patch };

@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-
 // The editorial design is quiet: no pointer light, no sparks, no decoding
 // titles. The hooks and components keep their signatures so the screens
 // stay unchanged.
@@ -17,34 +15,10 @@ export function DecryptText({ text }: { text: string; speed?: number }) {
   return <span className="decrypt">{text}</span>;
 }
 
-/** Number that counts up to its value. */
-export function CountUp({
-  value,
-  duration = 900,
-}: {
-  value: number;
-  duration?: number;
-}) {
-  const [shown, setShown] = useState(value);
-  const from = useRef(0);
-  useEffect(() => {
-    if (document.documentElement.dataset.motion === "reduced") {
-      setShown(value);
-      from.current = value;
-      return;
-    }
-    const start = performance.now();
-    const origin = from.current;
-    let frame = 0;
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - p, 4);
-      setShown(Math.round(origin + (value - origin) * eased));
-      if (p < 1) frame = requestAnimationFrame(tick);
-      else from.current = value;
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, duration]);
-  return <span className="num-count">{shown}</span>;
+/**
+ * A count, shown as is. Numbers no longer roll up from zero: on a
+ * command post the real figure must be readable at first glance.
+ */
+export function CountUp({ value }: { value: number; duration?: number }) {
+  return <span className="num-count">{value}</span>;
 }
