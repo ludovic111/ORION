@@ -21,6 +21,17 @@ export async function askPermission(): Promise<
   }
 }
 
+// What a tap on a worker notification opens, by tag (the worker only sends
+// the tag back to the page).
+const pending = new Map<string, () => void>();
+if (typeof navigator !== "undefined" && navigator.serviceWorker)
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    const data = event.data as { type?: string; tag?: string } | null;
+    if (data?.type !== "orion-notification-click" || !data.tag) return;
+    pending.get(data.tag)?.();
+    pending.delete(data.tag);
+  });
+
 /**
  * Show a notification. A page notification where the browser allows it
  * (desktop: a click brings the tab back); on phones, where only the service
@@ -54,6 +65,10 @@ export async function showNotification(
     const registration = await navigator.serviceWorker?.getRegistration();
     if (!registration) return false;
     await registration.showNotification(title, options);
+    if (onClick) {
+      pending.set(tag, onClick);
+      if (pending.size > 50) pending.delete(pending.keys().next().value!);
+    }
     return true;
   } catch {
     return false;

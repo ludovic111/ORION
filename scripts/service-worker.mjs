@@ -66,6 +66,22 @@ async function sectors() {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'orion-sectors-changed') sectorList = null;
 });
+// A tap on an alert (phones notify through the worker): bring a tab of the
+// app forward and let it open the item the alert is about.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const tag = event.notification.tag;
+  event.waitUntil((async () => {
+    const tabs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const tab = tabs.find(c => 'focus' in c);
+    if (tab) {
+      await tab.focus();
+      tab.postMessage({ type: 'orion-notification-click', tag });
+    } else if (self.clients.openWindow) {
+      await self.clients.openWindow('/');
+    }
+  })());
+});
 async function stamped(response) {
   const headers = new Headers(response.headers);
   headers.set(STAMP_HEADER, String(Date.now()));
