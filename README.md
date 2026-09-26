@@ -112,6 +112,15 @@ Sans compte ni base de données : chaque poste garde une copie complète de la s
 
 Les réglages du poste (thème, modules affichés, impression automatique) restent propres à chaque poste.
 
+### Positions des équipes en direct
+
+Un téléphone ou une tablette (patrouille, chef de secteur) peut partager sa position GPS : **Carte → bouton flèche « Partager ma position »**. Un écran de consentement explique qui la voit et ce qui est gardé ; on choisit l’équipe ou le moyen représenté (fiche Équipe ou Moyens) et le libellé. Un bandeau reste visible en haut de l’écran avec **Arrêter**.
+
+- Les autres postes voient chaque équipe sur la carte (calque **Positions en direct**) : libellé, cercle de précision, âge (« il y a 40 s »), trajet des 30 dernières minutes. Grise après 2 minutes, retirée après 30.
+- Un clic : **Centrer**, **Consigner au journal** (entrée avec coordonnées MN95), **Créer un point ici**, **Fiche**.
+- Envoi au plus toutes les 5 s, environ toutes les 15 s ou après 25 m : quelques centaines d’octets par minute et par équipe sur le relais.
+- **Rien n’est enregistré** : ni serveur, ni journal, ni historique, ni archive ; les positions vivent en mémoire des postes connectés et sont masquées dans la machine à remonter le temps. Une trace n’est gardée que sur demande (« Enregistrer la trace », confirmé à l’arrêt : une ligne de la carte). Détails : [SECURITY.md](SECURITY.md#caméra-position-et-qr-codes).
+
 ## Impression automatique
 
 - Sous le formulaire du journal : **Impression automatique**. Chaque entrée consignée part aussitôt à l’impression (fiche message A4). Désactivable à tout moment.

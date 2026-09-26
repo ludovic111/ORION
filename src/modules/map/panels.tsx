@@ -14,6 +14,8 @@ import { useApp } from "../../app/context";
 import { ref } from "../../../shared/links";
 import { Glyph } from "./symbols";
 import { hexColor, layerKey, toneOf } from "./maps";
+import { useLive } from "../../live/store";
+import { freshness } from "../../../shared/live";
 
 export { layerKey, toneOf };
 
@@ -177,6 +179,7 @@ export function LayersPanel({
   onToggle,
   onShowAll,
   ghosts,
+  live,
   showGhosts,
   onGhosts,
 }: {
@@ -185,6 +188,8 @@ export function LayersPanel({
   onToggle: (layer: string) => void;
   onShowAll: () => void;
   ghosts: number;
+  /** Layer of the live positions: shown, time machine. */
+  live: { on: boolean; past: boolean; onToggle: (on: boolean) => void };
   showGhosts: boolean;
   onGhosts: (on: boolean) => void;
 }) {
@@ -242,6 +247,7 @@ export function LayersPanel({
         </button>
       )}
       <hr />
+      <LiveRow {...live} />
       <button
         type="button"
         className={`map-layer-row${showGhosts ? "" : " off"}`}
@@ -259,5 +265,40 @@ export function LayersPanel({
         placées.
       </p>
     </div>
+  );
+}
+
+/** Row of the layer « Positions en direct » (teams sharing their GPS). */
+function LiveRow({
+  on,
+  past,
+  onToggle,
+}: {
+  on: boolean;
+  past: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  const { units, now } = useLive();
+  const count = units.filter((u) => freshness(u.t, now) !== "gone").length;
+  return (
+    <>
+      <button
+        type="button"
+        className={`map-layer-row${on && !past ? "" : " off"}`}
+        aria-pressed={on}
+        onClick={() => onToggle(!on)}
+        title="Équipes qui partagent leur position GPS, gardées en mémoire seulement"
+      >
+        <span className="map-layer-dot live" aria-hidden="true" />
+        <span className="map-layer-name">Positions en direct</span>
+        <span className="pill plain">{count}</span>
+        {on ? <Eye size={15} /> : <EyeOff size={15} />}
+      </button>
+      <p className="muted map-layers-note">
+        {past
+          ? "Masquées dans la machine à remonter le temps : elles ne sont jamais enregistrées."
+          : "Jamais enregistrées : visibles tant que les postes les partagent, 30 minutes au plus."}
+      </p>
+    </>
   );
 }

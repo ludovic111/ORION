@@ -87,6 +87,8 @@ import {
   type LiveStatus,
 } from "./overlayLayers";
 import { OverlayPanel } from "./OverlayPanel";
+import { LiveLayer, LiveShareButton } from "./LiveLayer";
+import type { Unit } from "../../../shared/live";
 import { identifyUrl, overlayById, readIdentify } from "./overlays";
 import { gridLines, gridSpacingForZoom } from "./swissgrid";
 import { gridLabel } from "./printscale";
@@ -730,6 +732,10 @@ export function MapModule() {
   const [importing, setImporting] = useState(false);
   const [showGhosts, setShowGhosts] = useState(() =>
     readStore("orion.map.ghosts", true, (v) => typeof v === "boolean"),
+  );
+  // Live positions of the teams (never stored, hidden in the past).
+  const [showLive, setShowLive] = useState(() =>
+    readStore("orion.map.live", true, (v) => typeof v === "boolean"),
   );
   const [ghostMenu, setGhostMenu] = useState<
     (Ghost & { x: number; y: number }) | null
@@ -2220,6 +2226,24 @@ export function MapModule() {
     if (id) setSheetId(id);
   }
 
+  /** « Créer un point ici » from a live position: an ordinary object. */
+  function createFromLive(u: Unit) {
+    const kind = u.ref ? parseRef(u.ref as Ref).kind : "";
+    const id = create(
+      {
+        label: (u.label || u.name).slice(0, 200),
+        kind: "point",
+        symbol: symbolForKind(kind),
+        color: "",
+        layer: "Moyens",
+        points: [[round6(u.lat), round6(u.lng)]],
+        notes: "",
+      },
+      u.ref ? (u.ref as Ref) : undefined,
+    );
+    if (id) setSheetId(id);
+  }
+
   const identifying = useRef(0);
   /** Feature info of the geo.admin.ch layers shown, at a click. */
   async function identify(at: L.LatLng) {
@@ -3230,6 +3254,14 @@ export function MapModule() {
                     onToggle={toggleLayer}
                     onShowAll={() => setHiddenLayers([])}
                     ghosts={ghosts.length}
+                    live={{
+                      on: showLive,
+                      past: viewAt !== null,
+                      onToggle: (on) => {
+                        setShowLive(on);
+                        writeStore("orion.map.live", on);
+                      },
+                    }}
                     showGhosts={showGhosts}
                     onGhosts={(on) => {
                       setShowGhosts(on);
@@ -3340,6 +3372,7 @@ export function MapModule() {
             >
               <LocateFixed size={16} />
             </button>
+            <LiveShareButton />
             <button
               type="button"
               className="icon-button"
@@ -3584,6 +3617,12 @@ export function MapModule() {
       )}
 
       {hover && !sheetPlace && <MapHover hover={hover} />}
+
+      <LiveLayer
+        mapRef={map}
+        show={showLive && viewAt === null}
+        onCreatePoint={createFromLive}
+      />
 
       {ghostMenu &&
         createPortal(

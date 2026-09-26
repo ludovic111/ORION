@@ -1,0 +1,117 @@
+/* Live positions: the indicator of the sharing post and its dialogs. */
+
+/* Always visible while this post shares its position, one tap to stop. */
+.live-share {
+  position: fixed;
+  top: calc(var(--top) + 8px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 4px 4px 4px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 99px;
+  background: var(--solid);
+  box-shadow: var(--shadow-xl);
+  transform: translateX(-50%);
+}
+.live-share-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: auto;
+  padding: 4px 10px 4px 10px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  text-align: left;
+}
+.live-share-main:hover {
+  background: var(--bg-2);
+}
+.live-share-main .radar {
+  position: relative;
+  flex: none;
+}
+.live-share-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.live-share-text strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.live-share-text small {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.live-share-stop {
+  flex: none;
+  border-radius: 99px;
+}
+
+.live-consent p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.live-consent ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0 0 0 18px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.live-consent ul strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.live-facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.live-facts > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.live-facts dt {
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.live-facts dd {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .live-share {
+    top: calc(var(--top) + 6px + env(safe-area-inset-top, 0px));
+  }
+  .live-facts > div {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+@media print {
+  .live-share {
+    display: none;
+  }
+}
