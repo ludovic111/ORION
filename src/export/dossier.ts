@@ -31,6 +31,7 @@ import {
 } from "../../shared/links.ts";
 import { radioSummary } from "../../shared/radio.ts";
 import { radioTables } from "../print/radio-sheet.ts";
+import { debriefChapter, debriefCount } from "./debrief.ts";
 import { symbolName } from "../modules/map/builtins.ts";
 import {
   SECTIONS,
@@ -1508,6 +1509,8 @@ const BUILDERS: Record<SectionId, (ctx: Ctx) => Built> = {
   agenda: agendaChapter,
   links: linksChapter,
   trace: traceChapter,
+  exercise: ({ base, journal, shownAt }) =>
+    debriefChapter(base, journal, shownAt),
 };
 
 /** Build the dossier of an export. `live` is the live journal. */
@@ -1637,6 +1640,8 @@ export function sectionCount(journal: Journal, id: SectionId): number {
         journal.history.length +
         journal.entries.reduce((n, e) => n + e.revisions.length, 0)
       );
+    case "exercise":
+      return debriefCount(journal);
   }
 }
 
@@ -1754,6 +1759,7 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
         })),
       ];
     case "radio":
+    case "exercise":
       return [];
   }
 }

@@ -182,7 +182,7 @@ test("Word: styles, headings, table of contents, images, header and footer", () 
     const doc = strFromU8(files["word/document.xml"]);
     assert.equal(
       (doc.match(/<w:pStyle w:val="Heading1"\/>/g) ?? []).length,
-      13,
+      14,
     );
     assert.ok(doc.includes(' TOC \\o "1-2" \\h \\z \\u '));
     assert.ok(doc.includes("<w:tblHeader/>"));
@@ -215,7 +215,7 @@ test("OpenDocument text: same content, pictures in the manifest", () => {
   const content = strFromU8(files["content.xml"]);
   assert.equal(
     (content.match(/<text:h text:style-name="Heading_20_1"/g) ?? []).length,
-    14,
+    15,
   );
   assert.ok(content.includes("<text:table-of-content"));
   assert.ok(content.includes("<table:table-header-rows>"));
@@ -254,7 +254,7 @@ test("text formats: Markdown, plain text, JSON, CSV and TSV", () => {
   const data = JSON.parse(dossierJson(dossier, options()));
   assert.equal(data.format, "orion-dossier");
   assert.equal(data.document.verify, stamp.qr);
-  assert.equal(data.chapters.length, 13);
+  assert.equal(data.chapters.length, 14);
   const csv = dossierDelimited(dossier, stamp, ";");
   assert.ok(csv.zip);
   const files = unzipSync(csv.zip);

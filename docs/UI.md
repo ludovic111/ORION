@@ -43,26 +43,26 @@ const {
 } = useApp();
 ```
 
-| Clé                         | Usage                                                                                                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `journal.ops`               | Données des modules : `messages`, `cells`, `members`, `resources`, `contacts`, `places`, `agenda`, `facts`, `boards`, `observations`, `alerts`, `links`, `settings` (voir `shared/ops.ts`).    |
-| `updateOps(ops => …)`       | Seule façon de modifier `ops`. Utiliser `upsert(ops, "resources", value, author)` et `removeRecords(ops, [id])`. Validé par Zod ; en cas d’erreur, exception avec message.                     |
-| `canWrite()`                | Porte d’écriture : `true` si l’écriture est permise, sinon affiche pourquoi et renvoie `false`.                                                                                                |
-| `lists("recipients")`       | Valeurs d’un référentiel (`DEFAULT_LISTS` modifiables dans Réglages).                                                                                                                          |
-| `graph`                     | `items` (tous les éléments affichables), `byRef`, `edges` (liens explicites et implicites), `degree`.                                                                                          |
-| `focus` / `setFocus(null)`  | Élément à montrer quand on arrive depuis un lien (`"resource:<uuid>"`). Le module ouvre la fiche puis remet `setFocus(null)`. `"message:new"` demande un nouveau message.                      |
-| `open(ref)`                 | Aller vers n’importe quel élément (entrée du journal, moyen, objet carte…). `open("place:new:resource:<uuid>")` ouvre la carte en mode placement : le point posé est relié à cet élément.      |
-| `addEntry(fields, links)`   | Consigne une entrée au journal et la relie aux références données ; renvoie son id.                                                                                                            |
-| `compose(preset)`           | Ouvre le formulaire d’entrée prérempli (l’opérateur valide).                                                                                                                                   |
-| `queuePrint(job)`           | Impression directe sans aperçu (impression automatique).                                                                                                                                       |
-| `print(job)`                | Aperçu A4 : `{ kind: "forms", journal, sheets, title, name }` ou `{ kind: "tables", journal, title, extra, tables, landscape, name }`.                                                         |
-| `live` / `viewAt`           | Journal actuel / moment affiché par la machine à remonter le temps (ms, `null` = direct). `setViewAt(ms)` y envoie l’utilisateur.                                                              |
-| `trace(id)`                 | Ouvre l’historique d’un élément (versions, restauration).                                                                                                                                      |
-| `record(collection, v, id)` | Ajoute à un registre (`snapshots`, `exports`, `presentations`, `forecasts`), même journal clôturé ou dans le passé ; `id` vise le journal d’une requête lancée avant un changement de journal. |
-| `exportCenter(preset)`      | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                         |
-| `present(mode, preset)`     | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                                 |
-| `help(topic)`               | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                   |
-| `prefs`                     | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).          |
+| Clé                         | Usage                                                                                                                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `journal.ops`               | Données des modules : `messages`, `cells`, `members`, `resources`, `contacts`, `places`, `agenda`, `facts`, `boards`, `observations`, `alerts`, `links`, `settings` (voir `shared/ops.ts`).             |
+| `updateOps(ops => …)`       | Seule façon de modifier `ops`. Utiliser `upsert(ops, "resources", value, author)` et `removeRecords(ops, [id])`. Validé par Zod ; en cas d’erreur, exception avec message.                              |
+| `canWrite()`                | Porte d’écriture : `true` si l’écriture est permise, sinon affiche pourquoi et renvoie `false`.                                                                                                         |
+| `lists("recipients")`       | Valeurs d’un référentiel (`DEFAULT_LISTS` modifiables dans Réglages).                                                                                                                                   |
+| `graph`                     | `items` (tous les éléments affichables), `byRef`, `edges` (liens explicites et implicites), `degree`.                                                                                                   |
+| `focus` / `setFocus(null)`  | Élément à montrer quand on arrive depuis un lien (`"resource:<uuid>"`). Le module ouvre la fiche puis remet `setFocus(null)`. `"message:new"` demande un nouveau message.                               |
+| `open(ref)`                 | Aller vers n’importe quel élément (entrée du journal, moyen, objet carte…). `open("place:new:resource:<uuid>")` ouvre la carte en mode placement : le point posé est relié à cet élément.               |
+| `addEntry(fields, links)`   | Consigne une entrée au journal et la relie aux références données ; renvoie son id.                                                                                                                     |
+| `compose(preset)`           | Ouvre le formulaire d’entrée prérempli (l’opérateur valide).                                                                                                                                            |
+| `queuePrint(job)`           | Impression directe sans aperçu (impression automatique).                                                                                                                                                |
+| `print(job)`                | Aperçu A4 : `{ kind: "forms", journal, sheets, title, name }` ou `{ kind: "tables", journal, title, extra, tables, landscape, name }`.                                                                  |
+| `live` / `viewAt`           | Journal actuel / moment affiché par la machine à remonter le temps (ms, `null` = direct). `setViewAt(ms)` y envoie l’utilisateur.                                                                       |
+| `trace(id)`                 | Ouvre l’historique d’un élément (versions, restauration).                                                                                                                                               |
+| `record(collection, v, id)` | Ajoute à un registre (`snapshots`, `exports`, `presentations`, `forecasts`, `retex`), même journal clôturé ou dans le passé ; `id` vise le journal d’une requête lancée avant un changement de journal. |
+| `exportCenter(preset)`      | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                                  |
+| `present(mode, preset)`     | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                                          |
+| `help(topic)`               | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                            |
+| `prefs`                     | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).                   |
 
 ### Conduite (fonctions, diffusions, alertes)
 

@@ -18,9 +18,11 @@ import {
 import type { DocumentOptions, MapPicture } from "./docx.ts";
 import { formatInfo, type FormatId } from "./formats.ts";
 import { SECTION_IDS, describeScope, type ExportScope } from "./scope.ts";
+import type { SignatureBlock, SigningKey } from "../../shared/signature.ts";
 import {
-  fingerprintOf,
+  contentHashOf,
   makeStamp,
+  signStamp,
   registerScope,
   sha256Hex,
   shortId,
@@ -44,6 +46,8 @@ export type ProduceOptions = {
   passphrase: string;
   /** Origin of the app, printed on the radio labels. */
   origin: string;
+  /** Key of this post: files, archives and printed codes are signed. */
+  signing?: SigningKey;
   onProgress?: (label: string, ratio: number) => void;
 };
 export type Output = {
@@ -61,6 +65,8 @@ export type Produced = {
   backup: boolean;
   /** Parts that could not be produced (pack). */
   notes: string[];
+  /** Key that signed the files (the register lines are signed too). */
+  signing?: SigningKey;
 };
 /** One line of the register (without its id, time stamps and author). */
 export type RegisterLine = {
@@ -72,6 +78,7 @@ export type RegisterLine = {
   sha256: string;
   bytes: number;
   fingerprint: string;
+  signature?: SignatureBlock;
 };
 
 const slug = (s: string) =>
@@ -238,8 +245,18 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
   }
   progress("Empreinte du contenu", 0.46);
   await pause();
-  const fingerprint = await fingerprintOf(journal);
-  const stamp = makeStamp(id, fingerprint, o.author, exportedAt);
+  const content = await contentHashOf(journal);
+  const fingerprint = content.slice(0, 16);
+  let stamp = makeStamp(id, fingerprint, o.author, exportedAt);
+  if (o.signing) stamp = await signStamp(stamp, o.signing, content, exportedAt);
+  /** Signed copy of a file this post wrote (PDF: signature after its end). */
+  const seal = async (w: Written): Promise<Written> => {
+    if (!o.signing || w.extension !== ".pdf") return w;
+    const { signPdf } = await import("../../shared/signature.ts");
+    const data =
+      typeof w.data === "string" ? new TextEncoder().encode(w.data) : w.data;
+    return { ...w, data: await signPdf(o.signing, data, exportedAt) };
+  };
 
   // Maps.
   let maps: Record<string, MapPicture> = {};
@@ -348,7 +365,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
       }
       case "orion":
       case "archive-json": {
-        const value =
+        const plain =
           format === "orion"
             ? await (async () => {
                 const { deriveKey, encrypt } =
@@ -357,6 +374,13 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
                 return encrypt(archive(journal), await deriveKey(o.passphrase));
               })()
             : archive(journal);
+        // Signed by this post: the whole envelope (or archive) but the
+        // signature itself (shared/signature.ts).
+        const value = o.signing
+          ? await (
+              await import("../../shared/signature.ts")
+            ).signObject(o.signing, plain as object, exportedAt)
+          : plain;
         const text = JSON.stringify(
           value,
           null,
@@ -406,7 +430,13 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
             },
           ],
           orientation: "landscape",
-          footer: `export ${shortId(id)} · ${fingerprint}`,
+          footer: `export ${shortId(id)} · ${fingerprint}${stamp.key ? ` · clé ${stamp.key.slice(0, 9)}` : ""}`,
+          verify: {
+            qr: stamp.qr,
+            text: stamp.key
+              ? `Export n° ${stamp.id} · empreinte du contenu ${stamp.content} · signé par la clé ${stamp.key} (${stamp.alg}) le ${dateTime(exportedAt)}. Vérifier : orion aic, Traçabilité → Vérifier un document (déposer ce PDF ou scanner ce code).`
+              : `Export n° ${stamp.id} · empreinte du contenu ${fingerprint}. Vérifier : orion aic, Traçabilité → Vérifier un document.`,
+          },
         });
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
@@ -592,7 +622,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
                   kind: "archive",
                 };
               })()
-            : await one(f);
+            : await seal(await one(f));
         const data =
           typeof w.data === "string"
             ? new TextEncoder().encode(w.data)
@@ -639,7 +669,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
       format: `${info.name} (.zip)`,
     };
   } else {
-    const w = await one(o.format);
+    const w = await seal(await one(o.format));
     const mime = w.extension.endsWith(".zip") ? "application/zip" : info.mime;
     main = {
       name: name(w.kind, w.extension),
@@ -660,6 +690,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
           outputs.some((f) => f.format.includes("Archive")))) &&
       isComplete(o.scope),
     notes,
+    signing: o.signing,
   };
 }
 
@@ -670,17 +701,22 @@ export async function registerLines(
 ): Promise<RegisterLine[]> {
   const at = new Date().toISOString();
   const lines: RegisterLine[] = [];
+  const { signFile } = await import("../../shared/signature.ts");
   for (const f of produced.files) {
     const data = new Uint8Array(await f.blob.arrayBuffer());
+    const sha256 = await sha256Hex(data);
     lines.push({
       at,
       format: f.format.slice(0, 60),
       scope: registerScope(describeScope(scope), produced.stamp.id),
       viewAt: scope.viewAt === null ? "" : new Date(scope.viewAt).toISOString(),
       name: f.name.slice(0, 300),
-      sha256: await sha256Hex(data),
+      sha256,
       bytes: data.length,
       fingerprint: produced.stamp.fingerprint,
+      ...(produced.signing
+        ? { signature: await signFile(produced.signing, sha256, at) }
+        : {}),
     });
   }
   return lines;

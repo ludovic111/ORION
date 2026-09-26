@@ -168,6 +168,17 @@ const OPS_SCOPES: Record<Collection, ScopeInfo> = {
     module: "weather",
   },
   reminders: { label: "Rappel", plural: "Rappels", module: "agenda" },
+  scenarios: {
+    label: "Scénario d’exercice",
+    plural: "Scénarios d’exercice",
+    module: "debrief",
+  },
+  injects: { label: "Inject", plural: "Injects", module: "debrief" },
+  retex: {
+    label: "Point du débriefing",
+    plural: "Débriefing",
+    module: "debrief",
+  },
 };
 export const SCOPES: Record<string, ScopeInfo> = {
   entries: { label: "Entrée", plural: "Journal", module: "journal" },

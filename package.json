@@ -17,7 +17,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "format": "prettier --write src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows",
     "format:check": "prettier --check src shared server scripts tests docs *.json *.md index.html vite.config.ts .github/workflows",
-    "lan": "npm run build && node server/lan.mjs"
+    "lan": "npm run build && node server/lan.mjs",
+    "lan:serve": "node server/lan.mjs"
   },
   "dependencies": {
     "d3-force": "^3.0.0",

@@ -28,6 +28,7 @@ import { Modal } from "../journal/Modal";
 import { SessionPanel } from "../journal/SessionSettings";
 import { ChoiceField, Segmented, TextField, Toggle } from "../ui/fields";
 import { useApp } from "./context";
+import { speechSupported } from "../ui/dictation";
 import { ContactCard } from "./contact";
 import { MODULES, moduleInfo } from "./modules";
 import { DARK_PALETTES, LIGHT_PALETTES, type Palette } from "./palettes";
@@ -160,6 +161,38 @@ function PalettePicker({
   );
 }
 
+/** Voice dictation: off by default, since the audio may leave the post. */
+function DictationSettings() {
+  const { prefs, setPrefs } = useApp();
+  const [supported] = useState(() => speechSupported(window));
+  return (
+    <section className="settings-section">
+      <h3 className="section-label">Dictée vocale</h3>
+      {supported ? (
+        <div className="stack">
+          <Toggle
+            label="Dicter les messages au micro"
+            hint="Un bouton micro apparaît à côté du texte des entrées du journal et des messages. Le micro n’est ouvert que pendant la dictée."
+            checked={prefs.dictation}
+            onChange={(dictation) => setPrefs({ dictation })}
+          />
+          <p className="hint">
+            Dans Chrome et Edge, le son est envoyé aux serveurs de Google /
+            Microsoft pour être transcrit, et il faut une connexion internet.
+            Safari peut transcrire sur l’appareil selon le système. Ne dictez
+            pas d’informations confidentielles si ce n’est pas autorisé.
+          </p>
+        </div>
+      ) : (
+        <p className="muted">
+          Non disponible dans ce navigateur. Chrome, Edge et Safari proposent la
+          dictée vocale.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function PostSettings() {
   const { prefs, setPrefs } = useApp();
   return (
@@ -244,6 +277,7 @@ function PostSettings() {
           </p>
         </div>
       </section>
+      <DictationSettings />
       <section className="settings-section">
         <h3 className="section-label">Modules affichés</h3>
         <p className="muted" style={{ marginBottom: 10 }}>

@@ -18,6 +18,7 @@ import {
 } from "../../../shared/ops";
 import { useApp } from "../../app/context";
 import { intakeSheet } from "../../print/sheet";
+import { DictationButton, insertDictation } from "../../ui/DictationButton";
 import {
   ComboField,
   DateTimeField,
@@ -277,17 +278,28 @@ export function Capture({
               maxLength={300}
               placeholder="En quelques mots"
             />
-            <label className="span-2">
-              <span>Message</span>
-              <textarea
-                ref={body}
-                rows={5}
-                value={draft.body}
-                maxLength={12000}
-                placeholder="Texte tel que reçu"
-                onChange={(e) => update({ body: e.target.value })}
+            <div className="span-2 dictation-field">
+              <label>
+                <span>Message</span>
+                <textarea
+                  ref={body}
+                  rows={5}
+                  value={draft.body}
+                  maxLength={12000}
+                  placeholder="Texte tel que reçu"
+                  onChange={(e) => update({ body: e.target.value })}
+                />
+              </label>
+              <DictationButton
+                label="Dicter le message"
+                disabled={readOnly}
+                onText={(text) =>
+                  insertDictation(body.current, text, (value) =>
+                    update({ body: value }),
+                  )
+                }
               />
-            </label>
+            </div>
             <TextField
               className="span-2"
               label="Lieu"

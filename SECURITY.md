@@ -46,9 +46,28 @@ Le service worker met en cache le code de l’application, les signes cartograph
 - Les textes importés ou reçus sont affichés par React, jamais injectés en HTML. Les libellés de la recherche de lieu geo.admin.ch sont réduits à du texte.
 - Le fichier `.orionaic` est chiffré. Tous les autres formats sont en clair, avec reconnaissance explicite dans l’interface.
 
-## Caméra, position et QR codes
+## Signature des exports
 
-La caméra est demandée uniquement à l’ouverture du scanner et arrêtée à sa fermeture ; les images sont analysées dans le navigateur. La position (« Ma position » sur la carte ou la météo) n’est demandée que sur clic et n’est pas enregistrée sauf si l’opérateur place un objet ou choisit ce lieu.
+Chaque session (chaque poste) crée au premier démarrage une paire de clés **Ed25519** avec Web Crypto, ou **ECDSA P-256** si le navigateur ne connaît pas Ed25519 (`shared/signature.ts`). La clé privée est gardée dans la session : dans l’enveloppe chiffrée d’IndexedDB quand la session est protégée, en mémoire seulement en mode temporaire. Elle n’est jamais synchronisée, ni exportée, ni envoyée où que ce soit ; une nouvelle session crée une nouvelle clé.
+
+- **PDF** (dossier, journal, fiches, plan radio, diaporama PDF) : après la fin du fichier (`%%EOF`), une ligne de commentaire PDF porte le SHA-256 des octets qui précèdent, l’heure, la clé publique et la signature. Les lecteurs PDF l’ignorent. Le QR code imprimé porte en plus le SHA-256 du contenu exporté (JSON canonique du journal), l’heure, la clé publique et la signature ; le pied de page montre l’empreinte courte de la clé (`clé A1B2-C3D4`).
+- **Archives** `.orionaic` et JSON : l’enveloppe (ou l’archive) porte un champ `signature` qui couvre tout le reste, sous forme canonique (clés triées).
+- **Registre des exports** : chaque ligne (SHA-256 de chaque fichier produit, quel que soit son format) est signée ; un fichier Word, Excel ou ZIP se vérifie ainsi contre le registre.
+- **Traçabilité → Vérifier un document** : recalcule le SHA-256, vérifie la signature du fichier, celle du registre et celle du code QR, et affiche l’empreinte de la clé (16 caractères hexadécimaux) avec le nom des postes qui l’ont déjà utilisée dans cette opération.
+
+**Ce que cela prouve** : le fichier, ou le contenu imprimé, est exactement celui qui a été signé par la clé indiquée ; toute modification, même d’un octet, rend la signature invalide.
+
+**Ce que cela ne prouve pas** : l’identité du signataire (la clé est auto-signée, sans autorité de certification ni annuaire ; il faut comparer l’empreinte avec celle notée pour chaque poste), ni l’heure de signature (elle vient de l’horloge du poste, sans horodatage de confiance), ni que le contenu était vrai. Une personne ayant accès à la session déverrouillée peut signer avec sa clé. Ce n’est pas une signature électronique qualifiée au sens de la SCSE.
+
+## Exercices
+
+Le scénario d’un exercice (injects, réactions attendues) est une collection du journal comme les autres : il est synchronisé, archivé et visible dans la traçabilité. Le code de la « direction d’exercice » (4 à 8 chiffres, haché et gardé dans le navigateur du poste) évite seulement qu’un joueur ouvre le scénario par mégarde ; ce n’est pas un contrôle d’accès. Aucun inject n’est jamais envoyé dans un journal en mode Intervention.
+
+## Caméra, micro, position et QR codes
+
+La caméra est demandée uniquement à l’ouverture du scanner et arrêtée à sa fermeture ; les images sont analysées dans le navigateur. La position (« Ma position » sur la carte ou la météo) n’est demandée que sur clic et n’est pas enregistrée sauf si l’opérateur place un objet ou choisit ce lieu. `Permissions-Policy` limite caméra, micro et géolocalisation à l’origine du site. Les étiquettes QR des radios contiennent l’adresse du site et le numéro du terminal ; le QR de synchronisation contient le code de session (à ne montrer qu’aux postes autorisés).
+
+La dictée vocale (Web Speech API du navigateur) est **désactivée par défaut** et s’active par poste (Réglages → Ce poste). Le micro n’est demandé qu’à l’appui sur le bouton micro et relâché à l’arrêt de la dictée (second appui, Échap, onglet masqué, formulaire fermé). La transcription est faite par le navigateur, pas par orion aic : dans Chrome et Edge, le son part vers les serveurs de Google ou de Microsoft (connexion internet requise) ; Safari peut transcrire sur l’appareil selon le système. orion aic ne reçoit ni n’enregistre aucun son ; seul le texte inséré dans le champ fait partie de la session. L’organisation décide si des informations confidentielles peuvent être dictées.
 
 **Positions des équipes en direct** (`shared/live.ts`, `src/live/`) :
 
@@ -64,7 +83,7 @@ La suppression d’une entrée retire son contenu et son historique ; seuls le n
 
 ## Limites du modèle
 
-Le nom de l’opérateur est déclaratif. L’historique préserve les corrections faites via l’application, mais ce n’est ni un registre inviolable ni une signature électronique. Une personne avec accès au poste déverrouillé, à la phrase de récupération ou au code de session peut lire et modifier les données. Le chiffrement ne protège pas d’un logiciel malveillant, d’une extension intrusive, d’une capture d’écran ou d’un script compromis sur l’origine. La synchronisation résout les conflits automatiquement (dernière modification dans l’ordre causal, par horloge logique hybride ; versions conservées pour les entrées) et liste les modifications simultanées : un poste en retard de quelques minutes ne perd plus ses changements, mais une horloge fausse de plusieurs heures reste visible dans les heures affichées.
+Le nom de l’opérateur est déclaratif. L’historique préserve les corrections faites via l’application, mais ce n’est ni un registre inviolable ni une signature électronique (les exports sont signés par la clé du poste, voir plus haut, ce qui prouve leur intégrité, pas l’identité de leur auteur). Une personne avec accès au poste déverrouillé, à la phrase de récupération ou au code de session peut lire et modifier les données. Le chiffrement ne protège pas d’un logiciel malveillant, d’une extension intrusive, d’une capture d’écran ou d’un script compromis sur l’origine. La synchronisation résout les conflits automatiquement (dernière modification dans l’ordre causal, par horloge logique hybride ; versions conservées pour les entrées) et liste les modifications simultanées : un poste en retard de quelques minutes ne perd plus ses changements, mais une horloge fausse de plusieurs heures reste visible dans les heures affichées.
 
 L’exploitant doit maîtriser le code servi, HTTPS, les postes, les extensions, les sauvegardes, les droits d’accès aux fichiers et les délais de conservation.
 

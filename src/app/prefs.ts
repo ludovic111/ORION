@@ -25,6 +25,8 @@ export type Prefs = {
   autoPrintMessages: boolean;
   /** Details level of the documentation. */
   docsLevel: "short" | "guide" | "full";
+  /** Microphone button for voice dictation (off: audio may leave the post). */
+  dictation: boolean;
 };
 const KEY = "orion-aic-prefs";
 export const DEFAULT_PREFS: Prefs = {
@@ -37,6 +39,7 @@ export const DEFAULT_PREFS: Prefs = {
   autoPrintRemote: false,
   autoPrintMessages: false,
   docsLevel: "guide",
+  dictation: false,
 };
 // The editorial design (cream paper) replaced the deep-space look: posts
 // still on the former default dark theme switch to it once.
@@ -52,6 +55,7 @@ function read(): Prefs {
       prefs.lightPalette = DEFAULT_PREFS.lightPalette;
     if (!isDarkPalette(prefs.darkPalette))
       prefs.darkPalette = DEFAULT_PREFS.darkPalette;
+    if (typeof prefs.dictation !== "boolean") prefs.dictation = false;
     if (localStorage.getItem(DESIGN) !== "atelier") {
       localStorage.setItem(DESIGN, "atelier");
       if (prefs.theme === "dark") return { ...prefs, theme: "light" };

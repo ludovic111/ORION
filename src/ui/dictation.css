@@ -1,0 +1,79 @@
+/* Voice dictation: a microphone on the caption line of a text field. The
+   field is wrapped in .dictation-field: the button sits at the right of the
+   caption, « Écoute… » and the words being heard to its left, an error below
+   the field. Without the wrapper, button and status simply sit in a row. */
+.dictation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dictation-button {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.icon-button.dictation-button[aria-pressed="true"] {
+  background: var(--bg-2);
+  color: var(--text);
+}
+.dictation-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.dictation-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dictation-status.error {
+  color: var(--crit);
+  white-space: normal;
+}
+.dictation-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dictation-field > .dictation {
+  display: contents;
+}
+.dictation-field .dictation-button {
+  position: absolute;
+  top: -6px;
+  right: 0;
+}
+.dictation-field .dictation-status {
+  position: absolute;
+  top: 0;
+  left: 88px;
+  right: 34px;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.dictation-field .dictation-status.error {
+  position: static;
+  margin-top: 6px;
+  justify-content: flex-start;
+}
+/* The live dot: static, ember, the one chromatic mark while listening. */
+.dictation-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ember);
+}
+:root[data-motion="reduced"] .dictation-button {
+  transition: none;
+}

@@ -44,6 +44,9 @@ import {
   Ui,
 } from "./kit";
 import { CONDUCT_TOPICS } from "./conduct";
+import { EXERCISE_TOPICS } from "./content-exercise";
+import { VALISE_TOPIC } from "./content-valise";
+import { DICTATION_TOPIC } from "./content-dictation";
 
 export type Level = "short" | "guide" | "full";
 export type TopicGroup = "start" | "modules" | "together" | "reference";
@@ -3659,6 +3662,10 @@ export const TOPICS: Topic[] = [
       </dl>
     ),
   },
+  // Exercises, debriefing, wall screen, signatures, suitcase PC, dictation.
+  ...EXERCISE_TOPICS,
+  VALISE_TOPIC,
+  DICTATION_TOPIC,
 ];
 
 /** Resolve a help topic (module id, docs topic or unknown) to an existing topic. */

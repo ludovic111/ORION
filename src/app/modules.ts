@@ -2,13 +2,14 @@ import {
   Activity,
   BookOpen,
   CalendarClock,
+  ClipboardCheck,
   CloudSun,
   Contact,
   History,
   Inbox,
   KanbanSquare,
   LifeBuoy,
-  ClipboardCheck,
+  ClipboardList,
   ListChecks,
   Map,
   Network,
@@ -99,7 +100,7 @@ export const MODULES: ModuleInfo[] = [
     id: "checklists",
     label: "Listes de contrôle",
     short: "Listes",
-    icon: ClipboardCheck,
+    icon: ClipboardList,
     hue: 96,
     group: 0,
     description:
@@ -193,6 +194,16 @@ export const MODULES: ModuleInfo[] = [
     group: 3,
     description:
       "Qui a fait quoi et quand, versions de tout, comparaisons, exports et présentations.",
+  },
+  {
+    id: "debrief",
+    label: "Débriefing et exercice",
+    short: "RETEX",
+    icon: ClipboardCheck,
+    hue: 12,
+    group: 3,
+    description:
+      "Relecture de l’opération, chiffres de la conduite, points à retenir ; scénario et injects de la direction d’exercice.",
   },
   {
     id: "docs",

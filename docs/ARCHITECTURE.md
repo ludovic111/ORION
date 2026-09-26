@@ -24,7 +24,7 @@ Une **session** (`Workspace`) contient un opérateur déclaré, un ou plusieurs 
 
 ```
 Workspace
-├─ version, author, activeId, drafts, room et node (locaux), gone (journaux retirés, horodatés)
+├─ version, author, activeId, drafts, room, node et signing (locaux), gone (journaux retirés, horodatés)
 └─ journals[]
    ├─ id, title, organization, location, reference, mode, classification, createdAt, closedAt
    ├─ entries[] → revisions[]      journal d’intervention (versions, jamais écrasées ;
@@ -56,6 +56,8 @@ Workspace
    │  ├─ presences, shifts         arrivées / départs, plan de relève
    │  ├─ thresholds, reminders     seuils météo (alertes à id dérivé du seuil et du jour),
    │  │                            rappels d’export et d’impression
+   │  ├─ scenarios, injects        exercice : scénario (T0, fin), injects datés, remise, réaction
+   │  ├─ retex                     débriefing : points positifs / à améliorer (registre)
    │  └─ settings                  référentiels, lieu météo, vue de carte
    ├─ sync { clock, removed, compacted }
    │                               horodatages (horloge logique hybride) des changements,
@@ -120,6 +122,12 @@ Coût : aucun stockage serveur, mémoire du relais bornée par les limites ci-de
 - **Diffusions** : un accusé (`ops.acks`) est un nouvel enregistrement par destinataire, jamais modifié : deux postes qui répondent en même temps donnent deux accusés, gardés tous les deux par la fusion. Retard : sans accusé après `deadline` minutes.
 - **Ordres** : numéro donné à la création (le plus haut jamais donné par ce PC, ordres supprimés compris, + 1), suffixe comme les entrées en cas de collision (`orderLabels`), ordres reçus d’un autre PC libellés par leur source.
 - **Liaison entre PC** (`shared/liaison.ts`, `src/liaison/useLiaisons.ts`) : un code de liaison (même générateur que les sessions) dérive, avec d’autres étiquettes PBKDF2 / HKDF, une autre salle et une autre clé : il n’ouvre jamais une session, ni l’inverse. Le relais est inchangé. Les éléments à envoyer sont des enregistrements `ops.exchanges` (sortants, identifiant stable) renvoyés à chaque contact jusqu’à l’accusé de réception `got` ; un élément reçu garde l’identifiant de son enveloppe (et des enregistrements qu’il porte), si bien que plusieurs postes qui le reçoivent n’en gardent qu’un. Seuls passent : messages (dans Messages de l’autre PC, avec le PC d’origine), diffusions avec leur ordre, accusés. Le code de liaison et les échanges ne sont pas exportés.
+
+## Exercices, débriefing, signature
+
+- **Exercices** (`shared/exercise.ts`) : `dueAt` calcule l’heure d’un inject (T0 + minutes, ou hh:mm de Zurich le jour `day`, exact aux changements d’heure), `dueInjects` ceux qui sont dus, `deliverInject` les remet (message dans `ops.messages` dont l’identifiant est dérivé de l’inject, donc identique sur deux postes qui livrent en même temps ; effets sur les moyens, renseignements clés, observations). `src/exercise/Runner.tsx` livre toutes les 5 s sur le poste de la direction (ou sur tous les postes si le scénario est `autoplay`, la démonstration), jamais dans un journal d’intervention, clôturé ou dans le passé. `reactionOf` mesure la réaction : marque de la direction, ou premier changement d’état du message (historique), inscription au journal, lien.
+- **Débriefing** (`shared/debrief.ts`) : échéances, délais de traitement des messages, entrées par heure, qui a fait quoi ; partie « Exercice et débriefing » du dossier d’export (`src/export/debrief.ts`). La relecture ×10 / ×60 fait avancer `viewAt` en temps accéléré (`src/timeline/TimeBar.tsx`, demande par `src/timeline/playback.ts`).
+- **Signature** (`shared/signature.ts`) : clé du poste dans `Workspace.signing`, jamais dans un journal. PDF signés après `%%EOF`, archives par un champ `signature` (forme canonique), codes QR par `;h=…;t=…;a=…;k=…;s=…`, lignes du registre par `ExportLog.signature`.
 
 Le mode réseau local (`server/lan.mjs`) sert la même application et le même relais en HTTPS sur le réseau du poste de conduite, avec un certificat auto-signé.
 

@@ -1,0 +1,334 @@
+/* Débriefing and direction of the exercise. Tokens only (DESIGN.md). */
+
+.db {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.db-tabs {
+  margin: 0 0 18px;
+}
+.db-card .card-head {
+  display: flex;
+  align-items: center;
+}
+.db-card .card-head h2 {
+  flex: 1;
+  min-width: 0;
+}
+.db-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.db-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  max-width: 72ch;
+}
+.db-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.db-actions:first-child {
+  margin-top: 0;
+}
+.db-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.db-table td small,
+.db-table td strong {
+  display: block;
+}
+.db-table td small {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.db-table td strong {
+  font-weight: 500;
+}
+.db-moment {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.db-moment > p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.db-last,
+.db-list,
+.db-notes,
+.db-bars,
+.db-injects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.db-last li,
+.db-list li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.db-last li:last-child,
+.db-list li:last-child {
+  border-bottom: 0;
+}
+.db-last .mono,
+.db-list .mono {
+  flex: none;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.db-list-text {
+  flex: 1;
+  min-width: 0;
+}
+.db-late {
+  color: var(--crit);
+}
+
+/* Bars: the number is the information, the bar only compares. */
+.db-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 9em) minmax(0, 1fr) 3ch;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.db-bar {
+  height: 8px;
+  border-radius: 2px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.db-bar i {
+  display: block;
+  height: 100%;
+  background: var(--text-2);
+}
+.db-bars li.tone-warn .db-bar i {
+  background: var(--warn);
+}
+.db-bars strong,
+.db-columns strong {
+  text-align: right;
+  font-weight: 500;
+  color: var(--text);
+}
+.db-bars strong.zero,
+.db-columns strong.zero {
+  color: var(--text-3);
+}
+.db-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: 150px;
+  overflow-x: auto;
+}
+.db-column {
+  flex: 1 0 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.db-column strong {
+  font-size: 12px;
+  text-align: center;
+}
+.db-column-bar {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 100px;
+  border-bottom: 1px solid var(--line-2);
+}
+.db-column-bar i {
+  display: block;
+  width: 100%;
+  background: var(--text-2);
+  border-radius: 2px 2px 0 0;
+}
+.db-column small {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+/* Notes */
+.db-notes li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.db-notes li > div {
+  flex: 1;
+  min-width: 0;
+}
+.db-notes strong {
+  display: block;
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.db-notes p {
+  margin: 2px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.db-notes small {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.db-add {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.db-add button {
+  justify-self: start;
+}
+
+/* Direction */
+.db-lock p {
+  max-width: 64ch;
+}
+.db-lock-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+.db-lock-form input {
+  width: 10em;
+  font-family: var(--mono);
+  letter-spacing: 0.2em;
+}
+.db-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.db-direction .card > label {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  margin-top: 14px;
+}
+.db-read {
+  border: 1px solid var(--warn);
+}
+.db-read-meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.db-read blockquote {
+  margin: 0 0 10px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--text);
+  background: var(--bg-2);
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.db-inject {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.db-inject:last-child {
+  border-bottom: 0;
+}
+.db-inject.skipped {
+  opacity: 0.6;
+}
+.db-inject-time {
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+}
+.db-inject-time small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.db-inject-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  text-align: left;
+  box-shadow: none;
+  color: var(--text);
+}
+.db-inject-body:hover {
+  background: var(--bg-2);
+}
+.db-inject-body strong {
+  font-weight: 500;
+}
+.db-inject-body span,
+.db-inject-body small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.db-inject-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.db-subtitle {
+  margin: 20px 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.db-effect {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.db-effect .form-grid {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .db-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .db-inject {
+    grid-template-columns: 5.5em minmax(0, 1fr);
+  }
+  .db-inject-state,
+  .db-inject-actions {
+    grid-column: 2;
+  }
+}

@@ -12,6 +12,7 @@ import {
 } from "../../shared/journal";
 import { TEMPLATES, applyTemplate } from "../../shared/workflow";
 import { fromInput, localInput } from "../ui/fields";
+import { DictationButton, insertDictation } from "../ui/DictationButton";
 export { localInput };
 export function EntryForm({
   initial,
@@ -185,23 +186,33 @@ export function EntryForm({
         {select("type", "Nature", TYPES)}
         {select("priority", "Priorité", PRIORITIES)}
       </div>
-      <label>
-        <span>
-          Message <span className="required">*</span>
-        </span>
-        <textarea
-          ref={message}
-          id={compact ? "quick-message" : undefined}
-          rows={compact ? 5 : 4}
-          required
-          maxLength={12000}
-          value={fields.message}
-          onChange={(e) => update("message", e.target.value)}
-          placeholder="Texte du message"
-          autoFocus={!compact}
-          data-autofocus={!compact || undefined}
+      <div className="dictation-field">
+        <label>
+          <span>
+            Message <span className="required">*</span>
+          </span>
+          <textarea
+            ref={message}
+            id={compact ? "quick-message" : undefined}
+            rows={compact ? 5 : 4}
+            required
+            maxLength={12000}
+            value={fields.message}
+            onChange={(e) => update("message", e.target.value)}
+            placeholder="Texte du message"
+            autoFocus={!compact}
+            data-autofocus={!compact || undefined}
+          />
+        </label>
+        <DictationButton
+          label="Dicter le message"
+          onText={(text) =>
+            insertDictation(message.current, text, (value) =>
+              update("message", value),
+            )
+          }
         />
-      </label>
+      </div>
       <div className="form-pair">
         <label>
           Heure de l’événement

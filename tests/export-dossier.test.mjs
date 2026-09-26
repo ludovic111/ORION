@@ -30,10 +30,11 @@ test("the dossier of the whole operation has one chapter per part, in order", as
     author: "Test",
     versions: true,
   });
-  assert.equal(d.chapters.length, 13);
+  // 14 parts since the debriefing (Exercice et débriefing).
+  assert.equal(d.chapters.length, 14);
   assert.deepEqual(
     d.chapters.map((c) => c.number),
-    Array.from({ length: 13 }, (_, i) => i + 1),
+    Array.from({ length: 14 }, (_, i) => i + 1),
   );
   assert.equal(d.cover.shown, "État actuel");
   assert.equal(d.cover.classification, "Confidentiel");

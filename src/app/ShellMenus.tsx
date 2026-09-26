@@ -12,6 +12,7 @@ import {
   Shield,
   Sun,
   Trash2,
+  Tv,
   Wifi,
 } from "lucide-react";
 import type { Journal, Workspace } from "../../shared/journal";
@@ -103,6 +104,7 @@ export function OperatorMenu({
   onInstall,
   onTheme,
   onEnd,
+  onWall,
 }: {
   anchor: HTMLElement;
   author: string;
@@ -116,6 +118,8 @@ export function OperatorMenu({
   onInstall: () => void;
   onTheme: () => void;
   onEnd: () => void;
+  /** Wall screen of the room (src/wall/WallScreen.tsx). */
+  onWall?: () => void;
 }) {
   return (
     <Popover anchor={anchor} onClose={onClose} align="end">
@@ -152,6 +156,15 @@ export function OperatorMenu({
           <small>Opérateur, phrase de récupération, fin de session</small>
         </span>
       </button>
+      {onWall && (
+        <button data-close onClick={onWall}>
+          <Tv size={15} />
+          <span>
+            Écran mural
+            <small>Grand écran de la salle, lecture seule</small>
+          </span>
+        </button>
+      )}
       <hr />
       <button data-close onClick={onPrivacy}>
         <Shield size={15} />

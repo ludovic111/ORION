@@ -43,7 +43,8 @@ export type Module =
   | "docs"
   | "orders"
   | "tasks"
-  | "checklists";
+  | "checklists"
+  | "debrief";
 
 export const KIND_INFO: Record<
   RefKind,
