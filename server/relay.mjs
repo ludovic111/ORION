@@ -61,8 +61,16 @@ function frame(opcode, payload = Buffer.alloc(0)) {
 }
 const text = (value) => frame(1, Buffer.from(JSON.stringify(value)));
 
+// Proxy headers are only trusted behind Railway's edge (which sets
+// X-Real-IP) or when TRUST_PROXY is set; on a LAN (`npm run lan`) a client
+// could otherwise fake them to dodge the per-address limits.
+const TRUST_PROXY = Boolean(
+  process.env.TRUST_PROXY || process.env.RAILWAY_ENVIRONMENT,
+);
+
 /** Address of the client: the hosting proxy (Railway) tells it. */
-export function clientAddress(req) {
+export function clientAddress(req, trustProxy = TRUST_PROXY) {
+  if (!trustProxy) return req.socket?.remoteAddress ?? "";
   const real = req.headers["x-real-ip"];
   if (typeof real === "string" && real.trim()) return real.trim();
   const forwarded = req.headers["x-forwarded-for"];
