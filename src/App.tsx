@@ -70,14 +70,42 @@ import { TimeBar } from "./timeline/TimeBar";
 import { usePastJournal } from "./timeline/replay";
 import { edges as allEdges, items as allItems } from "../shared/links";
 
-const MapModule = lazy(() => import("./modules/map/MapModule"));
-const NetworkModule = lazy(() => import("./modules/network/NetworkModule"));
-const PresentationMode = lazy(() => import("./present/Presentation"));
-const Trace = lazy(() =>
-  import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
+// A chunk missing after a deployment (tab older than the new version): try
+// again, then offer to reload once instead of leaving a blank module.
+const retry =
+  <T,>(load: () => Promise<T>) =>
+  () =>
+    load()
+      .catch(() => new Promise((r) => setTimeout(r, 800)).then(load))
+      .then(
+        (m) => (sessionStorage.removeItem("orion.chunk-reload"), m),
+        (err) => {
+          if (
+            sessionStorage.getItem("orion.chunk-reload") ||
+            !window.confirm(
+              "Une nouvelle version d’orion aic est en ligne : recharger la page pour ouvrir ce module ? Une session temporaire non exportée serait perdue.",
+            )
+          )
+            throw err;
+          sessionStorage.setItem("orion.chunk-reload", "1");
+          location.reload();
+          return new Promise<T>(() => {});
+        },
+      );
+const MapModule = lazy(retry(() => import("./modules/map/MapModule")));
+const NetworkModule = lazy(
+  retry(() => import("./modules/network/NetworkModule")),
 );
-const ExportCenter = lazy(() =>
-  import("./export/ExportCenter").then((m) => ({ default: m.ExportCenter })),
+const PresentationMode = lazy(retry(() => import("./present/Presentation")));
+const Trace = lazy(
+  retry(() =>
+    import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
+  ),
+);
+const ExportCenter = lazy(
+  retry(() =>
+    import("./export/ExportCenter").then((m) => ({ default: m.ExportCenter })),
+  ),
 );
 
 const DISCARD_DRAFT =

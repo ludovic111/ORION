@@ -8,6 +8,13 @@ import { builtinInfo, customId, isCustom, OFFICIAL } from "./builtins";
 import { effectiveColor } from "./geoformats";
 import { hexColor, layerKey, placesOf, sortMaps } from "./maps";
 import { iconOf } from "./symbols";
+import {
+  TILE,
+  project,
+  projectedBounds,
+  unproject,
+  type LatLng,
+} from "./projection";
 
 // Offscreen rendering of a situation map to an image (PNG), for the exports,
 // the slides and the comparisons. Owned by the map module. Web Mercator
@@ -35,6 +42,15 @@ export type MapRenderOptions = {
    * legend drawn over the image). Default: 9 % of the shortest side.
    */
   inset?: { top?: number; right?: number; bottom?: number; left?: number };
+  /**
+   * Exact view (print to scale): centre and fractional zoom of the CSS
+   * pixels. Overrides `fit`.
+   */
+  view?: { lat: number; lng: number; zoom: number };
+  /** Transparent layers drawn over the background (geo.admin.ch). */
+  overlays?: { url: string; opacity: number; native?: number }[];
+  /** Leave out the scale bar, north arrow and attribution (print frames). */
+  bare?: boolean;
 };
 export type MapImage = {
   blob: Blob;
@@ -47,8 +63,6 @@ export type MapImage = {
   attribution: string;
 };
 
-type LatLng = [number, number];
-const TILE = 256;
 const MAX_ZOOM = 18;
 const TIMEOUT = 12000;
 const SWITZERLAND: [LatLng, LatLng] = [
@@ -59,23 +73,6 @@ const INK = "#111427";
 const SANS =
   'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const DISPLAY = '"IBM Plex Sans", system-ui, sans-serif';
-
-/* ---------- Web Mercator ---------- */
-
-/** Position at zoom 0, in pixels of a 256 px world. */
-function project([lat, lng]: LatLng): [number, number] {
-  const s = Math.sin((Math.max(-85.05, Math.min(85.05, lat)) * Math.PI) / 180);
-  return [
-    ((lng + 180) / 360) * TILE,
-    (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE,
-  ];
-}
-function unproject([x, y]: [number, number]): LatLng {
-  const lng = (x / TILE) * 360 - 180;
-  const n = Math.PI - (2 * Math.PI * y) / TILE;
-  const lat = (180 / Math.PI) * Math.atan(Math.sinh(n));
-  return [lat, lng];
-}
 
 /* ---------- Resources ---------- */
 
@@ -317,17 +314,12 @@ export async function renderMap(
   const saved =
     record ??
     (!options.mapId || !maps.length ? journal.ops.settings.mapCenter : null);
-  const pts = places.flatMap((p) => p.points);
-  const fitTo = (list: LatLng[], maxZoom: number) => {
-    const xy = list.map(project);
-    const xs = xy.map((p) => p[0]);
-    const ys = xy.map((p) => p[1]);
-    const [minX, maxX, minY, maxY] = [
-      Math.min(...xs),
-      Math.max(...xs),
-      Math.min(...ys),
-      Math.max(...ys),
-    ];
+  let pointCount = 0;
+  for (const p of places) pointCount += p.points.length;
+  const onlyPoint =
+    pointCount === 1 ? places.find((p) => p.points.length)!.points[0] : null;
+  const fitTo = (lists: LatLng[][], maxZoom: number) => {
+    const { minX, maxX, minY, maxY } = projectedBounds(lists)!;
     const pad = Math.max(36, Math.min(cssW, cssH) * 0.09);
     const inset = options.inset ?? {};
     const top = inset.top ?? pad;
@@ -347,15 +339,22 @@ export async function renderMap(
       (minY + maxY) / 2 - (top - bottom) / 2 / k,
     ];
   };
-  if (options.fit === "view" && saved)
+  if (options.view)
+    ((center = project([options.view.lat, options.view.lng])),
+      (zoom = Math.min(22, Math.max(1, options.view.zoom))));
+  else if (options.fit === "view" && saved)
     ((center = project([saved.lat, saved.lng])),
       (zoom = Math.min(MAX_ZOOM, saved.zoom)));
-  else if (pts.length === 1) ((center = project(pts[0])), (zoom = 16));
-  else if (pts.length) fitTo(pts, MAX_ZOOM);
+  else if (onlyPoint) ((center = project(onlyPoint)), (zoom = 16));
+  else if (pointCount)
+    fitTo(
+      places.map((p) => p.points),
+      MAX_ZOOM,
+    );
   else if (saved)
     ((center = project([saved.lat, saved.lng])),
       (zoom = Math.min(MAX_ZOOM, saved.zoom)));
-  else fitTo(SWITZERLAND, MAX_ZOOM);
+  else fitTo([SWITZERLAND], MAX_ZOOM);
   // TypeScript: assigned in every branch above.
   center = center!;
   zoom = zoom!;
@@ -387,12 +386,14 @@ export async function renderMap(
   ctx.fillStyle = baseId === "none" ? "#f1f3f7" : "#dfe3ea";
   ctx.fillRect(0, 0, W, H);
   let attribution = "";
-  if (baseId !== "none") {
-    const base = BASES[baseId];
-    attribution = base.swiss
-      ? "© swisstopo"
-      : "© les contributeurs d’OpenStreetMap";
-    let tz = Math.max(1, Math.min(base.native, Math.round(zDev)));
+  /** Draw one tile layer (background or transparent overlay). */
+  const drawTiles = async (
+    url: string,
+    native: number,
+    swiss: boolean,
+    alpha: number,
+  ) => {
+    let tz = Math.max(1, Math.min(native, Math.round(zDev)));
     const range = (z: number) => {
       const ts = TILE * 2 ** (zDev - z);
       return {
@@ -415,7 +416,7 @@ export async function renderMap(
     for (let ty = r.y0; ty <= r.y1; ty++)
       for (let tx = r.x0; tx <= r.x1; tx++) {
         const wx = ((tx % n) + n) % n;
-        if (base.swiss) {
+        if (swiss) {
           const [tn, tw] = unproject([(tx / n) * TILE, (ty / n) * TILE]);
           const [ts, te] = unproject([
             ((tx + 1) / n) * TILE,
@@ -423,7 +424,7 @@ export async function renderMap(
           ]);
           if (ts > north || tn < south || te < west || tw > east) continue;
         }
-        const src = base.url
+        const src = url
           .replace("{z}", String(tz))
           .replace("{x}", String(wx))
           .replace("{y}", String(ty));
@@ -438,8 +439,17 @@ export async function renderMap(
     await Promise.race([Promise.all(jobs), deadline]);
     late = true;
     // Slightly larger than the cell: no hairline between tiles.
+    ctx.globalAlpha = alpha;
     for (const t of arrived)
       ctx.drawImage(t.img, t.x, t.y, r.ts + 0.5, r.ts + 0.5);
+    ctx.globalAlpha = 1;
+  };
+  if (baseId !== "none") {
+    const base = BASES[baseId];
+    attribution = base.swiss
+      ? "© swisstopo"
+      : "© les contributeurs d’OpenStreetMap";
+    await drawTiles(base.url, base.native, base.swiss, 1);
     if (baseId === "night") {
       const data = ctx.getImageData(0, 0, W, H);
       const d = data.data;
@@ -451,6 +461,10 @@ export async function renderMap(
       }
       ctx.putImageData(data, 0, 0);
     }
+  }
+  for (const o of options.overlays ?? []) {
+    await drawTiles(o.url, o.native ?? 18, true, o.opacity);
+    if (!attribution.includes("geo.admin")) attribution += " · geo.admin.ch";
   }
   const dark = baseId === "night" || baseId === "aerial";
 
@@ -484,14 +498,21 @@ export async function renderMap(
   const shapes = places.filter((p) => p.kind === "area" || p.kind === "line");
   for (const p of shapes) {
     const color = effectiveColor(p);
-    const xy = p.points.map(toPx);
     ctx.beginPath();
-    xy.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    const rings =
+      p.kind === "area" ? [p.points, ...(p.holes ?? [])] : [p.points];
+    for (const ring of rings) {
+      for (let i = 0; i < ring.length; i++) {
+        const [x, y] = toPx(ring[i]);
+        if (i) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      }
+      if (p.kind === "area") ctx.closePath();
+    }
     if (p.kind === "area") {
-      ctx.closePath();
       ctx.globalAlpha = 0.16;
       ctx.fillStyle = color;
-      ctx.fill();
+      ctx.fill("evenodd");
       ctx.globalAlpha = 1;
     }
     ctx.lineCap = "round";
@@ -549,8 +570,10 @@ export async function renderMap(
       const lh = px * 1.15;
       const color = hexColor(p.color) || INK;
       if (p.boxed) {
-        const w =
-          Math.max(...lines.map((l) => ctx.measureText(l).width)) + px * 0.8;
+        let widest = 0;
+        for (const l of lines)
+          widest = Math.max(widest, ctx.measureText(l).width);
+        const w = widest + px * 0.8;
         const h = lh * lines.length + px * 0.45;
         ctx.save();
         ctx.shadowColor = "rgba(0,0,0,0.3)";
@@ -664,75 +687,77 @@ export async function renderMap(
       plateLabel(ctx, p.label, x, y + box / 2 + 4 * scale, scale, p.size);
   }
 
-  /* Scale bar, north arrow, attribution */
-  const [clat] = toLatLng(W / 2, H / 2);
-  const metresPerPx =
-    (156543.03392 * Math.cos((clat * Math.PI) / 180)) / 2 ** zDev;
-  const target = 110 * scale * metresPerPx;
-  const exp = 10 ** Math.floor(Math.log10(target));
-  const nice = [5, 2, 1].map((k) => k * exp).find((v) => v <= target) ?? exp;
-  const barW = nice / metresPerPx;
-  const m = 14 * scale;
-  ctx.font = `600 ${10.5 * scale}px ${SANS}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "bottom";
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  roundRect(
-    ctx,
-    m - 6 * scale,
-    H - m - 26 * scale,
-    barW + 12 * scale,
-    30 * scale,
-    6 * scale,
-  );
-  ctx.fill();
-  ctx.fillStyle = INK;
-  ctx.fillRect(m, H - m - 6 * scale, barW, 3 * scale);
-  ctx.fillRect(m, H - m - 10 * scale, 1.5 * scale, 7 * scale);
-  ctx.fillRect(
-    m + barW - 1.5 * scale,
-    H - m - 10 * scale,
-    1.5 * scale,
-    7 * scale,
-  );
-  ctx.fillText(
-    nice >= 1000 ? `${nice / 1000} km` : `${nice} m`,
-    m,
-    H - m - 11 * scale,
-  );
+  /* Scale bar, north arrow, attribution (a print draws its own) */
+  if (!options.bare) {
+    const [clat] = toLatLng(W / 2, H / 2);
+    const metresPerPx =
+      (156543.03392 * Math.cos((clat * Math.PI) / 180)) / 2 ** zDev;
+    const target = 110 * scale * metresPerPx;
+    const exp = 10 ** Math.floor(Math.log10(target));
+    const nice = [5, 2, 1].map((k) => k * exp).find((v) => v <= target) ?? exp;
+    const barW = nice / metresPerPx;
+    const m = 14 * scale;
+    ctx.font = `600 ${10.5 * scale}px ${SANS}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    roundRect(
+      ctx,
+      m - 6 * scale,
+      H - m - 26 * scale,
+      barW + 12 * scale,
+      30 * scale,
+      6 * scale,
+    );
+    ctx.fill();
+    ctx.fillStyle = INK;
+    ctx.fillRect(m, H - m - 6 * scale, barW, 3 * scale);
+    ctx.fillRect(m, H - m - 10 * scale, 1.5 * scale, 7 * scale);
+    ctx.fillRect(
+      m + barW - 1.5 * scale,
+      H - m - 10 * scale,
+      1.5 * scale,
+      7 * scale,
+    );
+    ctx.fillText(
+      nice >= 1000 ? `${nice / 1000} km` : `${nice} m`,
+      m,
+      H - m - 11 * scale,
+    );
 
-  const nx = W - m - 16 * scale;
-  const ny = m + 18 * scale;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.3)";
-  ctx.shadowBlur = 5 * scale;
-  ctx.beginPath();
-  ctx.arc(nx, ny, 16 * scale, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.fill();
-  ctx.restore();
-  ctx.beginPath();
-  ctx.moveTo(nx, ny - 12 * scale);
-  ctx.lineTo(nx + 5 * scale, ny + 1 * scale);
-  ctx.lineTo(nx - 5 * scale, ny + 1 * scale);
-  ctx.closePath();
-  ctx.fillStyle = "#e5243b";
-  ctx.fill();
-  ctx.font = `700 ${9.5 * scale}px ${SANS}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = INK;
-  ctx.fillText("N", nx, ny + 7.5 * scale);
-
-  if (attribution) {
-    ctx.font = `500 ${10 * scale}px ${SANS}`;
-    const w = ctx.measureText(attribution).width + 12 * scale;
-    ctx.fillStyle = "rgba(255,255,255,0.82)";
-    ctx.fillRect(W - w, H - 17 * scale, w, 17 * scale);
-    ctx.fillStyle = "#3a3f55";
-    ctx.textAlign = "right";
+    const nx = W - m - 16 * scale;
+    const ny = m + 18 * scale;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
+    ctx.shadowBlur = 5 * scale;
+    ctx.beginPath();
+    ctx.arc(nx, ny, 16 * scale, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.fill();
+    ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(nx, ny - 12 * scale);
+    ctx.lineTo(nx + 5 * scale, ny + 1 * scale);
+    ctx.lineTo(nx - 5 * scale, ny + 1 * scale);
+    ctx.closePath();
+    ctx.fillStyle = "#e5243b";
+    ctx.fill();
+    ctx.font = `700 ${9.5 * scale}px ${SANS}`;
+    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(attribution, W - 6 * scale, H - 8.5 * scale);
+    ctx.fillStyle = INK;
+    ctx.fillText("N", nx, ny + 7.5 * scale);
+
+    if (attribution) {
+      ctx.font = `500 ${10 * scale}px ${SANS}`;
+      const w = ctx.measureText(attribution).width + 12 * scale;
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.fillRect(W - w, H - 17 * scale, w, 17 * scale);
+      ctx.fillStyle = "#3a3f55";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(attribution, W - 6 * scale, H - 8.5 * scale);
+    }
   }
 
   // Drawing is finished: nothing reaches the canvas any more.

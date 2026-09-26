@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import {
   Copy,
   Crosshair,
+  History,
   Layers2,
   RotateCcw,
   RotateCw,
   Spline,
 } from "lucide-react";
+import { restoreState } from "../../../shared/history";
+import { ProfilePanel } from "./ProfilePanel";
 import {
   LINE_STYLES,
   upsert,
@@ -496,6 +499,75 @@ function Appearance({ place }: { place: Place }) {
   );
 }
 
+/**
+ * Time machine: bring this object, as it was at the moment shown, back
+ * into the live journal (a new, signed change; the current state stays in
+ * the history).
+ */
+function RestorePast({ place, viewAt }: { place: Place; viewAt: number }) {
+  const { live, author, updateJournal, toast } = useApp();
+  const now = live.ops.places.find((p) => p.id === place.id);
+  const same =
+    !!now &&
+    JSON.stringify({ ...now, updatedAt: "" }) ===
+      JSON.stringify({ ...place, updatedAt: "" });
+  const when = new Date(viewAt).toLocaleString("fr-CH", {
+    timeZone: "Europe/Zurich",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  function restore() {
+    if (
+      !window.confirm(
+        now
+          ? `Remettre cet objet dans son état du ${when} ? L’état actuel reste dans l’historique.`
+          : `Cet objet a été supprimé depuis. Le remettre sur la carte tel qu’il était le ${when} ?`,
+      )
+    )
+      return;
+    try {
+      updateJournal(
+        restoreState(
+          live,
+          {
+            scope: "ops.places",
+            target: place.id,
+            state: place,
+            at: new Date(viewAt).toISOString(),
+          },
+          author,
+        ),
+      );
+      toast("Objet restauré dans le journal actuel.");
+    } catch (err) {
+      toast((err as Error).message);
+    }
+  }
+  return (
+    <section className="map-sheet-restore" aria-label="Restaurer">
+      <span className="label">Machine à remonter le temps</span>
+      <p className="muted">
+        {same
+          ? "L’objet est aujourd’hui dans le même état."
+          : now
+            ? "L’objet a changé depuis ce moment."
+            : "L’objet n’existe plus aujourd’hui."}
+      </p>
+      <button
+        type="button"
+        disabled={same || !!live.closedAt}
+        title={live.closedAt ? "Journal clôturé" : undefined}
+        onClick={restore}
+      >
+        <History size={14} />
+        Restaurer cet objet
+      </button>
+    </section>
+  );
+}
+
 const KIND_NOUN: Record<Place["kind"], string> = {
   point: "Signe",
   line: "Tracé",
@@ -518,7 +590,7 @@ export function PlaceSheet({
   onCenter: (place: Place) => void;
   onEditShape: (place: Place) => void;
 }) {
-  const { toast, readOnly } = useApp();
+  const { toast, readOnly, viewAt } = useApp();
   const spec: FieldSpec[] = [
     {
       key: "label",
@@ -654,7 +726,15 @@ export function PlaceSheet({
                 {place.kind === "area" && (
                   <>
                     <dt>Surface</dt>
-                    <dd className="mono">{formatArea(areaOf(place.points))}</dd>
+                    <dd className="mono">
+                      {formatArea(areaOf(place.points, place.holes))}
+                    </dd>
+                  </>
+                )}
+                {!!place.holes?.length && (
+                  <>
+                    <dt>Trous</dt>
+                    <dd className="mono">{place.holes.length}</dd>
                   </>
                 )}
                 <dt>Sommets</dt>
@@ -675,6 +755,8 @@ export function PlaceSheet({
                 )}
             </div>
           </section>
+          {place.kind === "line" && <ProfilePanel points={place.points} />}
+          {viewAt !== null && <RestorePast place={place} viewAt={viewAt} />}
         </>
       )}
     </RecordSheet>

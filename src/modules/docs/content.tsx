@@ -1079,6 +1079,10 @@ export const TOPICS: Topic[] = [
             <Ui>Cartes</Ui> permet de le montrer sur d’autres cartes, ou sur{" "}
             <Ui>Toutes les cartes</Ui>.
           </li>
+          <li>
+            Une nouvelle carte part vide ; à sa création, on peut reprendre les
+            objets de la carte affichée.
+          </li>
         </Steps>
         <H>Taille, rotation, texte</H>
         <ul>
@@ -1155,7 +1159,11 @@ export const TOPICS: Topic[] = [
             ["Zone", "Une surface : zone inondée, secteur, zone interdite."],
             [
               "Périmètre",
-              "Un cercle autour d’un point : bouclage, évacuation, sécurité. Cliquez le centre, puis cliquez le bord ou choisissez 50 m, 100 m, 200 m, 300 m, 500 m ou 1 km. Le périmètre devient une zone normale, nommée avec son rayon.",
+              "Un cercle autour d’un point : bouclage, évacuation, sécurité. Cliquez le centre, puis cliquez le bord ou choisissez 50 m, 100 m, 200 m, 300 m, 500 m ou 1 km. Anneaux : plusieurs cercles d’un coup (« 100, 300, 1000 »), reliés entre eux. Chaque périmètre devient une zone normale, nommée avec son rayon.",
+            ],
+            [
+              "Panache",
+              "Un secteur depuis un point (fumée, gaz, zone sous le vent) : cliquez l’origine, puis la direction et la longueur, ou saisissez la direction (degrés), l’ouverture (30° à 90°) et la longueur. « Vent actuel » reprend la dernière prévision du module Météo.",
             ],
             ["Texte", "Une étiquette écrite directement sur la carte."],
             ["Dessin", "Un trait à main levée (souris, doigt, stylet)."],
@@ -1217,7 +1225,8 @@ export const TOPICS: Topic[] = [
             front, PC arrière, poste collecteur, place sinistrés, héliport,
             ambulance, barrage, déviation, point d’eau, électricité, dangers
             chimiques… Tapez un mot (« collecteur », « hélico ») pour les
-            trouver.
+            trouver. La recherche comprend aussi l’allemand et l’italien («
+            Feuer », « frana », « Verletzte »).
           </li>
           <li>
             <Ui>Ajouter un signe</Ui> : une image à vous (PNG, SVG, JPEG, WebP).{" "}
@@ -1234,7 +1243,99 @@ export const TOPICS: Topic[] = [
           </li>
           <li>
             Exporter : image PNG de chaque carte, GeoJSON, KML, GPX, depuis le{" "}
-            <Ui>centre d’export</Ui>.
+            <Ui>centre d’export</Ui>. <Ui>⋯</Ui> → <Ui>GeoJSON en MN95</Ui> :
+            les coordonnées suisses (EPSG:2056) pour un SIG cantonal.
+          </li>
+          <li>
+            Les fichiers en coordonnées suisses (GeoJSON MN95 ou MN03) sont
+            reconnus et convertis. Les dossiers d’un KML deviennent des calques,
+            les trous des zones sont gardés.
+          </li>
+        </ul>
+        <H>Imprimer à l’échelle</H>
+        <p>
+          <Ui>⋯</Ui> → <Ui>Imprimer à l’échelle</Ui> : A4 ou A3, portrait ou
+          paysage, au 1:5 000, 1:10 000, 1:25 000 ou 1:50 000, centré sur la
+          carte affichée. Le PDF porte le quadrillage suisse numéroté, la
+          légende des signes présents, la flèche du nord, l’échelle graphique,
+          l’heure, l’événement et la classification. Imprimez-le à 100 % (sans «
+          ajuster à la page ») pour garder l’échelle. Il est inscrit au registre
+          des exports.
+        </p>
+        <H>Couches geo.admin.ch</H>
+        <p>
+          <Ui>Calques</Ui> → <Ui>Couches geo.admin.ch</Ui> (ou le bouton du
+          fond) : zones inondables, ruissellement, glissements, laves
+          torrentielles, chutes de pierres, avalanches, danger d’incendie de
+          forêt, stations hydrologiques avec leur degré de danger de crue, carte
+          de vigilance crues, vent et pluie mesurés par MétéoSuisse, cadastre,
+          barrages, points de rencontre d’urgence, biens culturels, zones
+          d’urgence nucléaires. Chaque couche a son opacité et un lien vers sa
+          légende officielle ; un clic sur la carte montre ce que la couche sait
+          de l’endroit (parcelle, barrage, station…). Données gratuites de la
+          Confédération et des cantons.
+        </p>
+        <H>Quadrillage et coordonnées</H>
+        <ul>
+          <li>
+            Bouton du fond → <Ui>Quadrillage MN95</Ui> : lignes kilométriques
+            numérotées (100 m en zoom rapproché).
+          </li>
+          <li>
+            <Ui>Réticule au centre</Ui> : les coordonnées affichées sont celles
+            du centre, pratique au doigt.
+          </li>
+          <li>
+            Un clic sur les coordonnées (en bas à gauche) les copie, en MN95 ou
+            en WGS84.
+          </li>
+          <li>
+            <Ui>Aller à</Ui> comprend aussi les degrés-minutes-secondes (
+            <code>46°56′53″N 7°26′51″E</code>), MN03 (
+            <code>600 000 / 200 000</code>) et ignore l’altitude.
+          </li>
+        </ul>
+        <H>Profil d’une ligne</H>
+        <p>
+          Dans la fiche d’une ligne, <Ui>Profil altimétrique</Ui> : altitudes le
+          long du tracé (swissALTI3D), montée et descente cumulées, pentes. Le
+          profil reste sur le poste et s’affiche aussi hors ligne.
+        </p>
+        <H>Annuler, rétablir, restaurer</H>
+        <ul>
+          <li>
+            <Ui>⌘Z</Ui> / <Ui>Ctrl+Z</Ui> annule la dernière opération de ce
+            poste sur la carte (pose, déplacement, apparence, suppression…),{" "}
+            <Ui>⇧⌘Z</Ui> / <Ui>Ctrl+Y</Ui> la rétablit ; aussi avec les flèches
+            de la barre d’outils. Un objet modifié entre-temps par un autre
+            poste n’est pas touché.
+          </li>
+          <li>
+            En remontant le temps, la fiche d’un objet propose{" "}
+            <Ui>Restaurer cet objet</Ui> : il revient dans le journal actuel tel
+            qu’il était, et l’historique garde les deux états.
+          </li>
+          <li>
+            Au clavier : dans la liste des objets, les flèches déplacent l’objet
+            choisi de 10 m (Maj : 100 m, Alt : 1 m).
+          </li>
+        </ul>
+        <H>Hors ligne</H>
+        <ul>
+          <li>
+            Les tuiles vues restent sur le poste, avec une réserve par fond :
+            les plus anciennement consultées partent en premier.
+          </li>
+          <li>
+            <Ui>⋯</Ui> → <Ui>Carte hors ligne</Ui> : téléchargez un secteur
+            (zone affichée ou cadre tracé), sur une plage de zoom et pour les
+            fonds voulus. Le nombre de tuiles et la taille sont annoncés avant ;
+            un secteur n’est jamais effacé automatiquement. La liste montre les
+            secteurs gardés et l’espace utilisé.
+          </li>
+          <li>
+            Sur téléphone, la carte occupe tout l’écran ; le bouton plein écran
+            (à droite) cache le reste de l’application.
           </li>
         </ul>
         <H>Placer depuis un autre module</H>
@@ -1248,7 +1349,9 @@ export const TOPICS: Topic[] = [
         <Note kind="info">
           Les fonds de carte et la recherche d’adresse viennent d’internet
           (swisstopo, OpenStreetMap, geo.admin.ch). Sans connexion, le fond peut
-          manquer, mais vos objets restent là.
+          manquer hors des zones déjà vues ou téléchargées, mais vos objets
+          restent là. Il n’existe pas de service gratuit et fiable d’itinéraires
+          : les temps de trajet ne sont pas calculés.
         </Note>
       </>
     ),

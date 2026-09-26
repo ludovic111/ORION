@@ -61,11 +61,17 @@ export function PlacesList({
   hidden,
   onPick,
   onHover,
+  onNudge,
+  announce,
 }: {
   places: Place[];
   hidden: Set<string>;
   onPick: (place: Place) => void;
   onHover: (id: string | null) => void;
+  /** Keyboard move (metres east, north); absent: read only or locked. */
+  onNudge?: (place: Place, east: number, north: number) => void;
+  /** Last keyboard move, read by screen readers. */
+  announce?: string;
 }) {
   const { graph } = useApp();
   const [query, setQuery] = useState("");
@@ -83,6 +89,9 @@ export function PlacesList({
   }, [places, query]);
   return (
     <div className="map-list">
+      <p className="sr-only" aria-live="polite">
+        {announce}
+      </p>
       <div className="search">
         <Search size={14} />
         <input
@@ -100,9 +109,34 @@ export function PlacesList({
               key={p.id}
               type="button"
               className={`row-item map-list-row${hidden.has(layerKey(p)) ? " dim" : ""}`}
+              aria-keyshortcuts={
+                onNudge ? "ArrowUp ArrowDown ArrowLeft ArrowRight" : undefined
+              }
+              title={
+                onNudge
+                  ? "Entrée : ouvrir · flèches : déplacer de 10 m (Maj : 100 m, Alt : 1 m)"
+                  : undefined
+              }
               onClick={() => onPick(p)}
               onMouseEnter={() => onHover(p.id)}
               onFocus={() => onHover(p.id)}
+              onKeyDown={(e) => {
+                if (!onNudge) return;
+                const step = e.shiftKey ? 100 : e.altKey ? 1 : 10;
+                const move =
+                  e.key === "ArrowUp"
+                    ? [0, step]
+                    : e.key === "ArrowDown"
+                      ? [0, -step]
+                      : e.key === "ArrowLeft"
+                        ? [-step, 0]
+                        : e.key === "ArrowRight"
+                          ? [step, 0]
+                          : null;
+                if (!move) return;
+                e.preventDefault();
+                onNudge(p, move[0], move[1]);
+              }}
             >
               <PlaceIcon place={p} />
               <span className="row-main">

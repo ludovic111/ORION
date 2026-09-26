@@ -65,3 +65,22 @@ export function formatMN95(lat: number, lng: number) {
   const f = (n: number) => Math.round(n).toLocaleString("fr-CH");
   return `E ${f(east)} · N ${f(north)}`;
 }
+
+// MN03 (CH1903 / LV03, EPSG:21781): the same grid without the leading
+// 2 000 000 / 1 000 000 (the FINELTRA difference, at most 1.6 m, is
+// below the precision of the navigation formulas above).
+export const LV03_OFFSET = { east: 2000000, north: 1000000 };
+export function fromMN03(east: number, north: number) {
+  return fromMN95(east + LV03_OFFSET.east, north + LV03_OFFSET.north);
+}
+export function toMN03(lat: number, lng: number) {
+  const { east, north } = toMN95(lat, lng);
+  return { east: east - LV03_OFFSET.east, north: north - LV03_OFFSET.north };
+}
+
+/** A position that reads as MN95 (EPSG:2056) east / north, in metres. */
+export const isMN95 = (east: number, north: number) =>
+  east >= 2400000 && east <= 2900000 && north >= 1000000 && north <= 1400000;
+/** A position that reads as MN03 (EPSG:21781) east / north, in metres. */
+export const isMN03 = (east: number, north: number) =>
+  east >= 400000 && east <= 900000 && north >= 0 && north <= 400000;

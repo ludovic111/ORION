@@ -110,4 +110,4 @@ Le mode réseau local (`server/lan.mjs`) sert la même application et le même r
 - `src/ui/` : kit d’interface (champs standardisés, fiche générique, liens et aperçus, feuille latérale, fond papier). Guide : [UI.md](UI.md).
 - `src/journal/`, `src/radio/`, `src/print/` : journal, réseau radio et impressions A4 / PDF.
 
-Le service worker précache l’application et garde, une fois vus, les signes et jusqu’à 4 000 tuiles de carte. Il ne met jamais de contenu de session en cache.
+Le service worker précache l’application (les trois dernières versions restent servies aux onglets encore ouverts) et garde, une fois vus, les signes et les tuiles de carte : une réserve par fond, les moins récemment consultées partant en premier (`src/modules/map/tilecache.ts`, règles partagées avec les tests). Les secteurs hors ligne téléchargés exprès ont leur propre cache, jamais réduit. Il ne met jamais de contenu de session en cache.

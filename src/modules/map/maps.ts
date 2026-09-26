@@ -120,6 +120,53 @@ export function placesOf(
   return places.filter((p) => onMap(p, mapId, known));
 }
 
+/**
+ * Objects left on every map by the earlier versions: drawn on the only
+ * map before a second one was created, they appeared on the new map too.
+ * Returns them with the map they most likely belong to (the oldest).
+ */
+export function strayObjects(
+  places: Place[],
+  maps: OpsMap[],
+): { places: Place[]; home: OpsMap | null } {
+  if (maps.length < 2) return { places: [], home: null };
+  const byAge = [...maps].sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt) || a.order - b.order,
+  );
+  const [home, second] = byAge;
+  return {
+    home,
+    places: places.filter(
+      (p) => !p.maps.length && p.createdAt < second.createdAt,
+    ),
+  };
+}
+
+/**
+ * Maps of the objects once a new map is added: the new map starts empty.
+ * With no or one map record, objects "on every map" were simply the
+ * objects of that map: they are tied to it. With several maps, "every
+ * map" was chosen on purpose and stays. `takeFrom`: a map whose objects
+ * are shown on the new map as well.
+ */
+export function mapsForNewMap(
+  places: Place[],
+  existing: string[],
+  newId: string,
+  takeFrom: string | null,
+): Place[] {
+  const known = new Set(existing);
+  return places.map((p) => {
+    let maps = p.maps;
+    const orphan = !maps.some((id) => known.has(id));
+    const shownOnTake =
+      takeFrom !== null && (orphan || maps.includes(takeFrom));
+    if (orphan && existing.length <= 1) maps = [...existing];
+    if (shownOnTake && maps.length) maps = [...maps, newId];
+    return maps === p.maps ? p : { ...p, maps };
+  });
+}
+
 /** Douglas–Peucker simplification of a path in any planar coordinates. */
 export function simplify<T extends [number, number]>(
   points: T[],
