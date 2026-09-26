@@ -52,12 +52,14 @@ import { useApp, type ExportPreset } from "../app/context";
 import { MODULES } from "../app/modules";
 import { Segmented, Toggle, fromInput, localInput } from "../ui/fields";
 import { download } from "../journal/exports";
+import { rich, useLang } from "../i18n";
 import { sectionCount, sectionItems } from "./dossier";
 import {
   FORMATS,
   FORMAT_GROUPS,
   formatFromPreset,
   formatInfo,
+  groupLabel,
   type FormatId,
 } from "./formats";
 import {
@@ -69,6 +71,7 @@ import {
 } from "./scope";
 import { autoWatermark, shortId } from "./stamp";
 import { VerifyPanel } from "./Verify";
+import { t, tn } from "./i18n.ts";
 import "./export.css";
 
 // Export centre: what (parts, items), when (now, a frozen point, any time)
@@ -167,8 +170,13 @@ function Picker({
   chosen: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const lang = useLang();
   const [query, setQuery] = useState("");
-  const all = useMemo(() => sectionItems(journal, section), [journal, section]);
+  const all = useMemo(
+    () => sectionItems(journal, section),
+    // Details are written in the language of the post.
+    [journal, section, lang],
+  );
   const q = query
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
@@ -191,8 +199,8 @@ function Picker({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher…"
-            aria-label="Rechercher un élément"
+            placeholder={t("Rechercher…")}
+            aria-label={t("Rechercher un élément")}
           />
         </label>
         <button
@@ -202,7 +210,7 @@ function Picker({
             onChange([...new Set([...chosen, ...shown.map((i) => i.id)])])
           }
         >
-          Tout
+          {t("Tout")}
         </button>
         <button
           type="button"
@@ -211,7 +219,7 @@ function Picker({
             onChange(chosen.filter((id) => !shown.some((i) => i.id === id)))
           }
         >
-          Aucun
+          {t("Aucun")}
         </button>
       </div>
       <ul className="xc-picker-list">
@@ -236,17 +244,26 @@ function Picker({
             </label>
           </li>
         ))}
-        {!shown.length && <li className="muted">Aucun élément.</li>}
+        {!shown.length && <li className="muted">{t("Aucun élément.")}</li>}
         {shown.length > 400 && (
           <li className="muted">
-            {shown.length - 400} de plus : affinez la recherche.
+            {t("{n} de plus : affinez la recherche.", {
+              n: shown.length - 400,
+            })}
           </li>
         )}
       </ul>
       <small className="muted">
         {chosen.length
-          ? `${chosen.length} choisi${chosen.length > 1 ? "s" : ""} sur ${all.length}`
-          : `Aucun choix : toute la partie (${all.length})`}
+          ? tn(
+              chosen.length,
+              "{n} choisi sur {total}",
+              "{n} choisis sur {total}",
+              {
+                total: all.length,
+              },
+            )
+          : t("Aucun choix : toute la partie ({total})", { total: all.length })}
       </small>
     </div>
   );
@@ -263,6 +280,7 @@ export function ExportCenter({
   onBackup: () => void;
 }) {
   const app = useApp();
+  useLang();
   const { live, author, record, now } = app;
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -394,23 +412,27 @@ export function ExportCenter({
   const missing = (id: FormatId) => {
     const needs = formatInfo(id).needs;
     return needs && !needs.some((s) => chosenSections.includes(s))
-      ? `Ajoutez : ${needs.map((s) => SECTIONS.find((x) => x.id === s)!.label).join(" ou ")}`
+      ? t("Ajoutez : {parts}", {
+          parts: needs
+            .map((s) => SECTIONS.find((x) => x.id === s)!.label)
+            .join(t(" ou ")),
+        })
       : "";
   };
   const uses = (o: string) => (info.options as readonly string[]).includes(o);
   const plain = live.classification === "Confidentiel" && format !== "orion";
   const problem = !chosenSections.length
-    ? "Choisissez au moins une partie."
+    ? t("Choisissez au moins une partie.")
     : missing(format)
-      ? `${info.name} : ${missing(format).toLowerCase()}.`
+      ? `${t("{label} : {value}", { label: info.name, value: missing(format).toLowerCase() })}.`
       : when === "snapshot" && !snapshot
-        ? "Choisissez un point de situation."
+        ? t("Choisissez un point de situation.")
         : format === "orion" && passphrase.length < 12
-          ? "Phrase secrète : 12 caractères au minimum."
+          ? t("Phrase secrète : 12 caractères au minimum.")
           : format === "orion" && passphrase !== repeat
-            ? "Les deux phrases secrètes ne correspondent pas."
+            ? t("Les deux phrases secrètes ne correspondent pas.")
             : plain && !acknowledged
-              ? "Confirmez la conservation du fichier en clair."
+              ? t("Confirmez la conservation du fichier en clair.")
               : "";
 
   // ---------- Run ----------
@@ -418,7 +440,7 @@ export function ExportCenter({
     if (busy) return;
     setError("");
     setDone(null);
-    setStatus({ label: "Préparation", ratio: 0.02 });
+    setStatus({ label: t("Préparation"), ratio: 0.02 });
     try {
       const { produce, registerLines, printHtml } = await import("./produce");
       const produced = await produce({
@@ -435,7 +457,7 @@ export function ExportCenter({
         signing: app.workspace.signing,
         onProgress: (label, ratio) => setStatus({ label, ratio }),
       });
-      setStatus({ label: "Empreinte du fichier", ratio: 0.97 });
+      setStatus({ label: t("Empreinte du fichier"), ratio: 0.97 });
       const lines = await registerLines(produced, scope);
       if (mode === "print") await printHtml(await produced.main.blob.text());
       else download(produced.main.blob, produced.main.name);
@@ -444,6 +466,7 @@ export function ExportCenter({
           ...line,
           // The main file (last line) keeps the id printed in its QR code.
           ...(i === lines.length - 1 ? { id: produced.stamp.id } : {}),
+          // Kept in French: reminders read it (shared/reminders.ts).
           format: mode === "print" ? "Impression (HTML)" : line.format,
         }),
       );
@@ -463,8 +486,10 @@ export function ExportCenter({
       const message = (err as Error)?.message;
       setError(
         message
-          ? `Export impossible : ${message}`
-          : "Export impossible. Réessayez avec moins de parties ou un autre format.",
+          ? t("Export impossible : {message}", { message })
+          : t(
+              "Export impossible. Réessayez avec moins de parties ou un autre format.",
+            ),
       );
     } finally {
       setStatus(null);
@@ -493,7 +518,7 @@ export function ExportCenter({
             <span>{SECTIONS.find((x) => x.id === s)!.label}</span>
             <b>{n}</b>
             {diff && !scope.items?.[s]?.length && (
-              <small title="Maintenant">→ {liveCounts[s]}</small>
+              <small title={t("Maintenant")}>→ {liveCounts[s]}</small>
             )}
           </li>
         );
@@ -516,13 +541,19 @@ export function ExportCenter({
     >
       <header className="modal-heading xc-heading">
         <div>
-          <h2 id={titleId}>{verify ? "Vérifier un document" : "Exporter"}</h2>
+          <h2 id={titleId}>
+            {verify ? t("Vérifier un document") : t("Exporter")}
+          </h2>
           <p className="xc-journal">
             {live.title}
-            {live.closedAt ? " · journal clôturé" : ""}
+            {live.closedAt ? ` · ${t("journal clôturé")}` : ""}
           </p>
         </div>
-        <button className="icon-button" onClick={close} aria-label="Fermer">
+        <button
+          className="icon-button"
+          onClick={close}
+          aria-label={t("Fermer")}
+        >
           <X size={20} />
         </button>
       </header>
@@ -532,7 +563,7 @@ export function ExportCenter({
           <VerifyPanel />
           <div className="modal-actions">
             <button type="button" onClick={() => setVerify(false)}>
-              Retour à l’export
+              {t("Retour à l’export")}
             </button>
           </div>
         </div>
@@ -542,25 +573,26 @@ export function ExportCenter({
             {/* ---------- 1. QUOI ---------- */}
             <Step
               n={1}
-              title="Quoi"
-              hint="Les parties de l’opération à inclure"
+              title={t("Quoi")}
+              hint={t("Les parties de l’opération à inclure")}
             >
               <Segmented
-                label="Contenu"
+                label={t("Contenu")}
                 value={all ? "all" : "some"}
                 onChange={(v) => setAll(v === "all")}
                 options={[
-                  { value: "all", label: "Toute l’opération" },
-                  { value: "some", label: "Choisir" },
+                  { value: "all", label: t("Toute l’opération") },
+                  { value: "some", label: t("Choisir") },
                 ]}
               />
               {all ? (
                 <>
                   <p className="xc-note">
-                    Toutes les parties, tous les éléments
                     {viewAt === null
-                      ? ", état actuel."
-                      : ", à l’heure choisie."}
+                      ? t("Toutes les parties, tous les éléments, état actuel.")
+                      : t(
+                          "Toutes les parties, tous les éléments, à l’heure choisie.",
+                        )}
                   </p>
                   {contents}
                 </>
@@ -572,14 +604,14 @@ export function ExportCenter({
                       className="small"
                       onClick={() => setSections([...SECTION_IDS])}
                     >
-                      Tout cocher
+                      {t("Tout cocher")}
                     </button>
                     <button
                       type="button"
                       className="small"
                       onClick={() => setSections([])}
                     >
-                      Tout décocher
+                      {t("Tout décocher")}
                     </button>
                   </div>
                   <ul className="xc-sections">
@@ -614,7 +646,9 @@ export function ExportCenter({
                               className="xc-count"
                               title={
                                 viewAt !== null
-                                  ? `Maintenant : ${liveCounts[s.id]}`
+                                  ? t("Maintenant : {n}", {
+                                      n: liveCounts[s.id],
+                                    })
                                   : undefined
                               }
                             >
@@ -632,8 +666,12 @@ export function ExportCenter({
                               }
                             >
                               {chosen.length
-                                ? `${chosen.length} élément${chosen.length > 1 ? "s" : ""} choisi${chosen.length > 1 ? "s" : ""}`
-                                : "Choisir des éléments"}
+                                ? tn(
+                                    chosen.length,
+                                    "{n} élément choisi",
+                                    "{n} éléments choisis",
+                                  )
+                                : t("Choisir des éléments")}
                             </button>
                           )}
                           {on && picking === s.id && (
@@ -657,23 +695,25 @@ export function ExportCenter({
             {/* ---------- 2. QUAND ---------- */}
             <Step
               n={2}
-              title="Quand"
-              hint="L’état actuel ou une version passée"
+              title={t("Quand")}
+              hint={t("L’état actuel ou une version passée")}
             >
               <Segmented
-                label="Moment"
+                label={t("Moment")}
                 value={when}
                 onChange={setWhen}
                 options={[
-                  { value: "now", label: "Maintenant" },
-                  { value: "snapshot", label: "Point figé" },
-                  { value: "time", label: "Heure précise" },
+                  { value: "now", label: t("Maintenant") },
+                  { value: "snapshot", label: t("Point figé") },
+                  { value: "time", label: t("Heure précise") },
                 ]}
               />
               {when === "now" && (
                 <p className="xc-note">
-                  <Clock size={13} /> État actuel, en direct :{" "}
-                  {dateTime(new Date(end).toISOString())}.
+                  <Clock size={13} />{" "}
+                  {t("État actuel, en direct : {date}.", {
+                    date: dateTime(new Date(end).toISOString()),
+                  })}
                 </p>
               )}
               {when === "snapshot" &&
@@ -681,7 +721,7 @@ export function ExportCenter({
                   <ul
                     className="xc-snapshots"
                     role="radiogroup"
-                    aria-label="Points de situation figés"
+                    aria-label={t("Points de situation figés")}
                   >
                     {snapshots.map((s) => (
                       <li key={s.id}>
@@ -708,14 +748,15 @@ export function ExportCenter({
                   </ul>
                 ) : (
                   <p className="xc-note">
-                    Aucun point de situation figé. Figez l’état depuis la barre
-                    du temps ou la Situation, ou choisissez une heure précise.
+                    {t(
+                      "Aucun point de situation figé. Figez l’état depuis la barre du temps ou la Situation, ou choisissez une heure précise.",
+                    )}
                   </p>
                 ))}
               {when === "time" && (
                 <div className="xc-time">
                   <label>
-                    Date et heure
+                    {t("Date et heure")}
                     <input
                       type="datetime-local"
                       value={localInput(new Date(at).toISOString())}
@@ -731,7 +772,7 @@ export function ExportCenter({
                   <div className="xc-range">
                     <input
                       type="range"
-                      aria-label="Moment de l’opération"
+                      aria-label={t("Moment de l’opération")}
                       min={start}
                       max={end}
                       step={60_000}
@@ -740,8 +781,8 @@ export function ExportCenter({
                     />
                     <div className="xc-marks" aria-hidden="true">
                       {snapshots.map((s) => {
-                        const t = Date.parse(s.at);
-                        if (t < start || t > end) return null;
+                        const time = Date.parse(s.at);
+                        if (time < start || time > end) return null;
                         return (
                           <button
                             type="button"
@@ -749,30 +790,39 @@ export function ExportCenter({
                             tabIndex={-1}
                             title={`${s.title} · ${dateTime(s.at)}`}
                             style={{
-                              left: `${((t - start) / (end - start)) * 100}%`,
+                              left: `${((time - start) / (end - start)) * 100}%`,
                             }}
-                            onClick={() => setAt(t)}
+                            onClick={() => setAt(time)}
                           />
                         );
                       })}
                     </div>
                     <div className="xc-range-labels">
                       <span>{dateTime(new Date(start).toISOString())}</span>
-                      <span>maintenant</span>
+                      <span>{t("maintenant")}</span>
                     </div>
                   </div>
                   <p className="xc-note">
-                    <b>{changes}</b> moment{changes > 1 ? "s" : ""} de
-                    changement jusqu’à cette heure, sur {steps.length}.
+                    {rich(
+                      tn(
+                        changes,
+                        "<0>{n}</0> moment de changement jusqu’à cette heure, sur {total}.",
+                        "<0>{n}</0> moments de changement jusqu’à cette heure, sur {total}.",
+                        { total: steps.length },
+                      ),
+                      [<b key="n" />],
+                    )}
                   </p>
                 </div>
               )}
               {viewAt !== null && (
                 <div className="xc-version">
-                  <span className="section-label">Cette version contient</span>
+                  <span className="section-label">
+                    {t("Cette version contient")}
+                  </span>
                   {contents}
                   <small className="muted">
-                    → nombre actuel, quand il diffère.
+                    {t("→ nombre actuel, quand il diffère.")}
                   </small>
                 </div>
               )}
@@ -781,13 +831,13 @@ export function ExportCenter({
             {/* ---------- 3. FORMAT ---------- */}
             <Step
               n={3}
-              title="Format"
-              hint="Présentation, document, tableur, carte, archive…"
+              title={t("Format")}
+              hint={t("Présentation, document, tableur, carte, archive…")}
               className="xc-format-step"
             >
               {FORMAT_GROUPS.map((group) => (
                 <fieldset className="xc-group" key={group}>
-                  <legend className="section-label">{group}</legend>
+                  <legend className="section-label">{groupLabel(group)}</legend>
                   <div className="xc-cards">
                     {FORMATS.filter((f) => f.group === group).map((f) => {
                       const Icon = FORMAT_ICONS[f.id];
@@ -832,60 +882,60 @@ export function ExportCenter({
             {uses("watermark") && (
               <div className="xc-watermark">
                 <label htmlFor={watermarkId}>
-                  <Stamp size={12} /> Filigrane
+                  <Stamp size={12} /> {t("Filigrane")}
                 </label>
                 <div className="inline-field">
                   <input
                     id={watermarkId}
                     value={watermark}
                     maxLength={40}
-                    placeholder="Aucun filigrane"
+                    placeholder={t("Aucun filigrane")}
                     onChange={(e) => setWatermark(e.target.value.toUpperCase())}
                   />
                   <button
                     type="button"
                     className="small"
                     onClick={() => setWatermark(autoWatermark(live))}
-                    title="Selon le mode et la classification du journal"
+                    title={t("Selon le mode et la classification du journal")}
                   >
-                    Auto
+                    {t("Auto")}
                   </button>
                   <button
                     type="button"
                     className="small"
                     onClick={() => setWatermark("")}
                   >
-                    Aucun
+                    {t("Aucun")}
                   </button>
                 </div>
               </div>
             )}
             {uses("orientation") && (
               <div className="xc-option">
-                <span className="section-label">Page</span>
+                <span className="section-label">{t("Page")}</span>
                 <Segmented
-                  label="Orientation"
+                  label={t("Orientation")}
                   value={orientation}
                   onChange={setOrientation}
                   options={[
-                    { value: "portrait", label: "Portrait" },
-                    { value: "landscape", label: "Paysage" },
+                    { value: "portrait", label: t("Portrait") },
+                    { value: "landscape", label: t("Paysage") },
                   ]}
                 />
               </div>
             )}
             {uses("versions") && chosenSections.includes("journal") && (
               <Toggle
-                label="Versions des entrées"
-                hint="Chaque modification, qui, quand, pourquoi"
+                label={t("Versions des entrées")}
+                hint={t("Chaque modification, qui, quand, pourquoi")}
                 checked={versions}
                 onChange={setVersions}
               />
             )}
             {uses("animations") && (
               <Toggle
-                label="Animations"
-                hint="Transitions et apparitions"
+                label={t("Animations")}
+                hint={t("Transitions et apparitions")}
                 checked={animations}
                 onChange={setAnimations}
               />
@@ -894,7 +944,7 @@ export function ExportCenter({
               <div className="xc-passphrase">
                 <div className="form-pair">
                   <label>
-                    Phrase secrète
+                    {t("Phrase secrète")}
                     <input
                       type="password"
                       minLength={12}
@@ -905,7 +955,7 @@ export function ExportCenter({
                     />
                   </label>
                   <label>
-                    Répéter la phrase
+                    {t("Répéter la phrase")}
                     <input
                       type="password"
                       minLength={12}
@@ -917,9 +967,10 @@ export function ExportCenter({
                   </label>
                 </div>
                 <small>
-                  <LockKeyhole size={11} /> 12 caractères min. Transmise par un
-                  autre canal que le fichier. Irrécupérable. Après import, la
-                  machine à remonter le temps rejoue l’opération.
+                  <LockKeyhole size={11} />{" "}
+                  {t(
+                    "12 caractères min. Transmise par un autre canal que le fichier. Irrécupérable. Après import, la machine à remonter le temps rejoue l’opération.",
+                  )}
                 </small>
               </div>
             )}
@@ -931,8 +982,9 @@ export function ExportCenter({
                   onChange={(e) => setAcknowledged(e.target.checked)}
                 />
                 <span>
-                  Journal confidentiel, fichier en clair : je choisis où il est
-                  conservé.
+                  {t(
+                    "Journal confidentiel, fichier en clair : je choisis où il est conservé.",
+                  )}
                 </span>
               </label>
             )}
@@ -966,13 +1018,17 @@ export function ExportCenter({
                 <FileCheck2 size={16} />
                 <span>
                   {done.printed
-                    ? "Envoyé à l’impression"
-                    : `${done.name} · vérifiez le dossier de téléchargement`}
+                    ? t("Envoyé à l’impression")
+                    : t("{name} · vérifiez le dossier de téléchargement", {
+                        name: done.name,
+                      })}
                   <small>
-                    Inscrit au registre · document {shortId(done.id)} · SHA-256{" "}
-                    {done.sha.slice(0, 16)}…
+                    {t("Inscrit au registre · document {id} · SHA-256 {sha}…", {
+                      id: shortId(done.id),
+                      sha: done.sha.slice(0, 16),
+                    })}
                     {done.notes.length
-                      ? ` · non inclus : ${done.notes.join(" ; ")}`
+                      ? ` · ${t("non inclus : {list}", { list: done.notes.join(" ; ") })}`
                       : ""}
                   </small>
                 </span>
@@ -990,7 +1046,7 @@ export function ExportCenter({
               disabled={busy}
             >
               <ShieldCheck size={14} />
-              Vérifier un document
+              {t("Vérifier un document")}
             </button>
             <button
               type="button"
@@ -1000,10 +1056,10 @@ export function ExportCenter({
                 !chosenSections.length ||
                 (when === "snapshot" && !snapshot)
               }
-              title="Imprimer le dossier (même contenu que la page HTML)"
+              title={t("Imprimer le dossier (même contenu que la page HTML)")}
             >
               <Printer size={14} />
-              Imprimer
+              {t("Imprimer")}
             </button>
             <button
               type="button"
@@ -1012,7 +1068,7 @@ export function ExportCenter({
               disabled={busy || !!problem}
             >
               <Download size={14} />
-              {busy ? "Préparation…" : "Télécharger"}
+              {busy ? t("Préparation…") : t("Télécharger")}
             </button>
           </div>
         </footer>

@@ -54,20 +54,17 @@ import {
   type Ops,
 } from "../../../shared/ops";
 import { useDirector } from "../../exercise/director";
+import { formatTime } from "../../../shared/i18n/core.ts";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { rich, useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 
 // The direction of the exercise: writes the scenario (timed injects), starts
 // the exercise (T0), sees what is due, reads out the injects to be read and
 // marks the reactions. Hidden from the players behind a short code kept on
 // this post (src/exercise/director.ts), which is not a security measure.
 
-const hhmm = (ms: number | null) =>
-  ms === null
-    ? "—"
-    : new Date(ms).toLocaleTimeString("fr-CH", {
-        timeZone: "Europe/Zurich",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+const hhmm = (ms: number | null) => (ms === null ? "—" : formatTime(ms));
 
 function useTicker(ms: number) {
   const [now, setNow] = useState(Date.now());
@@ -99,6 +96,7 @@ const slug = (s: string) =>
 export function Direction() {
   const { live } = useApp();
   const director = useDirector(live.id);
+  useLang();
   if (!isExercise(live)) return null;
   return director.on ? (
     <DirectorView onLeave={director.leave} />
@@ -128,14 +126,17 @@ function Lock({
     <section className="card db-card db-lock" aria-labelledby="db-lock">
       <div className="card-head">
         <LockKeyhole size={18} />
-        <h2 id="db-lock">Réservé à la direction d’exercice</h2>
+        <h2 id="db-lock">{t("Réservé à la direction d’exercice")}</h2>
       </div>
       <p>
-        Le scénario et les injects à venir ne sont montrés qu’aux postes de la
-        direction.{" "}
+        {t(
+          "Le scénario et les injects à venir ne sont montrés qu’aux postes de la direction.",
+        )}{" "}
         {hasPin
-          ? "Saisissez le code choisi sur ce poste."
-          : "Choisissez un code de 4 à 8 chiffres pour ce poste : il sera demandé pour revenir ici."}
+          ? t("Saisissez le code choisi sur ce poste.")
+          : t(
+              "Choisissez un code de 4 à 8 chiffres pour ce poste : il sera demandé pour revenir ici.",
+            )}
       </p>
       <form
         className="db-lock-form"
@@ -154,11 +155,11 @@ function Lock({
           onChange={(e) =>
             setPin(e.target.value.replace(/\D/g, "").slice(0, 8))
           }
-          aria-label="Code de la direction"
-          placeholder="Code"
+          aria-label={t("Code de la direction")}
+          placeholder={t("Code")}
         />
         <button type="submit" className="primary" disabled={pin.length < 4}>
-          {hasPin ? "Ouvrir" : "Choisir ce code et ouvrir"}
+          {hasPin ? t("Ouvrir") : t("Choisir ce code et ouvrir")}
         </button>
         {hasPin && (
           <button
@@ -166,10 +167,10 @@ function Lock({
             className="link"
             onClick={async () => {
               const why = await onForget(pin);
-              setError(why ?? "Code oublié : choisissez-en un nouveau.");
+              setError(why ?? t("Code oublié : choisissez-en un nouveau."));
             }}
           >
-            Oublier le code
+            {t("Oublier le code")}
           </button>
         )}
       </form>
@@ -179,9 +180,9 @@ function Lock({
         </p>
       )}
       <p className="db-note">
-        Ce code évite qu’un joueur ouvre le scénario par mégarde. Ce n’est pas
-        une protection : le scénario voyage avec le journal (synchronisation,
-        archives, traçabilité) comme tout le reste.
+        {t(
+          "Ce code évite qu’un joueur ouvre le scénario par mégarde. Ce n’est pas une protection : le scénario voyage avec le journal (synchronisation, archives, traçabilité) comme tout le reste.",
+        )}
       </p>
     </section>
   );
@@ -206,7 +207,7 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
   const [reacting, setReacting] = useState<Reaction | null>(null);
   const [editScenario, setEditScenario] = useState(false);
   const file = useRef<HTMLInputElement>(null);
-  const by = `${author} · direction d’exercice`;
+  const by = t("{author} · direction d’exercice", { author });
 
   const write = (change: (ops: Ops) => Ops, done?: string) => {
     if (!canWrite()) return false;
@@ -242,8 +243,8 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
     write(
       (ops) => deliverInject({ ops, history: live.history }, inject.id, by),
       inject.delivery === "message"
-        ? `Inject envoyé : ${inject.title}`
-        : `Inject lu : ${inject.title}`,
+        ? t("Inject envoyé : {title}", { title: inject.title })
+        : t("Inject lu : {title}", { title: inject.title }),
     );
   const patchInject = (inject: Inject, patch: Partial<Inject>, done?: string) =>
     write((ops) => {
@@ -259,13 +260,24 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
       if (
         pending &&
         !window.confirm(
-          `Remplacer les ${pending} injects pas encore joués par ceux de « ${parsed.title} » (${parsed.injects.length}) ?`,
+          t(
+            "Remplacer les {pending} injects pas encore joués par ceux de « {title} » ({count}) ?",
+            {
+              pending,
+              title: parsed.title,
+              count: parsed.injects.length,
+            },
+          ),
         )
       )
         return;
       write(
         (ops) => importScenario(ops, parsed, author),
-        `Scénario « ${parsed.title} » chargé depuis ${name} : ${parsed.injects.length} injects.`,
+        t("Scénario « {title} » chargé depuis {name} : {count} injects.", {
+          title: parsed.title,
+          name,
+          count: parsed.injects.length,
+        }),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -295,14 +307,14 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
       <section className="card db-card" aria-labelledby="db-scenario">
         <div className="card-head">
           <Clapperboard size={18} />
-          <h2 id="db-scenario">{scenario?.title || "Scénario"}</h2>
+          <h2 id="db-scenario">{scenario?.title || t("Scénario")}</h2>
           <button
             className="small"
             onClick={() => setEditScenario(true)}
-            title="Titre et description du scénario"
+            title={t("Titre et description du scénario")}
           >
             <Pencil size={13} />
-            Modifier
+            {t("Modifier")}
           </button>
         </div>
         {scenario?.description && (
@@ -310,20 +322,34 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
         )}
         <div className="db-state">
           {start === null ? (
-            <span className="pill plain">Pas encore commencé</span>
+            <span className="pill plain">{t("Pas encore commencé")}</span>
           ) : scenario?.endedAt ? (
             <span className="pill muted">
-              Terminé à {hhmm(Date.parse(scenario.endedAt))}
+              {t("Terminé à {time}", {
+                time: hhmm(Date.parse(scenario.endedAt)),
+              })}
             </span>
           ) : (
             <span className="pill ok">
-              En cours · <span className="mono">{tPlus(now, start)}</span>
+              {rich(
+                t("En cours · <0>{elapsed}</0>", {
+                  elapsed: tPlus(now, start),
+                }),
+                [<span className="mono" />],
+              )}
             </span>
           )}
           <span className="muted">
-            {played} / {rows.length} injects joués
+            {t("{played} / {total} injects joués", {
+              played,
+              total: rows.length,
+            })}
             {next && next.due !== null && start !== null
-              ? ` · prochain ${tPlus(next.due, start)} (${hhmm(next.due)}) : ${next.inject.title}`
+              ? t(" · prochain {at} ({time}) : {title}", {
+                  at: tPlus(next.due, start),
+                  time: hhmm(next.due),
+                  title: next.inject.title,
+                })
               : ""}
           </span>
         </div>
@@ -342,33 +368,35 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
                 }) &&
                 toast(
                   scenario?.endedAt
-                    ? "Exercice repris."
-                    : "Exercice commencé : T0 maintenant.",
+                    ? t("Exercice repris.")
+                    : t("Exercice commencé : T0 maintenant."),
                 )
               }
             >
               <Play size={14} />
-              {scenario?.endedAt ? "Reprendre" : "Commencer maintenant (T0)"}
+              {scenario?.endedAt
+                ? t("Reprendre")
+                : t("Commencer maintenant (T0)")}
             </button>
           ) : (
             <button
               onClick={() =>
                 window.confirm(
-                  "Terminer l’exercice ? Plus aucun inject ne partira.",
+                  t("Terminer l’exercice ? Plus aucun inject ne partira."),
                 ) && setScenario({ endedAt: new Date().toISOString() })
               }
             >
               <Square size={14} />
-              Terminer l’exercice
+              {t("Terminer l’exercice")}
             </button>
           )}
           <button onClick={() => setEditing("new")}>
             <Plus size={14} />
-            Inject
+            {t("Inject")}
           </button>
           <button onClick={() => file.current?.click()}>
             <FileUp size={14} />
-            Importer
+            {t("Importer")}
           </button>
           <button
             disabled={!rows.length}
@@ -380,18 +408,18 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
             }
           >
             <Download size={14} />
-            Exporter
+            {t("Exporter")}
           </button>
           <button
-            onClick={() => load(ARVE_SCENARIO, "l’exemple")}
-            title="Scénario d’exemple « Crue de l’Arve » (fictif)"
+            onClick={() => load(ARVE_SCENARIO, t("l’exemple"))}
+            title={t("Scénario d’exemple « Crue de l’Arve » (fictif)")}
           >
             <BookOpenCheck size={14} />
-            Exemple « Crue de l’Arve »
+            {t("Exemple « Crue de l’Arve »")}
           </button>
           <button className="link" onClick={onLeave}>
             <EyeOff size={14} />
-            Masquer (mode joueur)
+            {t("Masquer (mode joueur)")}
           </button>
           <input
             ref={file}
@@ -403,7 +431,7 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
               e.target.value = "";
               if (!f) return;
               if (f.size > 4 * 1024 * 1024) {
-                toast("Fichier trop grand pour un scénario (4 Mo au plus).");
+                toast(t("Fichier trop grand pour un scénario (4 Mo au plus)."));
                 return;
               }
               load(await f.text(), f.name);
@@ -413,8 +441,10 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
         {start !== null && !scenario?.endedAt && (
           <DateTimeField
             required
-            label="Début de l’exercice (T0)"
-            hint="Les injects « T+ » partent à partir de cette heure (heure de Zurich)."
+            label={t("Début de l’exercice (T0)")}
+            hint={t(
+              "Les injects « T+ » partent à partir de cette heure (heure de Zurich).",
+            )}
             value={scenario?.startAt ?? ""}
             onChange={(v) => v && setScenario({ startAt: v })}
           />
@@ -425,31 +455,40 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
         <section
           key={r.inject.id}
           className="card db-card db-read"
-          aria-label={`Inject à lire : ${r.inject.title}`}
+          aria-label={t("Inject à lire : {title}", { title: r.inject.title })}
         >
           <div className="card-head">
             <Megaphone size={18} />
-            <h2>À lire maintenant : {r.inject.title}</h2>
+            <h2>
+              {t("À lire maintenant : {title}", { title: r.inject.title })}
+            </h2>
           </div>
           <p className="db-read-meta">
-            {r.inject.from || "—"} → {r.inject.to || "—"} · {r.inject.via}
-            {r.inject.priority !== "Normal" ? ` · ${r.inject.priority}` : ""}
+            {r.inject.from || "—"} → {r.inject.to || "—"} ·{" "}
+            {enumLabel(r.inject.via)}
+            {r.inject.priority !== "Normal"
+              ? ` · ${enumLabel(r.inject.priority)}`
+              : ""}
           </p>
           <blockquote>{r.inject.body || "—"}</blockquote>
           {r.inject.expected && (
-            <p className="db-note">Réaction attendue : {r.inject.expected}</p>
+            <p className="db-note">
+              {t("Réaction attendue : {expected}", {
+                expected: r.inject.expected,
+              })}
+            </p>
           )}
           <div className="db-actions">
             <button className="primary" onClick={() => deliver(r.inject)}>
               <Send size={14} />
-              Lu et transmis
+              {t("Lu et transmis")}
             </button>
             <button
               onClick={() =>
-                patchInject(r.inject, { skipped: true }, "Inject non joué.")
+                patchInject(r.inject, { skipped: true }, t("Inject non joué."))
               }
             >
-              Ne pas jouer
+              {t("Ne pas jouer")}
             </button>
           </div>
         </section>
@@ -457,7 +496,7 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
 
       <section className="card db-card" aria-labelledby="db-list">
         <div className="card-head">
-          <h2 id="db-list">Injects</h2>
+          <h2 id="db-list">{t("Injects")}</h2>
         </div>
         {rows.length ? (
           <ol className="db-injects">
@@ -475,8 +514,8 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
                     r.inject,
                     { skipped: !r.inject.skipped },
                     r.inject.skipped
-                      ? "Inject remis au programme."
-                      : "Inject non joué.",
+                      ? t("Inject remis au programme.")
+                      : t("Inject non joué."),
                   )
                 }
               />
@@ -484,8 +523,9 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
           </ol>
         ) : (
           <p className="muted">
-            Aucun inject. Ajoutez-en un, importez un scénario JSON ou chargez
-            l’exemple « Crue de l’Arve ».
+            {t(
+              "Aucun inject. Ajoutez-en un, importez un scénario JSON ou chargez l’exemple « Crue de l’Arve ».",
+            )}
           </p>
         )}
       </section>
@@ -518,19 +558,23 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
                 { ...value, scenarioId: scenarioOf(next)!.id },
                 author,
               );
-            }, "Inject enregistré.") && setEditing(null)
+            }, t("Inject enregistré.")) && setEditing(null)
           }
           onDelete={
             editing === "new"
               ? undefined
               : () =>
-                  window.confirm(`Supprimer l’inject « ${editing.title} » ?`) &&
+                  window.confirm(
+                    t("Supprimer l’inject « {title} » ?", {
+                      title: editing.title,
+                    }),
+                  ) &&
                   write(
                     (ops) => ({
                       ...ops,
                       injects: ops.injects.filter((i) => i.id !== editing.id),
                     }),
-                    "Inject supprimé.",
+                    t("Inject supprimé."),
                   ) &&
                   setEditing(null)
           }
@@ -541,7 +585,7 @@ function DirectorView({ onLeave }: { onLeave: () => void }) {
           row={reacting}
           onClose={() => setReacting(null)}
           onSave={(patch) =>
-            patchInject(reacting.inject, patch, "Réaction notée.") &&
+            patchInject(reacting.inject, patch, t("Réaction notée.")) &&
             setReacting(null)
           }
         />
@@ -580,28 +624,41 @@ function InjectRow({
   const { inject: i, due, delivered } = row;
   const when =
     i.timing === "clock"
-      ? `${i.clock}${i.day ? ` (J+${i.day})` : ""}`
+      ? i.day
+        ? t("{clock} (J+{day})", { clock: i.clock, day: i.day })
+        : i.clock
       : `T+${String(Math.floor(i.offset / 60)).padStart(2, "0")}:${String(i.offset % 60).padStart(2, "0")}`;
   const state = i.skipped ? (
-    <span className="pill muted">non joué</span>
+    <span className="pill muted">{t("non joué")}</span>
   ) : delivered !== null ? (
     row.late ? (
       <span className="pill crit">
-        {row.reacted !== null ? "réaction en retard" : "sans réaction"} · +
-        {minutesLabel(row.delay)}
+        {row.reacted !== null
+          ? t("réaction en retard · +{delay}", {
+              delay: minutesLabel(row.delay),
+            })
+          : t("sans réaction · +{delay}", { delay: minutesLabel(row.delay) })}
       </span>
     ) : row.reacted !== null ? (
-      <span className="pill ok">réaction {minutesLabel(row.minutes)}</span>
+      <span className="pill ok">
+        {t("réaction {minutes}", { minutes: minutesLabel(row.minutes) })}
+      </span>
     ) : (
-      <span className="pill accent">joué {hhmm(delivered)}</span>
+      <span className="pill accent">
+        {t("joué {time}", { time: hhmm(delivered) })}
+      </span>
     )
   ) : due === null ? (
-    <span className="pill plain">après le T0</span>
+    <span className="pill plain">{t("après le T0")}</span>
   ) : due <= now ? (
-    <span className="pill warn">{i.delivery === "read" ? "à lire" : "dû"}</span>
+    <span className="pill warn">
+      {i.delivery === "read" ? t("à lire") : t("dû")}
+    </span>
   ) : (
     <span className="pill plain">
-      dans {minutesLabel(Math.ceil((due - now) / 60_000))}
+      {t("dans {minutes}", {
+        minutes: minutesLabel(Math.ceil((due - now) / 60_000)),
+      })}
     </span>
   );
   return (
@@ -612,40 +669,52 @@ function InjectRow({
         <strong>{when}</strong>
         <small>{due !== null ? hhmm(due) : ""}</small>
         {start !== null && delivered !== null && (
-          <small>joué {tPlus(delivered, start)}</small>
+          <small>{t("joué {time}", { time: tPlus(delivered, start) })}</small>
         )}
       </div>
       <button className="db-inject-body" onClick={onEdit}>
         <strong>{i.title}</strong>
         <span>
-          {i.from || "—"} → {i.to || "—"} · {i.via}
-          {i.delivery === "read" ? " · lu par la direction" : ""}
-          {i.deadline ? ` · délai ${i.deadline} min` : ""}
+          {i.from || "—"} → {i.to || "—"} · {enumLabel(i.via)}
+          {i.delivery === "read" ? ` · ${t("lu par la direction")}` : ""}
+          {i.deadline ? ` · ${t("délai {n} min", { n: i.deadline })}` : ""}
           {i.effects.length
-            ? ` · ${i.effects.length} effet${i.effects.length > 1 ? "s" : ""}`
+            ? ` · ${tn(i.effects.length, "{n} effet", "{n} effets")}`
             : ""}
         </span>
-        {row.reacted !== null && <small>Réaction : {row.how}</small>}
+        {row.reacted !== null && (
+          <small>{t("Réaction : {how}", { how: row.how })}</small>
+        )}
       </button>
       <div className="db-inject-state">{state}</div>
       <div className="db-inject-actions">
         {delivered === null && !i.skipped && (
-          <button className="small" onClick={onSend} title="Envoyer maintenant">
+          <button
+            className="small"
+            onClick={onSend}
+            title={t("Envoyer maintenant")}
+          >
             <Send size={13} />
-            {i.delivery === "read" ? "Lu" : "Envoyer"}
+            {i.delivery === "read" ? t("Lu") : t("Envoyer")}
           </button>
         )}
         {delivered !== null && (
-          <button className="small" onClick={onReact} title="Noter la réaction">
-            Réaction
+          <button
+            className="small"
+            onClick={onReact}
+            title={t("Noter la réaction")}
+          >
+            {t("Réaction")}
           </button>
         )}
         {delivered === null && (
           <button
             className="icon-button"
             onClick={onSkip}
-            aria-label={i.skipped ? "Remettre au programme" : "Ne pas jouer"}
-            title={i.skipped ? "Remettre au programme" : "Ne pas jouer"}
+            aria-label={
+              i.skipped ? t("Remettre au programme") : t("Ne pas jouer")
+            }
+            title={i.skipped ? t("Remettre au programme") : t("Ne pas jouer")}
           >
             {i.skipped ? <Undo2 size={15} /> : <EyeOff size={15} />}
           </button>
@@ -689,8 +758,8 @@ function InjectSheet({
     });
   return (
     <Sheet
-      title={initial ? "Modifier l’inject" : "Nouvel inject"}
-      eyebrow="Direction d’exercice"
+      title={initial ? t("Modifier l’inject") : t("Nouvel inject")}
+      eyebrow={t("Direction d’exercice")}
       onClose={onClose}
       dirty={touched}
       footer={
@@ -698,17 +767,17 @@ function InjectSheet({
           {onDelete && (
             <button className="danger" onClick={onDelete}>
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           )}
           <span style={{ flex: 1 }} />
-          <button onClick={onClose}>Annuler</button>
+          <button onClick={onClose}>{t("Annuler")}</button>
           <button
             className="primary"
             disabled={!v.title.trim() || (v.timing === "clock" && !v.clock)}
             onClick={() => onSave({ ...v, title: v.title.trim() })}
           >
-            Enregistrer
+            {t("Enregistrer")}
           </button>
         </>
       }
@@ -716,7 +785,7 @@ function InjectSheet({
       <div className="form-grid">
         <TextField
           className="span-2"
-          label="Titre"
+          label={t("Titre")}
           required
           value={v.title}
           onChange={(title) => set({ title })}
@@ -725,18 +794,18 @@ function InjectSheet({
         />
         <div className="span-2">
           <Segmented
-            label="Moment"
+            label={t("Moment")}
             value={v.timing}
             onChange={(timing) => set({ timing })}
             options={[
-              { value: "offset", label: "Minutes après le début (T+)" },
-              { value: "clock", label: "Heure fixe" },
+              { value: "offset", label: t("Minutes après le début (T+)") },
+              { value: "clock", label: t("Heure fixe") },
             ]}
           />
         </div>
         {v.timing === "offset" ? (
           <NumberField
-            label="T+ (minutes)"
+            label={t("T+ (minutes)")}
             hint={`T+${String(Math.floor(v.offset / 60)).padStart(2, "0")}:${String(v.offset % 60).padStart(2, "0")}`}
             value={v.offset}
             max={60 * 24 * 14}
@@ -745,7 +814,7 @@ function InjectSheet({
         ) : (
           <>
             <label>
-              <span>Heure (Zurich)</span>
+              <span>{t("Heure (Zurich)")}</span>
               <input
                 type="time"
                 value={v.clock}
@@ -753,8 +822,8 @@ function InjectSheet({
               />
             </label>
             <NumberField
-              label="Jour de l’exercice"
-              hint="0 : le jour du début"
+              label={t("Jour de l’exercice")}
+              hint={t("0 : le jour du début")}
               value={v.day}
               max={14}
               onChange={(day) => set({ day })}
@@ -762,32 +831,32 @@ function InjectSheet({
           </>
         )}
         <ComboField
-          label="Émetteur (joué)"
+          label={t("Émetteur (joué)")}
           value={v.from}
           onChange={(from) => set({ from })}
           options={lists("recipients")}
         />
         <ComboField
-          label="Destinataire (cellule visée)"
+          label={t("Destinataire (cellule visée)")}
           value={v.to}
           onChange={(to) => set({ to })}
           options={lists("recipients")}
         />
         <ChoiceField
-          label="Canal"
+          label={t("Canal")}
           value={v.via}
           onChange={(via) => set({ via })}
           options={INJECT_CHANNELS}
         />
         <ChoiceField
-          label="Priorité"
+          label={t("Priorité")}
           value={v.priority}
           onChange={(priority) => set({ priority })}
           options={MESSAGE_PRIORITIES}
         />
         <ComboField
           className="span-2"
-          label="Catégorie"
+          label={t("Catégorie")}
           value={v.category}
           onChange={(category) => set({ category })}
           options={lists("categories")}
@@ -795,7 +864,7 @@ function InjectSheet({
         />
         <TextField
           className="span-2"
-          label="Contenu"
+          label={t("Contenu")}
           rows={4}
           maxLength={12000}
           value={v.body}
@@ -803,32 +872,32 @@ function InjectSheet({
         />
         <div className="span-2">
           <Segmented
-            label="Remise"
+            label={t("Remise")}
             value={v.delivery}
             onChange={(delivery) => set({ delivery })}
             options={[
-              { value: "message", label: "Arrive dans Messages" },
-              { value: "read", label: "Lu par la direction" },
+              { value: "message", label: t("Arrive dans Messages") },
+              { value: "read", label: t("Lu par la direction") },
             ]}
           />
         </div>
         <TextField
           className="span-2"
-          label="Réaction attendue"
+          label={t("Réaction attendue")}
           rows={2}
           maxLength={4000}
           value={v.expected}
           onChange={(expected) => set({ expected })}
         />
         <NumberField
-          label="Délai de réaction (minutes)"
-          hint="0 : sans délai"
+          label={t("Délai de réaction (minutes)")}
+          hint={t("0 : sans délai")}
           value={v.deadline}
           max={24 * 60}
           onChange={(deadline) => set({ deadline })}
         />
       </div>
-      <h3 className="db-subtitle">Effets à l’arrivée</h3>
+      <h3 className="db-subtitle">{t("Effets à l’arrivée")}</h3>
       {v.effects.map((e, k) => (
         <EffectEditor
           key={k}
@@ -850,7 +919,7 @@ function InjectSheet({
           }
         >
           <Plus size={13} />
-          État d’un moyen
+          {t("État d’un moyen")}
         </button>
         <button
           className="small"
@@ -871,7 +940,7 @@ function InjectSheet({
           }
         >
           <Plus size={13} />
-          Observation météo
+          {t("Observation météo")}
         </button>
         <button
           className="small"
@@ -885,7 +954,7 @@ function InjectSheet({
           }
         >
           <Plus size={13} />
-          Renseignement clé
+          {t("Renseignement clé")}
         </button>
       </div>
     </Sheet>
@@ -908,20 +977,20 @@ function EffectEditor({
         {effect.kind === "resource" && (
           <>
             <ComboField
-              label="Moyen"
+              label={t("Moyen")}
               value={effect.name}
               onChange={(name) => onChange({ ...effect, name })}
               options={live.ops.resources.map((r) => r.name)}
             />
             <ChoiceField
-              label="Nouvel état"
+              label={t("Nouvel état")}
               value={effect.status}
               onChange={(status) => onChange({ ...effect, status })}
               options={RESOURCE_STATUSES}
             />
             <TextField
               className="span-2"
-              label="Lieu (facultatif)"
+              label={t("Lieu (facultatif)")}
               value={effect.location}
               onChange={(location) => onChange({ ...effect, location })}
             />
@@ -930,24 +999,24 @@ function EffectEditor({
         {effect.kind === "observation" && (
           <>
             <TextField
-              label="Lieu"
+              label={t("Lieu")}
               value={effect.place}
               onChange={(place) => onChange({ ...effect, place })}
             />
             <TextField
-              label="Conditions"
+              label={t("Conditions")}
               value={effect.conditions}
               onChange={(conditions) => onChange({ ...effect, conditions })}
             />
             <TextField
-              label="Précipitations"
+              label={t("Précipitations")}
               value={effect.precipitation}
               onChange={(precipitation) =>
                 onChange({ ...effect, precipitation })
               }
             />
             <TextField
-              label="Vent"
+              label={t("Vent")}
               value={effect.wind}
               onChange={(wind) => onChange({ ...effect, wind })}
             />
@@ -956,13 +1025,13 @@ function EffectEditor({
         {effect.kind === "fact" && (
           <>
             <ComboField
-              label="Renseignement clé"
+              label={t("Renseignement clé")}
               value={effect.label}
               onChange={(label) => onChange({ ...effect, label })}
               options={live.ops.facts.map((f) => f.label)}
             />
             <TextField
-              label="Valeur"
+              label={t("Valeur")}
               value={effect.value}
               onChange={(value) => onChange({ ...effect, value })}
             />
@@ -972,8 +1041,8 @@ function EffectEditor({
       <button
         className="icon-button"
         onClick={onRemove}
-        aria-label="Retirer cet effet"
-        title="Retirer cet effet"
+        aria-label={t("Retirer cet effet")}
+        title={t("Retirer cet effet")}
       >
         <Trash2 size={15} />
       </button>
@@ -999,7 +1068,7 @@ function ReactionDialog({
   // Entries and messages recorded after the inject was played.
   const since = row.delivered ?? 0;
   const options = [
-    { value: "", label: "— aucun élément précis —" },
+    { value: "", label: t("— aucun élément précis —") },
     ...live.entries
       .filter((e) => Date.parse(e.createdAt) >= since - 60_000)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -1009,14 +1078,19 @@ function ReactionDialog({
       })),
   ];
   return (
-    <Modal title={`Réaction à « ${row.inject.title} »`} onClose={onClose}>
+    <Modal
+      title={t("Réaction à « {title} »", { title: row.inject.title })}
+      onClose={onClose}
+    >
       <p className="db-note">
-        Joué à {hhmm(row.delivered)}. La réaction automatique (message traité,
-        inscrit au journal ou lié) est prise si elle est plus précoce.
+        {t(
+          "Joué à {time}. La réaction automatique (message traité, inscrit au journal ou lié) est prise si elle est plus précoce.",
+          { time: hhmm(row.delivered) },
+        )}
       </p>
       <div className="form-grid">
         <label className="span-2">
-          <span>Heure de la réaction (Zurich)</span>
+          <span>{t("Heure de la réaction (Zurich)")}</span>
           <input
             type="datetime-local"
             value={localInput(at)}
@@ -1025,18 +1099,18 @@ function ReactionDialog({
         </label>
         <ChoiceField
           className="span-2"
-          label="Entrée du journal liée"
+          label={t("Entrée du journal liée")}
           value={ref}
           onChange={setRef}
           options={options}
         />
         <TextField
           className="span-2"
-          label="Remarque"
+          label={t("Remarque")}
           value={note}
           onChange={setNote}
           maxLength={1000}
-          placeholder="Ex. Chef d’intervention informé par radio"
+          placeholder={t("Ex. Chef d’intervention informé par radio")}
         />
       </div>
       <div className="modal-actions">
@@ -1046,11 +1120,11 @@ function ReactionDialog({
               onSave({ reactedAt: "", reactionRef: "", reactionNote: "" })
             }
           >
-            Effacer
+            {t("Effacer")}
           </button>
         )}
         <span style={{ flex: 1 }} />
-        <button onClick={onClose}>Annuler</button>
+        <button onClick={onClose}>{t("Annuler")}</button>
         <button
           className="primary"
           onClick={() =>
@@ -1058,11 +1132,11 @@ function ReactionDialog({
               reactedAt: at,
               reactionRef: ref,
               reactionNote:
-                note.trim() || (ref ? "entrée liée par la direction" : ""),
+                note.trim() || (ref ? t("entrée liée par la direction") : ""),
             })
           }
         >
-          Enregistrer
+          {t("Enregistrer")}
         </button>
       </div>
       <p className="db-note mono">{dateTime(at)}</p>
@@ -1081,26 +1155,26 @@ function ScenarioDialog({
   onClose: () => void;
   onSave: (title: string, description: string) => void;
 }) {
-  const [t, setT] = useState(title);
+  const [name, setName] = useState(title);
   const [d, setD] = useState(description);
   return (
     <Modal
-      title="Scénario"
+      title={t("Scénario")}
       onClose={onClose}
-      dirty={t !== title || d !== description}
+      dirty={name !== title || d !== description}
     >
       <div className="form-grid">
         <TextField
           className="span-2"
-          label="Titre"
+          label={t("Titre")}
           required
-          value={t}
-          onChange={setT}
+          value={name}
+          onChange={setName}
           maxLength={200}
         />
         <TextField
           className="span-2"
-          label="Description (pour la direction)"
+          label={t("Description (pour la direction)")}
           rows={4}
           value={d}
           onChange={setD}
@@ -1109,13 +1183,13 @@ function ScenarioDialog({
       </div>
       <div className="modal-actions">
         <span style={{ flex: 1 }} />
-        <button onClick={onClose}>Annuler</button>
+        <button onClick={onClose}>{t("Annuler")}</button>
         <button
           className="primary"
-          disabled={!t.trim()}
-          onClick={() => onSave(t.trim(), d.trim())}
+          disabled={!name.trim()}
+          onClick={() => onSave(name.trim(), d.trim())}
         >
-          Enregistrer
+          {t("Enregistrer")}
         </button>
       </div>
     </Modal>

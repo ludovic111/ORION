@@ -6,24 +6,29 @@ import { ModuleHead } from "../../ui/ModuleHead";
 import {
   GROUPS,
   TOPICS,
+  loadTopics,
+  localized,
   resolveTopic,
+  topicsFor,
   type Level,
   type Topic,
 } from "./content";
 import { fold, textOf } from "./kit";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import "./docs.css";
 
-const LEVELS: { value: Level; label: string }[] = [
-  { value: "short", label: "En bref" },
-  { value: "guide", label: "Guide" },
-  { value: "full", label: "Tout le détail" },
+const levels = (): { value: Level; label: string }[] => [
+  { value: "short", label: t("En bref") },
+  { value: "guide", label: t("Guide") },
+  { value: "full", label: t("Tout le détail") },
 ];
 const RANK: Record<Level, number> = { short: 0, guide: 1, full: 2 };
 
 type Indexed = { topic: Topic; raw: string[]; folded: string };
 
-function buildIndex(): Indexed[] {
-  return TOPICS.map((topic) => {
+function buildIndex(topics: Topic[]): Indexed[] {
+  return topics.map((topic) => {
     const text = [
       topic.title,
       textOf(topic.short),
@@ -83,7 +88,25 @@ export function Docs({ topic }: { topic: string }) {
   const [local, setLocal] = useState<Record<string, Level>>({});
   const article = useRef<HTMLDivElement>(null);
   const spyLock = useRef(0);
-  const index = useMemo(buildIndex, []);
+  const lang = useLang();
+  // The topics (and their text) follow the language of the post.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Help in the language of the post, loaded on first use (French until
+  // then); module topics take the module names of that language.
+  const [, setLoaded] = useState(0);
+  const source = topicsFor(lang);
+  useEffect(() => {
+    if (topicsFor(lang)) return;
+    let alive = true;
+    void loadTopics(lang)
+      .then(() => alive && setLoaded((n) => n + 1))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [lang]);
+  const topics = useMemo(() => localized(source ?? TOPICS), [source, lang]);
+  const index = useMemo(() => buildIndex(topics), [topics]);
 
   const words = useMemo(
     () =>
@@ -117,7 +140,7 @@ export function Docs({ topic }: { topic: string }) {
     const id = resolveTopic(topic);
     setQuery("");
     setActive(id);
-    if (id === TOPICS[0].id) return;
+    if (id === topics[0].id) return;
     const timer = setTimeout(() => scrollToTopic(id, false), 80);
     return () => clearTimeout(timer);
   }, [topic, scrollToTopic]);
@@ -129,10 +152,10 @@ export function Docs({ topic }: { topic: string }) {
       frame = 0;
       if (Date.now() < spyLock.current) return;
       const line = window.innerHeight * 0.3;
-      let current = TOPICS[0].id;
-      for (const t of TOPICS) {
-        const el = document.getElementById(`docs-${t.id}`);
-        if (el && el.getBoundingClientRect().top <= line) current = t.id;
+      let current = topics[0].id;
+      for (const tp of topics) {
+        const el = document.getElementById(`docs-${tp.id}`);
+        if (el && el.getBoundingClientRect().top <= line) current = tp.id;
       }
       setActive(current);
     };
@@ -171,7 +194,7 @@ export function Docs({ topic }: { topic: string }) {
     return () => observer.disconnect();
   }, [level, local, results]);
 
-  const levelOf = (t: Topic): Level => local[t.id] ?? level;
+  const levelOf = (tp: Topic): Level => local[tp.id] ?? level;
   const openResult = (id: string) => {
     setLocal((l) => ({ ...l, [id]: "full" }));
     setQuery("");
@@ -182,36 +205,38 @@ export function Docs({ topic }: { topic: string }) {
     <>
       <ModuleHead
         topic="start"
-        description="Comment utiliser orion aic, fonction par fonction. Choisissez la quantité de détail : en bref, pas à pas, ou tout."
+        description={t(
+          "Comment utiliser orion aic, fonction par fonction. Choisissez la quantité de détail : en bref, pas à pas, ou tout.",
+        )}
         actions={
           <Segmented
-            label="Niveau de détail"
+            label={t("Niveau de détail")}
             value={level}
             onChange={(docsLevel) => {
               setLocal({});
               setPrefs({ docsLevel });
             }}
-            options={LEVELS}
+            options={levels()}
           />
         }
       />
       <div className="docs">
-        <aside className="docs-side" aria-label="Sommaire de l’aide">
+        <aside className="docs-side" aria-label={t("Sommaire de l’aide")}>
           <label className="docs-search">
             <Search size={15} aria-hidden />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Chercher dans l’aide…"
-              aria-label="Chercher dans l’aide"
+              placeholder={t("Chercher dans l’aide…")}
+              aria-label={t("Chercher dans l’aide")}
             />
             {query && (
               <button
                 type="button"
                 className="icon-button"
                 onClick={() => setQuery("")}
-                aria-label="Effacer la recherche"
+                aria-label={t("Effacer la recherche")}
               >
                 <X size={14} />
               </button>
@@ -219,7 +244,7 @@ export function Docs({ topic }: { topic: string }) {
           </label>
           <select
             className="docs-toc-select"
-            aria-label="Aller au sujet"
+            aria-label={t("Aller au sujet")}
             value={active}
             onChange={(e) => {
               const id = e.target.value;
@@ -229,11 +254,13 @@ export function Docs({ topic }: { topic: string }) {
           >
             {GROUPS.map((g) => (
               <optgroup key={g.id} label={g.label}>
-                {TOPICS.filter((t) => t.group === g.id).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
+                {topics
+                  .filter((tp) => tp.group === g.id)
+                  .map((tp) => (
+                    <option key={tp.id} value={tp.id}>
+                      {tp.title}
+                    </option>
+                  ))}
               </optgroup>
             ))}
           </select>
@@ -241,27 +268,29 @@ export function Docs({ topic }: { topic: string }) {
             {GROUPS.map((g) => (
               <div key={g.id} className="docs-toc-group">
                 <div className="docs-toc-label">{g.label}</div>
-                {TOPICS.filter((t) => t.group === g.id).map((t) => {
-                  const Icon = t.icon;
-                  const dim =
-                    results && !results.some((r) => r.topic.id === t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`docs-toc-item${active === t.id ? " active" : ""}${dim ? " dim" : ""}`}
-                      aria-current={active === t.id ? "true" : undefined}
-                      style={{ ["--h" as string]: t.hue }}
-                      onClick={() => {
-                        setQuery("");
-                        setTimeout(() => scrollToTopic(t.id), 0);
-                      }}
-                    >
-                      <Icon size={15} aria-hidden />
-                      <span>{t.title}</span>
-                    </button>
-                  );
-                })}
+                {topics
+                  .filter((tp) => tp.group === g.id)
+                  .map((tp) => {
+                    const Icon = tp.icon;
+                    const dim =
+                      results && !results.some((r) => r.topic.id === tp.id);
+                    return (
+                      <button
+                        key={tp.id}
+                        type="button"
+                        className={`docs-toc-item${active === tp.id ? " active" : ""}${dim ? " dim" : ""}`}
+                        aria-current={active === tp.id ? "true" : undefined}
+                        style={{ ["--h" as string]: tp.hue }}
+                        onClick={() => {
+                          setQuery("");
+                          setTimeout(() => scrollToTopic(tp.id), 0);
+                        }}
+                      >
+                        <Icon size={15} aria-hidden />
+                        <span>{tp.title}</span>
+                      </button>
+                    );
+                  })}
               </div>
             ))}
           </nav>
@@ -272,13 +301,19 @@ export function Docs({ topic }: { topic: string }) {
             <section className="docs-results" aria-live="polite">
               <h2>
                 {results.length === 0
-                  ? "Aucun résultat"
-                  : `${results.length} sujet${results.length > 1 ? "s" : ""} pour « ${query.trim()} »`}
+                  ? t("Aucun résultat")
+                  : tn(
+                      results.length,
+                      "{n} sujet pour « {q} »",
+                      "{n} sujets pour « {q} »",
+                      { q: query.trim() },
+                    )}
               </h2>
               {results.length === 0 && (
                 <p className="muted">
-                  Essayez un autre mot, plus court, ou parcourez le sommaire.
-                  Les accents ne comptent pas.
+                  {t(
+                    "Essayez un autre mot, plus court, ou parcourez le sommaire. Les accents ne comptent pas.",
+                  )}
                 </p>
               )}
               <div className="docs-result-list">
@@ -309,18 +344,20 @@ export function Docs({ topic }: { topic: string }) {
             GROUPS.map((g) => (
               <div key={g.id} className="docs-group">
                 <div className="docs-group-label">{g.label}</div>
-                {TOPICS.filter((t) => t.group === g.id).map((t) => (
-                  <TopicView
-                    key={t.id}
-                    topic={t}
-                    level={levelOf(t)}
-                    global={level}
-                    onLevel={(l) =>
-                      setLocal((prev) => ({ ...prev, [t.id]: l }))
-                    }
-                    onOpen={t.module ? () => go(t.module!) : undefined}
-                  />
-                ))}
+                {topics
+                  .filter((tp) => tp.group === g.id)
+                  .map((tp) => (
+                    <TopicView
+                      key={tp.id}
+                      topic={tp}
+                      level={levelOf(tp)}
+                      global={level}
+                      onLevel={(l) =>
+                        setLocal((prev) => ({ ...prev, [tp.id]: l }))
+                      }
+                      onOpen={tp.module ? () => go(tp.module!) : undefined}
+                    />
+                  ))}
               </div>
             ))
           )}
@@ -331,7 +368,7 @@ export function Docs({ topic }: { topic: string }) {
 }
 
 function TopicView({
-  topic: t,
+  topic: tp,
   level,
   global,
   onLevel,
@@ -343,19 +380,19 @@ function TopicView({
   onLevel: (level: Level) => void;
   onOpen?: () => void;
 }) {
-  const Icon = t.icon;
+  const Icon = tp.icon;
   const rank = RANK[level];
-  const guide = t.guide && (rank >= 1 || t.always);
-  const full = t.full && rank >= 2;
-  const deeper = (rank < 1 && t.guide && !t.always) || (rank < 2 && t.full);
-  const next: Level = rank < 1 && t.guide && !t.always ? "guide" : "full";
-  const group = GROUPS.find((g) => g.id === t.group)?.label;
+  const guide = tp.guide && (rank >= 1 || tp.always);
+  const full = tp.full && rank >= 2;
+  const deeper = (rank < 1 && tp.guide && !tp.always) || (rank < 2 && tp.full);
+  const next: Level = rank < 1 && tp.guide && !tp.always ? "guide" : "full";
+  const group = GROUPS.find((g) => g.id === tp.group)?.label;
   return (
     <section
-      id={`docs-${t.id}`}
+      id={`docs-${tp.id}`}
       className="docs-topic"
-      style={{ ["--h" as string]: t.hue }}
-      aria-labelledby={`docs-h-${t.id}`}
+      style={{ ["--h" as string]: tp.hue }}
+      aria-labelledby={`docs-h-${tp.id}`}
     >
       <header className="docs-topic-head docs-reveal">
         <span className="docs-topic-icon" aria-hidden>
@@ -363,26 +400,28 @@ function TopicView({
         </span>
         <div className="docs-topic-title">
           <span className="docs-eyebrow">{group}</span>
-          <h2 id={`docs-h-${t.id}`}>{t.title}</h2>
+          <h2 id={`docs-h-${tp.id}`}>{tp.title}</h2>
         </div>
         {onOpen && (
           <button type="button" className="docs-open" onClick={onOpen}>
-            {t.openLabel}
+            {tp.openLabel}
             <ArrowRight size={14} aria-hidden />
           </button>
         )}
       </header>
-      <div className="docs-layer docs-layer-short docs-reveal">{t.short}</div>
+      <div className="docs-layer docs-layer-short docs-reveal">{tp.short}</div>
       {guide && (
         <div className="docs-layer docs-layer-guide docs-reveal">
-          {!t.always && <span className="docs-layer-tag">Pas à pas</span>}
-          {t.guide}
+          {!tp.always && (
+            <span className="docs-layer-tag">{t("Pas à pas")}</span>
+          )}
+          {tp.guide}
         </div>
       )}
       {full && (
         <div className="docs-layer docs-layer-full docs-reveal">
-          <span className="docs-layer-tag">Tout le détail</span>
-          {t.full}
+          <span className="docs-layer-tag">{t("Tout le détail")}</span>
+          {tp.full}
         </div>
       )}
       {(deeper || rank > RANK[global]) && (
@@ -394,7 +433,7 @@ function TopicView({
               onClick={() => onLevel(next)}
             >
               <ChevronsDown size={14} aria-hidden />
-              Plus de détail
+              {t("Plus de détail")}
             </button>
           )}
           {rank > RANK[global] && (
@@ -404,7 +443,7 @@ function TopicView({
               onClick={() => onLevel(global)}
             >
               <ChevronsUp size={14} aria-hidden />
-              Moins de détail
+              {t("Moins de détail")}
             </button>
           )}
         </div>

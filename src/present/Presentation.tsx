@@ -68,6 +68,9 @@ import {
   usePresenterWindow,
 } from "./presenter";
 import { mapPictures, symbolNames } from "./images";
+import { rich, useLang } from "../i18n";
+import { formatLongDate, formatTime } from "../../shared/i18n/core.ts";
+import { t, tn } from "./i18n.ts";
 import "./present.css";
 
 // Presentation mode (full screen slides built from the situation, with a
@@ -381,9 +384,12 @@ function useRegister() {
   useEffect(() => {
     const beat = setInterval(() => {
       if (current.current)
-        write(new Date().toISOString(), "En cours (heure de fin provisoire).");
+        write(
+          new Date().toISOString(),
+          t("En cours (heure de fin provisoire)."),
+        );
     }, 60_000);
-    const leave = () => finish("Fenêtre fermée pendant la présentation.");
+    const leave = () => finish(t("Fenêtre fermée pendant la présentation."));
     window.addEventListener("pagehide", leave);
     return () => {
       clearInterval(beat);
@@ -407,6 +413,7 @@ export default function PresentationMode({
 }) {
   const app = useApp();
   const { live, author, now: appNow } = app;
+  const lang = useLang();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [settings, setSettingsState] = useState<Settings>(readSettings);
   const setSettings = (patch: Partial<Settings>) =>
@@ -496,6 +503,7 @@ export default function PresentationMode({
       scope.sections,
       source,
       names,
+      lang,
     ],
   );
   const shown = useMemo(
@@ -509,7 +517,7 @@ export default function PresentationMode({
     [deck, mode, settings.order, settings.off],
   );
   const maps = useMaps(scoped, deck);
-  const footer = `orion aic · ${deck.title}${live.reference ? ` · réf. ${live.reference}` : ""}`;
+  const footer = `orion aic · ${deck.title}${live.reference ? t(" · réf. {ref}", { ref: live.reference }) : ""}`;
   const look = resolveLook(settings.look);
   const register = useRegister();
 
@@ -542,9 +550,10 @@ export default function PresentationMode({
     setPhase("show");
     fullscreen(true);
     register.begin({
+      // Kind of presentation: a fixed value of the register, kept in French.
       mode: as === "wall" ? "Affichage mural" : "Présentation",
       presenter: as === "wall" ? author : presenter,
-      audience: as === "wall" ? "Affichage mural" : settings.audience,
+      audience: as === "wall" ? t("Affichage mural") : settings.audience,
       viewAt:
         as === "wall" || viewAt === null ? "" : new Date(viewAt).toISOString(),
       slides: shown.slides.length,
@@ -583,7 +592,7 @@ export default function PresentationMode({
         className={`pm pm-look-${look} pm-phase-${phase}`}
         role="dialog"
         aria-modal="true"
-        aria-label={mode === "wall" ? "Affichage mural" : "Présentation"}
+        aria-label={mode === "wall" ? t("Affichage mural") : t("Présentation")}
       >
         {phase === "setup" && (
           <Setup
@@ -727,14 +736,14 @@ function Setup({
     <div className="pm-setup">
       <header className="pm-setup-head">
         <div>
-          <span className="pm-eyebrow">Présenter la situation</span>
+          <span className="pm-eyebrow">{t("Présenter la situation")}</span>
           <h1>{deck.title}</h1>
           <p>{describeScope(scope)}</p>
         </div>
         <button
           className="icon-button pm-close"
           onClick={onClose}
-          aria-label="Fermer"
+          aria-label={t("Fermer")}
         >
           <X size={22} />
         </button>
@@ -748,7 +757,7 @@ function Setup({
           }}
         >
           <label>
-            <span>Présenté par</span>
+            <span>{t("Présenté par")}</span>
             <input
               value={presenter}
               onChange={(e) => setPresenter(e.target.value)}
@@ -756,37 +765,39 @@ function Setup({
             />
           </label>
           <label>
-            <span>Pour qui</span>
+            <span>{t("Pour qui")}</span>
             <input
               value={settings.audience}
               onChange={(e) => setSettings({ audience: e.target.value })}
-              placeholder="Autorités communales, préfet…"
+              placeholder={t("Autorités communales, préfet…")}
               maxLength={500}
             />
           </label>
           <fieldset>
-            <legend>Version présentée</legend>
+            <legend>{t("Version présentée")}</legend>
             <div className="seg">
               <button
                 type="button"
                 aria-pressed={version.kind === "now"}
                 onClick={() => setVersion({ kind: "now" })}
               >
-                Maintenant
+                {t("Maintenant")}
               </button>
               <button
                 type="button"
                 aria-pressed={version.kind === "snapshot"}
                 disabled={!snapshots.length}
                 title={
-                  snapshots.length ? undefined : "Aucun point de situation figé"
+                  snapshots.length
+                    ? undefined
+                    : t("Aucun point de situation figé")
                 }
                 onClick={() =>
                   snapshots[0] &&
                   setVersion({ kind: "snapshot", id: snapshots[0].id })
                 }
               >
-                Point figé
+                {t("Point figé")}
               </button>
               <button
                 type="button"
@@ -798,7 +809,7 @@ function Setup({
                   })
                 }
               >
-                Heure précise
+                {t("Heure précise")}
               </button>
             </div>
             {version.kind === "snapshot" && (
@@ -827,13 +838,13 @@ function Setup({
             <small>{deck.when}</small>
           </fieldset>
           <fieldset>
-            <legend>Apparence</legend>
+            <legend>{t("Apparence")}</legend>
             <div className="seg">
               {(
                 [
-                  ["dark", "Sombre"],
-                  ["light", "Clair"],
-                  ["auto", "Auto"],
+                  ["dark", t("Sombre")],
+                  ["light", t("Clair")],
+                  ["auto", t("Auto")],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -847,36 +858,43 @@ function Setup({
               ))}
             </div>
             <small>
-              Clair : conseillé pour un projecteur dans une salle éclairée.
+              {t(
+                "Clair : conseillé pour un projecteur dans une salle éclairée.",
+              )}
             </small>
           </fieldset>
           <div className="pm-setup-actions">
             <button type="submit" className="primary pm-go" disabled={!on}>
-              <Play size={18} /> Présenter
+              <Play size={18} /> {t("Présenter")}
             </button>
             <p className="pm-hint">
-              Un deuxième écran ? Présentez, puis ouvrez la vue orateur (notes,
-              diapositive suivante, chronomètre) avec le bouton{" "}
-              <ScreenShare size={13} /> de la barre d’outils.
+              {rich(
+                t(
+                  "Un deuxième écran ? Présentez, puis ouvrez la vue orateur (notes, diapositive suivante, chronomètre) avec le bouton <0/> de la barre d’outils.",
+                ),
+                [<ScreenShare size={13} />],
+              )}
             </p>
             <button type="button" onClick={onWall}>
-              <Tv size={16} /> Affichage mural en direct
+              <Tv size={16} /> {t("Affichage mural en direct")}
             </button>
             <button type="button" onClick={onExport}>
-              <Share2 size={16} /> Exporter (PowerPoint, PDF…)
+              <Share2 size={16} /> {t("Exporter (PowerPoint, PDF…)")}
             </button>
           </div>
           {flash && <p className="pm-notice">{flash}</p>}
         </form>
-        <section className="pm-setup-slides" aria-label="Diapositives">
+        <section className="pm-setup-slides" aria-label={t("Diapositives")}>
           <div className="pm-setup-slides-head">
             <h2>
-              Diapositives{" "}
+              {t("Diapositives")}{" "}
               <span>
                 {on} / {all.length}
               </span>
             </h2>
-            <small>Glissez pour changer l’ordre · décochez pour masquer</small>
+            <small>
+              {t("Glissez pour changer l’ordre · décochez pour masquer")}
+            </small>
           </div>
           <ol
             className="pm-slide-list"
@@ -916,7 +934,7 @@ function Setup({
                       ).setPointerCapture(e.pointerId);
                       setDragging(s.id);
                     }}
-                    aria-label="Déplacer (Alt + flèches)"
+                    aria-label={t("Déplacer (Alt + flèches)")}
                   >
                     <GripVertical size={18} />
                   </span>
@@ -924,7 +942,7 @@ function Setup({
                     type="checkbox"
                     checked={!off}
                     onChange={() => toggle(s.id)}
-                    aria-label={`Montrer ${slideLabel(s)}`}
+                    aria-label={t("Montrer {label}", { label: slideLabel(s) })}
                   />
                   <div
                     className={`pm-thumb pm-look-${resolveLook(settings.look)}`}
@@ -964,31 +982,46 @@ function slideDetail(s: Slide): string {
     case "title":
       return s.when;
     case "situation":
-      return `${s.boards.length + (s.intent ? 1 : 0)} tableau(x)${s.intent ? " · idée de manœuvre" : ""}`;
+      return `${t("{n} tableau(x)", { n: s.boards.length + (s.intent ? 1 : 0) })}${s.intent ? t(" · idée de manœuvre") : ""}`;
     case "facts":
-      return `${s.facts.length} renseignement(s) clé(s)${s.since ? ` · évolution ${s.since}` : ""}`;
+      return `${t("{n} renseignement(s) clé(s)", { n: s.facts.length })}${s.since ? t(" · évolution {since}", { since: s.since }) : ""}`;
     case "map":
-      return `${s.objects} objet(s) · ${s.legend.length} calque(s)`;
+      return t("{n} objet(s) · {layers} calque(s)", {
+        n: s.objects,
+        layers: s.legend.length,
+      });
     case "changes":
-      return `${s.total} changement(s) ${s.since}`;
+      return t("{n} changement(s) {since}", { n: s.total, since: s.since });
     case "highlights":
-      return `${s.items.length} fait(s) marquant(s)`;
+      return t("{n} fait(s) marquant(s)", { n: s.items.length });
     case "missions":
-      return `${s.open} ouverte(s)${s.late ? ` · ${s.late} en retard` : ""}`;
+      return `${t("{n} ouverte(s)", { n: s.open })}${s.late ? t(" · {n} en retard", { n: s.late }) : ""}`;
     case "resources":
+      // "12 engagés": the label without its capital (German nouns keep theirs).
       return s.totals
-        .map((t) => `${t.value} ${t.label.toLowerCase()}`)
+        .map(
+          (x) =>
+            `${x.value} ${x.label.charAt(0).toLowerCase()}${x.label.slice(1)}`,
+        )
         .join(" · ");
     case "team":
-      return `${s.cells.length} poste(s) · ${s.present} présent(s)`;
+      return t("{n} poste(s) · {present} présent(s)", {
+        n: s.cells.length,
+        present: s.present,
+      });
     case "radio":
-      return s.stats[0] ? `${s.stats[0].value} terminaux en service` : "";
+      return s.stats[0]
+        ? t("{value} terminaux en service", { value: s.stats[0].value })
+        : "";
     case "weather":
-      return [s.now?.label, s.alerts.length && `${s.alerts.length} alerte(s)`]
+      return [
+        s.now?.label,
+        s.alerts.length && t("{n} alerte(s)", { n: s.alerts.length }),
+      ]
         .filter(Boolean)
         .join(" · ");
     case "agenda":
-      return `${s.items.length} échéance(s)`;
+      return t("{n} échéance(s)", { n: s.items.length });
     case "closing":
       return s.next || slideInfo(s.kind).detail;
   }
@@ -1008,7 +1041,7 @@ function Toolbar({
       className="pm-toolbar"
       data-visible={visible || undefined}
       role="toolbar"
-      aria-label="Outils de présentation"
+      aria-label={t("Outils de présentation")}
     >
       {children}
     </div>
@@ -1119,13 +1152,15 @@ function Show({
   const setCurrent = (list: InkStroke[]) =>
     slide && setStrokes((s) => ({ ...s, [slide.id]: list }));
   const annotated = Object.values(strokes).some((l) => l.length);
-  const pick = (t: Tool) => setTool((old) => (old === t ? "none" : t));
+  const pick = (next: Tool) => setTool((old) => (old === next ? "none" : next));
 
   const presenterWin = usePresenterWindow((e) => key(e));
   const openPresenter = () => {
     if (!presenterWin.open())
       setFlash(
-        "La fenêtre de la vue orateur a été bloquée. Autorisez les fenêtres surgissantes pour ce site, ou appuyez sur N pour afficher les notes.",
+        t(
+          "La fenêtre de la vue orateur a été bloquée. Autorisez les fenêtres surgissantes pour ce site, ou appuyez sur N pour afficher les notes.",
+        ),
       );
   };
 
@@ -1201,7 +1236,15 @@ function Show({
   const swiped = useRef(false);
 
   const summary = () =>
-    `Durée ${elapsed(Date.now() - startedAt)} · ${seen.current.size} diapositive(s) montrée(s) sur ${count}${annotated ? " · annotations" : ""}.`;
+    t(
+      "Durée {duration} · {seen} diapositive(s) montrée(s) sur {count}{extra}.",
+      {
+        duration: elapsed(Date.now() - startedAt),
+        seen: seen.current.size,
+        count,
+        extra: annotated ? t(" · annotations") : "",
+      },
+    );
 
   if (ended)
     return (
@@ -1256,12 +1299,12 @@ function Show({
           >
             <button
               className="pm-zone prev"
-              aria-label="Diapositive précédente"
+              aria-label={t("Diapositive précédente")}
               onClick={() => !swiped.current && go(index - 1)}
             />
             <button
               className="pm-zone next"
-              aria-label="Diapositive suivante"
+              aria-label={t("Diapositive suivante")}
               onClick={() => !swiped.current && go(index + 1)}
             />
           </div>
@@ -1285,22 +1328,22 @@ function Show({
 
       <Toolbar visible={!idle || tool !== "none"}>
         <ToolButton
-          label="Précédente"
+          label={t("Précédente")}
           keyHint="←"
           onClick={() => go(index - 1)}
         >
           <SkipBack size={18} />
         </ToolButton>
         <ToolButton
-          label="Suivante"
-          keyHint="→ ou espace"
+          label={t("Suivante")}
+          keyHint={t("→ ou espace")}
           onClick={() => go(index + 1)}
         >
           <SkipForward size={18} />
         </ToolButton>
         <span className="pm-sep" />
         <ToolButton
-          label="Stylo"
+          label={t("Stylo")}
           keyHint="P"
           pressed={tool === "pen"}
           onClick={() => pick("pen")}
@@ -1308,7 +1351,7 @@ function Show({
           <PenLine size={18} />
         </ToolButton>
         <ToolButton
-          label="Surligneur"
+          label={t("Surligneur")}
           keyHint="H"
           pressed={tool === "marker"}
           onClick={() => pick("marker")}
@@ -1316,7 +1359,7 @@ function Show({
           <Highlighter size={18} />
         </ToolButton>
         <ToolButton
-          label="Pointeur laser"
+          label={t("Pointeur laser")}
           keyHint="L"
           pressed={tool === "laser"}
           onClick={() => pick("laser")}
@@ -1324,7 +1367,7 @@ function Show({
           <MousePointer2 size={18} />
         </ToolButton>
         <ToolButton
-          label="Gomme"
+          label={t("Gomme")}
           keyHint="E"
           pressed={tool === "eraser"}
           onClick={() => pick("eraser")}
@@ -1348,22 +1391,22 @@ function Show({
             />
           ))}
         <ToolButton
-          label="Annuler le dernier trait"
+          label={t("Annuler le dernier trait")}
           keyHint="Ctrl Z"
           onClick={() => setCurrent(current.slice(0, -1))}
         >
           <Undo2 size={18} />
         </ToolButton>
         <ToolButton
-          label="Effacer les annotations de la diapositive"
-          keyHint="Maj E"
+          label={t("Effacer les annotations de la diapositive")}
+          keyHint={t("Maj E")}
           onClick={() => setCurrent([])}
         >
           <Trash2 size={18} />
         </ToolButton>
         <span className="pm-sep" />
         <ToolButton
-          label="Vue d’ensemble"
+          label={t("Vue d’ensemble")}
           keyHint="O"
           pressed={overview}
           onClick={() => setOverview((v) => !v)}
@@ -1371,7 +1414,7 @@ function Show({
           <LayoutGrid size={18} />
         </ToolButton>
         <ToolButton
-          label="Écran noir"
+          label={t("Écran noir")}
           keyHint="B"
           pressed={black}
           onClick={() => setBlack((v) => !v)}
@@ -1379,7 +1422,7 @@ function Show({
           <MonitorOff size={18} />
         </ToolButton>
         <ToolButton
-          label="Chronomètre"
+          label={t("Chronomètre")}
           keyHint="T"
           pressed={timer}
           onClick={() => setTimer((v) => !v)}
@@ -1387,14 +1430,14 @@ function Show({
           <Clock3 size={18} />
         </ToolButton>
         <ToolButton
-          label="Vue orateur (deuxième écran)"
+          label={t("Vue orateur (deuxième écran)")}
           pressed={!!presenterWin.target}
           onClick={openPresenter}
         >
           <ScreenShare size={18} />
         </ToolButton>
         <ToolButton
-          label="Plein écran"
+          label={t("Plein écran")}
           keyHint="F"
           onClick={() =>
             keyRef.current(new KeyboardEvent("keydown", { key: "f" }))
@@ -1403,8 +1446,8 @@ function Show({
           <Expand size={18} />
         </ToolButton>
         <ToolButton
-          label="Terminer"
-          keyHint="Échap"
+          label={t("Terminer")}
+          keyHint={t("Échap")}
           className="end"
           onClick={onEnd}
         >
@@ -1414,7 +1457,7 @@ function Show({
 
       {notes && slide && (
         <aside className="pm-notes">
-          <b>Notes · {slideLabel(slide)}</b>
+          <b>{t("Notes · {label}", { label: slideLabel(slide) })}</b>
           {slide.notes.split("\n").map((l, i) => (
             <p key={i}>{l}</p>
           ))}
@@ -1440,7 +1483,7 @@ function Show({
             exit={{ opacity: 0, scale: 1.04 }}
             transition={{ duration: 0.3 }}
           >
-            <h2>Vue d’ensemble</h2>
+            <h2>{t("Vue d’ensemble")}</h2>
             <div className="pm-overview-grid">
               {deck.slides.map((s, i) => (
                 <button
@@ -1533,13 +1576,18 @@ function EndScreen({
           ?.firstElementChild as HTMLElement | null;
         if (node) pages.push(await captureSlide(node, strokes[s.id], bg));
       }
-      const blob = await annotationsPdf(pages, `${deck.title} · annotations`);
+      const blob = await annotationsPdf(
+        pages,
+        t("{title} · annotations", { title: deck.title }),
+      );
       download(
         blob,
-        `${slug(deck.title)}-annotations-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.pdf`,
+        `${slug(deck.title)}-${t("annotations")}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.pdf`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Enregistrement impossible.");
+      setError(
+        e instanceof Error ? e.message : t("Enregistrement impossible."),
+      );
     } finally {
       setBusy(false);
     }
@@ -1553,38 +1601,47 @@ function EndScreen({
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         <PresentationIcon size={40} className="pm-end-icon" />
-        <h1>Présentation terminée</h1>
+        <h1>{t("Présentation terminée")}</h1>
         <p>
-          {duration} · {seen} diapositive{seen > 1 ? "s" : ""} montrée
-          {seen > 1 ? "s" : ""} sur {deck.slides.length}
+          {tn(
+            seen,
+            "{duration} · {n} diapositive montrée sur {total}",
+            "{duration} · {n} diapositives montrées sur {total}",
+            { duration, total: deck.slides.length },
+          )}
         </p>
         <p className="pm-hint">
-          Elle est inscrite au registre des présentations (Traçabilité).
+          {t("Elle est inscrite au registre des présentations (Traçabilité).")}
         </p>
         {annotated.length > 0 && (
           <button className="primary pm-go" onClick={save} disabled={busy}>
             <Download size={18} />
             {busy
-              ? "Préparation…"
-              : `Enregistrer les annotations (${annotated.length} diapositive${annotated.length > 1 ? "s" : ""}, PDF)`}
+              ? t("Préparation…")
+              : tn(
+                  annotated.length,
+                  "Enregistrer les annotations ({n} diapositive, PDF)",
+                  "Enregistrer les annotations ({n} diapositives, PDF)",
+                )}
           </button>
         )}
         {error && <p className="pm-notice">{error}</p>}
         <div className="pm-end-actions">
           <button onClick={onResume}>
-            <MonitorPlay size={16} /> Reprendre
+            <MonitorPlay size={16} /> {t("Reprendre")}
           </button>
           <button
             className={annotated.length ? "" : "primary"}
             onClick={onQuit}
           >
-            Fermer
+            {t("Fermer")}
           </button>
         </div>
         {annotated.length > 0 && (
           <p className="pm-hint">
-            Les annotations sont perdues à la fermeture si elles ne sont pas
-            enregistrées.
+            {t(
+              "Les annotations sont perdues à la fermeture si elles ne sont pas enregistrées.",
+            )}
           </p>
         )}
       </motion.div>
@@ -1791,26 +1848,20 @@ function Wall({
       <header className="pm-wall-head">
         <div className="pm-wall-title">
           <span className="pm-live">
-            <LiveIcon size={16} /> EN DIRECT
+            <LiveIcon size={16} /> {t("EN DIRECT")}
           </span>
           <b>{deck.title}</b>
           {live.location && <small>{live.location}</small>}
         </div>
         {fresh && (
-          <span className="pm-updated">Mis à jour à {clock(changed)}</span>
+          <span className="pm-updated">
+            {t("Mis à jour à {time}", { time: clock(changed) })}
+          </span>
         )}
         <div className="pm-wall-clock">
-          <b>
-            {new Date(now).toLocaleTimeString("fr-CH", {
-              timeZone: "Europe/Zurich",
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </b>
+          <b>{formatTime(now, true)}</b>
           <small>
-            {new Date(now).toLocaleDateString("fr-CH", {
-              timeZone: "Europe/Zurich",
+            {formatLongDate(now, {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -1841,7 +1892,7 @@ function Wall({
       </div>
       {ticker.length > 0 && (
         <footer className="pm-ticker">
-          <span className="pm-ticker-label">Journal</span>
+          <span className="pm-ticker-label">{t("Journal")}</span>
           <div className="pm-ticker-track">
             <div
               className="pm-ticker-run"
@@ -1851,9 +1902,9 @@ function Wall({
             >
               {[0, 1].map((copy) => (
                 <span key={copy} aria-hidden={copy === 1 || undefined}>
-                  {ticker.map((t) => (
-                    <span key={t.id} className={`pm-tick ${t.tone}`}>
-                      <time>{t.time}</time> <b>{t.number}</b> {t.text}
+                  {ticker.map((tick) => (
+                    <span key={tick.id} className={`pm-tick ${tick.tone}`}>
+                      <time>{tick.time}</time> <b>{tick.number}</b> {tick.text}
                     </span>
                   ))}
                 </span>
@@ -1865,42 +1916,42 @@ function Wall({
       <div
         className="pm-wall-controls"
         role="toolbar"
-        aria-label="Réglages de l’affichage mural"
+        aria-label={t("Réglages de l’affichage mural")}
       >
         <button
           onClick={() => (step(-1), setCycle((c) => c + 1))}
-          aria-label="Précédente"
+          aria-label={t("Précédente")}
         >
           <SkipBack size={16} />
         </button>
         <button
           onClick={() => setPaused((p) => !p)}
-          aria-label={paused ? "Reprendre" : "Pause"}
+          aria-label={paused ? t("Reprendre") : t("Pause")}
         >
           {paused ? <Play size={16} /> : <Pause size={16} />}
         </button>
         <button
           onClick={() => (step(1), setCycle((c) => c + 1))}
-          aria-label="Suivante"
+          aria-label={t("Suivante")}
         >
           <SkipForward size={16} />
         </button>
-        <div className="seg" aria-label="Durée par diapositive">
+        <div className="seg" aria-label={t("Durée par diapositive")}>
           {INTERVALS.map((s) => (
             <button
               key={s}
               aria-pressed={settings.interval === s}
               onClick={() => setSettings({ interval: s })}
             >
-              {s} s
+              {t("{n} s", { n: s })}
             </button>
           ))}
         </div>
-        <div className="seg" aria-label="Apparence">
+        <div className="seg" aria-label={t("Apparence")}>
           {(
             [
-              ["dark", "Sombre"],
-              ["light", "Clair"],
+              ["dark", t("Sombre")],
+              ["light", t("Clair")],
             ] as const
           ).map(([look, label]) => (
             <button
@@ -1912,11 +1963,11 @@ function Wall({
             </button>
           ))}
         </div>
-        <button onClick={onFullscreen} aria-label="Plein écran">
+        <button onClick={onFullscreen} aria-label={t("Plein écran")}>
           <Expand size={16} />
         </button>
         <button onClick={onQuit}>
-          <X size={16} /> Quitter
+          <X size={16} /> {t("Quitter")}
         </button>
       </div>
     </div>

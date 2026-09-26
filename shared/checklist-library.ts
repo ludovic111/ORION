@@ -1,4 +1,9 @@
 import type { ChecklistStep } from "./conduct-schemas.ts";
+import type { Lang } from "./i18n/core.ts";
+import { LIST_VALUES } from "./i18n/seeds.ts";
+import { DEFAULT_LISTS } from "./ops.ts";
+import { TEMPLATES_DE } from "./checklist-library-de.ts";
+import { TEMPLATES_IT } from "./checklist-library-it.ts";
 
 // Built-in checklists of a cantonal civil protection command post (PCi,
 // aide à la conduite). Practical steps, in the order they are usually
@@ -502,3 +507,60 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     ]),
   },
 ];
+
+/**
+ * Text of a built-in list in another language (checklist-library-de.ts,
+ * checklist-library-it.ts): step n is the text of step n of the French list.
+ */
+export type LocalizedTemplate = {
+  name: string;
+  description: string;
+  steps: string[];
+};
+
+const LOCALIZED: Record<
+  Exclude<Lang, "fr">,
+  Record<string, LocalizedTemplate>
+> = { de: TEMPLATES_DE, it: TEMPLATES_IT };
+
+/** Value of a référentiel in a language: same index as the French one. */
+function listValue(
+  list: "roles" | "eventKinds",
+  value: string,
+  lang: Exclude<Lang, "fr">,
+): string {
+  const i = DEFAULT_LISTS[list].values.indexOf(value);
+  return (i >= 0 && LIST_VALUES[lang][list]?.[i]) || value;
+}
+
+const built = new Map<Lang, BuiltinTemplate[]>();
+
+/**
+ * Built-in lists in a language (the language of the journal, see
+ * journalLang in shared/ops.ts). Same keys, step ids, timers and journal
+ * flags in every language; the event type and the functions are the
+ * référentiel values of that language (shared/i18n/seeds.ts). A text
+ * missing in a language stays French.
+ */
+export function builtinTemplates(lang: Lang = "fr"): BuiltinTemplate[] {
+  if (lang === "fr" || !LOCALIZED[lang]) return BUILTIN_TEMPLATES;
+  const known = built.get(lang);
+  if (known) return known;
+  const texts = LOCALIZED[lang];
+  const out = BUILTIN_TEMPLATES.map((b): BuiltinTemplate => {
+    const l = texts[b.key];
+    return {
+      key: b.key,
+      name: l?.name || b.name,
+      event: listValue("eventKinds", b.event, lang),
+      description: l?.description || b.description,
+      steps: b.steps.map((s, i) => ({
+        ...s,
+        text: l?.steps[i] || s.text,
+        role: listValue("roles", s.role, lang),
+      })),
+    };
+  });
+  built.set(lang, out);
+  return out;
+}

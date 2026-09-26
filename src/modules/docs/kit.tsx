@@ -16,6 +16,8 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 // Building blocks of the documentation: typography helpers, callouts and the
 // small diagrams. Colours only come from CSS variables (docs.css).
@@ -52,9 +54,24 @@ const NOTE: Record<
   "tip" | "warn" | "info",
   { label: string; icon: LucideIcon }
 > = {
-  tip: { label: "Astuce", icon: Lightbulb },
-  warn: { label: "Attention", icon: TriangleAlert },
-  info: { label: "Bon à savoir", icon: Info },
+  tip: {
+    get label() {
+      return t("Astuce");
+    },
+    icon: Lightbulb,
+  },
+  warn: {
+    get label() {
+      return t("Attention");
+    },
+    icon: TriangleAlert,
+  },
+  info: {
+    get label() {
+      return t("Bon à savoir");
+    },
+    icon: Info,
+  },
 };
 
 /** Callout: Astuce, Attention, Bon à savoir. */
@@ -81,7 +98,7 @@ export function Note({
 
 /** Concrete example drawn from the flood exercise. */
 export function Example({
-  title = "Crue de l’Arve",
+  title = t("Crue de l’Arve"),
   children,
 }: {
   title?: string;
@@ -91,7 +108,7 @@ export function Example({
     <div className="docs-example">
       <div className="docs-example-head">
         <Waves size={15} aria-hidden />
-        Exemple · {title}
+        {t("Exemple · {title}", { title })}
       </div>
       <div className="docs-example-body">{children}</div>
     </div>
@@ -233,26 +250,30 @@ export function MessageFlow() {
         <Node
           icon={Inbox}
           hue={265}
-          title="Réception"
-          text="Le message arrive tel quel : « Ici Patrouille Alpha, l’eau passe par-dessus le quai… »"
+          title={t("Réception")}
+          text={t(
+            "Le message arrive tel quel : « Ici Patrouille Alpha, l’eau passe par-dessus le quai… »",
+          )}
         />
-        <Wire label="on résume" />
+        <Wire label={t("on résume")} />
         <Node
           icon={Sparkles}
           hue={195}
-          title="Synthèse"
-          text="On garde l’essentiel, en une ou deux phrases claires."
+          title={t("Synthèse")}
+          text={t("On garde l’essentiel, en une ou deux phrases claires.")}
         />
-        <Wire label="on inscrit" />
+        <Wire label={t("on inscrit")} />
         <Node
           icon={BookOpen}
           hue={212}
-          title="Journal"
-          text="#012 : numéroté, à l’heure, relié au message d’origine."
+          title={t("Journal")}
+          text={t("#012 : numéroté, à l’heure, relié au message d’origine.")}
         />
       </div>
       <figcaption>
-        Le chemin d’un message : du texte brut à l’entrée officielle du journal.
+        {t(
+          "Le chemin d’un message : du texte brut à l’entrée officielle du journal.",
+        )}
       </figcaption>
     </figure>
   );
@@ -266,41 +287,44 @@ export function SyncFlow() {
         <Node
           icon={Monitor}
           hue={212}
-          title="Poste A"
-          text="PC front · copie complète de la session"
+          title={t("Poste A")}
+          text={t("PC front · copie complète de la session")}
         />
         <Wire
           both
           label={
             <>
-              <Lock size={11} /> chiffré
+              <Lock size={11} /> {t("chiffré")}
             </>
           }
         />
         <Node
           icon={Server}
           hue={285}
-          title="Relais"
-          text="Ne voit rien : il transmet des messages illisibles et ne garde rien."
+          title={t("Relais")}
+          text={t(
+            "Ne voit rien : il transmet des messages illisibles et ne garde rien.",
+          )}
         />
         <Wire
           both
           label={
             <>
-              <Lock size={11} /> chiffré
+              <Lock size={11} /> {t("chiffré")}
             </>
           }
         />
         <Node
           icon={Tablet}
           hue={160}
-          title="Poste B"
-          text="PC arrière · copie complète de la session"
+          title={t("Poste B")}
+          text={t("PC arrière · copie complète de la session")}
         />
       </div>
       <figcaption>
-        Chaque poste garde tout. Le relais ne fait que passer des enveloppes
-        scellées : seuls les postes qui connaissent le code peuvent les ouvrir.
+        {t(
+          "Chaque poste garde tout. Le relais ne fait que passer des enveloppes scellées : seuls les postes qui connaissent le code peuvent les ouvrir.",
+        )}
       </figcaption>
     </figure>
   );
@@ -315,27 +339,27 @@ export function LinksFigure() {
       y: 58,
       hue: 265,
       icon: Inbox,
-      title: "Message",
-      sub: "Patrouille Alpha",
-      link: "signale",
+      title: t("Message"),
+      sub: t("Patrouille Alpha"),
+      link: t("signale"),
     },
     {
       x: 428,
       y: 58,
       hue: 212,
       icon: BookOpen,
-      title: "Entrée #012",
-      sub: "Renseignement",
-      link: "consigné",
+      title: t("Entrée #012"),
+      sub: enumLabel("Renseignement"),
+      link: t("consigné"),
     },
     {
       x: 260,
       y: 262,
       hue: 28,
       icon: Truck,
-      title: "Moyen",
-      sub: "Motopompe 2",
-      link: "engagé sur",
+      title: t("Moyen"),
+      sub: t("Motopompe 2"),
+      link: t("engagé sur"),
     },
   ];
   return (
@@ -344,7 +368,9 @@ export function LinksFigure() {
         className="docs-links-svg"
         viewBox="0 0 520 310"
         role="img"
-        aria-label="Un objet de la carte relié à un message, une entrée du journal et un moyen"
+        aria-label={t(
+          "Un objet de la carte relié à un message, une entrée du journal et un moyen",
+        )}
       >
         {around.map((a, i) => (
           <g key={i}>
@@ -380,10 +406,10 @@ export function LinksFigure() {
           <circle cx={center.x} cy={center.y} r={34} />
           <MapPin x={center.x - 12} y={center.y - 12} width={24} height={24} />
           <text x={center.x + 44} y={center.y - 2}>
-            Digue
+            {t("Digue")}
           </text>
           <text className="sub" x={center.x + 44} y={center.y + 16}>
-            objet de la carte
+            {t("objet de la carte")}
           </text>
         </g>
         {around.map((a, i) => {
@@ -407,8 +433,9 @@ export function LinksFigure() {
         })}
       </svg>
       <figcaption>
-        Survolez la digue sur la carte : le message qui l’a signalée, l’entrée
-        du journal et la motopompe engagée apparaissent aussitôt.
+        {t(
+          "Survolez la digue sur la carte : le message qui l’a signalée, l’entrée du journal et la motopompe engagée apparaissent aussitôt.",
+        )}
       </figcaption>
     </figure>
   );
@@ -426,12 +453,18 @@ export function ScreenMap() {
       <div className="docs-screen" aria-hidden>
         <div className="docs-screen-bar">
           <span className="docs-screen-logo">{n(1)}</span>
-          <span className="docs-screen-pill wide">{n(2)} Crue de l’Arve ▾</span>
-          <span className="docs-screen-pill grow">
-            {n(3)} Rechercher ou agir… <kbd>⌘K</kbd>
+          <span className="docs-screen-pill wide">
+            {n(2)} {t("Crue de l’Arve")} ▾
           </span>
-          <span className="docs-screen-pill">{n(4)} 3 postes</span>
-          <span className="docs-screen-pill hide-small">{n(5)} Chiffré</span>
+          <span className="docs-screen-pill grow">
+            {n(3)} {t("Rechercher ou agir…")} <kbd>⌘K</kbd>
+          </span>
+          <span className="docs-screen-pill">
+            {n(4)} {t("{n} postes", { n: 3 })}
+          </span>
+          <span className="docs-screen-pill hide-small">
+            {n(5)} {t("Chiffré")}
+          </span>
           <span className="docs-screen-pill hide-small">{n(6)} 14:05</span>
           <span className="docs-screen-pill">{n(7)} SM</span>
         </div>
@@ -458,8 +491,9 @@ export function ScreenMap() {
         </div>
       </div>
       <figcaption>
-        L’écran d’orion aic, simplifié. Les numéros renvoient à la liste
-        ci-dessous.
+        {t(
+          "L’écran d’orion aic, simplifié. Les numéros renvoient à la liste ci-dessous.",
+        )}
       </figcaption>
     </figure>
   );

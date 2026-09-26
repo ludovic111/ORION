@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t as tr } from "./i18n/signature.ts";
 
 // Signature of the exports. Each post (session) has its own key pair,
 // generated in the browser (Web Crypto) and kept in the encrypted session:
@@ -101,7 +102,9 @@ export async function generateSigningKey(
     }
   }
   throw new Error(
-    `Signature impossible dans ce navigateur (${(lastError as Error)?.message ?? "Web Crypto"}).`,
+    tr("Signature impossible dans ce navigateur ({reason}).", {
+      reason: (lastError as Error)?.message ?? "Web Crypto",
+    }),
   );
 }
 

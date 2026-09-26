@@ -22,6 +22,10 @@ import {
 import { weatherIcon } from "../modules/weather/forecast";
 import { symbolUrl } from "../modules/map/symbols";
 import type { Deck, Slide, SlideKind, Tone } from "./deck";
+import { rich } from "../i18n";
+import { formatNumber } from "../../shared/i18n/core.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { statusLabel, t, tn } from "./i18n.ts";
 
 // A slide of the deck drawn with the app's look on a 1920 × 1080 stage:
 // staggered entrances (CSS, --d = order), counters, slow zoom on the maps.
@@ -57,7 +61,7 @@ function reduced() {
 function formatLike(value: string, n: number) {
   const prefix = value.match(/^\s*[+−-]\s*/)?.[0] ?? "";
   const decimals = value.match(/[.,](\d+)\s*$/)?.[1].length ?? 0;
-  return `${prefix}${Math.abs(n).toLocaleString("fr-CH", {
+  return `${prefix}${formatNumber(Math.abs(n), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
@@ -133,12 +137,12 @@ function TitleView({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
   const context = [
     slide.organization,
     slide.location,
-    slide.reference && `Réf. ${slide.reference}`,
+    slide.reference && t("Réf. {ref}", { ref: slide.reference }),
   ].filter(Boolean);
   return (
     <div className="ps-cover">
       <div className="ps-cover-top pm-in" style={d(0)}>
-        <span className="ps-brand">orion aic · point de situation</span>
+        <span className="ps-brand">{t("orion aic · point de situation")}</span>
         <span className="ps-badges">
           {slide.badges.map((b) => (
             <span key={b.label} className={`ps-badge ${tone(b.tone)}`}>
@@ -165,13 +169,12 @@ function TitleView({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
       </p>
       {(slide.presenter || slide.audience) && (
         <p className="ps-cover-by pm-in" style={d(5)}>
-          {slide.presenter && (
-            <>
-              Présenté par <b>{slide.presenter}</b>
-            </>
-          )}
+          {slide.presenter &&
+            rich(t("Présenté par <0>{name}</0>", { name: slide.presenter }), [
+              <b />,
+            ])}
           {slide.presenter && slide.audience && "  ·  "}
-          {slide.audience && <>pour {slide.audience}</>}
+          {slide.audience && t("pour {audience}", { audience: slide.audience })}
         </p>
       )}
     </div>
@@ -202,7 +205,7 @@ function SituationView({
       </div>
       {slide.intent && (
         <Card i={boards.length + 1} className="ps-intent pm-zoom">
-          <h2 className="ps-label">Idée de manœuvre</h2>
+          <h2 className="ps-label">{t("Idée de manœuvre")}</h2>
           <small>{slide.intent.title}</small>
           <p className="ps-body" data-size={long(slide.intent.body)}>
             {slide.intent.body}
@@ -227,7 +230,9 @@ function FactsView({
     <>
       {slide.since && (
         <p className="ps-sub pm-in" style={d(1)}>
-          {moved ? "Évolution" : "Aucune évolution"} {slide.since}
+          {moved
+            ? t("Évolution {since}", { since: slide.since })
+            : t("Aucune évolution {since}", { since: slide.since })}
         </p>
       )}
       <div
@@ -294,7 +299,7 @@ function MapView({
       ) : (
         <div className="ps-map-wait">
           <MapIcon size={80} />
-          Carte en préparation…
+          {t("Carte en préparation…")}
         </div>
       )}
       <div className="ps-map-top">
@@ -354,8 +359,15 @@ function ChangesView({
   return (
     <>
       <p className="ps-sub pm-in" style={d(1)}>
-        <b className="ps-accent">{slide.total}</b> changement
-        {slide.total > 1 ? "s" : ""} {slide.since}
+        {rich(
+          tn(
+            slide.total,
+            "<0>{n}</0> changement {since}",
+            "<0>{n}</0> changements {since}",
+            { since: slide.since },
+          ),
+          [<b className="ps-accent" />],
+        )}
       </p>
       <div className={`ps-grid g${groups.length}`}>
         {groups.map((g, i) => {
@@ -369,17 +381,17 @@ function ChangesView({
               <div className="ps-change-split">
                 {g.created > 0 && (
                   <span className="t-ok">
-                    +{g.created} nouveau{g.created > 1 ? "x" : ""}
+                    +{tn(g.created, "{n} nouveau", "{n} nouveaux")}
                   </span>
                 )}
                 {g.updated > 0 && (
                   <span className="t-info">
-                    {g.updated} modifié{g.updated > 1 ? "s" : ""}
+                    {tn(g.updated, "{n} modifié", "{n} modifiés")}
                   </span>
                 )}
                 {g.removed > 0 && (
                   <span className="t-crit">
-                    −{g.removed} retiré{g.removed > 1 ? "s" : ""}
+                    −{tn(g.removed, "{n} retiré", "{n} retirés")}
                   </span>
                 )}
               </div>
@@ -417,9 +429,9 @@ function HighlightsView({
             <div className="ps-event-meta">
               {[
                 it.number,
-                it.type,
-                it.priority !== "Normal" && it.priority,
-                it.status,
+                enumLabel(it.type),
+                it.priority !== "Normal" && enumLabel(it.priority),
+                enumLabel(it.status),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -430,7 +442,11 @@ function HighlightsView({
       ))}
       {slide.more > 0 && (
         <p className="ps-more pm-in" style={d(slide.items.length + 1)}>
-          … et {slide.more} autre{slide.more > 1 ? "s" : ""} au journal
+          {tn(
+            slide.more,
+            "… et {n} autre au journal",
+            "… et {n} autres au journal",
+          )}
         </p>
       )}
     </div>
@@ -446,12 +462,11 @@ function MissionsView({
     <>
       <div className="ps-pills pm-in" style={d(1)}>
         <span className="ps-badge t-accent">
-          {slide.open} point{slide.open > 1 ? "s" : ""} ouvert
-          {slide.open > 1 ? "s" : ""}
+          {tn(slide.open, "{n} point ouvert", "{n} points ouverts")}
         </span>
         {slide.late > 0 && (
           <span className="ps-badge t-crit pm-pulse">
-            <AlertTriangle size={22} /> {slide.late} en retard
+            <AlertTriangle size={22} /> {t("{n} en retard", { n: slide.late })}
           </span>
         )}
       </div>
@@ -469,13 +484,13 @@ function MissionsView({
             <span
               className={`ps-badge ${m.late ? "t-crit" : m.status === "En cours" ? "t-info" : "t-warn"}`}
             >
-              {m.status}
+              {statusLabel(m.status)}
             </span>
           </div>
         ))}
         {slide.more > 0 && (
           <p className="ps-more pm-in" style={d(slide.items.length + 2)}>
-            … et {slide.more} autre{slide.more > 1 ? "s" : ""}
+            {tn(slide.more, "… et {n} autre", "… et {n} autres")}
           </p>
         )}
       </div>
@@ -555,8 +570,15 @@ function ResourcesView({
           </tr>
         </thead>
         <tbody>
-          {slide.rows.slice(0, 7).map((r) => (
-            <tr key={r[0]} className={r[0] === "Total" ? "total" : ""}>
+          {slide.rows.slice(0, 7).map((r, ri) => (
+            <tr
+              key={r[0]}
+              className={
+                slide.rows.length > 2 && ri === slide.rows.length - 1
+                  ? "total"
+                  : ""
+              }
+            >
               {r.map((c, i) => (
                 <td
                   key={i}
@@ -594,9 +616,15 @@ function TeamView({ slide }: { slide: Extract<Slide, { kind: "team" }> }) {
   return (
     <>
       <p className="ps-sub pm-in" style={d(1)}>
-        <b className="ps-accent">{slide.present}</b> présent
-        {slide.present > 1 ? "s" : ""} sur {slide.total} personne
-        {slide.total > 1 ? "s" : ""}
+        {rich(
+          tn(
+            slide.present,
+            "<0>{n}</0> présent sur {total}",
+            "<0>{n}</0> présents sur {total}",
+            { total: tn(slide.total, "{n} personne", "{n} personnes") },
+          ),
+          [<b className="ps-accent" />],
+        )}
       </p>
       <div className={`ps-grid g${cells.length}`}>
         {cells.map((c, i) => (
@@ -611,7 +639,7 @@ function TeamView({ slide }: { slide: Extract<Slide, { kind: "team" }> }) {
               {[
                 c.kind !== c.name && c.kind,
                 c.location,
-                c.radio && `radio ${c.radio}`,
+                c.radio && t("radio {radio}", { radio: c.radio }),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -627,10 +655,12 @@ function TeamView({ slide }: { slide: Extract<Slide, { kind: "team" }> }) {
                 </li>
               ))}
               {c.members.length > 5 && (
-                <li className="more">+ {c.members.length - 5} autres</li>
+                <li className="more">
+                  {tn(c.members.length - 5, "+ {n} autre", "+ {n} autres")}
+                </li>
               )}
               {!c.members.length && (
-                <li className="more">Personne n’est affecté.</li>
+                <li className="more">{t("Personne n’est affecté.")}</li>
               )}
             </ul>
           </Card>
@@ -655,10 +685,10 @@ function RadioView({
           <table className="ps-table pm-in" style={d(6)}>
             <thead>
               <tr>
-                <th>Groupe</th>
-                <th>N°</th>
-                <th>Usage</th>
-                <th>Mode</th>
+                <th>{t("Groupe")}</th>
+                <th>{t("N°")}</th>
+                <th>{t("Usage")}</th>
+                <th>{t("Mode")}</th>
               </tr>
             </thead>
             <tbody>
@@ -668,8 +698,8 @@ function RadioView({
                     <b>{g.name}</b>
                   </td>
                   <td className="mono">{g.number || "—"}</td>
-                  <td>{g.usage}</td>
-                  <td className="dim">{g.mode}</td>
+                  <td>{enumLabel(g.usage)}</td>
+                  <td className="dim">{enumLabel(g.mode)}</td>
                 </tr>
               ))}
             </tbody>
@@ -680,7 +710,9 @@ function RadioView({
           className={`ps-links ${slide.weak.length ? "t-crit" : "t-ok"}`}
         >
           <h2 className="ps-label">
-            {slide.weak.length ? "Liaisons faibles ou nulles" : "Liaisons"}
+            {slide.weak.length
+              ? t("Liaisons faibles ou nulles")
+              : t("Liaisons")}
           </h2>
           {slide.weak.length ? (
             <ul>
@@ -692,7 +724,7 @@ function RadioView({
               ))}
             </ul>
           ) : (
-            <p>Aucune liaison faible au dernier contrôle.</p>
+            <p>{t("Aucune liaison faible au dernier contrôle.")}</p>
           )}
         </Card>
       </div>
@@ -726,16 +758,16 @@ function WeatherView({
     <div className={`ps-weather${slide.now ? "" : " no-now"}`}>
       {slide.now && Now && (
         <Card i={1} className="ps-now pm-zoom">
-          <h2 className="ps-label">Maintenant</h2>
+          <h2 className="ps-label">{t("Maintenant")}</h2>
           <Now className="ps-now-icon" size={120} strokeWidth={1.4} />
           <div className="ps-now-temp">{slide.now.temperature}</div>
           <div className="ps-now-label">{slide.now.label}</div>
           <dl>
-            <dt>Vent</dt>
+            <dt>{t("Vent")}</dt>
             <dd>{slide.now.wind}</dd>
-            <dt>Précipitations</dt>
+            <dt>{t("Précipitations")}</dt>
             <dd>{slide.now.precipitation}</dd>
-            <dt>Humidité</dt>
+            <dt>{t("Humidité")}</dt>
             <dd>{slide.now.humidity}</dd>
           </dl>
           <small>{slide.source}</small>
@@ -777,7 +809,10 @@ function WeatherView({
                 {a.region && ` · ${a.region}`}
               </b>
               <small>
-                Degré {a.level} · {a.period}
+                {t("Degré {level} · {period}", {
+                  level: a.level,
+                  period: a.period,
+                })}
               </small>
             </div>
           </Card>
@@ -785,7 +820,10 @@ function WeatherView({
         {slide.observation && (
           <Card i={order++} className="ps-observation">
             <h2 className="ps-label">
-              Observation {slide.observation.time} · {slide.observation.place}
+              {t("Observation {time} · {place}", {
+                time: slide.observation.time,
+                place: slide.observation.place,
+              })}
             </h2>
             <p>{slide.observation.text}</p>
           </Card>
@@ -814,9 +852,9 @@ function AgendaView({ slide }: { slide: Extract<Slide, { kind: "agenda" }> }) {
           </div>
           <span className="ps-badge">
             {it.late
-              ? "dépassé"
+              ? t("dépassé")
               : it.next
-                ? `Prochain · ${it.relative}`
+                ? t("Prochain · {relative}", { relative: it.relative })
                 : it.relative}
           </span>
         </div>

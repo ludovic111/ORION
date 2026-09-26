@@ -3,6 +3,8 @@ import type { Order } from "../../../shared/conduct";
 import { recipientStates } from "../../../shared/diffusion";
 import type { Ack, Broadcast } from "../../../shared/conduct";
 import type { FormSheet, SheetField } from "../../print/sheet";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 const or = (value: string) => value.trim() || "—";
 const f = (
@@ -23,110 +25,138 @@ export function orderSheet(
     ? recipientStates(broadcast, acks)
         .map((s) =>
           s.ack
-            ? `${s.recipient} : ${s.ack.kind} ${dateTime(s.ack.at)}${s.ack.post ? ` (${s.ack.post})` : ""}`
-            : `${s.recipient} : sans accusé`,
+            ? t(
+                s.ack.post
+                  ? "{recipient} : {kind} {at} ({post})"
+                  : "{recipient} : {kind} {at}",
+                {
+                  recipient: s.recipient,
+                  kind: enumLabel(s.ack.kind),
+                  at: dateTime(s.ack.at),
+                  post: s.ack.post,
+                },
+              )
+            : t("{recipient} : sans accusé", { recipient: s.recipient }),
         )
         .join("\n")
     : "";
   return {
-    kind: order.kind || "Ordre",
-    idLabel: "Ordre",
+    kind: order.kind || t("Ordre"),
+    idLabel: t("Ordre"),
     number: label,
     boxes: [
-      { label: "État", value: order.status, alert: order.status === "Annulé" },
       {
-        label: "Émis le",
+        label: t("État"),
+        value: enumLabel(order.status),
+        alert: order.status === "Annulé",
+      },
+      {
+        label: t("Émis le"),
         value: order.issuedAt ? dateTime(order.issuedAt) : "—",
       },
-      { label: "Par", value: or(order.issuer) },
+      { label: t("Par"), value: or(order.issuer) },
     ],
     note:
       order.status === "Annulé"
-        ? { text: "ORDRE ANNULÉ · conservé pour la traçabilité", alert: true }
+        ? {
+            text: t("ORDRE ANNULÉ · conservé pour la traçabilité"),
+            alert: true,
+          }
         : order.status === "Brouillon"
-          ? { text: "PROJET · pas encore émis" }
+          ? { text: t("PROJET · pas encore émis") }
           : order.source
-            ? { text: `Reçu de ${order.source} par la liaison` }
+            ? {
+                text: t("Reçu de {source} par la liaison", {
+                  source: order.source,
+                }),
+              }
             : undefined,
     sections: [
       {
-        title: "Objet",
+        title: t("Objet"),
         rows: [
           [
-            f("Titre", order.title, { strong: true, span: 2 }),
-            f("Complète", order.baseId ? "un ordre précédent" : ""),
+            f(t("Titre"), order.title, { strong: true, span: 2 }),
+            f(t("Complète"), order.baseId ? t("un ordre précédent") : ""),
           ],
         ],
       },
       {
-        title: "1 · Orientation",
+        title: `1 · ${t("Orientation")}`,
         rows: [
-          [f("Situation", order.situation, { tall: true })],
-          [f("Danger / évolution probable", order.danger, { tall: true })],
-          [f("Moyens voisins et partenaires", order.neighbours)],
+          [f(t("Situation"), order.situation, { tall: true })],
+          [f(t("Danger / évolution probable"), order.danger, { tall: true })],
+          [f(t("Moyens voisins et partenaires"), order.neighbours)],
         ],
       },
       {
-        title: "2 · Intention",
-        rows: [[f("Idée de manœuvre", order.intention, { tall: true })]],
+        title: `2 · ${t("Intention")}`,
+        rows: [[f(t("Idée de manœuvre"), order.intention, { tall: true })]],
       },
       {
-        title: "3 · Missions",
+        title: `3 · ${t("Missions")}`,
         rows: order.missions.length
           ? order.missions.map((m) => [
-              f("Unité / cellule", m.unit, { strong: true }),
+              f(t("Unité / cellule"), m.unit, { strong: true }),
               f(
-                "Mission",
+                t("Mission"),
                 [
                   m.task,
                   m.refs.length
-                    ? `Avec : ${m.refs.map(describe).join(", ")}`
+                    ? t("Avec : {list}", {
+                        list: m.refs.map(describe).join(", "),
+                      })
                     : "",
                 ]
                   .filter(Boolean)
                   .join("\n"),
                 { span: 3 },
               ),
-              f("Échéance", m.dueAt ? dateTime(m.dueAt) : "", { mono: true }),
+              f(t("Échéance"), m.dueAt ? dateTime(m.dueAt) : "", {
+                mono: true,
+              }),
             ])
-          : [[f("Missions", "")]],
+          : [[f(t("Missions"), "")]],
       },
       {
-        title: "4 · Dispositions particulières",
-        rows: [
-          [f("Logistique", order.logistics), f("Sanitaire", order.medical)],
-          [f("Sécurité", order.safety)],
-        ],
-      },
-      {
-        title: "5 · Emplacements et liaisons",
+        title: `4 · ${t("Dispositions particulières")}`,
         rows: [
           [
-            f("PC / emplacements", order.pc),
-            f("Heures des rapports", order.reports),
+            f(t("Logistique"), order.logistics),
+            f(t("Sanitaire"), order.medical),
           ],
-          [f("Liaisons radio", order.radio)],
+          [f(t("Sécurité"), order.safety)],
         ],
       },
       {
-        title: "Distribution",
+        title: `5 · ${t("Emplacements et liaisons")}`,
         rows: [
           [
-            f("Destinataires", order.distribution.join(", ")),
+            f(t("PC / emplacements"), order.pc),
+            f(t("Heures des rapports"), order.reports),
+          ],
+          [f(t("Liaisons radio"), order.radio)],
+        ],
+      },
+      {
+        title: t("Distribution"),
+        rows: [
+          [
+            f(t("Destinataires"), order.distribution.join(", ")),
             ...(receipts
-              ? [f("Accusés de lecture", receipts, { span: 2 })]
+              ? [f(t("Accusés de lecture"), receipts, { span: 2 })]
               : []),
           ],
-          ...(order.notes ? [[f("Remarques", order.notes)]] : []),
+          ...(order.notes ? [[f(t("Remarques"), order.notes)]] : []),
         ],
       },
     ],
     visa: [
       {
-        title: "Visa",
-        labels: ["Chef d’intervention", "Date / heure", "Signature"],
+        title: t("Visa"),
+        labels: [t("Chef d’intervention"), t("Date / heure"), t("Signature")],
       },
     ],
-    footer: `ordre ${label}`,
+    footer: t("ordre {label}", { label }),
   };
 }

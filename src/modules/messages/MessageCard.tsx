@@ -20,6 +20,8 @@ import { HoverCard, LinkChip } from "../../ui/links";
 import { Popover } from "../../ui/Popover";
 import type { MessageActions } from "./actions";
 import { PRIORITY_TONE, countdown } from "./model";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 export type CardHandlers = {
   onEdit: (m: Message) => void;
@@ -35,17 +37,19 @@ export function ReplyBadge({ m }: { m: Message }) {
     return (
       <span className="pill warn">
         <Timer size={11} />
-        Réponse attendue
+        {t("Réponse attendue")}
       </span>
     );
   const c = countdown(m.replyBy, now);
   return (
     <span
       className={`pill ${c.late ? "crit msg-late" : "warn"}`}
-      title={`Réponse attendue avant ${time(m.replyBy)}`}
+      title={t("Réponse attendue avant {time}", { time: time(m.replyBy) })}
     >
       <Timer size={11} />
-      Réponse {c.text}
+      {c.late
+        ? t("Réponse en retard de {time}", { time: c.span })
+        : t("Réponse dans {time}", { time: c.span })}
     </span>
   );
 }
@@ -66,20 +70,20 @@ export function MessageButtons({
       {!readOnly && m.status === "Nouveau" && !compact && (
         <button className="small" onClick={() => actions.take(m)}>
           <Hand size={13} />
-          Prendre en charge
+          {t("Prendre en charge")}
         </button>
       )}
       {!readOnly && open && !m.entryId && (
         <button className="small msg-synth-button" onClick={() => onSynth(m)}>
           <BookOpen size={13} />
-          {compact ? "Journal" : "Inscrire au journal"}
+          {compact ? t("Journal") : t("Inscrire au journal")}
         </button>
       )}
       {!readOnly && open && !m.entryId && (
         <button
           className="small icon-button"
-          aria-label="Inscrire tel quel au journal, sans relecture"
-          title="Inscrire tel quel (sans relecture)"
+          aria-label={t("Inscrire tel quel au journal, sans relecture")}
+          title={t("Inscrire tel quel (sans relecture)")}
           onClick={() => actions.transcribe(m)}
         >
           <Zap size={14} />
@@ -88,13 +92,13 @@ export function MessageButtons({
       {!readOnly && !open && !compact && (
         <button className="small" onClick={() => actions.reopen(m)}>
           <RotateCcw size={13} />
-          Rouvrir
+          {t("Rouvrir")}
         </button>
       )}
       <button
         className="small icon-button"
-        aria-label="Autres actions"
-        title="Autres actions"
+        aria-label={t("Autres actions")}
+        title={t("Autres actions")}
         aria-haspopup="menu"
         aria-expanded={!!menu}
         onClick={(e) => setMenu(menu ? null : e.currentTarget)}
@@ -106,32 +110,32 @@ export function MessageButtons({
           {!readOnly && m.status === "Nouveau" && (
             <button data-close onClick={() => actions.take(m)}>
               <Hand size={14} />
-              Prendre en charge
+              {t("Prendre en charge")}
             </button>
           )}
           {!readOnly && m.status !== "Classé" && (
             <button data-close onClick={() => actions.classify(m)}>
               <Archive size={14} />
               <span>
-                Classer
-                <small>sans inscription au journal</small>
+                {t("Classer")}
+                <small>{t("sans inscription au journal")}</small>
               </span>
             </button>
           )}
           {!readOnly && !open && (
             <button data-close onClick={() => actions.reopen(m)}>
               <RotateCcw size={14} />
-              Rouvrir
+              {t("Rouvrir")}
             </button>
           )}
           <button data-close onClick={() => actions.printSheet([m])}>
             <Printer size={14} />
-            Fiche A4
+            {t("Fiche A4")}
           </button>
           <hr />
           <button data-close onClick={() => onEdit(m)}>
             <Pencil size={14} />
-            {readOnly ? "Voir la fiche" : "Modifier ou supprimer"}
+            {readOnly ? t("Voir la fiche") : t("Modifier ou supprimer")}
           </button>
         </Popover>
       )}
@@ -184,7 +188,7 @@ export function MessageCard({
           <span className="mono muted">{time(m.receivedAt)}</span>
           {m.priority !== "Normal" && (
             <span className={`pill ${PRIORITY_TONE[m.priority]}`}>
-              {m.priority}
+              {enumLabel(m.priority)}
             </span>
           )}
           {m.category && (
@@ -204,7 +208,7 @@ export function MessageCard({
         <div className="msg-card-meta">
           <ReplyBadge m={m} />
           {m.handledBy && (
-            <span className="msg-handler" title="Traité par">
+            <span className="msg-handler" title={t("Traité par")}>
               <User size={11} />
               {m.handledBy}
             </span>

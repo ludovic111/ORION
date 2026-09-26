@@ -35,6 +35,8 @@ import { ModuleHead } from "../../ui/ModuleHead";
 import { Toggle } from "../../ui/fields";
 import { Figures } from "../../ui/Figures";
 import { useSlider } from "../../ui/motion";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 
 type Filter = "all" | "follow" | "urgent" | "decisions";
 
@@ -148,9 +150,9 @@ export function JournalView({
         eyebrow={
           <>
             <span className={journal.closedAt ? "crit-text" : ""}>
-              {journal.closedAt ? "Clôturé" : "Ouvert"}
+              {journal.closedAt ? t("Clôturé") : t("Ouvert")}
             </span>
-            · {journal.mode} · {journal.classification}
+            · {enumLabel(journal.mode)} · {enumLabel(journal.classification)}
             {journal.reference && ` · ${journal.reference}`}
           </>
         }
@@ -167,23 +169,25 @@ export function JournalView({
           <>
             <button onClick={() => onDialog("report")}>
               <FileText size={14} />
-              Rapport
+              {t("Rapport")}
             </button>
             <button onClick={() => onDialog("handover")}>
               <UsersRound size={14} />
-              Relève
+              {t("Relève")}
             </button>
             <button
               onClick={() => onDialog("export")}
               title={
                 dirty
-                  ? "Des changements ne sont pas encore dans une archive exportée"
-                  : "Archive à jour"
+                  ? t(
+                      "Des changements ne sont pas encore dans une archive exportée",
+                    )
+                  : t("Archive à jour")
               }
             >
               <Download size={14} />
-              Exporter
-              {dirty && <span className="pill warn">à faire</span>}
+              {t("Exporter")}
+              {dirty && <span className="pill warn">{t("à faire")}</span>}
             </button>
             <button
               className="primary"
@@ -191,14 +195,14 @@ export function JournalView({
               title={
                 readOnly
                   ? journal.closedAt
-                    ? "Journal clôturé — rouvrez-le pour écrire"
-                    : "Lecture seule : vous consultez le passé"
+                    ? t("Journal clôturé — rouvrez-le pour écrire")
+                    : t("Lecture seule : vous consultez le passé")
                   : undefined
               }
               onClick={() => compose()}
             >
               <Plus size={15} />
-              Nouvelle entrée
+              {t("Nouvelle entrée")}
             </button>
           </>
         }
@@ -207,22 +211,23 @@ export function JournalView({
         <div className="banner info" role="status">
           <Link2 size={15} />
           <span>
-            Quittance {closeOffer.receipt} : clore{" "}
-            {closeOffer.ids
-              .map((id) => journal.entries.find((e) => e.id === id))
-              .filter((e) => !!e)
-              .map(
-                (e) =>
-                  `${numberLabel(e)} « ${current(e).message.length > 60 ? `${current(e).message.slice(0, 59)}…` : current(e).message} »`,
-              )
-              .join(", ")}{" "}
-            ?
+            {t("Quittance {receipt} : clore {entries} ?", {
+              receipt: closeOffer.receipt,
+              entries: closeOffer.ids
+                .map((id) => journal.entries.find((e) => e.id === id))
+                .filter((e) => !!e)
+                .map(
+                  (e) =>
+                    `${numberLabel(e)} « ${current(e).message.length > 60 ? `${current(e).message.slice(0, 59)}…` : current(e).message} »`,
+                )
+                .join(", "),
+            })}
           </span>
           <button className="link" onClick={() => onCloseOffer(true)}>
-            Marquer terminé
+            {t("Marquer terminé")}
           </button>
           <button className="link muted" onClick={() => onCloseOffer(false)}>
-            Ignorer
+            {t("Ignorer")}
           </button>
         </div>
       )}
@@ -233,59 +238,59 @@ export function JournalView({
         onOpen={(id) => openEntry(id)}
         onSnooze={(e, minutes) => onSnooze(e.id, minutes)}
         onDone={(e) => {
-          onCloseEntries([e.id], "Suivi marqué terminé par l’opérateur");
-          toast(`${numberLabel(e)} terminé.`);
+          onCloseEntries([e.id], t("Suivi marqué terminé par l’opérateur"));
+          toast(t("{n} terminé.", { n: numberLabel(e) }));
         }}
       />
       <Figures
-        label="Le journal en chiffres"
+        label={t("Le journal en chiffres")}
         items={[
           {
-            label: "Entrées",
+            label: t("Entrées"),
             value: journal.entries.length,
             onClick: () => setFilter("all"),
           },
           {
-            label: "À suivre",
+            label: t("À suivre"),
             value: follow.length,
             tone: follow.length ? "warn" : "",
             onClick: () => setFilter("follow"),
           },
           {
-            label: "Échéances dépassées",
+            label: t("Échéances dépassées"),
             value: late.length,
             tone: late.length ? "crit" : "",
             onClick: () => setFilter("follow"),
           },
           {
-            label: "Urgent",
+            label: enumLabel("Urgent"),
             value: urgent,
             tone: urgent ? "crit" : "",
             onClick: () => setFilter("urgent"),
           },
           {
-            label: "Radios en service",
+            label: t("Radios en service"),
             value: radio.issued,
             unit: `/${radio.terminals}`,
           },
         ]}
       />
       <div className="journal-layout">
-        <section className="panel journal-panel" aria-label="Entrées">
+        <section className="panel journal-panel" aria-label={t("Entrées")}>
           <div className="toolbar">
             <div
               className="segmented slider"
               role="group"
-              aria-label="Filtrer"
+              aria-label={t("Filtrer")}
               ref={filterSlider.ref}
             >
               <span className="slider-pill" ref={filterSlider.pill} />
               {(
                 [
-                  ["all", "Tout", journal.entries.length],
-                  ["follow", "À suivre", follow.length],
-                  ["urgent", "Urgent", urgent],
-                  ["decisions", "Décisions", decisions],
+                  ["all", t("Tout"), journal.entries.length],
+                  ["follow", t("À suivre"), follow.length],
+                  ["urgent", enumLabel("Urgent"), urgent],
+                  ["decisions", t("Décisions"), decisions],
                 ] as const
               ).map(([value, label, count]) => (
                 <button
@@ -302,15 +307,15 @@ export function JournalView({
               <Search size={14} />
               <input
                 ref={searchRef}
-                aria-label="Rechercher dans le journal"
-                placeholder="Rechercher dans le journal"
+                aria-label={t("Rechercher dans le journal")}
+                placeholder={t("Rechercher dans le journal")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               {query && (
                 <button
                   className="icon-button"
-                  aria-label="Effacer la recherche"
+                  aria-label={t("Effacer la recherche")}
                   onClick={() => setQuery("")}
                 >
                   <X size={13} />
@@ -323,16 +328,18 @@ export function JournalView({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                aria-label="Filtrer par jour (heure suisse)"
+                aria-label={t("Filtrer par jour (heure suisse)")}
               />
             </label>
             <button
               className="icon-button"
-              title={newest ? "Plus récentes d’abord" : "Ordre chronologique"}
+              title={
+                newest ? t("Plus récentes d’abord") : t("Ordre chronologique")
+              }
               aria-label={
                 newest
-                  ? "Afficher en ordre chronologique"
-                  : "Afficher les plus récentes d’abord"
+                  ? t("Afficher en ordre chronologique")
+                  : t("Afficher les plus récentes d’abord")
               }
               onClick={() => setNewest(!newest)}
             >
@@ -340,9 +347,13 @@ export function JournalView({
             </button>
           </div>
           {picked.size > 0 && (
-            <div className="selection-bar" role="region" aria-label="Sélection">
+            <div
+              className="selection-bar"
+              role="region"
+              aria-label={t("Sélection")}
+            >
               <span className="mono">
-                {picked.size} sélectionnée{picked.size > 1 ? "s" : ""}
+                {tn(picked.size, "{n} sélectionnée", "{n} sélectionnées")}
               </span>
               <button
                 className="primary"
@@ -351,10 +362,10 @@ export function JournalView({
                 }
               >
                 <FileText size={14} />
-                Fiches A4
+                {t("Fiches A4")}
               </button>
               <button onClick={() => setPicked(new Set())}>
-                Désélectionner
+                {t("Désélectionner")}
               </button>
             </div>
           )}
@@ -367,8 +378,8 @@ export function JournalView({
                       className="check"
                       aria-label={
                         allShownPicked
-                          ? "Désélectionner les entrées affichées"
-                          : "Sélectionner les entrées affichées"
+                          ? t("Désélectionner les entrées affichées")
+                          : t("Sélectionner les entrées affichées")
                       }
                       onClick={() =>
                         setPicked((previous) => {
@@ -389,12 +400,12 @@ export function JournalView({
                       )}
                     </button>
                   </th>
-                  <th>Heure · N°</th>
-                  <th>Message</th>
-                  <th>Émetteur</th>
-                  <th>Suivi</th>
+                  <th>{t("Heure · N°")}</th>
+                  <th>{t("Message")}</th>
+                  <th>{t("Émetteur")}</th>
+                  <th>{t("Suivi")}</th>
                   <th>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("Actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -427,8 +438,8 @@ export function JournalView({
               <div className="empty">
                 <p>
                   {journal.entries.length
-                    ? "Aucune entrée ne correspond."
-                    : "Journal vide."}
+                    ? t("Aucune entrée ne correspond.")
+                    : t("Journal vide.")}
                 </p>
                 {journal.entries.length ? (
                   <button
@@ -438,13 +449,13 @@ export function JournalView({
                       setDate("");
                     }}
                   >
-                    Retirer les filtres
+                    {t("Retirer les filtres")}
                   </button>
                 ) : (
                   !readOnly && (
                     <button className="primary" onClick={() => compose()}>
                       <Plus size={14} />
-                      Première entrée
+                      {t("Première entrée")}
                     </button>
                   )
                 )}
@@ -453,22 +464,21 @@ export function JournalView({
           </div>
           <footer className="panel-foot">
             <span>
-              {visible.length}
-              {visible.length !== journal.entries.length &&
-                ` / ${journal.entries.length}`}{" "}
-              entrée{visible.length !== 1 ? "s" : ""}
+              {/* "0 entrées" in French: singular only for exactly one. */}
+              {t(visible.length === 1 ? "{n} entrée" : "{n} entrées", {
+                n: `${visible.length}${visible.length !== journal.entries.length ? ` / ${journal.entries.length}` : ""}`,
+              })}
             </span>
             {journal.deleted.length > 0 && (
               <button className="link" onClick={() => onDialog("deleted")}>
-                {journal.deleted.length} supprimée
-                {journal.deleted.length > 1 ? "s" : ""}
+                {tn(journal.deleted.length, "{n} supprimée", "{n} supprimées")}
               </button>
             )}
             <span>Europe/Zurich</span>
           </footer>
           {visible.length > limit && (
             <button className="load-more" onClick={() => setLimit(limit + 100)}>
-              Afficher 100 de plus
+              {t("Afficher 100 de plus")}
             </button>
           )}
         </section>
@@ -476,9 +486,11 @@ export function JournalView({
           {readOnly ? (
             <div className="closed">
               <LockKeyhole size={18} />
-              <strong>Journal clôturé</strong>
-              <p>Lecture et export uniquement.</p>
-              <button onClick={() => onDialog("settings")}>Rouvrir</button>
+              <strong>{t("Journal clôturé")}</strong>
+              <p>{t("Lecture et export uniquement.")}</p>
+              <button onClick={() => onDialog("settings")}>
+                {t("Rouvrir")}
+              </button>
             </div>
           ) : (
             <>
@@ -496,17 +508,17 @@ export function JournalView({
                 <Toggle
                   label={
                     <>
-                      <Printer size={13} /> Impression automatique
+                      <Printer size={13} /> {t("Impression automatique")}
                     </>
                   }
-                  hint="Chaque entrée consignée part à l’imprimante."
+                  hint={t("Chaque entrée consignée part à l’imprimante.")}
                   checked={prefs.autoPrint}
                   onChange={(value) => {
                     setPrefs({ autoPrint: value });
                     toast(
                       value
-                        ? "Impression automatique activée sur ce poste."
-                        : "Impression automatique désactivée.",
+                        ? t("Impression automatique activée sur ce poste.")
+                        : t("Impression automatique désactivée."),
                     );
                   }}
                 />

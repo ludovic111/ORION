@@ -1,11 +1,27 @@
-import type { OpsMap, Place } from "../../../shared/ops.ts";
+import {
+  DEFAULT_LISTS,
+  defaultListValues,
+  type OpsMap,
+  type Place,
+} from "../../../shared/ops.ts";
+import { onLang, type Lang } from "../../../shared/i18n/core.ts";
+import { t } from "./i18n-2.ts";
 
 // Several maps per operation. Pure helpers shared by the module, the
 // renderer and the geographic exports (no DOM, no React).
 
 /** Implicit main map while the operation has no map record. */
 export const MAIN_MAP = "";
-export const MAIN_NAME = "Carte principale";
+/** Name of the implicit main map, in the language of the post. */
+export const mainName = () => t("Carte principale");
+/**
+ * Same, as a value: a live binding kept in the language of the post (the
+ * importers read it at render time and see the current language).
+ */
+export let MAIN_NAME = mainName();
+onLang(() => {
+  MAIN_NAME = mainName();
+});
 
 const norm = (s: string) =>
   s
@@ -15,15 +31,31 @@ const norm = (s: string) =>
 
 export const layerKey = (p: Pick<Place, "layer">) => p.layer.trim();
 
-/** Style family of a layer (colours of lines, areas and the legend). */
+/**
+ * Style family of a layer (colours of lines, areas and the legend), from
+ * its name in French, German or Italian (the standard layers of a journal
+ * are in the language of the journal).
+ */
 export function toneOf(layer: string) {
   const n = norm(layer.trim());
-  if (n.startsWith("danger")) return "danger";
-  if (n.startsWith("effet")) return "effect";
-  if (n.startsWith("moyen")) return "means";
-  if (n.startsWith("mesure")) return "measure";
-  if (n.startsWith("emplacement")) return "site";
+  if (/^(danger|gefahr|pericol)/.test(n)) return "danger";
+  if (/^(effet|auswirkung|effett)/.test(n)) return "effect";
+  if (/^(moyen|mittel|mezz)/.test(n)) return "means";
+  if (/^(mesure|massnahm|misur)/.test(n)) return "measure";
+  if (/^(emplacement|standort|ubicazion)/.test(n)) return "site";
   return "other";
+}
+
+/**
+ * A standard layer named in French (« Effets », « Moyens »…: default layer
+ * of a symbol) in the language of a journal (journalLang(ops)): the name
+ * the référentiel « Calques de la carte » of that journal proposes. Any
+ * other name is returned unchanged.
+ */
+export function standardLayer(layer: string, lang: Lang = "fr"): string {
+  if (lang === "fr") return layer;
+  const i = DEFAULT_LISTS.layers.values.indexOf(layer);
+  return (i >= 0 && defaultListValues("layers", lang)[i]) || layer;
 }
 export type Tone = ReturnType<typeof toneOf>;
 

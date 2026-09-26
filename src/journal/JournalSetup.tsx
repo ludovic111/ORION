@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { newJournal, type Journal } from "../../shared/journal";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 export function JournalSetup({
   author: initialAuthor = "",
   recovery = false,
@@ -37,7 +39,7 @@ export function JournalSetup({
         try {
           if (protect && password !== repeat)
             throw new Error(
-              "Les phrases de récupération ne correspondent pas.",
+              t("Les phrases de récupération ne correspondent pas."),
             );
           await onCreate(
             newJournal(title, {
@@ -59,14 +61,14 @@ export function JournalSetup({
     >
       <label>
         <span>
-          Événement <span className="required">*</span>
+          {t("Événement")} <span className="required">*</span>
         </span>
         <input
           required
           maxLength={200}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Crue de l’Arve · secteur Carouge"
+          placeholder={t("Crue de l’Arve · secteur Carouge")}
           autoFocus
           data-autofocus
         />
@@ -74,41 +76,41 @@ export function JournalSetup({
       <div className="form-pair">
         <label>
           <span>
-            Opérateur <span className="required">*</span>
+            {t("Opérateur")} <span className="required">*</span>
           </span>
           <input
             required
             maxLength={120}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Nom ou fonction"
+            placeholder={t("Nom ou fonction")}
           />
         </label>
         <label>
-          Mode
+          {t("Mode")}
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Journal["mode"])}
           >
-            <option>Exercice</option>
-            <option>Intervention</option>
+            <option value="Exercice">{enumLabel("Exercice")}</option>
+            <option value="Intervention">{enumLabel("Intervention")}</option>
           </select>
         </label>
       </div>
       <details>
-        <summary>Organisation, lieu, référence</summary>
+        <summary>{t("Organisation, lieu, référence")}</summary>
         <div className="details-fields">
           <label>
-            Organisation
+            {t("Organisation")}
             <input
               maxLength={200}
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
-              placeholder="OPC / ORPC, compagnie"
+              placeholder={t("OPC / ORPC, compagnie")}
             />
           </label>
           <label>
-            Lieu / secteur
+            {t("Lieu / secteur")}
             <input
               maxLength={300}
               value={location}
@@ -117,7 +119,7 @@ export function JournalSetup({
           </label>
           <div className="form-pair">
             <label>
-              Référence
+              {t("Référence")}
               <input
                 maxLength={200}
                 value={reference}
@@ -125,15 +127,17 @@ export function JournalSetup({
               />
             </label>
             <label>
-              Diffusion
+              {t("Diffusion")}
               <select
                 value={classification}
                 onChange={(e) =>
                   setClassification(e.target.value as Journal["classification"])
                 }
               >
-                <option>Interne</option>
-                <option>Confidentiel</option>
+                <option value="Interne">{enumLabel("Interne")}</option>
+                <option value="Confidentiel">
+                  {enumLabel("Confidentiel")}
+                </option>
               </select>
             </label>
           </div>
@@ -147,13 +151,13 @@ export function JournalSetup({
               checked={protect}
               onChange={(e) => setProtect(e.target.checked)}
             />
-            <span>Sauvegarde chiffrée sur ce poste</span>
+            <span>{t("Sauvegarde chiffrée sur ce poste")}</span>
           </label>
           {protect ? (
             <div className="details-fields">
               <div className="form-pair">
                 <label>
-                  Phrase de récupération
+                  {t("Phrase de récupération")}
                   <input
                     type="password"
                     required
@@ -162,11 +166,11 @@ export function JournalSetup({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
-                    placeholder="12 caractères minimum"
+                    placeholder={t("12 caractères minimum")}
                   />
                 </label>
                 <label>
-                  Répéter la phrase
+                  {t("Répéter la phrase")}
                   <input
                     type="password"
                     required
@@ -178,20 +182,24 @@ export function JournalSetup({
                   />
                 </label>
               </div>
-              <small>Demandée après fermeture ou crash. Irrécupérable.</small>
+              <small>
+                {t("Demandée après fermeture ou crash. Irrécupérable.")}
+              </small>
             </div>
           ) : (
             <p className="hint warn">
-              Temporaire : perdu à la fermeture de l’onglet. Exportez
-              régulièrement.
+              {t(
+                "Temporaire : perdu à la fermeture de l’onglet. Exportez régulièrement.",
+              )}
             </p>
           )}
         </div>
       )}
       {mode === "Intervention" && (
         <p className="hint">
-          Engagement réel : poste et installation autorisés par votre
-          organisation uniquement.
+          {t(
+            "Engagement réel : poste et installation autorisés par votre organisation uniquement.",
+          )}
         </p>
       )}
       {error && (
@@ -200,7 +208,7 @@ export function JournalSetup({
         </p>
       )}
       <button type="submit" className="primary large" disabled={busy}>
-        {busy ? "Chiffrement…" : "Ouvrir le journal"}
+        {busy ? t("Chiffrement…") : t("Ouvrir le journal")}
         <ArrowRight size={15} />
       </button>
     </form>

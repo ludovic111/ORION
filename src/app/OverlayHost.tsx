@@ -26,6 +26,7 @@ import { SettingsDialog } from "./Settings";
 import type { Overlays } from "./overlays";
 import type { JournalActions } from "./useJournalActions";
 import type { ExportPreset } from "./context";
+import { t } from "./i18n.ts";
 
 type Views = {
   PresentationMode: ComponentType<{
@@ -133,7 +134,7 @@ export function OverlayHost({
           onDelete={(reason) => {
             if (!actions.removeEntry(selected.id, reason)) return;
             close("entry");
-            notify(`Entrée ${numberLabel(selected)} supprimée.`);
+            notify(t("Entrée {n} supprimée.", { n: numberLabel(selected) }));
           }}
           author={author}
           readOnly={readOnly}
@@ -147,7 +148,9 @@ export function OverlayHost({
           }}
           onRevise={(fields, reason) => {
             if (actions.revise(selected.id, fields, reason))
-              notify("Modification enregistrée. Version précédente conservée.");
+              notify(
+                t("Modification enregistrée. Version précédente conservée."),
+              );
           }}
           onReply={() => {
             if (!actions.gate()) return;
@@ -158,7 +161,7 @@ export function OverlayHost({
               source: author,
               recipient: current(selected).source,
               location: current(selected).location,
-              reference: `Suite de ${numberLabel(selected)}`,
+              reference: t("Suite de {n}", { n: numberLabel(selected) }),
             });
           }}
         />
@@ -189,7 +192,9 @@ export function OverlayHost({
           onUpdateWorkspace={onUpdateWorkspace}
           onJournal={(value) => {
             if (actions.setClosed(value.closedAt))
-              notify(value.closedAt ? "Journal clôturé." : "Journal rouvert.");
+              notify(
+                value.closedAt ? t("Journal clôturé.") : t("Journal rouvert."),
+              );
           }}
           onEnd={onEnd}
           onFinish={onFinish}
@@ -198,7 +203,7 @@ export function OverlayHost({
         />
       )}
       {dialog?.name === "create" && (
-        <Modal title="Nouveau journal" onClose={closeDialog}>
+        <Modal title={t("Nouveau journal")} onClose={closeDialog}>
           <JournalSetup author={author} onCreate={onCreate} />
         </Modal>
       )}
@@ -247,16 +252,16 @@ export function OverlayHost({
       )}
       {dialog?.name === "install" && <InstallHelp onClose={closeDialog} />}
       {dialog?.name === "deleted" && (
-        <Modal title="Entrées supprimées" onClose={closeDialog}>
+        <Modal title={t("Entrées supprimées")} onClose={closeDialog}>
           {journal.deleted.length ? (
             <div className="table-scroll">
               <table className="grid dense">
                 <thead>
                   <tr>
-                    <th>N°</th>
-                    <th>Supprimée le</th>
-                    <th>Par</th>
-                    <th>Motif</th>
+                    <th>{t("N°")}</th>
+                    <th>{t("Supprimée le")}</th>
+                    <th>{t("Par")}</th>
+                    <th>{t("Motif")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -274,7 +279,9 @@ export function OverlayHost({
               </table>
             </div>
           ) : (
-            <p className="muted">Aucune entrée supprimée dans ce journal.</p>
+            <p className="muted">
+              {t("Aucune entrée supprimée dans ce journal.")}
+            </p>
           )}
         </Modal>
       )}
@@ -305,8 +312,8 @@ export function OverlayHost({
         <Modal
           title={
             dialog.preset?.type === "Relève"
-              ? "Consigner la relève"
-              : "Nouvelle entrée"
+              ? t("Consigner la relève")
+              : t("Nouvelle entrée")
           }
           onClose={() => {
             if (discardDraft()) closeDialog();

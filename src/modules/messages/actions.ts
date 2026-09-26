@@ -11,6 +11,7 @@ import {
   numbering,
   type Status,
 } from "./model";
+import { lowerLabel, t } from "./i18n.ts";
 
 /** Every operation on a message, with its toast. */
 export function useMessageActions() {
@@ -45,18 +46,25 @@ export function useMessageActions() {
     setStatus(m: Message, status: Status) {
       const change: Partial<Message> = { status };
       if (status === "En traitement" && !m.handledBy) change.handledBy = author;
-      if (patch(m.id, change)) toast(`${label(m)} : ${status.toLowerCase()}.`);
+      if (patch(m.id, change))
+        toast(
+          t("{label} : {status}.", {
+            label: label(m),
+            status: lowerLabel(status),
+          }),
+        );
     },
     take(m: Message) {
       if (patch(m.id, { status: "En traitement", handledBy: author }))
-        toast(`${label(m)} pris en charge.`);
+        toast(t("{label} pris en charge.", { label: label(m) }));
     },
     classify(m: Message) {
-      if (patch(m.id, { status: "Classé" })) toast(`${label(m)} classé.`);
+      if (patch(m.id, { status: "Classé" }))
+        toast(t("{label} classé.", { label: label(m) }));
     },
     reopen(m: Message) {
       if (patch(m.id, { status: m.handledBy ? "En traitement" : "Nouveau" }))
-        toast(`${label(m)} rouvert.`);
+        toast(t("{label} rouvert.", { label: label(m) }));
     },
     /** Create the journal entry and mark the message as transmitted. */
     transcribe(m: Message, fields?: Fields) {
@@ -71,7 +79,11 @@ export function useMessageActions() {
           status: "Transmis",
           handledBy: m.handledBy || author,
         });
-        toast(`Inscrit au journal : #${String(number).padStart(3, "0")}`);
+        toast(
+          t("Inscrit au journal : #{n}", {
+            n: String(number).padStart(3, "0"),
+          }),
+        );
         return true;
       } catch (err) {
         toast((err as Error).message);
@@ -86,8 +98,12 @@ export function useMessageActions() {
         sheets: list.map((m) =>
           intakeSheet(m, labels.get(m.id) ?? numbers.get(m.id) ?? 0),
         ),
-        title: list.length > 1 ? "Formules de message" : "Formule de message",
-        name: list.length > 1 ? "messages" : `message-${label(list[0])}`,
+        title:
+          list.length > 1 ? t("Formules de message") : t("Formule de message"),
+        name:
+          list.length > 1
+            ? t("messages (fichier)")
+            : t("message-{label}", { label: label(list[0]) }),
       });
     },
   };

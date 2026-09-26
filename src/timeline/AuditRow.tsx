@@ -10,16 +10,18 @@ import {
 } from "lucide-react";
 import { dateTime } from "../../shared/journal";
 import { diffStates, scopeInfo, type AuditItem } from "../../shared/history";
-import {
-  ACTION_LABELS,
-  fieldLabel,
-  formatValue,
-  initials,
-  personHue,
-} from "./format";
+import { fieldLabel, formatValue, initials, personHue } from "./format";
+import { getLang, locale, rich } from "../i18n";
+import { t, tn } from "./i18n.ts";
 import "./timeline.css";
 
 const ICONS = { create: Plus, update: Pencil, remove: Minus };
+// "Alpha a créé la carte X": one sentence per action (word order differs).
+const SENTENCES = {
+  create: "<0/> a créé <1/> <2/>",
+  update: "<0/> a modifié <1/> <2/>",
+  remove: "<0/> a supprimé <1/> <2/>",
+} as const;
 const SHOWN_ON_CREATE = 5;
 
 /** Fields worth showing for a change. */
@@ -50,7 +52,11 @@ export function AuditRow({
   const Icon = ICONS[item.action];
   const fields = details(item);
   const shown = open ? fields : fields.slice(0, 3);
-  const who = item.by || "Inconnu";
+  const who = item.by || t("Inconnu");
+  const whoEl = <strong>{who}</strong>;
+  // Nouns keep their capital in German.
+  const kind = scopeInfo(item.scope).label;
+  const kindText = getLang() === "de" ? kind : kind.toLocaleLowerCase(locale());
   return (
     <li className={`audit-row ${item.action}`}>
       <span
@@ -65,29 +71,30 @@ export function AuditRow({
       </span>
       <div className="audit-main">
         <div className="audit-line">
-          <strong>{who}</strong> {ACTION_LABELS[item.action]}{" "}
-          {showTitle ? (
-            <>
-              <span className="audit-kind">
-                {scopeInfo(item.scope).label.toLocaleLowerCase("fr")}
-              </span>{" "}
-              {onOpen ? (
-                <button className="link audit-title" onClick={onOpen}>
-                  {item.title}
-                </button>
-              ) : (
-                <span className="audit-title">{item.title}</span>
+          {showTitle
+            ? rich(t(SENTENCES[item.action]), [
+                whoEl,
+                <span className="audit-kind">{kindText}</span>,
+                onOpen ? (
+                  <button className="link audit-title" onClick={onOpen}>
+                    {item.title}
+                  </button>
+                ) : (
+                  <span className="audit-title">{item.title}</span>
+                ),
+              ])
+            : rich(
+                item.action === "create"
+                  ? t("<0/> a créé <1>cet élément</1>")
+                  : item.action === "remove"
+                    ? t("<0/> a supprimé <1>cet élément</1>")
+                    : tn(
+                        fields.length,
+                        "<0/> a modifié <1>{n} champ</1>",
+                        "<0/> a modifié <1>{n} champs</1>",
+                      ),
+                [whoEl, <span className="audit-kind" />],
               )}
-            </>
-          ) : (
-            <span className="audit-kind">
-              {item.action === "create"
-                ? "cet élément"
-                : item.action === "remove"
-                  ? "cet élément"
-                  : `${fields.length} champ${fields.length > 1 ? "s" : ""}`}
-            </span>
-          )}
           <time className="mono" dateTime={item.at}>
             {dateTime(item.at)}
           </time>
@@ -110,8 +117,11 @@ export function AuditRow({
             {fields.length > shown.length && (
               <li>
                 <button className="link" onClick={() => setOpen(true)}>
-                  + {fields.length - shown.length} autre
-                  {fields.length - shown.length > 1 ? "s" : ""}
+                  {tn(
+                    fields.length - shown.length,
+                    "+ {n} autre",
+                    "+ {n} autres",
+                  )}
                 </button>
               </li>
             )}
@@ -122,13 +132,13 @@ export function AuditRow({
             {onTime && (
               <button className="small" onClick={onTime}>
                 <Clock3 size={12} />
-                Voir l’opération à ce moment
+                {t("Voir l’opération à ce moment")}
               </button>
             )}
             {onRestore && (
               <button className="small" onClick={onRestore}>
                 <RotateCcw size={12} />
-                Restaurer cette version
+                {t("Restaurer cette version")}
               </button>
             )}
           </div>

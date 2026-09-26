@@ -4,6 +4,7 @@ import { current, type Journal } from "../../shared/journal";
 import type { ReportRange } from "../print/report";
 import { fromInput, localInput } from "../ui/fields";
 import { Modal } from "./Modal";
+import { t } from "./i18n.ts";
 
 export function ReportDialog({
   journal,
@@ -27,19 +28,19 @@ export function ReportDialog({
   const [preset, setPreset] = useState("4 h");
   const [error, setError] = useState("");
   return (
-    <Modal title="Rapport de situation" onClose={onClose}>
+    <Modal title={t("Rapport de situation")} onClose={onClose}>
       <form
         className="stack"
         onSubmit={(e) => {
           e.preventDefault();
           if (!from || !to || Date.parse(from) > Date.parse(to)) {
-            setError("La fin doit suivre le début.");
+            setError(t("La fin doit suivre le début."));
             return;
           }
           onPreview({ from, to, chronology });
         }}
       >
-        <div className="chips-field" role="group" aria-label="Période">
+        <div className="chips-field" role="group" aria-label={t("Période")}>
           {(
             [
               ["1 h", 1],
@@ -60,13 +61,13 @@ export function ReportDialog({
                 setTo(new Date().toISOString());
               }}
             >
-              {label}
+              {label === "Tout" ? t("Tout") : label}
             </button>
           ))}
         </div>
         <div className="form-pair">
           <label>
-            Début
+            {t("Début")}
             <input
               type="datetime-local"
               required
@@ -78,7 +79,7 @@ export function ReportDialog({
             />
           </label>
           <label>
-            Fin
+            {t("Fin")}
             <input
               type="datetime-local"
               required
@@ -96,11 +97,12 @@ export function ReportDialog({
             checked={chronology}
             onChange={(e) => setChronology(e.target.checked)}
           />
-          <span>Ajouter la chronologie complète de la période</span>
+          <span>{t("Ajouter la chronologie complète de la période")}</span>
         </label>
         <p className="hint">
-          Synthèse, faits marquants, décisions et missions, demandes, points
-          ouverts, moyens engagés, état radio.
+          {t(
+            "Synthèse, faits marquants, décisions et missions, demandes, points ouverts, moyens engagés, état radio.",
+          )}
         </p>
         {error && (
           <p className="error" role="alert">
@@ -109,11 +111,11 @@ export function ReportDialog({
         )}
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary">
             <FileText size={14} />
-            Aperçu A4
+            {t("Aperçu A4")}
           </button>
         </div>
       </form>

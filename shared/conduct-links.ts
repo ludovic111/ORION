@@ -3,6 +3,9 @@ import type { RefKind } from "./ops.ts";
 import type { Item } from "./links.ts";
 import { progress } from "./checklists.ts";
 import { requestLabel, requestLate } from "./requests.ts";
+import { isOne } from "./i18n/core.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t } from "./i18n/conduct-links.ts";
 
 // Items and implicit links of the conduct follow-up records (checklists,
 // requests, shifts), added to the graph by shared/links.ts.
@@ -21,8 +24,17 @@ export function conductItems(journal: Journal): Pushed[] {
       id: c.id,
       title: c.title,
       subtitle: [
-        `${p.done}/${p.total} étapes`,
-        c.closedAt ? "close" : p.late ? `${p.late} contrôle(s) en retard` : "",
+        t("{done}/{total} étapes", { done: p.done, total: p.total }),
+        c.closedAt
+          ? t("close (liste)")
+          : p.late
+            ? t(
+                isOne(p.late)
+                  ? "{n} contrôle(s) en retard (un)"
+                  : "{n} contrôle(s) en retard",
+                { n: p.late },
+              )
+            : "",
         c.event !== c.title ? c.event : "",
       ]
         .filter(Boolean)
@@ -43,7 +55,11 @@ export function conductItems(journal: Journal): Pushed[] {
       kind: "request" as RefKind,
       id: r.id,
       title: requestLabel(r),
-      subtitle: [r.status, r.provider, r.eta && `arrivée ${time(r.eta)}`]
+      subtitle: [
+        enumLabel(r.status),
+        r.provider,
+        r.eta && t("arrivée {time}", { time: time(r.eta) }),
+      ]
         .filter(Boolean)
         .join(" · "),
       tone: requestLate(r, now)
@@ -58,6 +74,7 @@ export function conductItems(journal: Journal): Pushed[] {
       at: r.requestedAt,
       text: [
         r.title,
+        r.status,
         r.kind,
         r.requester,
         r.provider,
@@ -73,7 +90,11 @@ export function conductItems(journal: Journal): Pushed[] {
       kind: "shift" as RefKind,
       id: s.id,
       title: s.title,
-      subtitle: `${time(s.start)}–${time(s.end)} · ${s.memberIds.length} pers.`,
+      subtitle: t("{start}–{end} · {n} pers.", {
+        start: time(s.start),
+        end: time(s.end),
+        n: s.memberIds.length,
+      }),
       tone:
         Date.parse(s.start) <= now && now < Date.parse(s.end) ? "accent" : "",
       at: s.start,
@@ -94,23 +115,27 @@ export function conductEdges(journal: Journal, exists: Set<string>): RawEdge[] {
   const add = (a: string, b: string, label: string) => {
     if (exists.has(a) && exists.has(b)) out.push({ a, b, label });
   };
-  for (const t of o.checklistTicks)
-    if (t.entryId)
+  for (const tick of o.checklistTicks)
+    if (tick.entryId)
       add(
-        `checklist:${t.checklistId}`,
-        `entry:${t.entryId}`,
-        "étape consignée",
+        `checklist:${tick.checklistId}`,
+        `entry:${tick.entryId}`,
+        t("étape consignée"),
       );
   for (const r of o.requests) {
     if (r.resourceId)
-      add(`request:${r.id}`, `resource:${r.resourceId}`, "moyen livré");
-    if (r.entryId) add(`request:${r.id}`, `entry:${r.entryId}`, "demande");
+      add(`request:${r.id}`, `resource:${r.resourceId}`, t("moyen livré"));
+    if (r.entryId) add(`request:${r.id}`, `entry:${r.entryId}`, t("demande"));
     for (const s of r.steps)
       if (s.entryId && s.entryId !== r.entryId)
-        add(`request:${r.id}`, `entry:${s.entryId}`, s.status.toLowerCase());
+        add(
+          `request:${r.id}`,
+          `entry:${s.entryId}`,
+          enumLabel(s.status).toLowerCase(),
+        );
   }
   for (const s of o.shifts)
     for (const id of s.memberIds)
-      add(`shift:${s.id}`, `member:${id}`, "de relève");
+      add(`shift:${s.id}`, `member:${id}`, t("de relève"));
   return out;
 }

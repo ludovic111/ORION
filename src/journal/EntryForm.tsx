@@ -11,8 +11,11 @@ import {
   type Fields,
 } from "../../shared/journal";
 import { TEMPLATES, applyTemplate } from "../../shared/workflow";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { rich } from "../i18n";
 import { fromInput, localInput } from "../ui/fields";
 import { DictationButton, insertDictation } from "../ui/DictationButton";
+import { t } from "./i18n.ts";
 export { localInput };
 export function EntryForm({
   initial,
@@ -76,6 +79,7 @@ export function EntryForm({
       />
     </label>
   );
+  // Fixed schema values: stored in French, shown in the language of the post.
   const select = (
     key: Exclude<keyof Fields, "tags">,
     label: string,
@@ -88,7 +92,9 @@ export function EntryForm({
         onChange={(e) => update(key, e.target.value)}
       >
         {values.map((value) => (
-          <option key={value}>{value}</option>
+          <option key={value} value={value}>
+            {enumLabel(value)}
+          </option>
         ))}
       </select>
     </label>
@@ -118,11 +124,11 @@ export function EntryForm({
       message: fields.message.trim(),
     });
     if (!result.success) {
-      setError("Vérifiez le message et les heures de l’entrée.");
+      setError(t("Vérifiez le message et les heures de l’entrée."));
       return;
     }
     try {
-      onSave(result.data, reason.trim() || "Modification par l’opérateur");
+      onSave(result.data, reason.trim() || t("Modification par l’opérateur"));
       if (!initial) {
         const next = emptyFields();
         setFields({ ...next, source: fields.source, channel: fields.channel });
@@ -147,12 +153,12 @@ export function EntryForm({
     >
       {compact && (
         <div className="form-head">
-          <span className="label">Nouvelle entrée</span>
+          <span className="label">{t("Nouvelle entrée")}</span>
           {draftLabel && <span className="draft">{draftLabel}</span>}
         </div>
       )}
       {!initial && (
-        <div className="templates" role="group" aria-label="Modèles">
+        <div className="templates" role="group" aria-label={t("Modèles")}>
           {TEMPLATES.map((template) => (
             <button
               type="button"
@@ -161,7 +167,7 @@ export function EntryForm({
               onClick={() => {
                 if (
                   fields.message.trim() &&
-                  !window.confirm("Remplacer le message en cours ?")
+                  !window.confirm(t("Remplacer le message en cours ?"))
                 )
                   return;
                 const next = applyTemplate(fields, template);
@@ -183,13 +189,13 @@ export function EntryForm({
         </div>
       )}
       <div className="form-pair">
-        {select("type", "Nature", TYPES)}
-        {select("priority", "Priorité", PRIORITIES)}
+        {select("type", t("Nature"), TYPES)}
+        {select("priority", t("Priorité"), PRIORITIES)}
       </div>
       <div className="dictation-field">
         <label>
           <span>
-            Message <span className="required">*</span>
+            {t("Message")} <span className="required">*</span>
           </span>
           <textarea
             ref={message}
@@ -199,13 +205,13 @@ export function EntryForm({
             maxLength={12000}
             value={fields.message}
             onChange={(e) => update("message", e.target.value)}
-            placeholder="Texte du message"
+            placeholder={t("Texte du message")}
             autoFocus={!compact}
             data-autofocus={!compact || undefined}
           />
         </label>
         <DictationButton
-          label="Dicter le message"
+          label={t("Dicter le message")}
           onText={(text) =>
             insertDictation(message.current, text, (value) =>
               update("message", value),
@@ -215,7 +221,7 @@ export function EntryForm({
       </div>
       <div className="form-pair">
         <label>
-          Heure de l’événement
+          {t("Heure de l’événement")}
           <input
             type="datetime-local"
             required
@@ -227,12 +233,12 @@ export function EntryForm({
           />
         </label>
         <label>
-          Émetteur
+          {t("Émetteur")}
           <input
             value={fields.source}
             maxLength={500}
             onChange={(e) => update("source", e.target.value)}
-            placeholder="Nom d’appel, équipe"
+            placeholder={t("Nom d’appel, équipe")}
             list={suggestions.length ? listId : undefined}
           />
         </label>
@@ -247,23 +253,23 @@ export function EntryForm({
       <details open={!!initial}>
         <summary>
           <ChevronRight size={13} />
-          Transmission et lieu
+          {t("Transmission et lieu")}
         </summary>
         <div className="details-fields">
           <div className="form-pair">
-            {select("channel", "Canal", CHANNELS)}
-            {select("reliability", "Confirmation", RELIABILITIES)}
+            {select("channel", t("Canal"), CHANNELS)}
+            {select("reliability", t("Confirmation"), RELIABILITIES)}
           </div>
-          {input("recipient", "Destinataire")}
-          {input("location", "Lieu / secteur")}
+          {input("recipient", t("Destinataire"))}
+          {input("location", t("Lieu / secteur"))}
           {input(
             "coordinates",
-            "Coordonnées",
+            t("Coordonnées"),
             "MN95 2 499 000 / 1 116 000",
             150,
           )}
           <label>
-            Heure de réception
+            {t("Heure de réception")}
             <input
               type="datetime-local"
               required
@@ -274,52 +280,52 @@ export function EntryForm({
               }}
             />
           </label>
-          <small>Heures saisies dans le fuseau de ce poste.</small>
+          <small>{t("Heures saisies dans le fuseau de ce poste.")}</small>
         </div>
       </details>
       <details open={!!initial || fields.status !== "Consigné"}>
         <summary>
           <ChevronRight size={13} />
-          Conduite et suivi
+          {t("Conduite et suivi")}
         </summary>
         <div className="details-fields">
-          {textarea("action", "Mesure / décision / mission")}
+          {textarea("action", t("Mesure / décision / mission"))}
           <div className="form-pair">
-            {select("status", "Suivi", STATUSES)}
-            {input("assignee", "Responsable")}
+            {select("status", t("Suivi"), STATUSES)}
+            {input("assignee", t("Responsable"))}
           </div>
           <label>
-            Échéance
+            {t("Échéance")}
             <input
               type="datetime-local"
               value={localInput(fields.dueAt)}
               onChange={(e) => update("dueAt", fromInput(e.target.value))}
             />
           </label>
-          {textarea("resources", "Moyens engagés / besoins", "", 4000)}
+          {textarea("resources", t("Moyens engagés / besoins"), "", 4000)}
         </div>
       </details>
       <details open={!!initial || !!fields.reference}>
         <summary>
           <ChevronRight size={13} />
-          Compléments
+          {t("Compléments")}
         </summary>
         <div className="details-fields">
           {input(
             "reference",
-            "Référence / entrée liée",
-            "#012, n° de document",
+            t("Référence / entrée liée"),
+            t("#012, n° de document"),
             1000,
           )}
-          {textarea("notes", "Observations")}
+          {textarea("notes", t("Observations"))}
           <label>
-            Mots-clés
+            {t("Mots-clés")}
             <div className="inline-field">
               <input
                 value={tag}
                 maxLength={60}
                 onChange={(e) => setTag(e.target.value)}
-                placeholder="Entrée pour ajouter"
+                placeholder={t("Entrée pour ajouter")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -334,7 +340,7 @@ export function EntryForm({
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Ajouter le mot-clé"
+                aria-label={t("Ajouter le mot-clé")}
                 onClick={() => {
                   if (tag.trim() && fields.tags.length < 20)
                     update("tags", [...new Set([...fields.tags, tag.trim()])]);
@@ -346,21 +352,21 @@ export function EntryForm({
             </div>
           </label>
           <div className="tag-list">
-            {fields.tags.map((t) => (
+            {fields.tags.map((word) => (
               <button
                 type="button"
                 className="tag"
-                key={t}
+                key={word}
                 onClick={() =>
                   update(
                     "tags",
-                    fields.tags.filter((v) => v !== t),
+                    fields.tags.filter((v) => v !== word),
                   )
                 }
               >
-                {t}
+                {word}
                 <X size={12} />
-                <span className="sr-only">Retirer</span>
+                <span className="sr-only">{t("Retirer")}</span>
               </button>
             ))}
           </div>
@@ -368,12 +374,12 @@ export function EntryForm({
       </details>
       {initial && (
         <label>
-          Motif de la modification
+          {t("Motif de la modification")}
           <input
             maxLength={1000}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Confirmation reçue, erreur de lieu"
+            placeholder={t("Confirmation reçue, erreur de lieu")}
           />
         </label>
       )}
@@ -384,15 +390,15 @@ export function EntryForm({
       )}
       <div className="form-foot">
         <span className="by">
-          Par <strong>{author}</strong>
+          {rich(t("Par <0>{author}</0>", { author }), [<strong />])}
         </span>
         {onCancel && (
           <button type="button" onClick={onCancel}>
-            Annuler
+            {t("Annuler")}
           </button>
         )}
         <button className="primary" type="submit">
-          {initial ? "Enregistrer la modification" : "Consigner"}
+          {initial ? t("Enregistrer la modification") : t("Consigner")}
           <kbd>
             ⌘<CornerDownLeft size={11} />
           </kbd>

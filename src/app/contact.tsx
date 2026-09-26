@@ -1,5 +1,6 @@
 import { Copy, Lightbulb, Mail } from "lucide-react";
 import { useState } from "react";
+import { t } from "./i18n.ts";
 
 // Contact of the author, for requests of new features or changes. The
 // message is prepared in the user's mail program; nothing from the session
@@ -8,19 +9,23 @@ import { useState } from "react";
 export const CONTACT_EMAIL = "ludo47j@gmail.com";
 
 export function feedbackLink(topic = "") {
-  const subject = `orion aic · idée${topic ? ` (${topic})` : ""}`;
+  const subject = topic
+    ? t("orion aic · idée ({topic})", { topic })
+    : t("orion aic · idée");
   const body = [
-    "Bonjour,",
+    t("Bonjour,"),
     "",
-    `J’utilise orion aic${topic ? `, module « ${topic} »` : ""}.`,
+    topic
+      ? t("J’utilise orion aic, module « {topic} ».", { topic })
+      : t("J’utilise orion aic."),
     "",
-    "Ce que je voudrais ajouter ou changer :",
+    t("Ce que je voudrais ajouter ou changer :"),
     "",
     "",
-    "Dans quelle situation cela m’aiderait :",
+    t("Dans quelle situation cela m’aiderait :"),
     "",
     "",
-    "Merci !",
+    t("Merci !"),
   ].join("\n");
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
@@ -34,16 +39,16 @@ export function ContactCard({ topic = "" }: { topic?: string }) {
         <Lightbulb size={22} />
       </div>
       <div>
-        <h3>Une idée, un besoin, quelque chose à changer ?</h3>
+        <h3>{t("Une idée, un besoin, quelque chose à changer ?")}</h3>
         <p>
-          orion aic évolue avec ceux qui l’utilisent. Écrivez-moi pour demander
-          une fonction, signaler un souci ou proposer ce qui vous faciliterait
-          la vie : chaque message est lu.
+          {t(
+            "orion aic évolue avec ceux qui l’utilisent. Écrivez-moi pour demander une fonction, signaler un souci ou proposer ce qui vous faciliterait la vie : chaque message est lu.",
+          )}
         </p>
         <div className="contact-actions">
           <a className="button primary" href={feedbackLink(topic)}>
             <Mail size={14} />
-            Écrire à {CONTACT_EMAIL}
+            {t("Écrire à {email}", { email: CONTACT_EMAIL })}
           </a>
           <button
             onClick={() => {
@@ -54,12 +59,13 @@ export function ContactCard({ topic = "" }: { topic?: string }) {
             }}
           >
             <Copy size={14} />
-            {copied ? "Adresse copiée" : "Copier l’adresse"}
+            {copied ? t("Adresse copiée") : t("Copier l’adresse")}
           </button>
         </div>
         <small className="muted">
-          N’envoyez jamais le contenu d’un journal réel par e-mail : décrivez le
-          besoin, pas les données.
+          {t(
+            "N’envoyez jamais le contenu d’un journal réel par e-mail : décrivez le besoin, pas les données.",
+          )}
         </small>
       </div>
     </section>

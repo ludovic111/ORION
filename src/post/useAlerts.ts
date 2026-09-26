@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { getLang, onLang } from "../../shared/i18n/core.ts";
 import type { Journal } from "../../shared/journal";
 import type { Identity } from "../../shared/diffusion";
 import {
@@ -13,6 +14,7 @@ import {
 import type { Ref } from "../../shared/links";
 import { playTone, showNotification } from "./notify";
 import type { PostSettings } from "./store";
+import { t } from "./i18n.ts";
 
 // Schedules the alerts of this post (shared/alarms.ts): a timer until the
 // next one, a check every 30 s and at every change of the journal (an
@@ -56,6 +58,8 @@ export function useAlerts({
   open: (ref: Ref) => void;
   toast: (text: string) => void;
 }) {
+  // Titles of the alarms are written in the language of the post.
+  const lang = useSyncExternalStore(onLang, getLang, getLang);
   const alarms = useMemo(
     () =>
       computeAlarms(
@@ -65,7 +69,7 @@ export function useAlerts({
         // Recomputed each minute (overdue states), not at each render.
         now,
       ),
-    [journal, me, post.kinds, post.agendaLead, now],
+    [journal, me, post.kinds, post.agendaLead, now, lang],
   );
   const state = useRef({ alarms, post, open, toast, journalId: journal.id });
   state.current = { alarms, post, open, toast, journalId: journal.id };
@@ -128,7 +132,7 @@ function deliver(
   }
   if (notify.length > 3) {
     void showNotification(
-      `orion aic · ${notify.length} alertes`,
+      t("orion aic · {n} alertes", { n: notify.length }),
       notify
         .slice(0, 4)
         .map((a) => a.title)
@@ -145,9 +149,12 @@ function deliver(
     toast(
       ring.length === 1
         ? `${ring[0].title}${ring[0].body ? ` — ${ring[0].body}` : ""}`
-        : `${ring.length} alertes : ${ring
-            .slice(0, 3)
-            .map((a) => a.title)
-            .join(" · ")}`,
+        : t("{n} alertes : {list}", {
+            n: ring.length,
+            list: ring
+              .slice(0, 3)
+              .map((a) => a.title)
+              .join(" · "),
+          }),
     );
 }

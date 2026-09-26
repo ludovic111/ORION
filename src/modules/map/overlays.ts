@@ -5,6 +5,8 @@
 // Pure: tested in node.
 
 import { fromMN95, isMN95, toMN95 } from "../../../shared/coordinates.ts";
+import { getLang } from "../../../shared/i18n/core.ts";
+import { t, type Key } from "./i18n-2.ts";
 
 type LatLng = [number, number];
 export type OverlayKind = "wmts" | "wms" | "geojson";
@@ -26,18 +28,50 @@ export type OverlayDef = {
   opacity: number;
 };
 
-export const OVERLAY_GROUPS = [
+/**
+ * A list whose items are read in the language of the post each time (an
+ * exported list of labels: no text is fixed when the module loads).
+ */
+function liveList(keys: readonly Key[]): readonly string[] {
+  const out: string[] = [];
+  keys.forEach((key, i) =>
+    Object.defineProperty(out, i, { get: () => t(key), enumerable: true }),
+  );
+  return out;
+}
+
+const GROUPS = [
   "Dangers naturels",
   "Eaux et météo en direct",
   "Infrastructures et cadastre",
-] as const;
+] as const satisfies readonly Key[];
+/** Families of layers, in the language of the post (same text as `group`). */
+export const OVERLAY_GROUPS = liveList(GROUPS);
 
-const g = OVERLAY_GROUPS;
-export const OVERLAYS: OverlayDef[] = [
+type OverlaySeed = Omit<OverlayDef, "label" | "group" | "hint"> & {
+  label: Key;
+  group: number;
+  hint: Key;
+};
+/** Label, family and hint read in the language of the post. */
+const overlay = (o: OverlaySeed): OverlayDef => ({
+  ...o,
+  get label() {
+    return t(o.label);
+  },
+  get group() {
+    return t(GROUPS[o.group]);
+  },
+  get hint() {
+    return t(o.hint);
+  },
+});
+
+const SEEDS: OverlaySeed[] = [
   {
     id: "ch.bafu.aquaprotect_100",
     label: "Zones inondables (crue centennale)",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "Aquaprotect, OFEV : vue d’ensemble nationale, ne remplace pas les cartes cantonales des dangers.",
     identify: false,
@@ -47,7 +81,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.aquaprotect_500",
     label: "Zones inondables (crue extrême, 500 ans)",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "Aquaprotect, OFEV : scénario rare, emprise maximale.",
     identify: false,
@@ -57,7 +91,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.gefaehrdungskarte-oberflaechenabfluss",
     label: "Ruissellement de surface",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "Carte de l’aléa ruissellement, OFEV : hauteurs d’eau en cas de pluie intense.",
     identify: false,
@@ -67,7 +101,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.silvaprotect-hangmuren",
     label: "Glissements superficiels et coulées de boue",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "SilvaProtect-CH, OFEV : indications de danger au niveau national.",
     identify: false,
@@ -77,7 +111,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.silvaprotect-murgang",
     label: "Laves torrentielles",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "SilvaProtect-CH, OFEV.",
     identify: false,
@@ -87,7 +121,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.silvaprotect-sturz",
     label: "Chutes de pierres",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "SilvaProtect-CH, OFEV : zones de transit et de dépôt.",
     identify: false,
@@ -97,7 +131,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.silvaprotect-lawinen",
     label: "Avalanches",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "SilvaProtect-CH, OFEV : avalanches partant de la forêt.",
     identify: false,
@@ -107,7 +141,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.swisstopo.hangneigung-ueber_30",
     label: "Pentes de plus de 30°",
-    group: g[0],
+    group: 0,
     kind: "wmts",
     hint: "swisstopo : terrain propice aux avalanches.",
     identify: false,
@@ -117,7 +151,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.gefahren-waldbrand_warnung",
     label: "Danger d’incendie de forêt",
-    group: g[0],
+    group: 0,
     kind: "wms",
     hint: "Degrés de danger publiés par les cantons et l’OFEV (mis à jour chaque jour).",
     identify: true,
@@ -127,7 +161,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.hydroweb-messstationen_gefahren",
     label: "Stations hydrologiques : degré de danger",
-    group: g[1],
+    group: 1,
     kind: "geojson",
     hint: "OFEV, toutes les 5 minutes : niveau ou débit comparé aux degrés de danger de crue.",
     identify: false,
@@ -138,7 +172,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bafu.hydroweb-warnkarte_national",
     label: "Carte de vigilance crues",
-    group: g[1],
+    group: 1,
     kind: "geojson",
     hint: "OFEV : degré de danger de crue par région, rivière et lac.",
     identify: false,
@@ -149,7 +183,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.meteoschweiz.messwerte-windgeschwindigkeit-kmh-10min",
     label: "Vent mesuré (10 min)",
-    group: g[1],
+    group: 1,
     kind: "geojson",
     hint: "MétéoSuisse, SwissMetNet : vitesse et direction, toutes les 10 minutes.",
     identify: false,
@@ -160,7 +194,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.meteoschweiz.messwerte-niederschlag-1h",
     label: "Précipitations (somme 1 h)",
-    group: g[1],
+    group: 1,
     kind: "geojson",
     hint: "MétéoSuisse : millimètres tombés pendant la dernière heure.",
     identify: false,
@@ -171,7 +205,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.kantone.cadastralwebmap-farbe",
     label: "Cadastre (parcelles)",
-    group: g[2],
+    group: 2,
     kind: "wmts",
     hint: "Mensuration officielle des cantons : biens-fonds et numéros (zoom rapproché).",
     identify: true,
@@ -181,7 +215,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.bfe.stauanlagen-bundesaufsicht",
     label: "Barrages sous surveillance fédérale",
-    group: g[2],
+    group: 2,
     kind: "wmts",
     hint: "OFEN : ouvrages d’accumulation (les zones d’inondation des barrages ne sont pas publiques).",
     identify: true,
@@ -191,7 +225,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.babs.notfalltreffpunkte",
     label: "Points de rencontre d’urgence",
-    group: g[2],
+    group: 2,
     kind: "wms",
     hint: "OFPP et cantons : où la population se rend en cas d’urgence.",
     identify: true,
@@ -201,7 +235,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.babs.kulturgueter",
     label: "Biens culturels protégés (PBC)",
-    group: g[2],
+    group: 2,
     kind: "wmts",
     hint: "OFPP : inventaire de la protection des biens culturels.",
     identify: true,
@@ -211,7 +245,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.ensi.zonenplan-notfallschutz-kernanlagen",
     label: "Zones d’urgence des centrales nucléaires",
-    group: g[2],
+    group: 2,
     kind: "wmts",
     hint: "IFSN : zones 1 et 2 autour des installations nucléaires.",
     identify: true,
@@ -221,7 +255,7 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill",
     label: "Limites de communes",
-    group: g[2],
+    group: 2,
     kind: "wmts",
     hint: "swisstopo, swissBOUNDARIES3D.",
     identify: true,
@@ -229,16 +263,18 @@ export const OVERLAYS: OverlayDef[] = [
     opacity: 0.7,
   },
 ];
+export const OVERLAYS: OverlayDef[] = SEEDS.map(overlay);
 export const overlayById = (id: string) => OVERLAYS.find((o) => o.id === id);
 
 /** Tile URL template (Leaflet) of a WMTS overlay. */
 export const wmtsUrl = (id: string) =>
   `https://wmts.geo.admin.ch/1.0.0/${id}/default/current/3857/{z}/{x}/{y}.png`;
 export const WMS_URL = "https://wms.geo.admin.ch/";
+// geo.admin.ch answers in French, German and Italian: the language of the post.
 export const legendUrl = (id: string) =>
-  `https://api3.geo.admin.ch/rest/services/api/MapServer/${id}/legend?lang=fr`;
+  `https://api3.geo.admin.ch/rest/services/api/MapServer/${id}/legend?lang=${getLang()}`;
 export const liveUrl = (id: string) =>
-  `https://data.geo.admin.ch/${id}/${id}_fr.json`;
+  `https://data.geo.admin.ch/${id}/${id}_${getLang()}.json`;
 
 /* ---------- Feature info (identify) ---------- */
 
@@ -266,7 +302,7 @@ export function identifyUrl(
       tolerance: "8",
       layers: `all:${ids.join(",")}`,
       sr: "2056",
-      lang: "fr",
+      lang: getLang(),
       returnGeometry: "false",
       limit: "10",
     });
@@ -282,7 +318,7 @@ export type Identified = {
   rows: [string, string][];
 };
 
-const LABELS: Record<string, string> = {
+const LABELS: Record<string, Key> = {
   number: "Numéro",
   egris_egrid: "EGRID",
   identnd: "Identifiant",
@@ -319,13 +355,16 @@ export function readIdentify(data: unknown): Identified[] {
         .trim();
       // The same value under two names (canton code as "label"): once.
       if (text && !rows.some((r) => r[1] === text.slice(0, 200)))
-        rows.push([LABELS[k] ?? k.replace(/_/g, " "), text.slice(0, 200)]);
+        rows.push([
+          LABELS[k] ? t(LABELS[k]) : k.replace(/_/g, " "),
+          text.slice(0, 200),
+        ]);
       if (rows.length >= 12) break;
     }
     const def = overlayById(String(item.layerBodId ?? ""));
     out.push({
       layer: String(item.layerBodId ?? ""),
-      title: def?.label ?? String(item.layerName ?? "Objet"),
+      title: def?.label ?? String(item.layerName ?? t("Objet")),
       rows,
     });
   }
@@ -349,14 +388,15 @@ export type LiveFeature = {
   time?: string;
 };
 
-export const LEVEL_TEXT = [
+/** Official danger levels, in the language of the post. */
+export const LEVEL_TEXT = liveList([
   "Pas de données",
   "Degré 1 : pas de danger ou danger faible",
   "Degré 2 : danger limité",
   "Degré 3 : danger marqué",
   "Degré 4 : danger fort",
   "Degré 5 : danger très fort",
-];
+]);
 /** Colours of the official danger levels (map content). */
 export const LEVEL_COLOR = [
   "#9aa0a6",
@@ -441,7 +481,7 @@ export function readLive(style: LiveStyle, data: unknown): LiveFeature[] {
       out.push({
         ...base,
         point,
-        title: plainText(p.name) || "Station",
+        title: plainText(p.name) || t("Station"),
         level: Number(p["quant-class"]) || 0,
       });
     else {
@@ -449,7 +489,7 @@ export function readLive(style: LiveStyle, data: unknown): LiveFeature[] {
       out.push({
         ...base,
         point,
-        title: plainText(p.station_name) || "Station",
+        title: plainText(p.station_name) || t("Station"),
         value: Number.isFinite(value) ? value : undefined,
         unit: plainText(p.unit),
         direction:

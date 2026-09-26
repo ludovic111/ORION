@@ -14,6 +14,7 @@ import {
 import type { OpsMap } from "../../../shared/ops";
 import { Popover } from "../../ui/Popover";
 import { MAIN_NAME } from "./maps";
+import { t } from "./i18n.ts";
 
 /**
  * Switcher between the maps of the operation ("Suivi général", "Secteur
@@ -67,7 +68,7 @@ export function MapTabs({
         ref={strip}
         className="map-tabs-strip"
         role="tablist"
-        aria-label="Cartes de l’opération"
+        aria-label={t("Cartes de l’opération")}
       >
         {tabs.map((m) => (
           <button
@@ -89,8 +90,8 @@ export function MapTabs({
         <button
           type="button"
           className="icon-button map-tabs-add"
-          aria-label="Nouvelle carte"
-          title="Nouvelle carte (ex. un secteur en détail)"
+          aria-label={t("Nouvelle carte")}
+          title={t("Nouvelle carte (ex. un secteur en détail)")}
           onClick={onNew}
         >
           <Plus size={15} />
@@ -100,8 +101,8 @@ export function MapTabs({
         ref={more}
         type="button"
         className="icon-button"
-        aria-label="Menu de la carte"
-        title="Carte : cadrage, import, export"
+        aria-label={t("Menu de la carte")}
+        title={t("Carte : cadrage, import, export")}
         aria-haspopup="menu"
         aria-expanded={menu}
         onClick={() => setMenu((v) => !v)}
@@ -117,18 +118,20 @@ export function MapTabs({
                 <span className="row-main">
                   <strong>
                     {maps.length
-                      ? "Modifier cette carte"
-                      : "Nommer cette carte"}
+                      ? t("Modifier cette carte")
+                      : t("Nommer cette carte")}
                   </strong>
-                  <small className="muted">Nom, but, ordre, suppression</small>
+                  <small className="muted">
+                    {t("Nom, but, ordre, suppression")}
+                  </small>
                 </span>
               </button>
               <button type="button" role="menuitem" data-close onClick={onNew}>
                 <Plus size={14} />
                 <span className="row-main">
-                  <strong>Nouvelle carte</strong>
+                  <strong>{t("Nouvelle carte")}</strong>
                   <small className="muted">
-                    Un secteur en détail, une phase…
+                    {t("Un secteur en détail, une phase…")}
                   </small>
                 </span>
               </button>
@@ -140,9 +143,11 @@ export function MapTabs({
               >
                 <Crosshair size={14} />
                 <span className="row-main">
-                  <strong>Enregistrer ce cadrage pour cette carte</strong>
+                  <strong>
+                    {t("Enregistrer ce cadrage pour cette carte")}
+                  </strong>
                   <small className="muted">
-                    Elle s’ouvrira ici sur tous les postes
+                    {t("Elle s’ouvrira ici sur tous les postes")}
                   </small>
                 </span>
               </button>
@@ -154,9 +159,9 @@ export function MapTabs({
               >
                 <FileUp size={14} />
                 <span className="row-main">
-                  <strong>Importer KML / GeoJSON / GPX</strong>
+                  <strong>{t("Importer KML / GeoJSON / GPX")}</strong>
                   <small className="muted">
-                    Fichier reçu d’un partenaire, trace GPS
+                    {t("Fichier reçu d’un partenaire, trace GPS")}
                   </small>
                 </span>
               </button>
@@ -165,16 +170,18 @@ export function MapTabs({
           <button type="button" role="menuitem" data-close onClick={onExport}>
             <FileDown size={14} />
             <span className="row-main">
-              <strong>Exporter ou imprimer…</strong>
-              <small className="muted">Image, PDF, KML, GeoJSON, GPX</small>
+              <strong>{t("Exporter ou imprimer…")}</strong>
+              <small className="muted">
+                {t("Image, PDF, KML, GeoJSON, GPX")}
+              </small>
             </span>
           </button>
           <button type="button" role="menuitem" data-close onClick={onPrint}>
             <Printer size={14} />
             <span className="row-main">
-              <strong>Imprimer à l’échelle</strong>
+              <strong>{t("Imprimer à l’échelle")}</strong>
               <small className="muted">
-                A4 / A3, 1:5 000 à 1:50 000, quadrillage, légende
+                {t("A4 / A3, 1:5 000 à 1:50 000, quadrillage, légende")}
               </small>
             </span>
           </button>
@@ -186,16 +193,18 @@ export function MapTabs({
           >
             <FileJson size={14} />
             <span className="row-main">
-              <strong>GeoJSON en MN95</strong>
-              <small className="muted">EPSG:2056, pour les SIG suisses</small>
+              <strong>{t("GeoJSON en MN95")}</strong>
+              <small className="muted">
+                {t("EPSG:2056, pour les SIG suisses")}
+              </small>
             </span>
           </button>
           <button type="button" role="menuitem" data-close onClick={onOffline}>
             <CloudDownload size={14} />
             <span className="row-main">
-              <strong>Carte hors ligne…</strong>
+              <strong>{t("Carte hors ligne…")}</strong>
               <small className="muted">
-                Télécharger un secteur, voir l’espace utilisé
+                {t("Télécharger un secteur, voir l’espace utilisé")}
               </small>
             </span>
           </button>

@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { Loader2, LocateFixed, MapPin, Search, X } from "lucide-react";
 import { formatPosition, parseCoordinates } from "./geo";
+import { getLang } from "../../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 type Result = { label: string; lat: number; lng: number; zoom: number };
 
@@ -33,7 +35,7 @@ function parseResults(data: unknown): Result[] {
     const lng = Number(a?.lon);
     if (!a || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     out.push({
-      label: plain(String(a.label ?? "")) || "Lieu",
+      label: plain(String(a.label ?? "")) || t("Lieu"),
       lat,
       lng,
       zoom: ZOOM_BY_ORIGIN[String(a.origin ?? "")] ?? 15,
@@ -69,7 +71,7 @@ export function MapSearch({
     setBusy(true);
     const timer = setTimeout(async () => {
       try {
-        const url = `${SEARCH_URL}?searchText=${encodeURIComponent(text)}&type=locations&sr=4326&limit=8`;
+        const url = `${SEARCH_URL}?searchText=${encodeURIComponent(text)}&type=locations&sr=4326&limit=8&lang=${getLang()}`;
         const res = await fetch(url, { signal: ctrl.signal });
         if (!res.ok) throw new Error(String(res.status));
         setResults(parseResults(await res.json()));
@@ -78,7 +80,9 @@ export function MapSearch({
         if (ctrl.signal.aborted) return;
         setResults([]);
         setError(
-          "Recherche de lieux indisponible (hors ligne ?). Les coordonnées fonctionnent toujours.",
+          t(
+            "Recherche de lieux indisponible (hors ligne ?). Les coordonnées fonctionnent toujours.",
+          ),
         );
       } finally {
         if (!ctrl.signal.aborted) setBusy(false);
@@ -118,8 +122,10 @@ export function MapSearch({
           role="combobox"
           aria-expanded={open && options.length > 0}
           aria-controls={listId}
-          aria-label="Rechercher un lieu ou aller à des coordonnées"
-          placeholder="Lieu, adresse ou coordonnées (2 500 000 / 1 117 000)"
+          aria-label={t("Rechercher un lieu ou aller à des coordonnées")}
+          placeholder={t(
+            "Lieu, adresse ou coordonnées (2 500 000 / 1 117 000)",
+          )}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
@@ -148,7 +154,7 @@ export function MapSearch({
           <button
             type="button"
             className="icon-button"
-            aria-label="Effacer la recherche"
+            aria-label={t("Effacer la recherche")}
             onClick={() => {
               setQuery("");
               setResults([]);
@@ -173,12 +179,16 @@ export function MapSearch({
                 onClick={() => go(r)}
               >
                 {coords ? <LocateFixed size={14} /> : <MapPin size={14} />}
-                <span>{coords ? `Aller à ${r.label}` : r.label}</span>
+                <span>
+                  {coords ? t("Aller à {label}", { label: r.label }) : r.label}
+                </span>
               </button>
             </li>
           ))}
           {!options.length && (
-            <li className="map-search-note">{error || "Aucun lieu trouvé."}</li>
+            <li className="map-search-note">
+              {error || t("Aucun lieu trouvé.")}
+            </li>
           )}
         </ul>
       )}

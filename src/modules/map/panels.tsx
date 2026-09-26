@@ -16,6 +16,9 @@ import { Glyph } from "./symbols";
 import { hexColor, layerKey, toneOf } from "./maps";
 import { useLive } from "../../live/store";
 import { freshness } from "../../../shared/live";
+import { locale } from "../../../shared/i18n/core.ts";
+import { useLang } from "../../i18n";
+import { t } from "./i18n.ts";
 
 export { layerKey, toneOf };
 
@@ -25,7 +28,17 @@ const norm = (s: string) =>
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase("fr");
 
-const KIND_LABEL: Record<Place["kind"], string> = {
+/** Kind of object, in the language of the post. */
+const kindLabel = (kind: Place["kind"]) =>
+  kind === "point"
+    ? t("signe")
+    : kind === "line"
+      ? t("tracé")
+      : kind === "area"
+        ? t("zone")
+        : t("texte");
+/** French words of each kind, kept searchable in every language. */
+const KIND_WORD: Record<Place["kind"], string> = {
   point: "signe",
   line: "tracé",
   area: "zone",
@@ -76,6 +89,7 @@ export function PlacesList({
   announce?: string;
 }) {
   const { graph } = useApp();
+  const lang = useLang();
   const [query, setQuery] = useState("");
   const shown = useMemo(() => {
     const terms = norm(query).split(/\s+/).filter(Boolean);
@@ -83,12 +97,12 @@ export function PlacesList({
       .filter((p) => {
         if (!terms.length) return true;
         const hay = norm(
-          `${p.label} ${p.layer} ${p.notes} ${KIND_LABEL[p.kind]}`,
+          `${p.label} ${p.layer} ${p.notes} ${KIND_WORD[p.kind]} ${kindLabel(p.kind)}`,
         );
-        return terms.every((t) => hay.includes(t));
+        return terms.every((term) => hay.includes(term));
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [places, query]);
+  }, [places, query, lang]);
   return (
     <div className="map-list">
       <p className="sr-only" aria-live="polite">
@@ -99,8 +113,8 @@ export function PlacesList({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filtrer les objets…"
-          aria-label="Filtrer les objets de la carte"
+          placeholder={t("Filtrer les objets…")}
+          aria-label={t("Filtrer les objets de la carte")}
         />
       </div>
       <div className="map-list-rows" onMouseLeave={() => onHover(null)}>
@@ -116,7 +130,9 @@ export function PlacesList({
               }
               title={
                 onNudge
-                  ? "Entrée : ouvrir · flèches : déplacer de 10 m (Maj : 100 m, Alt : 1 m)"
+                  ? t(
+                      "Entrée : ouvrir · flèches : déplacer de 10 m (Maj : 100 m, Alt : 1 m)",
+                    )
                   : undefined
               }
               onClick={() => onPick(p)}
@@ -142,14 +158,17 @@ export function PlacesList({
             >
               <PlaceIcon place={p} />
               <span className="row-main">
-                <strong>{p.label || "Objet sans nom"}</strong>
+                <strong>{p.label || t("Objet sans nom")}</strong>
                 <small>
-                  {[p.layer || "Sans calque", KIND_LABEL[p.kind]].join(" · ")}
-                  {hidden.has(layerKey(p)) && " · masqué"}
+                  {[p.layer || t("Sans calque"), kindLabel(p.kind)].join(" · ")}
+                  {hidden.has(layerKey(p)) && ` · ${t("masqué")}`}
                 </small>
               </span>
               {links > 0 && (
-                <span className="pill plain" title={`${links} lien(s)`}>
+                <span
+                  className="pill plain"
+                  title={t("{n} lien(s)", { n: links })}
+                >
                   <Link2 size={11} />
                   {links}
                 </span>
@@ -162,8 +181,10 @@ export function PlacesList({
             <MapPinned size={22} />
             <p>
               {places.length
-                ? "Aucun objet ne correspond."
-                : "Aucun objet sur la carte. Choisissez « Point », « Ligne » ou « Zone » en bas de la carte pour commencer."}
+                ? t("Aucun objet ne correspond.")
+                : t(
+                    "Aucun objet sur la carte. Choisissez « Point », « Ligne » ou « Zone » en bas de la carte pour commencer.",
+                  )}
             </p>
           </div>
         )}
@@ -204,7 +225,7 @@ export function LayersPanel({
       const ib = standard.indexOf(b[0]);
       return (
         (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) ||
-        a[0].localeCompare(b[0], "fr")
+        a[0].localeCompare(b[0], locale())
       );
     });
   }, [places, lists]);
@@ -212,8 +233,9 @@ export function LayersPanel({
     <div className="map-layers">
       {counts.length === 0 && (
         <p className="muted map-palette-note">
-          Les calques apparaissent ici dès qu’un objet est placé (Effets,
-          Dangers, Moyens…).
+          {t(
+            "Les calques apparaissent ici dès qu’un objet est placé (Effets, Dangers, Moyens…).",
+          )}
         </p>
       )}
       {counts.map(([layer, count]) => {
@@ -230,7 +252,7 @@ export function LayersPanel({
               className={`map-layer-dot tone-${toneOf(layer)}`}
               aria-hidden="true"
             />
-            <span className="map-layer-name">{layer || "Sans calque"}</span>
+            <span className="map-layer-name">{layer || t("Sans calque")}</span>
             <span className="pill plain">{count}</span>
             {off ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
@@ -243,7 +265,7 @@ export function LayersPanel({
           onClick={onShowAll}
         >
           <Eye size={13} />
-          Tout afficher
+          {t("Tout afficher")}
         </button>
       )}
       <hr />
@@ -253,16 +275,19 @@ export function LayersPanel({
         className={`map-layer-row${showGhosts ? "" : " off"}`}
         aria-pressed={showGhosts}
         onClick={() => onGhosts(!showGhosts)}
-        title="Entrées et messages dont les coordonnées ne sont pas encore sur la carte"
+        title={t(
+          "Entrées et messages dont les coordonnées ne sont pas encore sur la carte",
+        )}
       >
         <span className="map-layer-dot ghost" aria-hidden="true" />
-        <span className="map-layer-name">Positions citées</span>
+        <span className="map-layer-name">{t("Positions citées")}</span>
         <span className="pill plain">{ghosts}</span>
         {showGhosts ? <Eye size={15} /> : <EyeOff size={15} />}
       </button>
       <p className="muted map-layers-note">
-        Coordonnées lues dans les entrées du journal et les messages, pas encore
-        placées.
+        {t(
+          "Coordonnées lues dans les entrées du journal et les messages, pas encore placées.",
+        )}
       </p>
     </div>
   );
@@ -287,17 +312,23 @@ function LiveRow({
         className={`map-layer-row${on && !past ? "" : " off"}`}
         aria-pressed={on}
         onClick={() => onToggle(!on)}
-        title="Équipes qui partagent leur position GPS, gardées en mémoire seulement"
+        title={t(
+          "Équipes qui partagent leur position GPS, gardées en mémoire seulement",
+        )}
       >
         <span className="map-layer-dot live" aria-hidden="true" />
-        <span className="map-layer-name">Positions en direct</span>
+        <span className="map-layer-name">{t("Positions en direct")}</span>
         <span className="pill plain">{count}</span>
         {on ? <Eye size={15} /> : <EyeOff size={15} />}
       </button>
       <p className="muted map-layers-note">
         {past
-          ? "Masquées dans la machine à remonter le temps : elles ne sont jamais enregistrées."
-          : "Jamais enregistrées : visibles tant que les postes les partagent, 30 minutes au plus."}
+          ? t(
+              "Masquées dans la machine à remonter le temps : elles ne sont jamais enregistrées.",
+            )
+          : t(
+              "Jamais enregistrées : visibles tant que les postes les partagent, 30 minutes au plus.",
+            )}
       </p>
     </>
   );

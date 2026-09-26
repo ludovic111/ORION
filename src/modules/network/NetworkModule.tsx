@@ -24,6 +24,9 @@ import {
   hueStyle,
 } from "../../ui/links";
 import { NetworkEngine, type LinkSpec, type NodeSpec } from "./engine";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { rich } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import "./network.css";
 
 const KINDS = Object.keys(KIND_INFO) as RefKind[];
@@ -176,27 +179,26 @@ export function NetworkModule() {
         <ModuleHead />
         <EmptyState
           icon={<Network size={28} />}
-          title="Aucun lien pour l’instant"
+          title={t("Aucun lien pour l’instant")}
           actions={
             <>
               <button className="primary" onClick={() => go("journal")}>
                 <BookOpen size={15} />
-                Ouvrir le journal
+                {t("Ouvrir le journal")}
               </button>
               <button onClick={() => help("network")}>
                 <CircleHelp size={15} />
-                Comment ça marche
+                {t("Comment ça marche")}
               </button>
             </>
           }
         >
           {graph.items.length
-            ? `${graph.items.length} élément(s) attendent d’être reliés. `
+            ? `${t("{n} élément(s) attendent d’être reliés.", { n: graph.items.length })} `
             : ""}
-          Les liens apparaissent tout seuls : mêmes noms d’appel, émetteurs et
-          destinataires, références comme « Suite de #012 », message inscrit au
-          journal, membres d’un poste. Vous pouvez aussi relier deux éléments à
-          la main avec le bouton « Lier » de chaque fiche.
+          {t(
+            "Les liens apparaissent tout seuls : mêmes noms d’appel, émetteurs et destinataires, références comme « Suite de #012 », message inscrit au journal, membres d’un poste. Vous pouvez aussi relier deux éléments à la main avec le bouton « Lier » de chaque fiche.",
+          )}
         </EmptyState>
       </>
     );
@@ -213,8 +215,8 @@ export function NetworkModule() {
             <Search size={14} />
             <input
               value={query}
-              placeholder="Chercher dans le réseau…"
-              aria-label="Chercher dans le réseau"
+              placeholder={t("Chercher dans le réseau…")}
+              aria-label={t("Chercher dans le réseau")}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") selectFirst();
@@ -226,7 +228,7 @@ export function NetworkModule() {
                 <span className="net-found mono">{matches.length}</span>
                 <button
                   className="icon-button"
-                  aria-label="Effacer la recherche"
+                  aria-label={t("Effacer la recherche")}
                   onClick={() => setQuery("")}
                 >
                   <X size={13} />
@@ -236,23 +238,31 @@ export function NetworkModule() {
           </div>
           <Toggle
             className="net-toggle"
-            label="Masquer les éléments sans lien"
+            label={t("Masquer les éléments sans lien")}
             checked={filters.linkedOnly}
             onChange={(linkedOnly) => setFilters((f) => ({ ...f, linkedOnly }))}
           />
           <p className="net-stats">
-            <strong>{data.nodes.length}</strong> éléments ·{" "}
-            <strong>{data.links.length}</strong> liens affichés
+            {rich(
+              t("<0>{nodes}</0> éléments · <1>{links}</1> liens affichés", {
+                nodes: data.nodes.length,
+                links: data.links.length,
+              }),
+              [<strong />, <strong />],
+            )}
             <span className="muted">
               {" "}
-              ({graph.edges.length} au total, dont {manual} créés à la main)
+              {t("({total} au total, dont {manual} créés à la main)", {
+                total: graph.edges.length,
+                manual,
+              })}
             </span>
           </p>
         </div>
         <div
           className="net-kinds"
           role="group"
-          aria-label="Types d’éléments affichés"
+          aria-label={t("Types d’éléments affichés")}
         >
           {kinds.map((kind) => (
             <button
@@ -262,7 +272,9 @@ export function NetworkModule() {
               style={hueStyle(kind)}
               aria-pressed={!hidden.has(kind)}
               onClick={() => toggleKind(kind)}
-              title={hidden.has(kind) ? "Afficher ce type" : "Masquer ce type"}
+              title={
+                hidden.has(kind) ? t("Afficher ce type") : t("Masquer ce type")
+              }
             >
               <i />
               {KIND_INFO[kind].plural}
@@ -275,7 +287,7 @@ export function NetworkModule() {
               className="small"
               onClick={() => setFilters((f) => ({ ...f, hidden: [] }))}
             >
-              Tout afficher
+              {t("Tout afficher")}
             </button>
           )}
         </div>
@@ -284,27 +296,31 @@ export function NetworkModule() {
             ref={canvasRef}
             tabIndex={0}
             role="img"
-            aria-label={`Réseau de ${data.nodes.length} éléments et ${data.links.length} liens. Glisser pour déplacer, molette ou + et − pour zoomer.`}
+            aria-label={t(
+              "Réseau de {nodes} éléments et {links} liens. Glisser pour déplacer, molette ou + et − pour zoomer.",
+              { nodes: data.nodes.length, links: data.links.length },
+            )}
           />
           {!data.nodes.length && (
             <div className="net-note">
-              Aucun élément affiché. Réactivez un type ci-dessus ou désactivez «
-              Masquer les éléments sans lien ».
+              {t(
+                "Aucun élément affiché. Réactivez un type ci-dessus ou désactivez « Masquer les éléments sans lien ».",
+              )}
             </div>
           )}
           <div className="net-controls">
             <button
               className="icon-button"
-              aria-label="Zoomer"
-              title="Zoomer"
+              aria-label={t("Zoomer")}
+              title={t("Zoomer")}
               onClick={() => engineRef.current?.zoomBy(1.35)}
             >
               <Plus size={16} />
             </button>
             <button
               className="icon-button"
-              aria-label="Dézoomer"
-              title="Dézoomer"
+              aria-label={t("Dézoomer")}
+              title={t("Dézoomer")}
               onClick={() => engineRef.current?.zoomBy(1 / 1.35)}
             >
               <Minus size={16} />
@@ -312,53 +328,53 @@ export function NetworkModule() {
             <button
               className="net-fit"
               onClick={() => engineRef.current?.fit()}
-              title="Afficher tout le réseau"
+              title={t("Afficher tout le réseau")}
             >
               <Maximize2 size={14} />
-              Recentrer
+              {t("Recentrer")}
             </button>
           </div>
-          <dl className="net-legend" aria-label="Légende">
+          <dl className="net-legend" aria-label={t("Légende")}>
             <div>
               <dt>
                 <i className="net-line strong" />
               </dt>
-              <dd>lien créé à la main</dd>
+              <dd>{t("lien créé à la main")}</dd>
             </div>
             <div>
               <dt>
                 <i className="net-line" />
               </dt>
-              <dd>lien automatique</dd>
+              <dd>{t("lien automatique")}</dd>
             </div>
             <div>
               <dt>
                 <i className="net-ring" />
               </dt>
-              <dd>urgent</dd>
+              <dd>{t("urgent")}</dd>
             </div>
             <div>
               <dt>
                 <i className="net-size" />
               </dt>
-              <dd>taille = nombre de liens</dd>
+              <dd>{t("taille = nombre de liens")}</dd>
             </div>
           </dl>
           {item && Icon && (
             <aside
               className="net-panel"
-              aria-label="Élément sélectionné"
+              aria-label={t("Élément sélectionné")}
               key={item.ref}
             >
               <div className="net-panel-head" style={hueStyle(item.kind)}>
                 <Icon size={14} />
                 <span className="label">{KIND_INFO[item.kind].label}</span>
                 {item.tone === "crit" && (
-                  <span className="pill crit">Urgent</span>
+                  <span className="pill crit">{enumLabel("Urgent")}</span>
                 )}
                 <button
                   className="icon-button"
-                  aria-label="Fermer"
+                  aria-label={t("Fermer")}
                   onClick={() => setSelected(null)}
                 >
                   <X size={15} />
@@ -372,7 +388,7 @@ export function NetworkModule() {
                   onClick={() => open(item.ref)}
                 >
                   <ExternalLink size={13} />
-                  Ouvrir
+                  {t("Ouvrir")}
                 </button>
                 <button
                   className="small"
@@ -381,7 +397,7 @@ export function NetworkModule() {
                   }
                 >
                   <Crosshair size={13} />
-                  Centrer
+                  {t("Centrer")}
                 </button>
               </div>
               <LinksPanel target={item.ref} />
@@ -389,18 +405,20 @@ export function NetworkModule() {
           )}
         </div>
         <footer className="net-foot">
-          <span className="label">Les plus reliés</span>
+          <span className="label">{t("Les plus reliés")}</span>
           <div className="net-top">
             {top.map(([ref, n]) => (
               <LinkChip
                 key={ref}
                 target={ref as Ref}
-                label={`${n} lien${n > 1 ? "s" : ""}`}
+                label={tn(n, "{n} lien", "{n} liens")}
               />
             ))}
           </div>
           <span className="muted net-hint">
-            Survoler : voir les liens · Clic : détails · Double-clic : ouvrir
+            {t(
+              "Survoler : voir les liens · Clic : détails · Double-clic : ouvrir",
+            )}
           </span>
         </footer>
       </section>

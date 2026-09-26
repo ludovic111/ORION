@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { FileUp, Loader2, MapPin, Pentagon, Spline, Type } from "lucide-react";
-import { upsert, type OpsMap } from "../../../shared/ops";
+import { journalLang, upsert, type OpsMap } from "../../../shared/ops";
 import { useApp } from "../../app/context";
 import { Modal } from "../../journal/Modal";
 import { ComboField, Toggle } from "../../ui/fields";
 import { parseGeoFile, type ImportResult } from "./geoformats";
 import { ColorField, SymbolField } from "./PlaceSheet";
-import { MAIN_NAME, hexColor } from "./maps";
+import { hexColor, mainName, standardLayer } from "./maps";
+import { t, tn } from "./i18n-2.ts";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_OBJECTS = 2000;
@@ -31,15 +32,15 @@ async function readFile(file: File): Promise<string> {
       },
     });
     const entry = kml.find((f) => /(^|\/)doc\.kml$/i.test(f.name)) ?? kml[0];
-    if (!entry) throw new Error("Ce KMZ ne contient pas de fichier KML.");
+    if (!entry) throw new Error(t("Ce KMZ ne contient pas de fichier KML."));
     if (entry.originalSize > MAX_KML)
-      throw new Error("Fichier KML trop volumineux (20 Mo au maximum).");
+      throw new Error(t("Fichier KML trop volumineux (20 Mo au maximum)."));
     const files = unzipSync(bytes, {
       filter: (f) => f.name === entry.name && f.originalSize <= MAX_KML,
     });
     const data = files[entry.name];
     if (!data || data.length > MAX_KML)
-      throw new Error("Fichier KML illisible ou trop volumineux.");
+      throw new Error(t("Fichier KML illisible ou trop volumineux."));
     return strFromU8(data);
   }
   return file.text();
@@ -91,13 +92,13 @@ export function ImportDialog({
     setError("");
     setResult(null);
     if (f.size > MAX_BYTES)
-      return setError("Fichier trop volumineux : 5 Mo au maximum.");
+      return setError(t("Fichier trop volumineux : 5 Mo au maximum."));
     setBusy(true);
     try {
       const text = await readFile(f);
       const r = parseGeoFile(f.name.replace(/\.kmz$/i, ".kml"), text);
       if (!r.features.length)
-        throw new Error("Aucun objet géographique lisible dans ce fichier.");
+        throw new Error(t("Aucun objet géographique lisible dans ce fichier."));
       setResult(r);
       setFile(f.name);
       setLayer(
@@ -118,7 +119,10 @@ export function ImportDialog({
     const list = result.features.slice(0, MAX_OBJECTS);
     if (list.length > room)
       return setError(
-        `La carte ne peut pas dépasser ${MAX_PLACES} objets : il reste de la place pour ${Math.max(0, room)}.`,
+        t(
+          "La carte ne peut pas dépasser {max} objets : il reste de la place pour {room}.",
+          { max: MAX_PLACES, room: Math.max(0, room) },
+        ),
       );
     try {
       updateOps((ops) => {
@@ -133,7 +137,11 @@ export function ImportDialog({
               notes: f.notes,
               points: f.points,
               ...(f.holes && { holes: f.holes }),
-              layer: ((keepLayers && f.layer) || layer || "Autre").slice(0, 80),
+              layer: (
+                (keepLayers && f.layer) ||
+                layer ||
+                standardLayer("Autre", journalLang(ops))
+              ).slice(0, 80),
               symbol: f.kind === "point" ? f.symbol || symbol : "",
               color: hexColor(color) || hexColor(f.color),
               maps: target ? [target] : [],
@@ -149,7 +157,12 @@ export function ImportDialog({
         return next;
       });
       toast(
-        `${list.length} objet${list.length > 1 ? "s" : ""} importé${list.length > 1 ? "s" : ""} depuis « ${file} ».`,
+        tn(
+          list.length,
+          "{n} objet importé depuis « {file} ».",
+          "{n} objets importés depuis « {file} ».",
+          { file },
+        ),
       );
       onDone(list.flatMap((f) => f.points));
       onClose();
@@ -159,14 +172,30 @@ export function ImportDialog({
   }
 
   const kinds = [
-    { n: counts.point, label: "points", Icon: MapPin },
-    { n: counts.text, label: "textes", Icon: Type },
-    { n: counts.line, label: "lignes", Icon: Spline },
-    { n: counts.area, label: "zones", Icon: Pentagon },
+    {
+      n: counts.point,
+      label: tn(counts.point, "{n} point", "{n} points"),
+      Icon: MapPin,
+    },
+    {
+      n: counts.text,
+      label: tn(counts.text, "{n} texte", "{n} textes"),
+      Icon: Type,
+    },
+    {
+      n: counts.line,
+      label: tn(counts.line, "{n} ligne", "{n} lignes"),
+      Icon: Spline,
+    },
+    {
+      n: counts.area,
+      label: tn(counts.area, "{n} zone", "{n} zones"),
+      Icon: Pentagon,
+    },
   ].filter((k) => k.n);
 
   return (
-    <Modal title="Importer un fichier géographique" onClose={onClose}>
+    <Modal title={t("Importer un fichier géographique")} onClose={onClose}>
       <div className="map-dialog">
         <button
           type="button"
@@ -183,10 +212,11 @@ export function ImportDialog({
           ) : (
             <FileUp size={24} />
           )}
-          <strong>{file || "Choisir un fichier"}</strong>
+          <strong>{file || t("Choisir un fichier")}</strong>
           <small>
-            KML, KMZ (Google Earth), GeoJSON, GPX · 5 Mo au maximum · WGS84, ou
-            MN95 / MN03 (GeoJSON suisse)
+            {t(
+              "KML, KMZ (Google Earth), GeoJSON, GPX · 5 Mo au maximum · WGS84, ou MN95 / MN03 (GeoJSON suisse)",
+            )}
           </small>
         </button>
         <input
@@ -204,44 +234,54 @@ export function ImportDialog({
             <div className="map-import-summary" role="status">
               <span className="pill accent">{result.format}</span>
               {result.crs && result.crs !== "WGS84" && (
-                <span className="pill plain">{result.crs} converti</span>
+                <span className="pill plain">
+                  {t("{crs} converti", { crs: result.crs })}
+                </span>
               )}
-              {kinds.map(({ n, label, Icon }) => (
+              {kinds.map(({ label, Icon }) => (
                 <span key={label} className="pill plain">
                   <Icon size={12} />
-                  {n} {label}
+                  {label}
                 </span>
               ))}
             </div>
             {total > MAX_OBJECTS && (
               <p className="map-warn">
-                Le fichier contient {total} objets : seuls les {MAX_OBJECTS}{" "}
-                premiers seront importés.
+                {t(
+                  "Le fichier contient {total} objets : seuls les {max} premiers seront importés.",
+                  { total, max: MAX_OBJECTS },
+                )}
               </p>
             )}
             {result.skipped > 0 && (
               <p className="muted">
-                {result.skipped} élément{result.skipped > 1 ? "s" : ""} sans
-                coordonnées valables ignoré{result.skipped > 1 ? "s" : ""}.
+                {tn(
+                  result.skipped,
+                  "{n} élément sans coordonnées valables ignoré.",
+                  "{n} éléments sans coordonnées valables ignorés.",
+                )}
               </p>
             )}
             {result.simplified > 0 && (
               <p className="muted">
-                {result.simplified} tracé{result.simplified > 1 ? "s" : ""}{" "}
-                allégé{result.simplified > 1 ? "s" : ""} à 2000 points.
+                {tn(
+                  result.simplified,
+                  "{n} tracé allégé à 2000 points.",
+                  "{n} tracés allégés à 2000 points.",
+                )}
               </p>
             )}
             {maps.length > 1 && (
               <label>
-                <span>Carte</span>
+                <span>{t("Carte")}</span>
                 <select
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                 >
-                  <option value="">Toutes les cartes</option>
+                  <option value="">{t("Toutes les cartes")}</option>
                   {maps.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.name || MAIN_NAME}
+                      {m.name || mainName()}
                     </option>
                   ))}
                 </select>
@@ -249,20 +289,20 @@ export function ImportDialog({
             )}
             {own && (
               <Toggle
-                label="Garder les calques du fichier"
+                label={t("Garder les calques du fichier")}
                 checked={keepLayers}
                 onChange={setKeepLayers}
               />
             )}
             {(!own || !keepLayers) && (
               <ComboField
-                label="Calque"
+                label={t("Calque")}
                 value={layer}
                 onChange={setLayer}
                 options={lists("layers")}
                 quick={6}
                 maxLength={80}
-                hint="Un calque propre au fichier se masque d’un clic."
+                hint={t("Un calque propre au fichier se masque d’un clic.")}
               />
             )}
             <ColorField value={color} onChange={setColor} />
@@ -278,7 +318,7 @@ export function ImportDialog({
         )}
         <footer className="map-dialog-foot">
           <button type="button" className="push" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button
             type="button"
@@ -287,8 +327,8 @@ export function ImportDialog({
             onClick={run}
           >
             {result
-              ? `Importer ${kept} objet${kept > 1 ? "s" : ""}`
-              : "Importer"}
+              ? tn(kept, "Importer {n} objet", "Importer {n} objets")
+              : t("Importer")}
           </button>
         </footer>
       </div>

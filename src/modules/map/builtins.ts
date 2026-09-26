@@ -1,17 +1,26 @@
 // Simple markers drawn from an icon (lucide or a few drawn here), each with a
 // default colour and layer. Plain data so that the geographic exports can
 // name them without React; symbols.tsx maps `icon` to the component.
+// Names are shown in the language of the post (getter); `fr`, `group`,
+// `layer` and the ids stay French: they are codes, compared and stored.
+
+import { t, symbolLabel, symbolNames, type SymbolKey } from "./i18n-2.ts";
 
 export type BuiltinInfo = {
   id: string;
-  name: string;
+  /** French name (stable, searched in every language). */
+  fr: string;
+  /** Name in the language of the post. */
+  readonly name: string;
   /** Icon name (lucide-react export or one of the icons of symbols.tsx). */
   icon: string;
   color: string;
+  /** Default layer, French (see standardLayer in maps.ts). */
   layer: string;
+  /** Family, French (shown with groupLabel). */
   group: string;
-  /** Synonyms for the search. */
-  keywords?: string;
+  /** Synonyms for the search: French words and the names in DE / IT. */
+  readonly keywords?: string;
 };
 
 export const BUILTIN_GROUPS = [
@@ -40,7 +49,7 @@ const BROWN = "#92400e";
 
 const b = (
   id: string,
-  name: string,
+  name: SymbolKey,
   icon: string,
   color: string,
   layer: string,
@@ -48,12 +57,17 @@ const b = (
   keywords = "",
 ): BuiltinInfo => ({
   id: `b:${id}`,
-  name,
+  fr: name,
+  get name() {
+    return symbolLabel(name);
+  },
   icon,
   color,
   layer,
   group,
-  keywords,
+  get keywords() {
+    return `${symbolNames(name)} ${keywords}`;
+  },
 });
 
 export const BUILTIN_LIST: BuiltinInfo[] = [
@@ -1012,6 +1026,9 @@ export const customId = (id: string) => id.slice(CUSTOM_PREFIX.length);
 /** Names of the official symbols, filled once the catalog is loaded. */
 export const officialNames = new Map<string, string>();
 
+/** Family of a symbol (simple markers, official catalog) in the language of the post. */
+export const groupLabel = (group: string) => symbolLabel(group);
+
 /** Human name of a symbol value, whatever its kind. */
 export function symbolName(
   id: string,
@@ -1021,7 +1038,10 @@ export function symbolName(
   const known = builtinInfo(id);
   if (known) return known.name;
   if (isCustom(id))
-    return customs.find((c) => c.id === customId(id))?.name ?? "Signe";
-  if (OFFICIAL.test(id)) return officialNames.get(id) ?? "Signe officiel";
-  return "Signe";
+    return customs.find((c) => c.id === customId(id))?.name ?? t("Signe");
+  if (OFFICIAL.test(id)) {
+    const name = officialNames.get(id);
+    return name ? symbolLabel(name) : t("Signe officiel");
+  }
+  return t("Signe");
 }

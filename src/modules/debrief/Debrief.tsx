@@ -26,6 +26,10 @@ import { isExercise, tPlus, scenarioOf } from "../../../shared/exercise";
 import { RETEX_KINDS, type RetexNote } from "../../../shared/ops";
 import { requestReplay, type ReplaySpeed } from "../../timeline/playback";
 import { Direction } from "./Direction";
+import { formatTime } from "../../../shared/i18n/core.ts";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import "./debrief.css";
 
 // Débriefing (RETEX) of the journal: replay of the operation, figures of
@@ -37,15 +41,11 @@ import "./debrief.css";
 
 type Tab = "debrief" | "direction";
 
-const hhmm = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const hhmm = (ms: number) => formatTime(ms);
 
 export function Debrief() {
   const { live, exportCenter } = useApp();
+  useLang();
   const exercise = isExercise(live);
   const [tab, setTab] = useState<Tab>("debrief");
   const shown: Tab = exercise ? tab : "debrief";
@@ -54,8 +54,12 @@ export function Debrief() {
       <ModuleHead
         description={
           exercise
-            ? "Relecture, chiffres de la conduite et points à retenir. La direction d’exercice y prépare et joue le scénario."
-            : "Relecture de l’intervention, chiffres de la conduite et points à retenir (RETEX)."
+            ? t(
+                "Relecture, chiffres de la conduite et points à retenir. La direction d’exercice y prépare et joue le scénario.",
+              )
+            : t(
+                "Relecture de l’intervention, chiffres de la conduite et points à retenir (RETEX).",
+              )
         }
         actions={
           <>
@@ -63,7 +67,7 @@ export function Debrief() {
               onClick={() =>
                 exportCenter({ sections: ["exercise"], format: "pdf" })
               }
-              title="Débriefing en PDF (centre d’export)"
+              title={t("Débriefing en PDF (centre d’export)")}
             >
               <FileDown size={14} />
               PDF
@@ -72,7 +76,7 @@ export function Debrief() {
               onClick={() =>
                 exportCenter({ sections: ["exercise"], format: "docx" })
               }
-              title="Débriefing en Word (centre d’export)"
+              title={t("Débriefing en Word (centre d’export)")}
             >
               <FileText size={14} />
               Word
@@ -83,12 +87,12 @@ export function Debrief() {
       {exercise && (
         <div className="db-tabs">
           <Segmented<Tab>
-            label="Vue"
+            label={t("Vue")}
             value={shown}
             onChange={setTab}
             options={[
-              { value: "debrief", label: "Débriefing" },
-              { value: "direction", label: "Direction d’exercice" },
+              { value: "debrief", label: t("Débriefing") },
+              { value: "direction", label: t("Direction d’exercice") },
             ]}
           />
         </div>
@@ -115,23 +119,23 @@ function DebriefView() {
       <section className="card db-card" aria-labelledby="db-figures">
         <div className="card-head">
           <History size={18} />
-          <h2 id="db-figures">Chiffres de la conduite</h2>
+          <h2 id="db-figures">{t("Chiffres de la conduite")}</h2>
         </div>
         <Figures
-          label="Chiffres de la conduite"
+          label={t("Chiffres de la conduite")}
           items={[
             ...(exercise
               ? [
                   {
-                    label: "injects joués",
+                    label: t("injects joués"),
                     value: metrics.delivered,
                   },
                   {
-                    label: "réaction médiane",
+                    label: t("réaction médiane"),
                     value: minutesLabel(metrics.medianReaction),
                   },
                   {
-                    label: "injects en retard",
+                    label: t("injects en retard"),
                     value: metrics.lateInjects,
                     tone: metrics.lateInjects
                       ? ("crit" as const)
@@ -140,16 +144,19 @@ function DebriefView() {
                 ]
               : []),
             {
-              label: "échéances dépassées",
+              label: t("échéances dépassées"),
               value: metrics.overdue,
               tone: metrics.overdue ? "warn" : "",
             },
-            { label: "retard cumulé", value: minutesLabel(metrics.totalDelay) },
             {
-              label: "traitement médian d’un message",
+              label: t("retard cumulé"),
+              value: minutesLabel(metrics.totalDelay),
+            },
+            {
+              label: t("traitement médian d’un message"),
               value: minutesLabel(metrics.medianTreatment),
             },
-            { label: "entrées au journal", value: live.entries.length },
+            { label: t("entrées au journal"), value: live.entries.length },
           ]}
         />
       </section>
@@ -158,18 +165,18 @@ function DebriefView() {
         <section className="card db-card" aria-labelledby="db-injects">
           <div className="card-head">
             <Clapperboard size={18} />
-            <h2 id="db-injects">Réactions aux injects</h2>
+            <h2 id="db-injects">{t("Réactions aux injects")}</h2>
           </div>
           {played.length ? (
             <div className="db-scroll">
               <table className="grid dense db-table">
                 <thead>
                   <tr>
-                    <th>Joué</th>
-                    <th>Inject</th>
-                    <th>Réaction</th>
-                    <th>Délai</th>
-                    <th>État</th>
+                    <th>{t("Joué")}</th>
+                    <th>{t("Inject")}</th>
+                    <th>{t("Réaction")}</th>
+                    <th>{t("Délai")}</th>
+                    <th>{t("État")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,7 +194,7 @@ function DebriefView() {
                         <strong>{r.inject.title}</strong>
                         <small>
                           {r.inject.from || "—"} → {r.inject.to || "—"} ·{" "}
-                          {r.inject.via}
+                          {enumLabel(r.inject.via)}
                         </small>
                       </td>
                       <td>{r.reacted !== null ? r.how : "—"}</td>
@@ -195,12 +202,14 @@ function DebriefView() {
                       <td>
                         {r.late ? (
                           <span className="pill crit">
-                            retard {minutesLabel(r.delay)}
+                            {t("retard {delay}", {
+                              delay: minutesLabel(r.delay),
+                            })}
                           </span>
                         ) : r.reacted !== null ? (
-                          <span className="pill ok">à temps</span>
+                          <span className="pill ok">{t("à temps")}</span>
                         ) : (
-                          <span className="pill muted">en attente</span>
+                          <span className="pill muted">{t("en attente")}</span>
                         )}
                       </td>
                     </tr>
@@ -210,9 +219,9 @@ function DebriefView() {
             </div>
           ) : (
             <p className="muted">
-              Aucun inject joué pour l’instant. La réaction se mesure dès qu’un
-              inject arrive : message traité, inscrit au journal, lié à une
-              entrée, ou réaction marquée par la direction.
+              {t(
+                "Aucun inject joué pour l’instant. La réaction se mesure dès qu’un inject arrive : message traité, inscrit au journal, lié à une entrée, ou réaction marquée par la direction.",
+              )}
             </p>
           )}
         </section>
@@ -221,7 +230,7 @@ function DebriefView() {
       <div className="db-pair">
         <section className="card db-card" aria-labelledby="db-treatment">
           <div className="card-head">
-            <h2 id="db-treatment">Délai de traitement des messages</h2>
+            <h2 id="db-treatment">{t("Délai de traitement des messages")}</h2>
           </div>
           <Bars
             rows={metrics.treatment.map((b) => ({
@@ -229,16 +238,17 @@ function DebriefView() {
               value: b.count,
               tone: b.min === Infinity ? "warn" : "",
             }))}
-            empty="Aucun message reçu."
+            empty={t("Aucun message reçu.")}
           />
           <p className="db-note">
-            De la réception au premier traitement : message pris en charge,
-            inscrit au journal ou lié à une entrée.
+            {t(
+              "De la réception au premier traitement : message pris en charge, inscrit au journal ou lié à une entrée.",
+            )}
           </p>
         </section>
         <section className="card db-card" aria-labelledby="db-hours">
           <div className="card-head">
-            <h2 id="db-hours">Entrées au journal par heure</h2>
+            <h2 id="db-hours">{t("Entrées au journal par heure")}</h2>
           </div>
           <Columns rows={metrics.perHour} />
         </section>
@@ -247,7 +257,7 @@ function DebriefView() {
       <div className="db-pair">
         <section className="card db-card" aria-labelledby="db-deadlines">
           <div className="card-head">
-            <h2 id="db-deadlines">Échéances dépassées</h2>
+            <h2 id="db-deadlines">{t("Échéances dépassées")}</h2>
           </div>
           {metrics.deadlines.some((d) => d.delay > 0) ? (
             <ul className="db-list">
@@ -262,8 +272,11 @@ function DebriefView() {
                     </span>
                     <span className="db-list-text">{d.label}</span>
                     <span className="mono db-late">
-                      {d.closed === null ? "ouverte, " : ""}+
-                      {minutesLabel(d.delay)}
+                      {d.closed === null
+                        ? t("ouverte, +{delay}", {
+                            delay: minutesLabel(d.delay),
+                          })
+                        : `+${minutesLabel(d.delay)}`}
                     </span>
                   </li>
                 ))}
@@ -271,25 +284,27 @@ function DebriefView() {
           ) : (
             <p className="muted">
               {metrics.deadlines.length
-                ? `Les ${metrics.deadlines.length} échéances ont été tenues.`
-                : "Aucune entrée n’a d’échéance."}
+                ? t("Les {n} échéances ont été tenues.", {
+                    n: metrics.deadlines.length,
+                  })
+                : t("Aucune entrée n’a d’échéance.")}
             </p>
           )}
         </section>
         <section className="card db-card" aria-labelledby="db-people">
           <div className="card-head">
-            <h2 id="db-people">Qui a fait quoi</h2>
+            <h2 id="db-people">{t("Qui a fait quoi")}</h2>
           </div>
           {metrics.people.length ? (
             <div className="db-scroll">
               <table className="grid dense db-table">
                 <thead>
                   <tr>
-                    <th>Personne</th>
-                    <th>Entrées</th>
-                    <th>Corrections</th>
-                    <th>Messages</th>
-                    <th>Autres</th>
+                    <th>{t("Personne")}</th>
+                    <th>{t("Entrées")}</th>
+                    <th>{t("Corrections")}</th>
+                    <th>{t("Messages")}</th>
+                    <th>{t("Autres")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,7 +321,7 @@ function DebriefView() {
               </table>
             </div>
           ) : (
-            <p className="muted">Rien d’enregistré pour l’instant.</p>
+            <p className="muted">{t("Rien d’enregistré pour l’instant.")}</p>
           )}
         </section>
       </div>
@@ -337,45 +352,51 @@ function Replay() {
     <section className="card db-card" aria-labelledby="db-replay">
       <div className="card-head">
         <Clapperboard size={18} />
-        <h2 id="db-replay">Rejouer l’opération</h2>
+        <h2 id="db-replay">{t("Rejouer l’opération")}</h2>
       </div>
       <p className="db-note">
-        Toute l’application revient au début et avance seule : carte, journal,
-        messages et moyens bougent ensemble. Changez de module pendant la
-        relecture ; la barre du bas met en pause ou revient au direct.
+        {t(
+          "Toute l’application revient au début et avance seule : carte, journal, messages et moyens bougent ensemble. Changez de module pendant la relecture ; la barre du bas met en pause ou revient au direct.",
+        )}
       </p>
       <div className="db-actions">
         <button className="primary" onClick={() => play("x60")}>
-          Rejouer ×60
+          {t("Rejouer ×{speed}", { speed: 60 })}
         </button>
-        <button onClick={() => play("x10")}>Rejouer ×10</button>
+        <button onClick={() => play("x10")}>
+          {t("Rejouer ×{speed}", { speed: 10 })}
+        </button>
         <span className="muted mono">
-          depuis {dateTime(new Date(start).toISOString())}
+          {t("depuis {date}", {
+            date: dateTime(new Date(start).toISOString()),
+          })}
         </span>
       </div>
       {viewAt !== null && (
         <div className="db-moment">
           <p className="mono">
-            Moment affiché : {dateTime(new Date(viewAt).toISOString())}
+            {t("Moment affiché : {date}", {
+              date: dateTime(new Date(viewAt).toISOString()),
+            })}
           </p>
           <Figures
             compact
-            label="Situation au moment affiché"
+            label={t("Situation au moment affiché")}
             items={[
-              { label: "entrées", value: journal.entries.length },
-              { label: "points ouverts", value: open.length },
+              { label: t("entrées"), value: journal.entries.length },
+              { label: t("points ouverts"), value: open.length },
               {
-                label: "en retard",
+                label: t("en retard"),
                 value: late.length,
                 tone: late.length ? "crit" : "",
               },
               {
-                label: "messages non lus",
+                label: t("messages non lus"),
                 value: journal.ops.messages.filter(
                   (m) => m.status === "Nouveau",
                 ).length,
               },
-              { label: "moyens engagés", value: engaged.length },
+              { label: t("moyens engagés"), value: engaged.length },
             ]}
           />
           {last.length > 0 && (
@@ -422,20 +443,28 @@ function Bars({
 
 function Columns({ rows }: { rows: { hour: string; count: number }[] }) {
   const top = Math.max(0, ...rows.map((r) => r.count));
-  if (!rows.length) return <p className="muted">Aucune entrée au journal.</p>;
+  if (!rows.length)
+    return <p className="muted">{t("Aucune entrée au journal.")}</p>;
   const shown = rows.slice(-24);
   return (
     <div
       className="db-columns"
       role="list"
-      aria-label="Entrées au journal par heure"
+      aria-label={t("Entrées au journal par heure")}
     >
       {shown.map((r) => (
         <div
           role="listitem"
           key={r.hour}
           className="db-column"
-          title={`${r.hour} h : ${r.count} entrée${r.count > 1 ? "s" : ""}`}
+          title={tn(
+            r.count,
+            "{hour} h : {n} entrée",
+            "{hour} h : {n} entrées",
+            {
+              hour: r.hour,
+            },
+          )}
         >
           <strong className={`mono${r.count ? "" : " zero"}`}>{r.count}</strong>
           <span className="db-column-bar" aria-hidden="true">
@@ -450,10 +479,8 @@ function Columns({ rows }: { rows: { hour: string; count: number }[] }) {
 
 // ---------- Notes « points positifs / à améliorer » ----------
 
-const KIND_LABEL: Record<RetexNote["kind"], string> = {
-  positif: "Points positifs",
-  amélioration: "À améliorer",
-};
+const kindLabel = (kind: RetexNote["kind"]) =>
+  kind === "positif" ? t("Points positifs") : t("À améliorer");
 
 function Notes() {
   const { live, record, canWrite, updateOps, toast } = useApp();
@@ -507,7 +534,7 @@ function Notes() {
               ) : (
                 <Wrench size={18} />
               )}
-              <h2 id={`db-notes-${kind}`}>{KIND_LABEL[kind]}</h2>
+              <h2 id={`db-notes-${kind}`}>{kindLabel(kind)}</h2>
             </div>
             {list.length ? (
               <ul className="db-notes">
@@ -523,8 +550,8 @@ function Notes() {
                     <button
                       className="icon-button"
                       onClick={() => remove(n)}
-                      aria-label="Retirer ce point"
-                      title="Retirer ce point"
+                      aria-label={t("Retirer ce point")}
+                      title={t("Retirer ce point")}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -534,8 +561,8 @@ function Notes() {
             ) : (
               <p className="muted">
                 {kind === "positif"
-                  ? "Ce qui a bien marché et qu’il faut garder."
-                  : "Ce qu’il faudra faire autrement la prochaine fois."}
+                  ? t("Ce qui a bien marché et qu’il faut garder.")
+                  : t("Ce qu’il faudra faire autrement la prochaine fois.")}
               </p>
             )}
             <form
@@ -548,10 +575,10 @@ function Notes() {
               <input
                 value={topic[kind]}
                 onChange={(e) =>
-                  setTopic((t) => ({ ...t, [kind]: e.target.value }))
+                  setTopic((x) => ({ ...x, [kind]: e.target.value }))
                 }
-                placeholder="Domaine (facultatif)"
-                aria-label="Domaine"
+                placeholder={t("Domaine (facultatif)")}
+                aria-label={t("Domaine")}
                 maxLength={120}
                 className="db-topic"
               />
@@ -562,16 +589,20 @@ function Notes() {
                 }
                 placeholder={
                   kind === "positif"
-                    ? "Ex. Les quittances radio ont été consignées tout de suite."
-                    : "Ex. Désigner plus tôt un responsable pour l’hébergement."
+                    ? t(
+                        "Ex. Les quittances radio ont été consignées tout de suite.",
+                      )
+                    : t(
+                        "Ex. Désigner plus tôt un responsable pour l’hébergement.",
+                      )
                 }
-                aria-label={KIND_LABEL[kind]}
+                aria-label={kindLabel(kind)}
                 rows={2}
                 maxLength={4000}
               />
               <button type="submit" disabled={!draft[kind].trim()}>
                 <Plus size={14} />
-                Ajouter
+                {t("Ajouter")}
               </button>
             </form>
           </section>

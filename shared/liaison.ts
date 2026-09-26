@@ -13,6 +13,8 @@ import {
 import { MESSAGE_PRIORITIES, messageSchema, type Ops } from "./ops.ts";
 import { norm } from "./diffusion.ts";
 import { normalizeCode } from "./room.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t as tr } from "./i18n/liaison.ts";
 
 // Liaison between two command posts (PC front ↔ PC arrière), each with its
 // own session. A liaison code (made like a session code) opens another room
@@ -284,7 +286,14 @@ export function toForward(
     const env = ackEnvelope(l, a, author, now);
     if (!queued.has(env.id))
       out.push(
-        outgoing(l, env, `${a.kind} · ${b.title}`, `ack:${a.id}`, author, now),
+        outgoing(
+          l,
+          env,
+          `${enumLabel(a.kind)} · ${b.title}`,
+          `ack:${a.id}`,
+          author,
+          now,
+        ),
       );
   }
   return out;
@@ -359,7 +368,7 @@ export function applyEnvelope(
         status: "Nouveau",
         entryId: "",
         handledBy: "",
-        notes: `Reçu par la liaison avec ${liaison.name}.`,
+        notes: tr("Reçu par la liaison avec {name}.", { name: liaison.name }),
         tags: ["liaison"],
         number: context.messageNumber,
         node: context.node,
@@ -406,12 +415,20 @@ export function applyEnvelope(
       created.push(`broadcast:${b.id}`);
     }
     inboxMessage(b.id, {
-      subject: `${b.kind || "Diffusion"} : ${b.title}`,
+      subject: tr("{kind} : {title}", {
+        kind: b.kind || tr("Diffusion"),
+        title: b.title,
+      }),
       body: [
         b.body,
         env.order &&
-          `Ordre ${env.from} n° ${env.order.number} · ${env.order.title}`,
-        b.ack !== "Aucun" && `Accusé demandé : « ${b.ack} ».`,
+          tr("Ordre {from} n° {number} · {title}", {
+            from: env.from,
+            number: env.order.number,
+            title: env.order.title,
+          }),
+        b.ack !== "Aucun" &&
+          tr("Accusé demandé : « {ack} ».", { ack: enumLabel(b.ack) }),
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -420,7 +437,7 @@ export function applyEnvelope(
     });
   } else if (env.kind === "ack" && env.ack) {
     const a = env.ack;
-    title = `${a.kind} · ${liaison.name}`;
+    title = `${enumLabel(a.kind)} · ${liaison.name}`;
     target = `ack:${a.id}`;
     const ours = next.broadcasts.find((b) => b.id === a.broadcastId);
     if (ours && !next.acks.some((x) => x.id === a.id)) {

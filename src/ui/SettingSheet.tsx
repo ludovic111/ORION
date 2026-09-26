@@ -5,6 +5,7 @@ import { useApp } from "../app/context";
 import { Sheet } from "./Sheet";
 import { RecordFields, type FieldSpec } from "./records";
 import { TraceLine } from "../timeline/TraceLine";
+import { t } from "./i18n.ts";
 
 type Value = Record<string, unknown>;
 
@@ -53,7 +54,7 @@ export function SettingSheet({
           author,
         ),
       );
-      toast(existing ? "Modifications enregistrées." : "Ajouté.");
+      toast(existing ? t("Modifications enregistrées.") : t("Ajouté."));
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -67,28 +68,28 @@ export function SettingSheet({
       onClose={onClose}
       footer={
         readOnly ? (
-          <span className="muted">Lecture seule.</span>
+          <span className="muted">{t("Lecture seule.")}</span>
         ) : (
           <>
             {existing && (
               <button
                 className="danger"
                 onClick={() => {
-                  if (!canWrite() || !window.confirm("Supprimer ?")) return;
+                  if (!canWrite() || !window.confirm(t("Supprimer ?"))) return;
                   updateOps((ops) => removeRecords(ops, [existing]));
-                  toast("Supprimé.");
+                  toast(t("Supprimé."));
                   onClose();
                 }}
               >
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             )}
             <button className="push" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button className="primary" onClick={save}>
-              {existing ? "Enregistrer" : "Ajouter"}
+              {existing ? t("Enregistrer") : t("Ajouter")}
             </button>
           </>
         )

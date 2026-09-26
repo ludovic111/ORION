@@ -1,5 +1,7 @@
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { esc, hexColor } from "./text.ts";
+import { locale } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 import {
   PAGE_W,
   type Anim,
@@ -67,7 +69,7 @@ function runProps(
   const size = run.size ?? p.size;
   const bold = run.bold ?? p.bold;
   const spc = p.spacing ? ` spc="${Math.round(p.spacing * 50)}"` : "";
-  return `<${tag} lang="fr-CH" sz="${hpt(size)}"${bold ? ' b="1"' : ""}${spc} dirty="0">${solid(run.color ?? p.color, p.alpha)}<a:latin typeface="${FONT}"/><a:cs typeface="${FONT}"/></${tag}>`;
+  return `<${tag} lang="${locale()}" sz="${hpt(size)}"${bold ? ' b="1"' : ""}${spc} dirty="0">${solid(run.color ?? p.color, p.alpha)}<a:latin typeface="${FONT}"/><a:cs typeface="${FONT}"/></${tag}>`;
 }
 
 function paragraph(p: Para) {
@@ -89,7 +91,7 @@ function textBody(shape: BoxShape) {
   const anchor = { t: "t", m: "ctr", b: "b" }[shape.valign ?? "t"];
   const paras = shape.paras?.length
     ? shape.paras.map(paragraph).join("")
-    : '<a:p><a:endParaRPr lang="fr-CH" dirty="0"/></a:p>';
+    : `<a:p><a:endParaRPr lang="${locale()}" dirty="0"/></a:p>`;
   return `<p:txBody><a:bodyPr wrap="square" lIns="${pad}" tIns="${pad}" rIns="${pad}" bIns="${pad}" anchor="${anchor}" rtlCol="0"><a:noAutofit/></a:bodyPr><a:lstStyle/>${paras}</p:txBody>`;
 }
 
@@ -287,19 +289,23 @@ function master(p: Palette) {
   return `${HEAD}<p:sldMaster ${NS}><p:cSld><p:bg><p:bgPr>${solid(p.bg)}<a:effectLst/></p:bgPr></p:bg><p:spTree>${GROUP}</p:spTree></p:cSld><p:clrMap ${CLR_MAP}/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle>${level(4400)}</p:titleStyle><p:bodyStyle>${level(2800)}</p:bodyStyle><p:otherStyle>${level(1800)}</p:otherStyle></p:txStyles></p:sldMaster>`;
 }
 
-const LAYOUT = `${HEAD}<p:sldLayout ${NS} type="blank" preserve="1"><p:cSld name="Vide"><p:spTree>${GROUP}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+// Names seen in PowerPoint (layouts, selection pane) and the language of
+// the texts follow the post: built when the file is written.
+const layoutXml = () =>
+  `${HEAD}<p:sldLayout ${NS} type="blank" preserve="1"><p:cSld name="${esc(t("Vide"))}"><p:spTree>${GROUP}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
 
-const NOTES_MASTER = `${HEAD}<p:notesMaster ${NS}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree>${GROUP}<p:sp><p:nvSpPr><p:cNvPr id="2" name="Image de la diapositive"/><p:cNvSpPr><a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg" idx="2"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="1143000"/><a:ext cx="5486400" cy="3086100"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="12700"><a:solidFill><a:prstClr val="black"/></a:solidFill></a:ln></p:spPr></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="Notes"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" sz="quarter" idx="3"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="4400550"/><a:ext cx="5486400" cy="3600450"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr vert="horz" lIns="91440" tIns="45720" rIns="91440" bIns="45720" rtlCol="0"/><a:lstStyle/><a:p><a:pPr lvl="0"/><a:r><a:rPr lang="fr-CH"/><a:t>Notes</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld><p:clrMap ${CLR_MAP}/><p:notesStyle>${level(1200)}</p:notesStyle></p:notesMaster>`;
+const notesMasterXml = () =>
+  `${HEAD}<p:notesMaster ${NS}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree>${GROUP}<p:sp><p:nvSpPr><p:cNvPr id="2" name="${esc(t("Image de la diapositive"))}"/><p:cNvSpPr><a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg" idx="2"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="1143000"/><a:ext cx="5486400" cy="3086100"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="12700"><a:solidFill><a:prstClr val="black"/></a:solidFill></a:ln></p:spPr></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="${esc(t("Notes"))}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" sz="quarter" idx="3"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="4400550"/><a:ext cx="5486400" cy="3600450"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr vert="horz" lIns="91440" tIns="45720" rIns="91440" bIns="45720" rtlCol="0"/><a:lstStyle/><a:p><a:pPr lvl="0"/><a:r><a:rPr lang="${locale()}"/><a:t>${esc(t("Notes"))}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld><p:clrMap ${CLR_MAP}/><p:notesStyle>${level(1200)}</p:notesStyle></p:notesMaster>`;
 
 function notesSlide(text: string) {
   const paras = (text.trim() ? text.trim().split("\n") : [""])
     .map((line) =>
       line
-        ? `<a:p><a:r><a:rPr lang="fr-CH" dirty="0"/><a:t>${esc(line)}</a:t></a:r></a:p>`
-        : '<a:p><a:endParaRPr lang="fr-CH" dirty="0"/></a:p>',
+        ? `<a:p><a:r><a:rPr lang="${locale()}" dirty="0"/><a:t>${esc(line)}</a:t></a:r></a:p>`
+        : `<a:p><a:endParaRPr lang="${locale()}" dirty="0"/></a:p>`,
     )
     .join("");
-  return `${HEAD}<p:notes ${NS}><p:cSld><p:spTree>${GROUP}<p:sp><p:nvSpPr><p:cNvPr id="2" name="Image de la diapositive"/><p:cNvSpPr><a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="Notes"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>${paras}</p:txBody></p:sp></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:notes>`;
+  return `${HEAD}<p:notes ${NS}><p:cSld><p:spTree>${GROUP}<p:sp><p:nvSpPr><p:cNvPr id="2" name="${esc(t("Image de la diapositive"))}"/><p:cNvSpPr><a:spLocks noGrp="1" noRot="1" noChangeAspect="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="${esc(t("Notes"))}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>${paras}</p:txBody></p:sp></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:notes>`;
 }
 
 const w3c = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -447,7 +453,7 @@ export function writePptx(
   );
   put(
     "docProps/app.xml",
-    `${HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><TotalTime>0</TotalTime><Words>0</Words><Application>orion aic</Application><PresentationFormat>Grand écran</PresentationFormat><Paragraphs>0</Paragraphs><Slides>${slides.length}</Slides><Notes>${slides.length}</Notes><HiddenSlides>0</HiddenSlides><MMClips>0</MMClips><ScaleCrop>false</ScaleCrop><Company>orion aic</Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>16.0000</AppVersion></Properties>`,
+    `${HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><TotalTime>0</TotalTime><Words>0</Words><Application>orion aic</Application><PresentationFormat>${esc(t("Grand écran"))}</PresentationFormat><Paragraphs>0</Paragraphs><Slides>${slides.length}</Slides><Notes>${slides.length}</Notes><HiddenSlides>0</HiddenSlides><MMClips>0</MMClips><ScaleCrop>false</ScaleCrop><Company>orion aic</Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>16.0000</AppVersion></Properties>`,
   );
   put(
     "ppt/_rels/presentation.xml.rels",
@@ -504,7 +510,7 @@ export function writePptx(
       { id: "rId2", type: "theme", target: "../theme/theme1.xml" },
     ]),
   );
-  put("ppt/slideLayouts/slideLayout1.xml", LAYOUT);
+  put("ppt/slideLayouts/slideLayout1.xml", layoutXml());
   put(
     "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
     rels([
@@ -515,7 +521,7 @@ export function writePptx(
       },
     ]),
   );
-  put("ppt/notesMasters/notesMaster1.xml", NOTES_MASTER);
+  put("ppt/notesMasters/notesMaster1.xml", notesMasterXml());
   put(
     "ppt/notesMasters/_rels/notesMaster1.xml.rels",
     rels([{ id: "rId1", type: "theme", target: "../theme/theme2.xml" }]),

@@ -3,6 +3,7 @@ import { zip } from "./bytes.ts";
 import { coverFacts, tablesOf, type Dossier } from "./dossier.ts";
 import type { DocumentOptions } from "./docx.ts";
 import type { DocumentStamp } from "./stamp.ts";
+import { t } from "./i18n.ts";
 
 // Text formats of a dossier: Markdown, plain text, structured JSON and
 // delimited tables (CSV with ";" or TSV, UTF-8 with BOM, one file per table,
@@ -15,7 +16,7 @@ const slug = (s: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 50) || "tableau";
+    .slice(0, 50) || t("tableau");
 
 // ---------- Markdown ----------
 
@@ -28,13 +29,21 @@ export function dossierMarkdown(dossier: Dossier, o: DocumentOptions): string {
   const out: string[] = [
     `# ${c.title}`,
     "",
-    `*orion aic · dossier de l’opération${o.watermark ? ` · **${o.watermark}**` : ""}*`,
+    `*orion aic · ${t("dossier de l’opération")}${o.watermark ? ` · **${o.watermark}**` : ""}*`,
     "",
-    ...coverFacts(c).map(([k, v]) => `- **${k}** : ${v}`),
-    `- **Document n°** : \`${o.stamp.id}\``,
-    `- **Empreinte** : \`${o.stamp.fingerprint}\``,
+    ...coverFacts(c).map(([k, v]) =>
+      t("{label} : {value}", { label: `- **${k}**`, value: v }),
+    ),
+    t("{label} : {value}", {
+      label: `- **${t("Document n°")}**`,
+      value: `\`${o.stamp.id}\``,
+    }),
+    t("{label} : {value}", {
+      label: `- **${t("Empreinte")}**`,
+      value: `\`${o.stamp.fingerprint}\``,
+    }),
     "",
-    "## Sommaire",
+    `## ${t("Sommaire")}`,
     "",
     ...dossier.chapters.map(
       (ch) => `${ch.number}. **${ch.title}** · ${ch.summary}`,
@@ -49,15 +58,18 @@ export function dossierMarkdown(dossier: Dossier, o: DocumentOptions): string {
       } else if (b.kind === "map") {
         out.push(
           "",
-          `### Carte · ${b.title}`,
+          `### ${t("Carte · {title}", { title: b.title })}`,
           "",
-          `${b.caption}. Image et données géographiques : exports PNG, GeoJSON, KML ou GPX.`,
+          t(
+            "{caption}. Image et données géographiques : exports PNG, GeoJSON, KML ou GPX.",
+            { caption: b.caption },
+          ),
         );
       } else {
         const view = b.table.compact ?? b.table;
         out.push("", `### ${b.table.title}`, "", `*${b.table.caption}*`, "");
         if (!view.rows.length) {
-          out.push("Aucun élément.");
+          out.push(t("Aucun élément."));
           continue;
         }
         out.push(
@@ -76,7 +88,7 @@ export function dossierMarkdown(dossier: Dossier, o: DocumentOptions): string {
     "---",
     "",
     `${o.stamp.label}  `,
-    `Vérification : \`${o.stamp.qr}\``,
+    t("Vérification : {code}", { code: `\`${o.stamp.qr}\`` }),
     "",
   );
   return out.join("\n");
@@ -90,14 +102,19 @@ export function dossierText(dossier: Dossier, o: DocumentOptions): string {
     `${s}\n${ch.repeat(Math.min(78, s.length))}`;
   const out: string[] = [
     rule(c.title.toUpperCase()),
-    "orion aic · dossier de l’opération",
+    `orion aic · ${t("dossier de l’opération")}`,
     ...(o.watermark ? [`*** ${o.watermark} ***`] : []),
     "",
-    ...coverFacts(c).map(([k, v]) => `${k} : ${v}`),
-    `Document n° : ${o.stamp.id}`,
-    `Empreinte : ${o.stamp.fingerprint}`,
+    ...coverFacts(c).map(([k, v]) =>
+      t("{label} : {value}", { label: k, value: v }),
+    ),
+    t("{label} : {value}", { label: t("Document n°"), value: o.stamp.id }),
+    t("{label} : {value}", {
+      label: t("Empreinte"),
+      value: o.stamp.fingerprint,
+    }),
     "",
-    "SOMMAIRE",
+    t("Sommaire").toUpperCase(),
     ...dossier.chapters.map(
       (ch) => `  ${ch.number}. ${ch.title} · ${ch.summary}`,
     ),
@@ -109,24 +126,39 @@ export function dossierText(dossier: Dossier, o: DocumentOptions): string {
         out.push("", rule(b.title, "-"), b.body);
         if (b.meta) out.push(`(${b.meta})`);
       } else if (b.kind === "map") {
-        out.push("", rule(`Carte · ${b.title}`, "-"), b.caption);
+        out.push(
+          "",
+          rule(t("Carte · {title}", { title: b.title }), "-"),
+          b.caption,
+        );
       } else {
-        const t = b.table;
-        out.push("", rule(`${t.title} (${t.caption})`, "-"));
-        if (!t.rows.length) out.push("Aucun élément.");
+        const table = b.table;
+        out.push("", rule(`${table.title} (${table.caption})`, "-"));
+        if (!table.rows.length) out.push(t("Aucun élément."));
         // One record per block: readable whatever the number of columns.
-        for (const r of t.rows)
+        for (const r of table.rows)
           out.push(
             "",
-            ...t.columns
+            ...table.columns
               .map((col, i) => [col.label, r[i] ?? ""])
               .filter(([, v]) => v)
-              .map(([k, v]) => `${k} : ${v.replaceAll("\n", "\n    ")}`),
+              .map(([k, v]) =>
+                t("{label} : {value}", {
+                  label: k,
+                  value: v.replaceAll("\n", "\n    "),
+                }),
+              ),
           );
       }
     }
   }
-  out.push("", "", o.stamp.label, `Vérification : ${o.stamp.qr}`, "");
+  out.push(
+    "",
+    "",
+    o.stamp.label,
+    t("Vérification : {code}", { code: o.stamp.qr }),
+    "",
+  );
   return out.join("\n");
 }
 
@@ -216,18 +248,20 @@ export function dossierDelimited(
     `${dossier.cover.title} · ${dossier.cover.shown}`,
     `${dossier.cover.scope}`,
     "",
-    `Un fichier par tableau, UTF-8, séparateur ${separator === ";" ? "point-virgule" : "tabulation"}.`,
+    separator === ";"
+      ? t("Un fichier par tableau, UTF-8, séparateur point-virgule.")
+      : t("Un fichier par tableau, UTF-8, séparateur tabulation."),
     "",
     ...files.map((f) => f.name),
     "",
     stamp.label,
-    `Vérification : ${stamp.qr}`,
+    t("Vérification : {code}", { code: stamp.qr }),
     "",
   ].join("\r\n");
   return {
     files,
     zip: zip({
-      "LISEZMOI.txt": readme,
+      [t("LISEZMOI.txt")]: readme,
       ...Object.fromEntries(files.map((f) => [f.name, f.data])),
     }),
   };

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { InkStroke } from "./layout";
+import { t } from "./i18n.ts";
 
 // Freehand annotations over the slide (pen, highlighter, eraser) and the
 // laser pointer with its fading trail. Pointer events: mouse, finger and
@@ -7,12 +8,22 @@ import type { InkStroke } from "./layout";
 // those of the 1920 × 1080 stage, whatever its size on screen.
 
 export type Tool = "none" | "pen" | "marker" | "laser" | "eraser";
+const ink = (
+  hex: string,
+  name: "Rouge" | "Jaune" | "Vert" | "Bleu" | "Blanc",
+) => ({
+  hex,
+  /** Name of the colour, in the language of the post. */
+  get label() {
+    return t(name);
+  },
+});
 export const INK_COLORS = [
-  { hex: "FF3B5C", label: "Rouge" },
-  { hex: "FFB020", label: "Jaune" },
-  { hex: "22D39A", label: "Vert" },
-  { hex: "2EA8FF", label: "Bleu" },
-  { hex: "FFFFFF", label: "Blanc" },
+  ink("FF3B5C", "Rouge"),
+  ink("FFB020", "Jaune"),
+  ink("22D39A", "Vert"),
+  ink("2EA8FF", "Bleu"),
+  ink("FFFFFF", "Blanc"),
 ] as const;
 const W = 1920;
 const H = 1080;
@@ -258,7 +269,7 @@ export function InkLayer({
         onPointerUp={up}
         onPointerCancel={up}
         onPointerLeave={() => tool === "laser" || up()}
-        aria-label={tool === "none" ? undefined : "Zone d’annotation"}
+        aria-label={tool === "none" ? undefined : t("Zone d’annotation")}
       />
     </>
   );

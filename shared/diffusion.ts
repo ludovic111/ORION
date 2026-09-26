@@ -7,6 +7,8 @@ import {
 } from "./journal.ts";
 import type { Ack, Broadcast } from "./conduct.ts";
 import { orderLabels } from "./orders.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t as tr } from "./i18n/diffusion.ts";
 
 // Who a post is (its function, its operator, its cell, its command post),
 // who a diffusion or a task is meant for, and what is still waiting.
@@ -207,7 +209,9 @@ export function myTasks(
       ref: `entry:${e.id}`,
       id: e.id,
       title: `${numberLabel(e)} ${f.message.split("\n")[0].slice(0, 140)}`,
-      detail: [f.type, f.status, f.assignee].filter(Boolean).join(" · "),
+      detail: [enumLabel(f.type), enumLabel(f.status), f.assignee]
+        .filter(Boolean)
+        .join(" · "),
       due,
       late: overdue(e, now),
       urgent: f.priority === "Urgent",
@@ -230,7 +234,7 @@ export function myTasks(
       kind: "assignment",
       ref: a.target,
       id: a.id,
-      title: a.note.split("\n")[0] || "Élément attribué",
+      title: a.note.split("\n")[0] || tr("Élément attribué"),
       detail: [a.role, a.person].filter(Boolean).join(" · "),
       due,
       late: due !== null && due < now,
@@ -251,8 +255,11 @@ export function myTasks(
         ref: `order:${o.id}`,
         id: m.id,
         orderId: o.id,
-        title: m.task.split("\n")[0] || "Mission",
-        detail: [`Ordre ${labels.get(o.id) ?? o.number}`, m.unit]
+        title: m.task.split("\n")[0] || tr("Mission"),
+        detail: [
+          tr("Ordre {label}", { label: labels.get(o.id) ?? o.number }),
+          m.unit,
+        ]
           .filter(Boolean)
           .join(" · "),
         due,
@@ -270,7 +277,11 @@ export function myTasks(
       ref: `broadcast:${b.id}`,
       id: b.id,
       title: b.title,
-      detail: [`À quittancer (${b.ack})`, b.sender, recipients.join(", ")]
+      detail: [
+        tr("À quittancer ({ack})", { ack: enumLabel(b.ack) }),
+        b.sender,
+        recipients.map((r) => enumLabel(r)).join(", "),
+      ]
         .filter(Boolean)
         .join(" · "),
       due,

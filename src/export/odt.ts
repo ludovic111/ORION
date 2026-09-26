@@ -2,7 +2,16 @@ import { xml } from "../../shared/interchange.ts";
 import { XML_HEAD, qrPng, zip } from "./bytes.ts";
 import { coverFacts, type Column, type Dossier } from "./dossier.ts";
 import { DOCUMENT_ROWS, mapBytes, type DocumentOptions } from "./docx.ts";
-import { ODF_NS, bookInfo, odfManifest, odfMeta, odfText } from "./sheets.ts";
+import {
+  ODF_NS,
+  bookInfo,
+  odfLanguage,
+  odfManifest,
+  odfMeta,
+  odfText,
+} from "./sheets.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 // OpenDocument text (.odt) of a dossier: same content as the Word file.
 // Named styles (Heading 1/2 with outline levels), table of contents, tables
@@ -113,7 +122,7 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
     header = true,
     firstBold = false,
   ) => {
-    const t = table(
+    const made = table(
       `Tableau${++tables}`,
       columns,
       rows,
@@ -121,13 +130,13 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
       header,
       firstBold,
     );
-    auto.push(t.style);
-    body.push(t.body);
+    auto.push(made.style);
+    body.push(made.body);
   };
   const c = dossier.cover;
 
   // Cover.
-  body.push(p("orion aic · dossier de l’opération", "Kicker"));
+  body.push(p(`orion aic · ${t("dossier de l’opération")}`, "Kicker"));
   body.push(p(c.title, "Title"));
   body.push(
     p(
@@ -138,21 +147,21 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
   if (o.watermark) body.push(p(o.watermark, "Mention"));
   addTable(
     [
-      { label: "Propriété", weight: 1 },
-      { label: "Valeur", weight: 2.6 },
+      { label: t("Propriété"), weight: 1 },
+      { label: t("Valeur"), weight: 2.6 },
     ],
     [
       ...coverFacts(c),
-      ["Document n°", o.stamp.id],
-      ["Empreinte", o.stamp.fingerprint],
+      [t("Document n°"), o.stamp.id],
+      [t("Empreinte"), o.stamp.fingerprint],
     ],
     false,
     true,
   );
-  body.push(image(qr(), 3, 3, "QR de vérification"));
+  body.push(image(qr(), 3, 3, t("QR de vérification")));
   body.push(
     p(
-      `Vérification : ce code identifie l’export et l’empreinte de son contenu. Dans orion aic, Traçabilité → Vérifier un document.\n${o.stamp.label}`,
+      `${t("Vérification : ce code identifie l’export et l’empreinte de son contenu. Dans orion aic, Traçabilité → Vérifier un document.")}\n${o.stamp.label}`,
       "Caption",
     ),
   );
@@ -164,11 +173,11 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
   for (const ch of dossier.chapters) {
     toc(`${ch.number}. ${ch.title}`, 1);
     for (const b of ch.blocks)
-      if (b.kind === "map") toc(`Carte · ${b.title}`, 2);
+      if (b.kind === "map") toc(t("Carte · {title}", { title: b.title }), 2);
       else if (b.kind === "table") toc(b.table.title, 2);
   }
   body.push(
-    `<text:table-of-content text:style-name="Sect1" text:protected="true" text:name="Sommaire"><text:table-of-content-source text:outline-level="2" text:use-index-marks="false"><text:index-title-template text:style-name="Contents_20_Heading">Sommaire</text:index-title-template>${[
+    `<text:table-of-content text:style-name="Sect1" text:protected="true" text:name="Sommaire"><text:table-of-content-source text:outline-level="2" text:use-index-marks="false"><text:index-title-template text:style-name="Contents_20_Heading">${odfText(t("Sommaire"))}</text:index-title-template>${[
       1, 2,
     ]
       .map(
@@ -177,7 +186,7 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
       )
       .join(
         "",
-      )}</text:table-of-content-source><text:index-body><text:index-title text:style-name="Sect1" text:name="Sommaire_Head">${p("Sommaire", "Contents_20_Heading")}</text:index-title>${index.join("")}</text:index-body></text:table-of-content>`,
+      )}</text:table-of-content-source><text:index-body><text:index-title text:style-name="Sect1" text:name="Sommaire_Head">${p(t("Sommaire"), "Contents_20_Heading")}</text:index-title>${index.join("")}</text:index-body></text:table-of-content>`,
   );
 
   // Chapters.
@@ -195,7 +204,10 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
         if (b.meta) body.push(p(b.meta, "Caption"));
         continue;
       }
-      const title = b.kind === "map" ? `Carte · ${b.title}` : b.table.title;
+      const title =
+        b.kind === "map"
+          ? t("Carte · {title}", { title: b.title })
+          : b.table.title;
       body.push(
         `<text:h text:style-name="Heading_20_2" text:outline-level="2">${odfText(title)}</text:h>`,
       );
@@ -211,7 +223,13 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
             h = max;
           }
           body.push(
-            image(mapBytes(picture), w, h, `Carte ${b.title}`, "Centered"),
+            image(
+              mapBytes(picture),
+              w,
+              h,
+              t("Carte {title}", { title: b.title }),
+              "Centered",
+            ),
           );
         }
         body.push(
@@ -222,16 +240,19 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
         );
         continue;
       }
-      const t = b.table;
-      const view = t.compact ?? t;
-      body.push(p(t.caption, "Caption"));
+      const tbl = b.table;
+      const view = tbl.compact ?? tbl;
+      body.push(p(tbl.caption, "Caption"));
       const rows = view.rows.slice(0, DOCUMENT_ROWS);
       if (rows.length) addTable(view.columns, rows);
-      else body.push(p("Aucun élément.", "Caption"));
+      else body.push(p(t("Aucun élément."), "Caption"));
       if (view.rows.length > rows.length)
         body.push(
           p(
-            `… ${view.rows.length - rows.length} lignes de plus dans les exports tableur (Excel, OpenDocument, CSV).`,
+            t(
+              "… {n} lignes de plus dans les exports tableur (Excel, OpenDocument, CSV).",
+              { n: view.rows.length - rows.length },
+            ),
             "Caption",
           ),
         );
@@ -240,14 +261,17 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
 
   // Verification at the end.
   body.push(
-    `<text:h text:style-name="Heading_20_1" text:outline-level="1">${odfText("Vérification de ce document")}</text:h>`,
+    `<text:h text:style-name="Heading_20_1" text:outline-level="1">${odfText(t("Vérification de ce document"))}</text:h>`,
   );
   body.push(
     p(
-      `Ce document a été produit par orion aic. Son contenu a l’empreinte ${o.stamp.fingerprint} ; l’export porte le numéro ${o.stamp.id}. L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération. Pour vérifier un exemplaire, déposez le fichier dans orion aic (Traçabilité → Vérifier un document) ou scannez le code ci-dessous.`,
+      t(
+        "Ce document a été produit par orion aic. Son contenu a l’empreinte {fingerprint} ; l’export porte le numéro {id}. L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération. Pour vérifier un exemplaire, déposez le fichier dans orion aic (Traçabilité → Vérifier un document) ou scannez le code ci-dessous.",
+        { fingerprint: o.stamp.fingerprint, id: o.stamp.id },
+      ),
     ),
   );
-  body.push(image(qr(), 3, 3, "QR de vérification"));
+  body.push(image(qr(), 3, 3, t("QR de vérification")));
   body.push(p(o.stamp.label, "Caption"));
 
   const content = `${XML_HEAD}<office:document-content ${ODF_NS} office:version="1.3"><office:font-face-decls><style:font-face style:name="Calibri" svg:font-family="Calibri, Carlito" style:font-family-generic="swiss" style:font-pitch="variable"/></office:font-face-decls><office:automatic-styles><style:style style:name="Picture" style:family="graphic"><style:graphic-properties style:vertical-pos="top" style:vertical-rel="baseline" fo:border="none" style:mirror="none" fo:clip="rect(0cm, 0cm, 0cm, 0cm)" draw:luminance="0%" draw:contrast="0%" draw:red="0%" draw:green="0%" draw:blue="0%" draw:gamma="100%" draw:color-inversion="false" draw:image-opacity="100%" draw:color-mode="standard"/></style:style><style:style style:name="Sect1" style:family="section"><style:section-properties style:editable="false"><style:columns fo:column-count="1" fo:column-gap="0cm"/></style:section-properties></style:style><style:style style:name="CellHead" style:family="table-cell"><style:table-cell-properties fo:background-color="${INK}" fo:padding="0.08cm" fo:border="0.5pt solid #d4d8e4"/></style:style><style:style style:name="CellBody" style:family="table-cell"><style:table-cell-properties style:vertical-align="top" fo:padding="0.08cm" fo:border="0.5pt solid #d4d8e4"/></style:style><style:style style:name="CellLabel" style:family="table-cell"><style:table-cell-properties style:vertical-align="top" fo:background-color="#eef0f8" fo:padding="0.08cm" fo:border="0.5pt solid #d4d8e4"/></style:style>${auto.join("")}</office:automatic-styles><office:body><office:text>${body.join("")}</office:text></office:body></office:document-content>`;
@@ -261,7 +285,7 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
     `<style:style style:name="${name}" style:display-name="${display}" style:family="paragraph" style:parent-style-name="Standard"${extra}><style:paragraph-properties ${props}/><style:text-properties ${text}/></style:style>`;
   const bold =
     'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"';
-  const styles = `${XML_HEAD}<office:document-styles ${ODF_NS} office:version="1.3"><office:font-face-decls><style:font-face style:name="Calibri" svg:font-family="Calibri, Carlito" style:font-family-generic="swiss" style:font-pitch="variable"/></office:font-face-decls><office:styles><style:default-style style:family="paragraph"><style:paragraph-properties style:tab-stop-distance="1.25cm"/><style:text-properties style:font-name="Calibri" fo:font-size="10pt" fo:language="fr" fo:country="CH" fo:hyphenate="false"/></style:default-style><style:default-style style:family="table"><style:table-properties table:border-model="collapsing"/></style:default-style><style:default-style style:family="graphic"><style:graphic-properties draw:shadow="hidden"/></style:default-style><style:style style:name="Standard" style:family="paragraph" style:class="text"><style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.14cm" fo:line-height="115%"/></style:style>${paragraph(
+  const styles = `${XML_HEAD}<office:document-styles ${ODF_NS} office:version="1.3"><office:font-face-decls><style:font-face style:name="Calibri" svg:font-family="Calibri, Carlito" style:font-family-generic="swiss" style:font-pitch="variable"/></office:font-face-decls><office:styles><style:default-style style:family="paragraph"><style:paragraph-properties style:tab-stop-distance="1.25cm"/><style:text-properties style:font-name="Calibri" fo:font-size="10pt" ${odfLanguage()} fo:hyphenate="false"/></style:default-style><style:default-style style:family="table"><style:table-properties table:border-model="collapsing"/></style:default-style><style:default-style style:family="graphic"><style:graphic-properties draw:shadow="hidden"/></style:default-style><style:style style:name="Standard" style:family="paragraph" style:class="text"><style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.14cm" fo:line-height="115%"/></style:style>${paragraph(
     "Heading",
     "Heading",
     'fo:margin-top="0.4cm" fo:margin-bottom="0.2cm" fo:keep-with-next="always"',
@@ -312,7 +336,7 @@ export function dossierOdt(dossier: Dossier, o: DocumentOptions): Uint8Array {
     'fo:margin-bottom="0cm"',
     `fo:font-size="7pt" fo:color="${MUTED}"`,
     ' style:class="extra"',
-  )}<style:style style:name="Index_20_Link" style:display-name="Index Link" style:family="text"/>${watermarkStyle(watermarkSize(o.watermark, landscape))}</office:styles><office:automatic-styles><style:style style:name="HeaderTabs" style:family="paragraph" style:parent-style-name="Header"><style:paragraph-properties><style:tab-stops><style:tab-stop style:position="${width.toFixed(2)}cm" style:type="right"/></style:tab-stops></style:paragraph-properties></style:style><style:style style:name="FooterTabs" style:family="paragraph" style:parent-style-name="Footer"><style:paragraph-properties><style:tab-stops><style:tab-stop style:position="${width.toFixed(2)}cm" style:type="right"/></style:tab-stops></style:paragraph-properties></style:style><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="${page.w}cm" fo:page-height="${page.h}cm" style:print-orientation="${landscape ? "landscape" : "portrait"}" fo:margin-top="1cm" fo:margin-bottom="1cm" fo:margin-left="${margin}cm" fo:margin-right="${margin}cm"/><style:header-style><style:header-footer-properties fo:min-height="0.8cm" fo:margin-bottom="0.4cm"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0.8cm" fo:margin-top="0.4cm"/></style:footer-style></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"><style:header><text:p text:style-name="HeaderTabs">${o.watermark ? watermark(o.watermark, landscape) : ""}${odfText(`orion aic · ${c.title}`)}<text:tab/>${odfText(`${c.mode.toUpperCase()} · ${c.classification.toUpperCase()}`)}</text:p></style:header><style:footer><text:p text:style-name="FooterTabs">${odfText(o.stamp.label)}<text:tab/>Page <text:page-number text:select-page="current">1</text:page-number> / <text:page-count>1</text:page-count></text:p></style:footer></style:master-page></office:master-styles></office:document-styles>`;
+  )}<style:style style:name="Index_20_Link" style:display-name="Index Link" style:family="text"/>${watermarkStyle(watermarkSize(o.watermark, landscape))}</office:styles><office:automatic-styles><style:style style:name="HeaderTabs" style:family="paragraph" style:parent-style-name="Header"><style:paragraph-properties><style:tab-stops><style:tab-stop style:position="${width.toFixed(2)}cm" style:type="right"/></style:tab-stops></style:paragraph-properties></style:style><style:style style:name="FooterTabs" style:family="paragraph" style:parent-style-name="Footer"><style:paragraph-properties><style:tab-stops><style:tab-stop style:position="${width.toFixed(2)}cm" style:type="right"/></style:tab-stops></style:paragraph-properties></style:style><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="${page.w}cm" fo:page-height="${page.h}cm" style:print-orientation="${landscape ? "landscape" : "portrait"}" fo:margin-top="1cm" fo:margin-bottom="1cm" fo:margin-left="${margin}cm" fo:margin-right="${margin}cm"/><style:header-style><style:header-footer-properties fo:min-height="0.8cm" fo:margin-bottom="0.4cm"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0.8cm" fo:margin-top="0.4cm"/></style:footer-style></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"><style:header><text:p text:style-name="HeaderTabs">${o.watermark ? watermark(o.watermark, landscape) : ""}${odfText(`orion aic · ${c.title}`)}<text:tab/>${odfText(`${enumLabel(c.mode).toUpperCase()} · ${enumLabel(c.classification).toUpperCase()}`)}</text:p></style:header><style:footer><text:p text:style-name="FooterTabs">${odfText(o.stamp.label)}<text:tab/>${odfText(t("Page"))} <text:page-number text:select-page="current">1</text:page-number> / <text:page-count>1</text:page-count></text:p></style:footer></style:master-page></office:master-styles></office:document-styles>`;
   return zip(
     {
       mimetype: mime,

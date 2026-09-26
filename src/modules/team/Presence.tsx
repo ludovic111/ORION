@@ -36,6 +36,7 @@ import { TraceLine } from "../../timeline/TraceLine";
 import { CodeScanner } from "../../radio/Scanner";
 import { memberFromCode, presenceUrl } from "../../print/badges";
 import { nextRoundHour } from "../agenda/rhythm";
+import { t } from "./i18n.ts";
 import "../../ui/conduct.css";
 
 type ShiftDraft = Omit<Shift, "id" | "createdAt" | "updatedAt" | "by"> &
@@ -88,7 +89,7 @@ export function Presence() {
     history.replaceState(null, "", "#team");
     const m = live.ops.members.find((x) => x.id === id);
     if (m) setAsked(m);
-    else toast("Badge inconnu dans ce journal.");
+    else toast(t("Badge inconnu dans ce journal."));
   }, [live.ops.members, toast]);
   useEffect(() => {
     if (!focus?.startsWith("shift:")) return;
@@ -122,7 +123,10 @@ export function Presence() {
     try {
       if (d?.present) {
         updateOps((o) => checkOut(o, m.id, author, at));
-        const message = `Départ de ${m.name} à ${time(at)}.`;
+        const message = t("Départ de {name} à {time}.", {
+          name: m.name,
+          time: time(at),
+        });
         toast(message);
         return message;
       }
@@ -130,8 +134,15 @@ export function Presence() {
       const rest = d ? restedAt(d, rules) : null;
       const message =
         rest && rest > Date.parse(at)
-          ? `Arrivée de ${m.name} à ${time(at)} — repos trop court (reprise prévue dès ${time(new Date(rest).toISOString())}).`
-          : `Arrivée de ${m.name} à ${time(at)}.`;
+          ? t(
+              "Arrivée de {name} à {time} — repos trop court (reprise prévue dès {rest}).",
+              {
+                name: m.name,
+                time: time(at),
+                rest: time(new Date(rest).toISOString()),
+              },
+            )
+          : t("Arrivée de {name} à {time}.", { name: m.name, time: time(at) });
       toast(message);
       return message;
     } catch (err) {
@@ -158,19 +169,33 @@ export function Presence() {
   function printList() {
     const name = new Map(members.map((m) => [m.id, m]));
     const stays = [...ops.presences].sort((a, b) => a.in.localeCompare(b.in));
+    // How a stay was recorded: stored codes, shown translated.
+    const via = (v: string) =>
+      v === "Bouton" ? t("Bouton") : v === "Saisie" ? t("Saisie") : v;
     print({
       kind: "tables",
       journal,
-      title: "Liste de présence",
-      extra: `${present} présent(s) · maximum ${rules.dutyHours} h de service, repos ${rules.restHours} h`,
+      title: t("Liste de présence"),
+      extra: t("{n} présent(s) · maximum {duty} h de service, repos {rest} h", {
+        n: present,
+        duty: rules.dutyHours,
+        rest: rules.restHours,
+      }),
       landscape: false,
-      name: "liste-de-presence",
+      name: t("liste-de-presence"),
       tables: [
         {
           id: "now",
-          title: "Présents maintenant",
-          caption: `${present} personne(s)`,
-          head: ["Nom", "Grade", "Fonction", "Depuis", "Service", "Signature"],
+          title: t("Présents maintenant"),
+          caption: t("{n} personne(s)", { n: present }),
+          head: [
+            t("Nom"),
+            t("Grade"),
+            t("Fonction"),
+            t("Depuis"),
+            t("Service"),
+            t("Signature"),
+          ],
           body: board
             .filter((d) => d.present)
             .map((d) => {
@@ -180,7 +205,7 @@ export function Presence() {
                 m?.grade ?? "",
                 m?.role ?? "",
                 d.since ? dateTime(new Date(d.since).toISOString()) : "",
-                `${formatDuration(d.span)}${d.over ? " (dépassé)" : ""}`,
+                `${formatDuration(d.span)}${d.over ? t(" (dépassé)") : ""}`,
                 "",
               ];
             }),
@@ -188,17 +213,17 @@ export function Presence() {
         },
         {
           id: "stays",
-          title: "Arrivées et départs",
-          caption: `${stays.length} passage(s)`,
-          head: ["Nom", "Arrivée", "Départ", "Durée", "Par"],
+          title: t("Arrivées et départs"),
+          caption: t("{n} passage(s)", { n: stays.length }),
+          head: [t("Nom"), t("Arrivée"), t("Départ"), t("Durée"), t("Par")],
           body: stays.map((p) => [
             name.get(p.memberId)?.name ?? p.name,
             dateTime(p.in),
-            p.out ? dateTime(p.out) : "présent",
+            p.out ? dateTime(p.out) : t("présent"),
             formatDuration(
               (p.out ? Date.parse(p.out) : now) - Date.parse(p.in),
             ),
-            p.via,
+            via(p.via),
           ]),
           widths: [48, 38, 38, 26, 32],
         },
@@ -206,9 +231,9 @@ export function Presence() {
           ? [
               {
                 id: "shifts",
-                title: "Plan de relève",
-                caption: `${shifts.length} relève(s)`,
-                head: ["Relève", "Début", "Fin", "Personnes"],
+                title: t("Plan de relève"),
+                caption: t("{n} relève(s)", { n: shifts.length }),
+                head: [t("Relève"), t("Début"), t("Fin"), t("Personnes")],
                 body: shifts.map((s) => [
                   s.title,
                   dateTime(s.start),
@@ -255,17 +280,17 @@ export function Presence() {
   return (
     <>
       <Figures
-        label="Présences au PC"
+        label={t("Présences au PC")}
         items={[
-          { label: "Au PC", value: present },
-          { label: "Personnes", value: members.length },
+          { label: t("Au PC"), value: present },
+          { label: t("Personnes"), value: members.length },
           {
-            label: "Temps ou repos à surveiller",
+            label: t("Temps ou repos à surveiller"),
             value: alerts,
             tone: alerts ? "crit" : "",
           },
           {
-            label: "Relève en cours",
+            label: t("Relève en cours"),
             value: running.now.map((s) => s.title).join(", ") || "—",
           },
         ]}
@@ -274,31 +299,32 @@ export function Presence() {
         {!readOnly && (
           <button className="primary" onClick={() => setScanning(true)}>
             <ScanLine size={14} />
-            Scanner un badge
+            {t("Scanner un badge")}
           </button>
         )}
         <button onClick={printList}>
           <Printer size={14} />
-          Liste de présence
+          {t("Liste de présence")}
         </button>
         <button onClick={() => printBadges(members)} disabled={!members.length}>
           <QrCode size={14} />
-          Badges QR
+          {t("Badges QR")}
         </button>
       </div>
       <div className="pr-layout">
-        <section className="card" aria-label="Appel">
+        <section className="card" aria-label={t("Appel")}>
           <div className="card-head">
             <LogIn size={15} />
-            <h2>Appel</h2>
+            <h2>{t("Appel")}</h2>
             <span className="pill plain">
               {present}/{members.length}
             </span>
           </div>
           {!members.length && (
             <p className="muted">
-              Ajoutez d’abord les personnes dans l’organigramme : chacune pourra
-              ensuite pointer son arrivée et son départ.
+              {t(
+                "Ajoutez d’abord les personnes dans l’organigramme : chacune pourra ensuite pointer son arrivée et son départ.",
+              )}
             </p>
           )}
           {sorted.map((m) => (
@@ -317,28 +343,30 @@ export function Presence() {
                 <span className="pr-who">
                   <strong>{d.name}</strong>
                   <small>
-                    retiré de l’équipe · {d.present ? "présent" : "parti"}
+                    {t("retiré de l’équipe · {state}", {
+                      state: d.present ? t("présent") : t("parti"),
+                    })}
                   </small>
                 </span>
                 <span className="pr-time">{formatDuration(d.span)}</span>
               </div>
             ))}
         </section>
-        <section className="card" aria-label="Plan de relève">
+        <section className="card" aria-label={t("Plan de relève")}>
           <div className="card-head">
             <CalendarRange size={15} />
-            <h2>Plan de relève</h2>
+            <h2>{t("Plan de relève")}</h2>
             {!readOnly && (
               <span className="cd-toolbar" style={{ margin: 0 }}>
                 <button className="small" onClick={() => setPlanning(true)}>
                   <CalendarPlus size={13} />
-                  Planifier
+                  {t("Planifier")}
                 </button>
                 <button
                   className="small"
                   onClick={() =>
                     setShift({
-                      title: `Relève ${shifts.length + 1}`,
+                      title: t("Relève {n}", { n: shifts.length + 1 }),
                       start: nextRoundHour(),
                       end: new Date(
                         Date.parse(nextRoundHour()) + 12 * 3_600_000,
@@ -349,7 +377,7 @@ export function Presence() {
                     })
                   }
                 >
-                  Ajouter
+                  {t("Ajouter")}
                 </button>
               </span>
             )}
@@ -363,8 +391,9 @@ export function Presence() {
           )}
           {!shifts.length && (
             <p className="muted">
-              Aucune relève prévue. « Planifier » crée par exemple trois relèves
-              de 8 heures à partir de l’heure choisie.
+              {t(
+                "Aucune relève prévue. « Planifier » crée par exemple trois relèves de 8 heures à partir de l’heure choisie.",
+              )}
             </p>
           )}
           {shifts.map((s) => {
@@ -380,7 +409,7 @@ export function Presence() {
                     {dateTime(s.start)} → {time(s.end)}
                   </span>
                   <button className="small" onClick={() => setShift(s)}>
-                    Ouvrir
+                    {t("Ouvrir")}
                   </button>
                 </div>
                 <div className="pr-people">
@@ -391,7 +420,7 @@ export function Presence() {
                   ))}
                   {s.people && <span className="muted">{s.people}</span>}
                   {!names.length && !s.people && (
-                    <span className="muted">Personne encore</span>
+                    <span className="muted">{t("Personne encore")}</span>
                   )}
                 </div>
               </div>
@@ -399,14 +428,14 @@ export function Presence() {
           })}
           <div className="pr-rules" style={{ marginTop: 14 }}>
             <NumberField
-              label="Service maximum (h)"
+              label={t("Service maximum (h)")}
               value={rules.dutyHours}
               min={1}
               max={72}
               onChange={(dutyHours) => setRules({ dutyHours })}
             />
             <NumberField
-              label="Repos minimum (h)"
+              label={t("Repos minimum (h)")}
               value={rules.restHours}
               min={0}
               max={48}
@@ -417,25 +446,27 @@ export function Presence() {
       </div>
       {scanning && (
         <CodeScanner<Member>
-          title="Scanner un badge de présence"
-          placeholder="Nom ou nom d’appel"
-          manualLabel="Nom de la personne"
-          help="Lecture de QR indisponible dans ce navigateur. Tapez le nom, ou scannez le badge avec l’appareil photo du téléphone : le lien ouvre l’appel de cette personne."
+          title={t("Scanner un badge de présence")}
+          placeholder={t("Nom ou nom d’appel")}
+          manualLabel={t("Nom de la personne")}
+          help={t(
+            "Lecture de QR indisponible dans ce navigateur. Tapez le nom, ou scannez le badge avec l’appareil photo du téléphone : le lien ouvre l’appel de cette personne.",
+          )}
           continuous
           find={find}
-          unknown={(v) => `Personne inconnue : ${v}`}
+          unknown={(v) => t("Personne inconnue : {value}", { value: v })}
           onFound={(m) => toggle(m, "QR")}
           onClose={() => setScanning(false)}
         />
       )}
       {asked && (
-        <Modal title="Badge de présence" onClose={() => setAsked(null)}>
+        <Modal title={t("Badge de présence")} onClose={() => setAsked(null)}>
           <p>
             <strong>{asked.name}</strong>
             {asked.role && ` · ${asked.role}`}
           </p>
           <div className="modal-actions">
-            <button onClick={() => setAsked(null)}>Annuler</button>
+            <button onClick={() => setAsked(null)}>{t("Annuler")}</button>
             <button
               className="primary"
               onClick={() => {
@@ -444,8 +475,8 @@ export function Presence() {
               }}
             >
               {byMember.get(asked.id)?.present
-                ? "Pointer le départ"
-                : "Pointer l’arrivée"}
+                ? t("Pointer le départ")
+                : t("Pointer l’arrivée")}
             </button>
           </div>
         </Modal>
@@ -480,10 +511,24 @@ function PersonRow({
   const rest = d ? restedAt(d, rules) : null;
   const hhmm = (ms: number) => time(new Date(ms).toISOString());
   const line = d?.present
-    ? `au PC depuis ${hhmm(d.stay!)}${d.since !== d.stay ? `, service compté depuis ${hhmm(d.since!)}` : ""}`
+    ? d.since !== d.stay
+      ? t("au PC depuis {stay}, service compté depuis {since}", {
+          stay: hhmm(d.stay!),
+          since: hhmm(d.since!),
+        })
+      : t("au PC depuis {stay}", { stay: hhmm(d.stay!) })
     : d?.lastOut
-      ? `parti à ${time(new Date(d.lastOut).toISOString())}, repos ${formatDuration(d.resting)}${rest && rest > now ? ` · reprise dès ${time(new Date(rest).toISOString())}` : ""}`
-      : "pas encore pointé";
+      ? rest && rest > now
+        ? t("parti à {time}, repos {duration} · reprise dès {rest}", {
+            time: time(new Date(d.lastOut).toISOString()),
+            duration: formatDuration(d.resting),
+            rest: time(new Date(rest).toISOString()),
+          })
+        : t("parti à {time}, repos {duration}", {
+            time: time(new Date(d.lastOut).toISOString()),
+            duration: formatDuration(d.resting),
+          })
+      : t("pas encore pointé");
   return (
     <div className="pr-row">
       <span className="pr-who">
@@ -498,15 +543,15 @@ function PersonRow({
       {d?.present && (
         <span
           className={`pr-time ${d.over ? "over" : ""}`}
-          title="Temps de service"
+          title={t("Temps de service")}
         >
           {formatDuration(d.span)}
         </span>
       )}
       <button
         className="icon-button"
-        aria-label={`Badge de ${m.name}`}
-        title="Imprimer le badge"
+        aria-label={t("Badge de {name}", { name: m.name })}
+        title={t("Imprimer le badge")}
         onClick={onBadge}
       >
         <QrCode size={14} />
@@ -517,7 +562,7 @@ function PersonRow({
           onClick={onToggle}
         >
           {d?.present ? <LogOut size={13} /> : <LogIn size={13} />}
-          {d?.present ? "Départ" : "Arrivée"}
+          {d?.present ? t("Départ") : t("Arrivée")}
         </button>
       )}
     </div>
@@ -529,26 +574,26 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
   const [start, setStart] = useState(nextRoundHour());
   const [hours, setHours] = useState(8);
   const [count, setCount] = useState(3);
-  const [title, setTitle] = useState("Relève");
+  const [title, setTitle] = useState(() => t("Relève"));
   const plan = start ? planShifts(Date.parse(start), hours, count, title) : [];
   return (
-    <Modal title="Planifier des relèves" onClose={onClose}>
+    <Modal title={t("Planifier des relèves")} onClose={onClose}>
       <div className="form-grid">
         <DateTimeField
           className="span-2"
-          label="Début de la première relève"
+          label={t("Début de la première relève")}
           value={start}
           onChange={setStart}
         />
         <NumberField
-          label="Durée (heures)"
+          label={t("Durée (heures)")}
           value={hours}
           min={1}
           max={24}
           onChange={setHours}
         />
         <NumberField
-          label="Nombre de relèves"
+          label={t("Nombre de relèves")}
           value={count}
           min={1}
           max={21}
@@ -556,7 +601,7 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
         />
         <TextField
           className="span-2"
-          label="Nom"
+          label={t("Nom")}
           value={title}
           maxLength={100}
           onChange={setTitle}
@@ -564,14 +609,17 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
       </div>
       <p className="hint">
         {plan
-          .map(
-            (s) =>
-              `${s.title} : ${toZurichInput(s.start).replace("T", " ")} → ${toZurichInput(s.end, "time")}`,
+          .map((s) =>
+            t("{title} : {start} → {end}", {
+              title: s.title,
+              start: toZurichInput(s.start).replace("T", " "),
+              end: toZurichInput(s.end, "time"),
+            }),
           )
           .join(" · ")}
       </p>
       <div className="modal-actions">
-        <button onClick={onClose}>Annuler</button>
+        <button onClick={onClose}>{t("Annuler")}</button>
         <button
           className="primary"
           disabled={!plan.length}
@@ -591,7 +639,9 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
                 ),
               );
               toast(
-                `${plan.length} relève(s) planifiée(s). Ajoutez les personnes.`,
+                t("{n} relève(s) planifiée(s). Ajoutez les personnes.", {
+                  n: plan.length,
+                }),
               );
               onClose();
             } catch (err) {
@@ -599,7 +649,7 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
             }
           }}
         >
-          Créer
+          {t("Créer")}
         </button>
       </div>
     </Modal>
@@ -622,12 +672,12 @@ function ShiftSheet({
   const dirty = JSON.stringify(value) !== JSON.stringify(initial) && !readOnly;
   function save() {
     if (!canWrite()) return;
-    if (!value.title.trim()) return setError("Donnez un nom à la relève.");
+    if (!value.title.trim()) return setError(t("Donnez un nom à la relève."));
     if (!value.start || !value.end || value.end <= value.start)
-      return setError("La fin doit suivre le début.");
+      return setError(t("La fin doit suivre le début."));
     try {
       updateOps((o) => upsert(o, "shifts", value, author));
-      toast("Relève enregistrée.");
+      toast(t("Relève enregistrée."));
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -642,18 +692,18 @@ function ShiftSheet({
     }));
   return (
     <Sheet
-      title={initial.id ? value.title : "Nouvelle relève"}
+      title={initial.id ? value.title : t("Nouvelle relève")}
       eyebrow={
         <>
           <Icon size={12} />
-          Relève
+          {t("Relève")}
         </>
       }
       dirty={dirty}
       onClose={onClose}
       footer={
         readOnly ? (
-          <span className="muted">Lecture seule.</span>
+          <span className="muted">{t("Lecture seule.")}</span>
         ) : (
           <>
             {initial.id && (
@@ -662,23 +712,23 @@ function ShiftSheet({
                 onClick={() => {
                   if (
                     !canWrite() ||
-                    !window.confirm("Supprimer cette relève ?")
+                    !window.confirm(t("Supprimer cette relève ?"))
                   )
                     return;
                   updateOps((o) => removeRecords(o, [initial.id!]));
-                  toast("Relève supprimée.");
+                  toast(t("Relève supprimée."));
                   onClose();
                 }}
               >
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             )}
             <button className="push" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button className="primary" onClick={save}>
-              Enregistrer
+              {t("Enregistrer")}
             </button>
           </>
         )
@@ -691,30 +741,30 @@ function ShiftSheet({
         <div className="form-grid">
           <TextField
             className="span-2"
-            label="Nom"
+            label={t("Nom")}
             required
             value={value.title}
             maxLength={120}
             onChange={(title) => setValue((v) => ({ ...v, title }))}
           />
           <DateTimeField
-            label="Début"
+            label={t("Début")}
             required
             value={value.start}
             onChange={(start) => setValue((v) => ({ ...v, start }))}
           />
           <DateTimeField
-            label="Fin"
+            label={t("Fin")}
             required
             value={value.end}
             onChange={(end) => setValue((v) => ({ ...v, end }))}
           />
           <div className="span-2">
-            <span className="label">Personnes</span>
+            <span className="label">{t("Personnes")}</span>
             <div
               className="pr-members"
               role="group"
-              aria-label="Personnes de la relève"
+              aria-label={t("Personnes de la relève")}
             >
               {members.map((m) => (
                 <button
@@ -731,14 +781,14 @@ function ShiftSheet({
           </div>
           <TextField
             className="span-2"
-            label="Autres personnes (texte libre)"
+            label={t("Autres personnes (texte libre)")}
             value={value.people}
             maxLength={1000}
             onChange={(people) => setValue((v) => ({ ...v, people }))}
           />
           <TextField
             className="span-2"
-            label="Remarques"
+            label={t("Remarques")}
             rows={2}
             value={value.notes}
             maxLength={1000}

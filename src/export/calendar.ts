@@ -1,6 +1,7 @@
 import type { Journal } from "../../shared/journal.ts";
 import type { AgendaItem, Contact } from "../../shared/ops.ts";
 import type { DocumentStamp } from "./stamp.ts";
+import { t } from "./i18n.ts";
 
 // Calendar (.ics, RFC 5545) of the rhythm of command and address book
 // (.vcf, vCard 4.0, RFC 6350) of the contacts. Lines are folded at 75
@@ -60,8 +61,8 @@ export function agendaIcs(
     .map((a) => {
       const start = Date.parse(a.at);
       const description = [
-        a.kind && `Type : ${a.kind}`,
-        a.participants && `Participants : ${a.participants}`,
+        a.kind && t("Type : {kind}", { kind: a.kind }),
+        a.participants && t("Participants : {list}", { list: a.participants }),
         a.notes,
         `${journal.title} · orion aic`,
       ]
@@ -90,7 +91,7 @@ export function agendaIcs(
     "PRODID:-//orion aic//Rythme de conduite//FR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeText(`${journal.title} · rythme de conduite`)}`,
+    `X-WR-CALNAME:${escapeText(t("{title} · rythme de conduite", { title: journal.title }))}`,
     "X-WR-TIMEZONE:Europe/Zurich",
     `X-WR-CALDESC:${escapeText(stamp.label)}`,
   ])}\r\n${events.map((e) => `${e}\r\n`).join("")}END:VCALENDAR\r\n`;
@@ -108,8 +109,8 @@ export function contactsVcf(contacts: Contact[], stamp: DocumentStamp): string {
         words.length > 1 ? words.slice(0, -1).join(" ") : c.name.trim();
       const note = [
         c.notes,
-        c.radio && `Radio : ${c.radio}`,
-        `Exporté par orion aic · ${stamp.label}`,
+        c.radio && t("Radio : {radio}", { radio: c.radio }),
+        t("Exporté par orion aic · {stamp}", { stamp: stamp.label }),
       ]
         .filter(Boolean)
         .join("\n");

@@ -11,6 +11,8 @@ import { Brand } from "../ui/Mark";
 import { Clock } from "../ui/Clock";
 import type { useSync } from "../sync/useSync";
 import { moduleInfo } from "./modules";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 
 type Sync = ReturnType<typeof useSync>;
 
@@ -55,22 +57,25 @@ export function TopBar({
       <button
         className="journal-switch"
         onClick={(e) => onJournalMenu(e.currentTarget)}
-        title="Journaux de la session"
+        title={t("Journaux de la session")}
         aria-haspopup="menu"
       >
         <span className={`state-dot ${journal.closedAt ? "closed" : ""}`} />
         <strong>{journal.title}</strong>
-        <small>{journal.closedAt ? "Clôturé" : journal.mode}</small>
+        <small>
+          {journal.closedAt ? t("Clôturé") : enumLabel(journal.mode)}
+        </small>
         <ChevronDown size={14} />
       </button>
       <button
         className="command-trigger"
         onClick={onPalette}
-        aria-label="Rechercher ou agir partout (⌘K)"
+        aria-label={t("Rechercher ou agir partout (⌘K)")}
       >
         <Search size={15} />
         <span>
-          Rechercher ou agir<span className="wide">… partout</span>
+          {t("Rechercher ou agir")}
+          <span className="wide">{t("… partout")}</span>
         </span>
         <kbd>⌘K</kbd>
       </button>
@@ -80,21 +85,41 @@ export function TopBar({
           onClick={onSync}
           title={
             sync.status === "off"
-              ? "Synchronisation désactivée : partager la session avec d’autres postes"
+              ? t(
+                  "Synchronisation désactivée : partager la session avec d’autres postes",
+                )
               : sync.status === "outdated"
                 ? sync.error
-                : `Synchronisation ${sync.status === "live" ? "active" : "en reconnexion"} · ${sync.relayCount} autre(s) poste(s)${sync.conflictCount ? ` · ${sync.conflictCount} fusion(s) à voir` : ""}`
+                : [
+                    sync.status === "live"
+                      ? t("Synchronisation active")
+                      : t("Synchronisation en reconnexion"),
+                    tn(
+                      sync.relayCount,
+                      "{n} autre(s) poste(s) (1)",
+                      "{n} autre(s) poste(s)",
+                    ),
+                    ...(sync.conflictCount
+                      ? [
+                          tn(
+                            sync.conflictCount,
+                            "{n} fusion(s) à voir (1)",
+                            "{n} fusion(s) à voir",
+                          ),
+                        ]
+                      : []),
+                  ].join(" · ")
           }
         >
           <span className={`radar ${sync.status === "live" ? "" : "idle"}`} />
           <span className="status-text">
             {sync.status === "off"
-              ? "Seul"
+              ? t("Seul")
               : sync.status === "outdated"
-                ? "Recharger"
+                ? t("Recharger")
                 : sync.status === "live"
-                  ? `${sync.relayCount + 1} poste${sync.relayCount ? "s" : ""}`
-                  : "Reconnexion"}
+                  ? tn(sync.relayCount + 1, "{n} poste", "{n} postes")
+                  : t("Reconnexion")}
           </span>
           {sync.conflictCount > 0 && (
             <span className="mono">· {sync.conflictCount}</span>
@@ -119,23 +144,26 @@ export function TopBar({
           className={`status-chip hide-narrow ${saveState === "error" ? "crit" : persistent ? "ok" : "warn"}`}
           title={
             persistent
-              ? "Sauvegarde chiffrée sur ce poste"
-              : "Session temporaire : exportez avant de fermer"
+              ? t("Sauvegarde chiffrée sur ce poste")
+              : t("Session temporaire : exportez avant de fermer")
           }
         >
           <span className="dot" />
           {saveState === "error"
-            ? "Échec sauvegarde"
+            ? t("Échec sauvegarde")
             : saveState === "saving"
-              ? "Sauvegarde…"
+              ? t("Sauvegarde…")
               : persistent
-                ? "Chiffré"
-                : "Temporaire"}
+                ? t("Chiffré")
+                : t("Temporaire")}
         </span>
         {!online && (
-          <span className="status-chip warn hide-narrow" title="Hors ligne">
+          <span
+            className="status-chip warn hide-narrow"
+            title={t("Hors ligne")}
+          >
             <span className="dot" />
-            Hors ligne
+            {t("Hors ligne")}
           </span>
         )}
         <Clock />
@@ -143,33 +171,37 @@ export function TopBar({
           className={`icon-button${viewAt !== null ? " active" : ""}`}
           onClick={onTimeMachine}
           aria-label={
-            viewAt !== null ? "Revenir à l’état actuel" : "Remonter le temps"
+            viewAt !== null
+              ? t("Revenir à l’état actuel")
+              : t("Remonter le temps")
           }
           aria-pressed={viewAt !== null}
-          title="Remonter le temps : revoir l’opération à n’importe quelle heure"
+          title={t(
+            "Remonter le temps : revoir l’opération à n’importe quelle heure",
+          )}
         >
           <History size={16} />
         </button>
         <button
           className="icon-button hide-narrow"
           onClick={onPresent}
-          aria-label="Présenter la situation"
-          title="Présenter la situation (plein écran)"
+          aria-label={t("Présenter la situation")}
+          title={t("Présenter la situation (plein écran)")}
         >
           <MonitorPlay size={16} />
         </button>
         <button
           className="icon-button hide-phone"
           onClick={onTheme}
-          aria-label={theme === "light" ? "Thème sombre" : "Thème clair"}
-          title={theme === "light" ? "Thème sombre" : "Thème clair"}
+          aria-label={theme === "light" ? t("Thème sombre") : t("Thème clair")}
+          title={theme === "light" ? t("Thème sombre") : t("Thème clair")}
         >
           {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
         <button
           className="operator"
           onClick={(e) => onOperatorMenu(e.currentTarget)}
-          title="Opérateur, réglages et session"
+          title={t("Opérateur, réglages et session")}
           aria-haspopup="menu"
         >
           <span className="avatar">{author.slice(0, 2).toUpperCase()}</span>

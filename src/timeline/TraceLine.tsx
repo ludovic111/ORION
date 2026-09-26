@@ -4,6 +4,7 @@ import { dateTime } from "../../shared/journal";
 import { trailOf } from "../../shared/history";
 import { useApp } from "../app/context";
 import { ago } from "./format";
+import { t } from "./i18n.ts";
 
 /**
  * "Créé par A le … · modifié par B il y a 5 min · 4 versions" and a button
@@ -25,25 +26,38 @@ export function TraceLine({
   const first = trail[trail.length - 1];
   const last = trail[0];
   const created = first
-    ? `Créé par ${first.by || "—"} le ${dateTime(first.at)}`
+    ? t("Créé par {by} le {date}", {
+        by: first.by || "—",
+        date: dateTime(first.at),
+      })
     : createdAt
-      ? `Créé le ${dateTime(createdAt)}${createdBy ? ` par ${createdBy}` : ""}`
+      ? createdBy
+        ? t("Créé le {date} par {by}", {
+            date: dateTime(createdAt),
+            by: createdBy,
+          })
+        : t("Créé le {date}", { date: dateTime(createdAt) })
       : "";
   const changed =
     last && last !== first
-      ? `${last.action === "remove" ? "supprimé" : "modifié"} par ${last.by || "—"} ${ago(last.at, now)}`
+      ? t(
+          last.action === "remove"
+            ? "supprimé par {by} {ago}"
+            : "modifié par {by} {ago}",
+          { by: last.by || "—", ago: ago(last.at, now) },
+        )
       : !first && updatedAt && updatedAt !== createdAt
-        ? `modifié le ${dateTime(updatedAt)}`
+        ? t("modifié le {date}", { date: dateTime(updatedAt) })
         : "";
   return (
     <div className="trace-line">
       <History size={13} />
       <span>
         {[created, changed].filter(Boolean).join(" · ")}
-        {trail.length > 1 && ` · ${trail.length} versions`}
+        {trail.length > 1 && ` · ${t("{n} versions", { n: trail.length })}`}
       </span>
       <button className="link" onClick={() => trace(target)}>
-        Historique
+        {t("Historique")}
       </button>
     </div>
   );

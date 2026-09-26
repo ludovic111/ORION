@@ -18,6 +18,9 @@ import { situationReport, type ReportRange } from "./report";
 import { qrMatrix, qrPath } from "./qr";
 import { BadgesView, type Badge } from "./badges";
 import { useLayer } from "../ui/overlay";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { useLang } from "../i18n";
+import { t, tn } from "./i18n.ts";
 import "./print.css";
 
 export type PrintJob =
@@ -64,18 +67,20 @@ function Band({
         <span>orion aic · {kind}</span>
         <span className="chips">
           <b className={header.mode === "Intervention" ? "solid" : ""}>
-            {header.mode}
+            {enumLabel(header.mode)}
           </b>
           <b
             className={header.classification === "Confidentiel" ? "solid" : ""}
           >
-            {header.classification}
+            {enumLabel(header.classification)}
           </b>
         </span>
       </div>
       <div className="sheet-band-title">
         <h1>{header.title}</h1>
-        {header.reference && <span>Réf. {header.reference}</span>}
+        {header.reference && (
+          <span>{t("Réf. {reference}", { reference: header.reference })}</span>
+        )}
       </div>
       <p>
         {[header.organization, header.location, extra]
@@ -165,7 +170,7 @@ function FormSheetView({
         <span>
           {journal.title} · {sheet.footer}
         </span>
-        <span>Édité le {stamp} · Europe/Zurich</span>
+        <span>{t("Édité le {stamp} · Europe/Zurich", { stamp })}</span>
       </footer>
     </article>
   );
@@ -234,7 +239,7 @@ function TablesSheetView({
         <span>
           {journal.title} · {footer}
         </span>
-        <span>Édité le {stamp} · Europe/Zurich</span>
+        <span>{t("Édité le {stamp} · Europe/Zurich", { stamp })}</span>
       </footer>
     </article>
   );
@@ -255,7 +260,7 @@ function Label({ terminal }: { terminal: Terminal }) {
         <path d={qrPath(matrix)} fill="#101318" />
       </svg>
       <div>
-        <span className="cell-label">orion aic · radio</span>
+        <span className="cell-label">{t("orion aic · radio")}</span>
         <strong>{terminal.label}</strong>
         <small>{terminal.model}</small>
         {terminal.rfsi && <small>RFSI {terminal.rfsi}</small>}
@@ -280,8 +285,10 @@ function LabelsView({ journal, stamp }: { journal: Journal; stamp: string }) {
             ))}
           </div>
           <footer className="sheet-foot">
-            <span>{journal.title} · étiquettes radio</span>
-            <span>Édité le {stamp}</span>
+            <span>
+              {journal.title} · {t("étiquettes radio")}
+            </span>
+            <span>{t("Édité le {stamp}", { stamp })}</span>
           </footer>
         </article>
       ))}
@@ -341,21 +348,21 @@ export function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
   return job.kind === "radio" ? (
     <TablesSheetView
       journal={job.journal}
-      kind="Plan du réseau radio"
-      extra={`Établi par ${job.author}`}
+      kind={t("Plan du réseau radio")}
+      extra={t("Établi par {author}", { author: job.author })}
       tables={radioTables(job.journal.radio)}
       landscape
-      footer="plan du réseau radio"
+      footer={t("plan du réseau radio")}
       stamp={stamp}
     />
   ) : (
     <TablesSheetView
       journal={job.journal}
-      kind="Rapport de situation"
-      extra={`Établi par ${job.author}`}
+      kind={t("Rapport de situation")}
+      extra={t("Établi par {author}", { author: job.author })}
       tables={situationReport(job.journal, job.range)}
       landscape={false}
-      footer="rapport de situation"
+      footer={t("rapport de situation")}
       stamp={stamp}
     />
   );
@@ -363,17 +370,31 @@ export function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
 
 function title(job: PrintJob) {
   if (job.kind === "messages")
-    return `${job.entries.length} fiche${job.entries.length > 1 ? "s" : ""} message · A4 portrait`;
-  if (job.kind === "radio") return "Plan du réseau radio · A4 paysage";
-  if (job.kind === "handout") return "Quittance de remise radio · A4 portrait";
-  if (job.kind === "report") return "Rapport de situation · A4 portrait";
+    return tn(
+      job.entries.length,
+      "{n} fiche message · A4 portrait",
+      "{n} fiches message · A4 portrait",
+    );
+  if (job.kind === "radio") return t("Plan du réseau radio · A4 paysage");
+  if (job.kind === "handout")
+    return t("Quittance de remise radio · A4 portrait");
+  if (job.kind === "report") return t("Rapport de situation · A4 portrait");
   if (job.kind === "forms")
-    return `${job.sheets.length} ${job.title} · A4 portrait`;
+    return t("{n} {title} · A4 portrait", {
+      n: job.sheets.length,
+      title: job.title,
+    });
   if (job.kind === "tables")
-    return `${job.title} · A4 ${job.landscape ? "paysage" : "portrait"}`;
+    return job.landscape
+      ? t("{title} · A4 paysage", { title: job.title })
+      : t("{title} · A4 portrait", { title: job.title });
   if (job.kind === "badges")
-    return `${job.badges.length} badge(s) de présence · A4 portrait`;
-  return `${job.journal.radio.terminals.length} étiquettes QR · A4 portrait`;
+    return t("{n} badge(s) de présence · A4 portrait", {
+      n: job.badges.length,
+    });
+  return t("{n} étiquettes QR · A4 portrait", {
+    n: job.journal.radio.terminals.length,
+  });
 }
 
 export function PrintPreview({
@@ -383,6 +404,7 @@ export function PrintPreview({
   job: PrintJob;
   onClose: () => void;
 }) {
+  useLang();
   const [stamp] = useState(printedAt);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -405,18 +427,21 @@ export function PrintPreview({
         save(
           await pdfs.messagesPdf(journal, job.entries),
           job.entries.length === 1
-            ? `message-${job.entries[0].number}`
-            : "fiches",
+            ? t("message-{n}", { n: job.entries[0].number })
+            : t("Fichier : fiches"),
         );
       else if (job.kind === "handout")
         save(
-          await pdfs.formsPdf(journal, forms(job), "quittance"),
-          "quittance",
+          await pdfs.formsPdf(journal, forms(job), t("Fichier : quittance")),
+          t("Fichier : quittance"),
         );
       else if (job.kind === "radio")
-        save(await pdfs.radioPdf(journal, job.author), "radio");
+        save(await pdfs.radioPdf(journal, job.author), t("Fichier : radio"));
       else if (job.kind === "report")
-        save(await pdfs.reportPdf(journal, job.author, job.range), "rapport");
+        save(
+          await pdfs.reportPdf(journal, job.author, job.range),
+          t("Fichier : rapport"),
+        );
       else if (job.kind === "forms")
         save(await pdfs.formsPdf(journal, job.sheets, job.title), job.name);
       else if (job.kind === "tables")
@@ -431,8 +456,12 @@ export function PrintPreview({
           job.name,
         );
       else if (job.kind === "badges")
-        save(await pdfs.badgesPdf(journal, job.badges), "badges");
-      else save(await pdfs.labelsPdf(journal, location.origin), "etiquettes");
+        save(await pdfs.badgesPdf(journal, job.badges), t("Fichier : badges"));
+      else
+        save(
+          await pdfs.labelsPdf(journal, location.origin),
+          t("Fichier : etiquettes"),
+        );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -446,7 +475,7 @@ export function PrintPreview({
         className="preview"
         role="dialog"
         aria-modal="true"
-        aria-label="Aperçu avant impression"
+        aria-label={t("Aperçu avant impression")}
       >
         <header className="preview-bar">
           <span className="label">{title(job)}</span>
@@ -454,7 +483,7 @@ export function PrintPreview({
           <div className="preview-actions">
             <button onClick={pdf} disabled={busy}>
               <Download size={14} />
-              {busy ? "Génération…" : "PDF"}
+              {busy ? t("Génération…") : "PDF"}
             </button>
             <button
               className="primary"
@@ -462,12 +491,12 @@ export function PrintPreview({
               autoFocus
             >
               <Printer size={14} />
-              Imprimer
+              {t("Imprimer")}
             </button>
             <button
               className="icon-button"
               onClick={onClose}
-              aria-label="Fermer l’aperçu"
+              aria-label={t("Fermer l’aperçu")}
             >
               <X size={16} />
             </button>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { gunzipSync, gzipSync } from "fflate";
 import { signatureBlockSchema } from "./signature.ts";
+import { t } from "./i18n/crypto.ts";
 
 // Encryption of the local vault (IndexedDB) and of .orionaic archives:
 // AES-256-GCM, key derived from a passphrase with PBKDF2-SHA-256.
@@ -110,9 +111,9 @@ export async function deriveKey(
   salt = toBase64(crypto.getRandomValues(new Uint8Array(16))),
 ): Promise<VaultKey> {
   if (password.length < 12 || password.length > 256)
-    throw new Error("Utilisez une phrase secrète de 12 à 256 caractères.");
+    throw new Error(t("Utilisez une phrase secrète de 12 à 256 caractères."));
   const bytes = fromBase64(salt);
-  if (bytes.length !== 16) throw new Error("Sel de chiffrement invalide.");
+  if (bytes.length !== 16) throw new Error(t("Sel de chiffrement invalide."));
   const material = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -146,7 +147,9 @@ function serialise(value: unknown): Uint8Array {
   } catch (err) {
     if (err instanceof RangeError)
       throw new Error(
-        "Session trop volumineuse pour être enregistrée par ce navigateur. Exportez puis retirez les journaux terminés, ou les images inutiles.",
+        t(
+          "Session trop volumineuse pour être enregistrée par ce navigateur. Exportez puis retirez les journaux terminés, ou les images inutiles.",
+        ),
       );
     throw err;
   }
@@ -157,7 +160,10 @@ async function seal(value: unknown, vault: VaultKey) {
   const packed = await gzip(serialise(value));
   if (packed.length > MAX_SEALED_BYTES)
     throw new Error(
-      `Session trop volumineuse pour être enregistrée : ${mb(packed.length)} Mo compressés, ${mb(MAX_SEALED_BYTES)} Mo au plus. Exportez puis retirez les journaux terminés, ou les images inutiles.`,
+      t(
+        "Session trop volumineuse pour être enregistrée : {size} Mo compressés, {max} Mo au plus. Exportez puis retirez les journaux terminés, ou les images inutiles.",
+        { size: mb(packed.length), max: mb(MAX_SEALED_BYTES) },
+      ),
     );
   const data = new Uint8Array(
     await crypto.subtle.encrypt(
@@ -223,7 +229,7 @@ export async function decrypt(
   } else {
     const envelope = encryptedSchema.safeParse(input);
     if (!envelope.success)
-      throw new Error("Fichier chiffré invalide ou version inconnue.");
+      throw new Error(t("Fichier chiffré invalide ou version inconnue."));
     salt = envelope.data.salt;
     iv = fromBase64(envelope.data.iv);
     data = fromBase64(envelope.data.ciphertext);
@@ -245,7 +251,7 @@ export async function decrypt(
       ),
     );
   } catch {
-    throw new Error("Phrase secrète incorrecte ou fichier endommagé.");
+    throw new Error(t("Phrase secrète incorrecte ou fichier endommagé."));
   }
   try {
     const text = new TextDecoder().decode(
@@ -253,6 +259,6 @@ export async function decrypt(
     );
     return { value: JSON.parse(text), vault };
   } catch {
-    throw new Error("Phrase secrète incorrecte ou fichier endommagé.");
+    throw new Error(t("Phrase secrète incorrecte ou fichier endommagé."));
   }
 }

@@ -6,6 +6,7 @@ import {
   isMN95,
   toMN95,
 } from "../../../shared/coordinates.ts";
+import { formatNumber, getLang } from "../../../shared/i18n/core.ts";
 
 export type LatLng = [number, number];
 
@@ -238,7 +239,7 @@ export function areaOf(points: LatLng[], holes: LatLng[][] = []) {
 }
 
 const number = (n: number, digits = 0) =>
-  n.toLocaleString("fr-CH", {
+  formatNumber(n, {
     maximumFractionDigits: digits,
     minimumFractionDigits: digits,
   });
@@ -557,25 +558,47 @@ export function sectorPoints(
   return out;
 }
 
-/** Compass name of a bearing, in French (N, NNE, NE…). */
+/**
+ * Compass name of a bearing in the language of the post: N, NNE, NE… in
+ * French and Italian (O: ouest, ovest), N, NNO, NO… in German (O: Ost).
+ */
 export function compass(bearing: number) {
-  const names = [
-    "N",
-    "NNE",
-    "NE",
-    "ENE",
-    "E",
-    "ESE",
-    "SE",
-    "SSE",
-    "S",
-    "SSO",
-    "SO",
-    "OSO",
-    "O",
-    "ONO",
-    "NO",
-    "NNO",
-  ];
+  const names = getLang() === "de" ? GERMAN_COMPASS : FRENCH_COMPASS;
   return names[Math.round((((bearing % 360) + 360) % 360) / 22.5) % 16];
 }
+const GERMAN_COMPASS = [
+  "N",
+  "NNO",
+  "NO",
+  "ONO",
+  "O",
+  "OSO",
+  "SO",
+  "SSO",
+  "S",
+  "SSW",
+  "SW",
+  "WSW",
+  "W",
+  "WNW",
+  "NW",
+  "NNW",
+];
+const FRENCH_COMPASS = [
+  "N",
+  "NNE",
+  "NE",
+  "ENE",
+  "E",
+  "ESE",
+  "SE",
+  "SSE",
+  "S",
+  "SSO",
+  "SO",
+  "OSO",
+  "O",
+  "ONO",
+  "NO",
+  "NNO",
+];

@@ -48,6 +48,8 @@ import { CountUp } from "../../ui/effects";
 import type { SheetTable } from "../../print/radio-sheet";
 import { Requests } from "./Requests";
 import { WAITING, requestLate } from "../../../shared/requests";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 import "./resources.css";
 
 type Status = (typeof RESOURCE_STATUSES)[number];
@@ -93,15 +95,40 @@ const norm = (s: string) =>
     .toLocaleLowerCase("fr")
     .trim();
 
+// Types are free texts (référentiel of the journal, in its language):
+// French words first, then German and Italian ones.
 function kindIcon(kind: string): LucideIcon {
   const k = norm(kind);
-  if (/personn|equipe|troupe|detachement/.test(k)) return Users;
-  if (/aerien|helico|avion|drone/.test(k)) return Plane;
-  if (/embarcation|bateau|navire/.test(k)) return Ship;
-  if (/engin|tracteur|pelle|grue/.test(k)) return Tractor;
-  if (/hebergement|abri|logement/.test(k)) return House;
-  if (/materiel|lot|groupe electrogene|pompe/.test(k)) return Package;
-  if (/vehicule|camion|voiture|bus|ambulance/.test(k)) return Truck;
+  if (
+    /personn|equipe|troupe|detachement|personal|mannschaft|trupp|squadra|distaccament/.test(
+      k,
+    )
+  )
+    return Users;
+  if (/aerien|helico|avion|drone|luft|flugzeug|aere|elicott/.test(k))
+    return Plane;
+  if (/embarcation|bateau|navire|boot|schiff|imbarcazion|barca/.test(k))
+    return Ship;
+  if (
+    /engin|tracteur|pelle|grue|spezialfahrzeug|traktor|bagger|kran|mezzo speciale|trattore|escavat/.test(
+      k,
+    )
+  )
+    return Tractor;
+  if (/hebergement|abri|logement|unterkunft|schutzraum|alloggi|rifugi/.test(k))
+    return House;
+  if (
+    /materiel|lot|groupe electrogene|pompe|material|stromaggregat|pumpe|generatore|pompa/.test(
+      k,
+    )
+  )
+    return Package;
+  if (
+    /vehicule|camion|voiture|bus|ambulance|fahrzeug|lastwagen|ambulanz|veicol|autocarro/.test(
+      k,
+    )
+  )
+    return Truck;
   return Box;
 }
 
@@ -158,17 +185,27 @@ function nextName(name: string, taken: Set<string>) {
   return `${base}${space}${n}`.slice(0, 120);
 }
 
-function etaLabel(eta: string, now: number) {
-  if (!eta) return "";
+function etaLabel(eta: string, now: number): { text: string; late: boolean } {
+  const none = { text: "", late: false };
+  if (!eta) return none;
   const minutes = Math.round((Date.parse(eta) - now) / 60000);
-  if (Number.isNaN(minutes)) return "";
-  if (minutes > 90) return `arrivée à ${time(eta)}`;
-  if (minutes > 0) return `arrivée dans ${minutes} min`;
-  if (minutes === 0) return "arrivée imminente";
+  if (Number.isNaN(minutes)) return none;
+  if (minutes > 90)
+    return { text: t("arrivée à {time}", { time: time(eta) }), late: false };
+  if (minutes > 0)
+    return { text: t("arrivée dans {n} min", { n: minutes }), late: false };
+  if (minutes === 0) return { text: t("arrivée imminente"), late: false };
   const late = -minutes;
-  return late < 60
-    ? `retard de ${late} min`
-    : `retard de ${Math.floor(late / 60)} h ${String(late % 60).padStart(2, "0")}`;
+  return {
+    late: true,
+    text:
+      late < 60
+        ? t("retard de {n} min", { n: late })
+        : t("retard de {h} h {mm}", {
+            h: Math.floor(late / 60),
+            mm: String(late % 60).padStart(2, "0"),
+          }),
+  };
 }
 
 export function Resources() {
@@ -238,7 +275,7 @@ export function Resources() {
     }
     const found = resources.find((r) => r.id === id);
     if (found) setEditing(found);
-    else toast("Ce moyen n’existe plus.");
+    else toast(t("Ce moyen n’existe plus."));
   }, [focus, resources, readOnly, setFocus, toast]);
 
   const kinds = useMemo(
@@ -282,6 +319,7 @@ export function Resources() {
           r.contact,
           r.notes,
           r.status,
+          enumLabel(r.status),
         ].join(" "),
       );
       return terms.every((t) => hay.includes(t));
@@ -323,7 +361,7 @@ export function Resources() {
             type: "Observation",
             channel: "Sur place",
             message: item.message,
-            tags: ["moyens"],
+            tags: [t("moyens")],
           },
           [ref("resource", item.id)],
         );
@@ -340,7 +378,11 @@ export function Resources() {
     if (!logChanges || from === to) return;
     pendingLogs.current.push({
       id: r.id,
-      message: `${r.name} : ${from} → ${to}`,
+      message: t("{name} : {from} → {to}", {
+        name: r.name,
+        from: enumLabel(from),
+        to: enumLabel(to),
+      }),
     });
   }
 
@@ -349,7 +391,9 @@ export function Resources() {
     try {
       updateOps((ops) => upsert(ops, "resources", { ...r, status }, author));
       logChange(r, r.status, status);
-      toast(`${r.name} : ${status}`);
+      toast(
+        t("{name} : {status}", { name: r.name, status: enumLabel(status) }),
+      );
     } catch (err) {
       toast((err as Error).message);
     }
@@ -365,7 +409,7 @@ export function Resources() {
     };
     try {
       updateOps((ops) => upsert(ops, "resources", copy, author));
-      toast(`« ${copy.name} » ajouté.`);
+      toast(t("« {name} » ajouté.", { name: copy.name }));
       setEditing(copy);
     } catch (err) {
       toast((err as Error).message);
@@ -385,19 +429,19 @@ export function Resources() {
       const count = list.reduce((sum, r) => sum + r.count, 0);
       return {
         id: status,
-        title: status,
-        caption: `${list.length} moyen${list.length > 1 ? "s" : ""} · ${count} unité${count > 1 ? "s" : ""}`,
+        title: enumLabel(status),
+        caption: `${tn(list.length, "{n} moyen", "{n} moyens")} · ${tn(count, "{n} unité", "{n} unités")}`,
         head: [
-          "Désignation",
-          "Type",
-          "Nb",
-          "Organisation",
-          "Nom d’appel",
-          "Lieu",
-          "Mission",
-          "Arrivée",
-          "Contact",
-          "Remarques",
+          t("Désignation"),
+          t("Type"),
+          t("Nb"),
+          t("Organisation"),
+          t("Nom d’appel"),
+          t("Lieu"),
+          t("Mission"),
+          t("Arrivée"),
+          t("Contact"),
+          t("Remarques"),
         ],
         widths: [34, 24, 12, 30, 24, 32, 45, 20, 26, 22],
         body: list.map((r) => [
@@ -415,17 +459,17 @@ export function Resources() {
       };
     }).filter((t) => t.body.length);
     if (!tables.length) {
-      toast("Aucun moyen à imprimer.");
+      toast(t("Aucun moyen à imprimer."));
       return;
     }
     print({
       kind: "tables",
       journal,
-      title: "Tableau des moyens",
-      extra: `Établi par ${author}`,
+      title: t("Tableau des moyens"),
+      extra: t("Établi par {author}", { author }),
       tables,
       landscape: true,
-      name: "moyens",
+      name: t("moyens (fichier)"),
     });
   }
 
@@ -436,19 +480,19 @@ export function Resources() {
   };
 
   const spec: FieldSpec[] = [
-    { kind: "group", label: "Identification" },
+    { kind: "group", label: t("Identification") },
     {
       key: "name",
-      label: "Désignation",
+      label: t("Désignation"),
       kind: "text",
       required: true,
       max: 120,
-      placeholder: "ex. Tonne-pompe 1, Section PCi Nord",
+      placeholder: t("ex. Tonne-pompe 1, Section PCi Nord"),
       wide: true,
     },
     {
       key: "kind",
-      label: "Type",
+      label: t("Type"),
       kind: "combo",
       list: "resourceKinds",
       quick: 8,
@@ -456,33 +500,33 @@ export function Resources() {
     },
     {
       key: "count",
-      label: "Nombre",
+      label: t("Nombre"),
       kind: "number",
-      hint: "Véhicules, personnes, lots…",
+      hint: t("Véhicules, personnes, lots…"),
     },
     {
       key: "organization",
-      label: "Organisation",
+      label: t("Organisation"),
       kind: "combo",
       list: "organizations",
     },
     {
       key: "callsign",
-      label: "Nom d’appel",
+      label: t("Nom d’appel"),
       kind: "combo",
       options: callsigns,
       hint: callsigns.length
         ? undefined
-        : "Les noms d’appel du réseau radio sont proposés ici.",
+        : t("Les noms d’appel du réseau radio sont proposés ici."),
     },
     {
       key: "contact",
-      label: "Contact",
+      label: t("Contact"),
       kind: "combo",
       options: contactNames,
-      placeholder: "Responsable, chef de groupe…",
+      placeholder: t("Responsable, chef de groupe…"),
     },
-    { kind: "group", label: "Engagement" },
+    { kind: "group", label: t("Engagement") },
     {
       kind: "custom",
       key: "status",
@@ -490,7 +534,7 @@ export function Resources() {
       render: (value, set) => (
         <div className="res-status-field">
           <span className="label" id="res-status-label">
-            État
+            {t("État")}
           </span>
           <div role="radiogroup" aria-labelledby="res-status-label">
             {RESOURCE_STATUSES.map((s) => (
@@ -503,29 +547,29 @@ export function Resources() {
                 style={{ "--tone": STATUS_COLOR[s] } as CSSProperties}
                 onClick={() => set({ status: s })}
               >
-                {s}
+                {enumLabel(s)}
               </button>
             ))}
           </div>
         </div>
       ),
     },
-    { key: "location", label: "Lieu / position", kind: "text", max: 300 },
+    { key: "location", label: t("Lieu / position"), kind: "text", max: 300 },
     {
       key: "eta",
-      label: "Arrivée prévue",
+      label: t("Arrivée prévue"),
       kind: "datetime",
-      hint: "Compte à rebours affiché quand le moyen est en route.",
+      hint: t("Compte à rebours affiché quand le moyen est en route."),
     },
     {
       key: "mission",
-      label: "Mission",
+      label: t("Mission"),
       kind: "area",
       max: 2000,
       rows: 3,
     },
-    { kind: "group", label: "Détails" },
-    { key: "notes", label: "Remarques", kind: "area", max: 2000 },
+    { kind: "group", label: t("Détails") },
+    { key: "notes", label: t("Remarques"), kind: "area", max: 2000 },
   ];
 
   const sorted = useMemo(() => {
@@ -577,12 +621,12 @@ export function Resources() {
             {tab === "resources" && (
               <button onClick={printBoard} disabled={!resources.length}>
                 <Printer size={14} />
-                Imprimer
+                {t("Imprimer")}
               </button>
             )}
             <button onClick={requestResources} disabled={readOnly}>
               <Megaphone size={14} />
-              Demander des moyens
+              {t("Demander des moyens")}
             </button>
             <button
               className="primary"
@@ -590,14 +634,14 @@ export function Resources() {
               onClick={() => setEditing(blank())}
             >
               <Plus size={15} />
-              Ajouter un moyen
+              {t("Ajouter un moyen")}
             </button>
           </>
         }
       />
       <div className="res-tabs">
         <Segmented
-          label="Moyens ou demandes"
+          label={t("Moyens ou demandes")}
           value={tab}
           onChange={setTab}
           options={[
@@ -605,7 +649,8 @@ export function Resources() {
               value: "resources",
               label: (
                 <>
-                  <Truck size={13} /> Moyens · {resources.length}
+                  <Truck size={13} />{" "}
+                  {t("Moyens · {n}", { n: resources.length })}
                 </>
               ),
             },
@@ -613,9 +658,12 @@ export function Resources() {
               value: "requests",
               label: (
                 <>
-                  <Megaphone size={13} /> Demandes · {waitingRequests.length}
+                  <Megaphone size={13} />{" "}
+                  {t("Demandes · {n}", { n: waitingRequests.length })}
                   {lateRequests > 0 && (
-                    <span className="pill crit">{lateRequests} en retard</span>
+                    <span className="pill crit">
+                      {t("{n} en retard", { n: lateRequests })}
+                    </span>
                   )}
                 </>
               ),
@@ -629,56 +677,56 @@ export function Resources() {
       ) : resources.length === 0 ? (
         <EmptyState
           icon={<Truck size={28} />}
-          title="Aucun moyen pour l’instant"
+          title={t("Aucun moyen pour l’instant")}
           actions={
             !readOnly && (
               <>
                 <button className="primary" onClick={() => setEditing(blank())}>
                   <Plus size={15} />
-                  Ajouter un moyen
+                  {t("Ajouter un moyen")}
                 </button>
                 <button onClick={requestResources}>
                   <Megaphone size={14} />
-                  Demander des moyens
+                  {t("Demander des moyens")}
                 </button>
               </>
             )
           }
         >
-          Notez ici les véhicules, le personnel et le matériel : leur état, leur
-          lieu et leur mission. Glissez les cartes d’une colonne à l’autre pour
-          changer leur état.
+          {t(
+            "Notez ici les véhicules, le personnel et le matériel : leur état, leur lieu et leur mission. Glissez les cartes d’une colonne à l’autre pour changer leur état.",
+          )}
         </EmptyState>
       ) : (
         <>
           <section
             className="res-summary reveal"
-            aria-label="Résumé des moyens"
+            aria-label={t("Résumé des moyens")}
           >
             <div className="res-stats">
               <div className="stat">
                 <strong>
                   <CountUp value={resources.length} />
                 </strong>
-                <span>moyens</span>
+                <span>{t("moyens")}</span>
               </div>
               <div className="stat">
                 <strong>
                   <CountUp value={totals.people} />
                 </strong>
-                <span>personnes</span>
+                <span>{t("personnes")}</span>
               </div>
               <div className="stat">
                 <strong>
                   <CountUp value={totals.vehicles} />
                 </strong>
-                <span>véhicules et engins</span>
+                <span>{t("véhicules et engins")}</span>
               </div>
             </div>
             <div
               className="res-status-pills"
               role="group"
-              aria-label="Filtrer par état"
+              aria-label={t("Filtrer par état")}
             >
               {RESOURCE_STATUSES.map((s) => (
                 <button
@@ -689,11 +737,13 @@ export function Resources() {
                   onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
                   title={
                     statusFilter === s
-                      ? "Afficher tous les états"
-                      : `Afficher seulement « ${s} »`
+                      ? t("Afficher tous les états")
+                      : t("Afficher seulement « {status} »", {
+                          status: enumLabel(s),
+                        })
                   }
                 >
-                  {s}
+                  {enumLabel(s)}
                   <b>{totals.byStatus.get(s) ?? 0}</b>
                 </button>
               ))}
@@ -706,13 +756,13 @@ export function Resources() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un moyen, un lieu, une mission…"
-                aria-label="Rechercher un moyen"
+                placeholder={t("Rechercher un moyen, un lieu, une mission…")}
+                aria-label={t("Rechercher un moyen")}
               />
               {query && (
                 <button
                   className="icon-button"
-                  aria-label="Effacer la recherche"
+                  aria-label={t("Effacer la recherche")}
                   onClick={() => setQuery("")}
                 >
                   <X size={13} />
@@ -723,9 +773,9 @@ export function Resources() {
               className="res-filter"
               value={kindFilter}
               onChange={(e) => setKindFilter(e.target.value)}
-              aria-label="Filtrer par type"
+              aria-label={t("Filtrer par type")}
             >
-              <option value="">Tous les types</option>
+              <option value="">{t("Tous les types")}</option>
               {kinds.map((k) => (
                 <option key={k} value={k}>
                   {k}
@@ -736,9 +786,9 @@ export function Resources() {
               className="res-filter"
               value={orgFilter}
               onChange={(e) => setOrgFilter(e.target.value)}
-              aria-label="Filtrer par organisation"
+              aria-label={t("Filtrer par organisation")}
             >
-              <option value="">Toutes les organisations</option>
+              <option value="">{t("Toutes les organisations")}</option>
               {organizations.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -746,7 +796,7 @@ export function Resources() {
               ))}
             </select>
             <Segmented
-              label="Affichage"
+              label={t("Affichage")}
               value={view}
               onChange={setView}
               options={[
@@ -754,7 +804,7 @@ export function Resources() {
                   value: "board",
                   label: (
                     <>
-                      <Kanban size={13} /> Tableau
+                      <Kanban size={13} /> {t("Tableau")}
                     </>
                   ),
                 },
@@ -762,7 +812,7 @@ export function Resources() {
                   value: "list",
                   label: (
                     <>
-                      <List size={13} /> Liste
+                      <List size={13} /> {t("Liste")}
                     </>
                   ),
                 },
@@ -770,7 +820,7 @@ export function Resources() {
                   value: "tiles",
                   label: (
                     <>
-                      <LayoutGrid size={13} /> Tuiles
+                      <LayoutGrid size={13} /> {t("Tuiles")}
                     </>
                   ),
                 },
@@ -778,7 +828,7 @@ export function Resources() {
             />
             <Toggle
               className="res-log-toggle"
-              label="Consigner les changements d’état au journal"
+              label={t("Consigner les changements d’état au journal")}
               checked={logChanges}
               onChange={(v) => {
                 setLogChanges(v);
@@ -789,7 +839,7 @@ export function Resources() {
 
           {filtered && !visible.length && (
             <p className="muted res-none">
-              Aucun moyen ne correspond.{" "}
+              {t("Aucun moyen ne correspond.")}{" "}
               <button
                 className="link"
                 onClick={() => {
@@ -799,7 +849,7 @@ export function Resources() {
                   setStatusFilter("");
                 }}
               >
-                Tout afficher
+                {t("Tout afficher")}
               </button>
             </p>
           )}
@@ -844,12 +894,12 @@ export function Resources() {
           key={editing.id ?? "new"}
           collection="resources"
           kind="resource"
-          noun="un moyen"
+          noun={t("un moyen")}
           spec={spec}
           initial={editing}
           onClose={() => setEditing(null)}
           validate={(v) =>
-            v.name.trim() ? "" : "La désignation est nécessaire."
+            v.name.trim() ? "" : t("La désignation est nécessaire.")
           }
           afterSave={(v) => {
             if (editing.id) logChange(v, editing.status, v.status);
@@ -865,25 +915,25 @@ export function Resources() {
                 {place ? (
                   <button type="button" onClick={() => open(place)}>
                     <MapPin size={14} />
-                    Voir sur la carte
+                    {t("Voir sur la carte")}
                   </button>
                 ) : (
                   !readOnly && (
                     <button type="button" onClick={() => placeOnMap(saved.id)}>
                       <MapPin size={14} />
-                      Placer sur la carte
+                      {t("Placer sur la carte")}
                     </button>
                   )
                 )}
                 {!readOnly && (
                   <button type="button" onClick={() => duplicate(saved)}>
                     <CopyPlus size={14} />
-                    Dupliquer
+                    {t("Dupliquer")}
                   </button>
                 )}
                 {contact && (
                   <span className="res-sheet-contact">
-                    <span className="label">Contact</span>
+                    <span className="label">{t("Contact")}</span>
                     <LinkChip target={ref("contact", contact.id)} />
                   </span>
                 )}
@@ -938,7 +988,10 @@ function Board({
             key={status}
             className={`lane res-lane ${over === status ? "drop" : ""}`}
             style={{ "--tone": STATUS_COLOR[status] } as CSSProperties}
-            aria-label={`${status} : ${list.length} moyen(s)`}
+            aria-label={t("{status} : {n} moyen(s)", {
+              status: enumLabel(status),
+              n: list.length,
+            })}
             onDragOver={(e) => {
               if (card.readOnly || !dragging) return;
               e.preventDefault();
@@ -953,15 +1006,17 @@ function Board({
           >
             <header className="lane-head">
               <span className="res-lane-dot" aria-hidden="true" />
-              <strong>{status}</strong>
-              <span className="count" title={`${units} unité(s)`}>
+              <strong>{enumLabel(status)}</strong>
+              <span className="count" title={t("{n} unité(s)", { n: units })}>
                 {list.length}
               </span>
               {!card.readOnly && (
                 <button
                   className="icon-button"
-                  aria-label={`Ajouter un moyen « ${status} »`}
-                  title="Ajouter ici"
+                  aria-label={t("Ajouter un moyen « {status} »", {
+                    status: enumLabel(status),
+                  })}
+                  title={t("Ajouter ici")}
                   onClick={() => onAdd(status)}
                 >
                   <Plus size={14} />
@@ -989,7 +1044,7 @@ function Board({
             ))}
             {!list.length && (
               <p className="res-lane-empty">
-                {card.readOnly ? "Aucun moyen" : "Déposez un moyen ici"}
+                {card.readOnly ? t("Aucun moyen") : t("Déposez un moyen ici")}
               </p>
             )}
           </section>
@@ -1043,18 +1098,20 @@ function StatusMenu({
         className={`pill ${STATUS_TONE[resource.status]} res-status-button`}
         aria-haspopup="menu"
         aria-expanded={!!anchor}
-        aria-label={`État : ${resource.status}. Changer l’état`}
+        aria-label={t("État : {status}. Changer l’état", {
+          status: enumLabel(resource.status),
+        })}
         onClick={(e) => {
           e.stopPropagation();
           setAnchor(anchor ? null : e.currentTarget);
         }}
       >
-        {compact ? "" : resource.status}
+        {compact ? "" : enumLabel(resource.status)}
         <ChevronDown size={11} />
       </button>
       {anchor && (
         <Popover anchor={anchor} onClose={() => setAnchor(null)}>
-          <div className="menu-label">Changer l’état</div>
+          <div className="menu-label">{t("Changer l’état")}</div>
           {RESOURCE_STATUSES.map((s) => (
             <button
               key={s}
@@ -1072,7 +1129,7 @@ function StatusMenu({
                 style={{ background: STATUS_COLOR[s] }}
                 aria-hidden="true"
               />
-              {s}
+              {enumLabel(s)}
             </button>
           ))}
         </Popover>
@@ -1104,8 +1161,8 @@ function ResourceCard({
   const { hover, enter, leave } = useHoverPreview();
   const Icon = kindIcon(r.kind);
   const links = degree(r.id);
-  const eta = r.status === "En route" ? etaLabel(r.eta, now) : "";
-  const late = eta.startsWith("retard");
+  const { text: eta, late } =
+    r.status === "En route" ? etaLabel(r.eta, now) : { text: "", late: false };
   const placed = hasPlace(r.id);
   return (
     <article
@@ -1137,7 +1194,9 @@ function ResourceCard({
           {r.count > 1 && <span className="res-count">× {r.count}</span>}
         </button>
         {readOnly ? (
-          <span className={`pill ${STATUS_TONE[r.status]}`}>{r.status}</span>
+          <span className={`pill ${STATUS_TONE[r.status]}`}>
+            {enumLabel(r.status)}
+          </span>
         ) : (
           <StatusMenu resource={r} onStatus={onStatus} compact />
         )}
@@ -1168,7 +1227,7 @@ function ResourceCard({
           </span>
         )}
         {links > 0 && (
-          <span className="res-meta" title={`${links} lien(s)`}>
+          <span className="res-meta" title={t("{n} lien(s)", { n: links })}>
             <Link2 size={11} />
             {links}
           </span>
@@ -1179,10 +1238,10 @@ function ResourceCard({
             className="icon-button res-map-button"
             aria-label={
               placed
-                ? `Voir ${r.name} sur la carte`
-                : `Placer ${r.name} sur la carte`
+                ? t("Voir {name} sur la carte", { name: r.name })
+                : t("Placer {name} sur la carte", { name: r.name })
             }
-            title={placed ? "Voir sur la carte" : "Placer sur la carte"}
+            title={placed ? t("Voir sur la carte") : t("Placer sur la carte")}
             data-placed={placed || undefined}
             onClick={(e) => {
               e.stopPropagation();
@@ -1200,16 +1259,16 @@ function ResourceCard({
   );
 }
 
-const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "name", label: "Désignation" },
-  { key: "kind", label: "Type" },
-  { key: "count", label: "Nb" },
-  { key: "organization", label: "Organisation" },
-  { key: "callsign", label: "Nom d’appel" },
-  { key: "status", label: "État" },
-  { key: "location", label: "Lieu" },
-  { key: "eta", label: "Arrivée" },
-  { key: "links", label: "Liens" },
+const columns = (): { key: SortKey; label: string }[] => [
+  { key: "name", label: t("Désignation") },
+  { key: "kind", label: t("Type") },
+  { key: "count", label: t("Nb") },
+  { key: "organization", label: t("Organisation") },
+  { key: "callsign", label: t("Nom d’appel") },
+  { key: "status", label: t("État") },
+  { key: "location", label: t("Lieu") },
+  { key: "eta", label: t("Arrivée") },
+  { key: "links", label: t("Liens") },
 ];
 
 function ResourceTable({
@@ -1232,7 +1291,7 @@ function ResourceTable({
         <table className="grid res-table">
           <thead>
             <tr>
-              {COLUMNS.map((c) => (
+              {columns().map((c) => (
                 <th
                   key={c.key}
                   aria-sort={
@@ -1263,12 +1322,10 @@ function ResourceTable({
           <tbody>
             {rows.map((r) => {
               const Icon = kindIcon(r.kind);
-              const eta =
+              const { text: eta, late } =
                 r.status === "En route"
                   ? etaLabel(r.eta, now)
-                  : r.eta
-                    ? time(r.eta)
-                    : "";
+                  : { text: r.eta ? time(r.eta) : "", late: false };
               return (
                 <tr key={r.id} className="res-row" onClick={() => onOpen(r)}>
                   <td>
@@ -1296,14 +1353,14 @@ function ResourceTable({
                   <td>
                     {readOnly ? (
                       <span className={`pill ${STATUS_TONE[r.status]}`}>
-                        {r.status}
+                        {enumLabel(r.status)}
                       </span>
                     ) : (
                       <StatusMenu resource={r} onStatus={onStatus} />
                     )}
                   </td>
                   <td>{r.location || <span className="muted">—</span>}</td>
-                  <td className={eta.startsWith("retard") ? "crit-text" : ""}>
+                  <td className={late ? "crit-text" : ""}>
                     {eta || <span className="muted">—</span>}
                   </td>
                   <td className="mono">{degree(r.id) || ""}</td>

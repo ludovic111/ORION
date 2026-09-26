@@ -13,7 +13,9 @@ import {
   MAX_IMPORT_BYTES,
 } from "../../shared/interchange";
 import { decrypt } from "../../shared/crypto";
+import { enumLabel } from "../../shared/i18n/enums.ts";
 import { Modal } from "./Modal";
+import { t } from "./i18n.ts";
 export function ImportModal({
   target,
   onClose,
@@ -64,16 +66,18 @@ export function ImportModal({
     setBusy(true);
     try {
       if (file.size > MAX_IMPORT_BYTES)
-        throw new Error("Ce fichier dépasse 32 Mo.");
+        throw new Error(t("Ce fichier dépasse 32 Mo."));
       const text = await file.text();
       if (/\.(csv|tsv)$/i.test(file.name)) {
         setCandidate(importCsv(text, file.name.replace(/\.[^.]+$/, "")));
-        setNotice("CSV : entrées recréées sans leurs versions antérieures.");
+        setNotice(t("CSV : entrées recréées sans leurs versions antérieures."));
       } else {
         const value = JSON.parse(text);
         if (value?.format === "orion-dossier")
           throw new Error(
-            "Ce fichier contient les tableaux d’un export (JSON données), pas une archive. Importez l’archive orion aic (.orionaic) ou l’archive JSON réimportable.",
+            t(
+              "Ce fichier contient les tableaux d’un export (JSON données), pas une archive. Importez l’archive orion aic (.orionaic) ou l’archive JSON réimportable.",
+            ),
           );
         if (value?.format === "orion-encrypted") setEncrypted(value);
         else accept(value);
@@ -81,7 +85,7 @@ export function ImportModal({
     } catch (err) {
       setError(
         err instanceof SyntaxError
-          ? "Ce fichier n’est pas un fichier JSON / orion aic valide."
+          ? t("Ce fichier n’est pas un fichier JSON / orion aic valide.")
           : (err as Error).message,
       );
     } finally {
@@ -90,22 +94,23 @@ export function ImportModal({
   }
   return (
     <Modal
-      title="Importer"
+      title={t("Importer")}
       onClose={() => {
         if (!busy) onClose();
       }}
     >
       <p className="modal-intro">
-        Une archive orion aic (.orionaic ou JSON réimportable) contient toute
-        l’opération et son historique. Importée dans un journal séparé, elle
-        permet à chacun de la rejouer pas à pas avec la machine à remonter le
-        temps.
+        {t(
+          "Une archive orion aic (.orionaic ou JSON réimportable) contient toute l’opération et son historique. Importée dans un journal séparé, elle permet à chacun de la rejouer pas à pas avec la machine à remonter le temps.",
+        )}
       </p>
       <label className="dropzone">
         <FileUp size={20} />
-        <strong>Choisir un fichier</strong>
+        <strong>{t("Choisir un fichier")}</strong>
         <span className="mono">
-          .orionaic · .orion · .json · .csv · .tsv · 32 Mo max · lu localement
+          {t(
+            ".orionaic · .orion · .json · .csv · .tsv · 32 Mo max · lu localement",
+          )}
         </span>
         <input
           type="file"
@@ -132,7 +137,7 @@ export function ImportModal({
           }}
         >
           <label>
-            Phrase de l’archive
+            {t("Phrase de l’archive")}
             <input
               type="password"
               required
@@ -145,38 +150,64 @@ export function ImportModal({
           </label>
           <button className="primary" disabled={busy}>
             <LockKeyhole size={14} />
-            Déchiffrer
+            {t("Déchiffrer")}
           </button>
         </form>
       )}
       {candidate && (
         <div className="import-preview">
-          <span className="section-label">Fichier valide</span>
+          <span className="section-label">{t("Fichier valide")}</span>
           <h3>{candidate.journal.title}</h3>
           <p className="mono">
-            {candidate.journal.entries.length} entrées ·{" "}
-            {candidate.journal.radio.terminals.length} terminaux ·{" "}
-            {candidate.journal.mode} · {candidate.journal.classification}
+            {t(
+              "{entries} entrées · {terminals} terminaux · {mode} · {classification}",
+              {
+                entries: candidate.journal.entries.length,
+                terminals: candidate.journal.radio.terminals.length,
+                mode: enumLabel(candidate.journal.mode),
+                classification: enumLabel(candidate.journal.classification),
+              },
+            )}
           </p>
           <p className="muted">{notice}</p>
           {replay && (
             <p className="hint">
               <History size={12} />{" "}
               {replay.steps > 1
-                ? `Rejouable : ${replay.steps} moments de changement, du ${dateTime(replay.from)} au ${dateTime(replay.to)}${replay.events ? ` · ${replay.events} changements d’éléments` : " · versions des entrées seulement"}.`
-                : "Aucun historique à rejouer : l’état du fichier est importé tel quel."}
+                ? replay.events
+                  ? t(
+                      "Rejouable : {steps} moments de changement, du {from} au {to} · {events} changements d’éléments.",
+                      {
+                        steps: replay.steps,
+                        from: dateTime(replay.from),
+                        to: dateTime(replay.to),
+                        events: replay.events,
+                      },
+                    )
+                  : t(
+                      "Rejouable : {steps} moments de changement, du {from} au {to} · versions des entrées seulement.",
+                      {
+                        steps: replay.steps,
+                        from: dateTime(replay.from),
+                        to: dateTime(replay.to),
+                      },
+                    )
+                : t(
+                    "Aucun historique à rejouer : l’état du fichier est importé tel quel.",
+                  )}
             </p>
           )}
           {!target && (
             <label>
               <span>
-                Opérateur sur ce poste <span className="required">*</span>
+                {t("Opérateur sur ce poste")}{" "}
+                <span className="required">*</span>
               </span>
               <input
                 value={author}
                 maxLength={120}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="Nom ou fonction"
+                placeholder={t("Nom ou fonction")}
               />
             </label>
           )}
@@ -188,10 +219,11 @@ export function ImportModal({
               onChange={() => setMerge(false)}
             />
             <span>
-              Journal séparé
+              {t("Journal séparé")}
               <small>
-                Le journal actuel reste intact. Idéal pour relire ou rejouer
-                l’opération.
+                {t(
+                  "Le journal actuel reste intact. Idéal pour relire ou rejouer l’opération.",
+                )}
               </small>
             </span>
           </label>
@@ -209,23 +241,33 @@ export function ImportModal({
                 }
               />
               <span>
-                Fusionner dans « {target.title} »
+                {t("Fusionner dans « {title} »", { title: target.title })}
                 <small className="mono">
-                  +{plan?.added.length} entrées · {plan?.duplicates.length}{" "}
-                  identiques · −{plan?.removed.length} supprimées ailleurs ·{" "}
-                  {plan?.conflicts.length} conflits · radio +{plan?.radio.added}{" "}
-                  / ~{plan?.radio.updated} / {plan?.radio.conflicts} conflits
+                  {t(
+                    "+{added} entrées · {duplicates} identiques · −{removed} supprimées ailleurs · {conflicts} conflits · radio +{radioAdded} / ~{radioUpdated} / {radioConflicts} conflits",
+                    {
+                      added: plan?.added.length,
+                      duplicates: plan?.duplicates.length,
+                      removed: plan?.removed.length,
+                      conflicts: plan?.conflicts.length,
+                      radioAdded: plan?.radio.added,
+                      radioUpdated: plan?.radio.updated,
+                      radioConflicts: plan?.radio.conflicts,
+                    },
+                  )}
                 </small>
               </span>
             </label>
           )}
           {(!!plan?.conflicts.length || !!plan?.radio.conflicts) && (
             <p className="hint warn">
-              Versions divergentes : importez en journal séparé pour comparer.
+              {t(
+                "Versions divergentes : importez en journal séparé pour comparer.",
+              )}
             </p>
           )}
           <div className="modal-actions">
-            <button onClick={onClose}>Annuler</button>
+            <button onClick={onClose}>{t("Annuler")}</button>
             <button
               className="primary"
               disabled={!target && !author.trim()}
@@ -239,12 +281,12 @@ export function ImportModal({
               }}
             >
               <FileUp size={14} />
-              {merge ? "Fusionner" : "Importer"}
+              {merge ? t("Fusionner") : t("Importer")}
             </button>
           </div>
         </div>
       )}
-      {busy && <p role="status">Lecture du fichier…</p>}
+      {busy && <p role="status">{t("Lecture du fichier…")}</p>}
       {error && (
         <p role="alert" className="error">
           {error}

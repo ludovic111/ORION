@@ -1,4 +1,5 @@
 import type { Contact } from "../../../shared/ops";
+import { t, tIn } from "./i18n.ts";
 
 // Local import and export of the directory: vCard 3/4 and CSV (Excel,
 // Outlook, Google). Files never leave the browser.
@@ -218,9 +219,13 @@ function fromVCard(props: Property[]): ContactDraft | null {
     .filter((p) => p.name === "NOTE")
     .map((p) => unescapeVCard(p.value).trim());
   if (phones.length > 2)
-    notes.push(`Autres numéros : ${phones.slice(2).join(", ")}`);
+    notes.push(
+      t("Autres numéros : {list}", { list: phones.slice(2).join(", ") }),
+    );
   if (emails.length > 1)
-    notes.push(`Autres e-mails : ${emails.slice(1).join(", ")}`);
+    notes.push(
+      t("Autres e-mails : {list}", { list: emails.slice(1).join(", ") }),
+    );
   return finish({
     name,
     organization: splitUnescaped(first("ORG"), ";")
@@ -298,6 +303,7 @@ alias("lastName", [
   "Family name",
   "Surname",
   "Nachname",
+  "Cognome",
 ]);
 alias("organization", [
   "Organisation",
@@ -388,6 +394,27 @@ alias("notes", [
 ]);
 alias("favorite", ["Favori", "Favoris", "Favorite", "Starred"]);
 
+// Titles of the columns we export, in French and in the other languages
+// (a file exported by a German or Italian post is read back everywhere).
+const EXPORTED: [Column, CsvHead][] = [
+  ["name", "Nom"],
+  ["organization", "Organisation"],
+  ["role", "Fonction"],
+  ["category", "Catégorie"],
+  ["phone", "Téléphone"],
+  ["phone2", "Téléphone 2"],
+  ["email", "E-mail"],
+  ["radio", "Radio"],
+  ["address", "Adresse"],
+  ["notes", "Remarques"],
+  ["favorite", "Favori"],
+];
+for (const [column, head] of EXPORTED)
+  for (const lang of ["fr", "de", "it"] as const) {
+    const key = headerKey(tIn(lang, head));
+    if (!HEADERS[key]) HEADERS[key] = column;
+  }
+
 /** A cell exported by us starts with ' when it looks like a formula. */
 const unguard = (s: string) => (/^'[=+\-@]/.test(s) ? s.slice(1) : s);
 
@@ -400,10 +427,15 @@ export function parseCsvContacts(text: string): ContactDraft[] {
   // "Prénom;Nom" (Outlook in French): "Nom" is then the family name.
   if (columns.includes("firstName") && !columns.includes("lastName"))
     columns = columns.map((c) => (c === "name" ? "lastName" : c));
+  // "Nome;Cognome" (Outlook in Italian): "Nome" is then the first name.
+  else if (columns.includes("lastName") && !columns.includes("firstName"))
+    columns = columns.map((c) => (c === "name" ? "firstName" : c));
   const known = new Set(columns.filter(Boolean));
   if (!known.has("name") && !known.has("firstName") && !known.has("lastName"))
     throw new Error(
-      "Colonne « Nom » introuvable. La première ligne doit contenir les titres des colonnes (Nom, Organisation, Téléphone…).",
+      t(
+        "Colonne « Nom » introuvable. La première ligne doit contenir les titres des colonnes (Nom, Organisation, Téléphone…).",
+      ),
     );
   const out: ContactDraft[] = [];
   for (const cells of rows.slice(1)) {
@@ -416,26 +448,17 @@ export function parseCsvContacts(text: string): ContactDraft[] {
     const c = finish({
       ...fields,
       name: fields.name || [firstName, lastName].filter(Boolean).join(" "),
-      favorite: /^(oui|yes|ja|x|1|true|vrai|\*)$/i.test(favorite ?? ""),
+      favorite: /^(oui|yes|ja|sì|si|x|1|true|vrai|\*)$/i.test(favorite ?? ""),
     });
     if (c) out.push(c);
   }
   return out;
 }
 
-export const CSV_HEAD = [
-  "Nom",
-  "Organisation",
-  "Fonction",
-  "Catégorie",
-  "Téléphone",
-  "Téléphone 2",
-  "E-mail",
-  "Radio",
-  "Adresse",
-  "Remarques",
-  "Favori",
-];
+type CsvHead = Parameters<typeof t>[0];
+
+/** Titles of the exported columns, in the language of the post. */
+export const csvHead = () => EXPORTED.map(([, head]) => t(head));
 
 /** Neutralise spreadsheet formulas and quote when needed. */
 export function csvCell(value: string) {
@@ -457,7 +480,7 @@ export function contactsCsv(list: Contact[]) {
     c.radio,
     c.address,
     c.notes,
-    c.favorite ? "oui" : "",
+    c.favorite ? t("oui") : "",
   ]);
-  return `\uFEFF${[CSV_HEAD, ...rows].map((r) => r.map(csvCell).join(";")).join("\r\n")}\r\n`;
+  return `\uFEFF${[csvHead(), ...rows].map((r) => r.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }

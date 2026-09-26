@@ -1,0 +1,95 @@
+import { translator, type Dict } from "./core.ts";
+
+// Texts of shared/links.ts: kinds of items, their titles and subtitles in the
+// link graph (⌘K search, previews, network view) and the relation labels.
+export const { t, tn, tIn, dict } = translator({
+  // Kinds of items (KIND_INFO)
+  Entrée: { de: "Eintrag", it: "Voce" },
+  Entrées: { de: "Einträge", it: "Voci" },
+  Message: { de: "Meldung", it: "Messaggio" },
+  Messages: { de: "Meldungen", it: "Messaggi" },
+  Carte: { de: "Karte", it: "Carta" },
+  "Objets carte": { de: "Kartenobjekte", it: "Oggetti della carta" },
+  Moyen: { de: "Mittel", it: "Mezzo" },
+  Moyens: { de: "Mittel", it: "Mezzi" },
+  Personne: { de: "Person", it: "Persona" },
+  Équipe: { de: "Team", it: "Squadra" },
+  "Poste (cellule)": { fr: "Poste", de: "Posten", it: "Posto" },
+  "Postes / cellules": { de: "Posten / Zellen", it: "Posti / cellule" },
+  Contact: { de: "Kontakt", it: "Contatto" },
+  Contacts: { de: "Kontakte", it: "Contatti" },
+  "Rendez-vous": { de: "Termin", it: "Appuntamento" },
+  Agenda: { de: "Agenda", it: "Agenda" },
+  Renseignement: { de: "Information", it: "Informazione" },
+  "Renseignements clés": {
+    de: "Schlüsselinformationen",
+    it: "Informazioni chiave",
+  },
+  Situation: { de: "Lage", it: "Situazione" },
+  "Tableaux de situation": { de: "Lagetafeln", it: "Quadri della situazione" },
+  "Alerte météo": { de: "Wetterwarnung", it: "Allerta meteo" },
+  "Alertes météo": { de: "Wetterwarnungen", it: "Allerte meteo" },
+  "Observation météo": { de: "Wetterbeobachtung", it: "Osservazione meteo" },
+  "Observations météo": {
+    de: "Wetterbeobachtungen",
+    it: "Osservazioni meteo",
+  },
+  "Terminal radio": { de: "Funkendgerät", it: "Terminale radio" },
+  Terminaux: { de: "Endgeräte", it: "Terminali" },
+  "Nom d’appel": { de: "Rufname", it: "Nominativo" },
+  "Noms d’appel": { de: "Rufnamen", it: "Nominativi" },
+  "Groupe radio": { de: "Gesprächsgruppe", it: "Gruppo di conversazione" },
+  "Groupes radio": {
+    de: "Gesprächsgruppen",
+    it: "Gruppi di conversazione",
+  },
+  Ordre: { de: "Befehl", it: "Ordine" },
+  Ordres: { de: "Befehle", it: "Ordini" },
+  Diffusion: { de: "Verteilung", it: "Diffusione" },
+  Diffusions: { de: "Verteilungen", it: "Diffusioni" },
+  "Liste de contrôle": { de: "Checkliste", it: "Lista di controllo" },
+  "Listes de contrôle": { de: "Checklisten", it: "Liste di controllo" },
+  "Demande de moyens": { de: "Mittelanforderung", it: "Richiesta di mezzi" },
+  "Demandes de moyens": {
+    de: "Mittelanforderungen",
+    it: "Richieste di mezzi",
+  },
+  Relève: { de: "Ablösung", it: "Avvicendamento" },
+  "Plan de relève": { de: "Ablösungsplan", it: "Piano di avvicendamento" },
+
+  // Titles and subtitles of the items
+  "De {from}": { de: "Von {from}", it: "Da {from}" },
+  "à {to}": { de: "an {to}", it: "a {to}" },
+  "Objet sans nom": { de: "Objekt ohne Namen", it: "Oggetto senza nome" },
+  point: { de: "Punkt", it: "punto" },
+  tracé: { de: "Linie", it: "tracciato" },
+  zone: { de: "Fläche", it: "zona" },
+  texte: { de: "Text", it: "testo" },
+  "{label} : {value}": { de: "{label}: {value}", it: "{label}: {value}" },
+  "{hazard} · degré {level}": {
+    de: "{hazard} · Stufe {level}",
+    it: "{hazard} · grado {level}",
+  },
+  Observation: { de: "Beobachtung", it: "Osservazione" },
+  "Terminal {label}": { de: "Endgerät {label}", it: "Terminale {label}" },
+  "{holder} · depuis {time}": {
+    de: "{holder} · seit {time}",
+    it: "{holder} · dalle {time}",
+  },
+
+  // Relations
+  "suite de": { de: "Folge von", it: "seguito di" },
+  "inscrit au journal": {
+    de: "im Journal erfasst",
+    it: "registrato nel diario",
+  },
+  "membre de": { de: "Mitglied von", it: "membro di" },
+  "groupe principal": { de: "Hauptgruppe", it: "gruppo principale" },
+  "groupe de secours": { de: "Ausweichgruppe", it: "gruppo di riserva" },
+  émetteur: { de: "Absender", it: "mittente" },
+  destinataire: { de: "Empfänger", it: "destinatario" },
+  responsable: { de: "verantwortlich", it: "responsabile" },
+  "remis à": { de: "übergeben an", it: "consegnato a" },
+  détenteur: { de: "Inhaber", it: "detentore" },
+  "nom d’appel": { de: "Rufname", it: "nominativo" },
+} satisfies Dict);

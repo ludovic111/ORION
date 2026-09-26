@@ -10,6 +10,7 @@ import {
 import { useApp } from "./context";
 import { SituationPointDialog } from "../modules/situation/SituationPoint";
 import "../ui/conduct.css";
+import { t } from "./i18n.ts";
 
 const SNOOZE = 15 * 60_000;
 const PRINT_SECTIONS = [
@@ -68,21 +69,24 @@ export function ReminderBar() {
   return (
     <>
       {due.length > 0 && (
-        <div className="rm-bar" role="region" aria-label="Rappels">
+        <div className="rm-bar" role="region" aria-label={t("Rappels")}>
           {due.slice(0, 3).map((d) => (
             <div key={key(d)} className="rm-item" role="status">
               <BellRing size={16} />
               <span className="rm-text">
                 <strong>{d.reminder.title}</strong>
                 <small>
-                  Prévu à {time(new Date(d.dueAt).toISOString())} · {d.reason}
+                  {t("Prévu à {time}", {
+                    time: time(new Date(d.dueAt).toISOString()),
+                  })}{" "}
+                  · {d.reason}
                 </small>
               </span>
               <span className="rm-buttons">
                 <button
                   className="small icon-button"
-                  title="Plus tard (15 min)"
-                  aria-label="Me le rappeler dans 15 minutes"
+                  title={t("Plus tard (15 min)")}
+                  aria-label={t("Me le rappeler dans 15 minutes")}
                   onClick={() =>
                     setSnoozed((s) => ({ ...s, [key(d)]: Date.now() + SNOOZE }))
                   }
@@ -91,11 +95,11 @@ export function ReminderBar() {
                 </button>
                 <button
                   className="small"
-                  title="Marquer comme fait"
+                  title={t("Marquer comme fait")}
                   onClick={() => markDone(d)}
                 >
                   <Check size={13} />
-                  Fait
+                  {t("Fait")}
                 </button>
                 {d.reminder.action !== "other" && (
                   <button className="small primary" onClick={() => act(d)}>

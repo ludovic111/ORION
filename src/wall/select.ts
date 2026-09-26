@@ -5,6 +5,7 @@ import {
   overdue,
   type Journal,
 } from "../../shared/journal.ts";
+import { t } from "./i18n.ts";
 
 // What the wall screen shows, chosen from the live journal: open points
 // (late first), the next report with its countdown, key facts, resources
@@ -47,7 +48,9 @@ export type WallData = {
 };
 
 const ENGAGED = ["Engagé", "En route", "Alerté"];
-const REPORT = /rapport|orientation|point de situation/i;
+// Agenda titles are data, in the language of the journal.
+const REPORT =
+  /rapport|orientation|point de situation|orientierung|orientamento|punto della situazione/i;
 
 export function wallData(
   journal: Pick<Journal, "title" | "location" | "mode" | "entries" | "ops">,
@@ -177,8 +180,11 @@ export function burnShift(now: number, period = 120_000, amplitude = 6) {
 
 /** "dans 12 min", "dans 1 h 05", "en cours". */
 export function countdown(minutes: number, live: boolean): string {
-  if (live) return "en cours";
-  if (minutes <= 0) return "maintenant";
-  if (minutes < 60) return `dans ${minutes} min`;
-  return `dans ${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
+  if (live) return t("en cours");
+  if (minutes <= 0) return t("maintenant");
+  if (minutes < 60) return t("dans {n} min", { n: minutes });
+  return t("dans {h} h {m}", {
+    h: Math.floor(minutes / 60),
+    m: String(minutes % 60).padStart(2, "0"),
+  });
 }

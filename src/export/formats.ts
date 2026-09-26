@@ -1,4 +1,5 @@
 import type { SectionId } from "./scope.ts";
+import { t } from "./i18n.ts";
 
 // Catalogue of the export centre: every format, grouped, with the options
 // it uses and the parts it needs.
@@ -13,6 +14,8 @@ export const FORMAT_GROUPS = [
   "Pack complet",
 ] as const;
 export type FormatGroup = (typeof FORMAT_GROUPS)[number];
+/** Name of a group in the language of the post (the group stays a key). */
+export const groupLabel = (group: FormatGroup) => t(group);
 export type FormatOption =
   "watermark" | "animations" | "orientation" | "versions" | "passphrase";
 
@@ -36,45 +39,65 @@ export const FORMATS = [
   {
     id: "pptx",
     group: "Présentation",
-    name: "PowerPoint animé",
+    get name() {
+      return t("PowerPoint animé");
+    },
     extension: ".pptx",
-    detail: "Diapositives animées, notes, code de vérification.",
+    get detail() {
+      return t("Diapositives animées, notes, code de vérification.");
+    },
     options: SLIDES,
     mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   },
   {
     id: "odp",
     group: "Présentation",
-    name: "Présentation OpenDocument",
+    get name() {
+      return t("Présentation OpenDocument");
+    },
     extension: ".odp",
-    detail: "LibreOffice Impress, mêmes diapositives.",
+    get detail() {
+      return t("LibreOffice Impress, mêmes diapositives.");
+    },
     options: SLIDES,
     mime: "application/vnd.oasis.opendocument.presentation",
   },
   {
     id: "pdf-slides",
     group: "Présentation",
-    name: "PDF diaporama",
+    get name() {
+      return t("PDF diaporama");
+    },
     extension: ".pdf",
-    detail: "Une diapositive par page, pour projeter partout.",
+    get detail() {
+      return t("Une diapositive par page, pour projeter partout.");
+    },
     options: ["watermark"],
     mime: "application/pdf",
   },
   {
     id: "html-slides",
     group: "Présentation",
-    name: "HTML diaporama",
+    get name() {
+      return t("HTML diaporama");
+    },
     extension: ".html",
-    detail: "Diaporama autonome, s’ouvre dans tout navigateur.",
+    get detail() {
+      return t("Diaporama autonome, s’ouvre dans tout navigateur.");
+    },
     options: SLIDES,
     mime: "text/html;charset=utf-8",
   },
   {
     id: "pdf",
     group: "Documents imprimables",
-    name: "PDF dossier",
+    get name() {
+      return t("PDF dossier");
+    },
     extension: ".pdf",
-    detail: "Couverture, sommaire paginé, chapitres, cartes.",
+    get detail() {
+      return t("Couverture, sommaire paginé, chapitres, cartes.");
+    },
     options: DOC,
     mime: "application/pdf",
   },
@@ -83,25 +106,35 @@ export const FORMATS = [
     group: "Documents imprimables",
     name: "Word",
     extension: ".docx",
-    detail: "Titres, sommaire, tableaux et cartes, modifiable.",
+    get detail() {
+      return t("Titres, sommaire, tableaux et cartes, modifiable.");
+    },
     options: DOC,
     mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   },
   {
     id: "odt",
     group: "Documents imprimables",
-    name: "OpenDocument texte",
+    get name() {
+      return t("OpenDocument texte");
+    },
     extension: ".odt",
-    detail: "LibreOffice Writer, même contenu que Word.",
+    get detail() {
+      return t("LibreOffice Writer, même contenu que Word.");
+    },
     options: DOC,
     mime: "application/vnd.oasis.opendocument.text",
   },
   {
     id: "html",
     group: "Documents imprimables",
-    name: "Page HTML",
+    get name() {
+      return t("Page HTML");
+    },
     extension: ".html",
-    detail: "Un seul fichier, lisible sur téléphone, imprimable.",
+    get detail() {
+      return t("Un seul fichier, lisible sur téléphone, imprimable.");
+    },
     options: DOC,
     mime: "text/html;charset=utf-8",
   },
@@ -110,25 +143,35 @@ export const FORMATS = [
     group: "Documents imprimables",
     name: "Markdown",
     extension: ".md",
-    detail: "Texte structuré, titres et tableaux.",
+    get detail() {
+      return t("Texte structuré, titres et tableaux.");
+    },
     options: ["watermark", "versions"],
     mime: "text/markdown;charset=utf-8",
   },
   {
     id: "txt",
     group: "Documents imprimables",
-    name: "Texte brut",
+    get name() {
+      return t("Texte brut");
+    },
     extension: ".txt",
-    detail: "Lisible partout, une fiche par ligne de tableau.",
+    get detail() {
+      return t("Lisible partout, une fiche par ligne de tableau.");
+    },
     options: ["watermark", "versions"],
     mime: "text/plain;charset=utf-8",
   },
   {
     id: "sheets",
     group: "Documents imprimables",
-    name: "Fiches messages A4",
+    get name() {
+      return t("Fiches messages A4");
+    },
     extension: ".pdf",
-    detail: "Une fiche par entrée du journal.",
+    get detail() {
+      return t("Une fiche par entrée du journal.");
+    },
     options: [],
     needs: ENTRIES,
     mime: "application/pdf",
@@ -136,9 +179,13 @@ export const FORMATS = [
   {
     id: "journal-pdf",
     group: "Documents imprimables",
-    name: "Journal PDF (tableau)",
+    get name() {
+      return t("Journal PDF (tableau)");
+    },
     extension: ".pdf",
-    detail: "Tableau chronologique A4 paysage.",
+    get detail() {
+      return t("Tableau chronologique A4 paysage.");
+    },
     options: [],
     needs: ENTRIES,
     mime: "application/pdf",
@@ -146,9 +193,13 @@ export const FORMATS = [
   {
     id: "radio-pdf",
     group: "Documents imprimables",
-    name: "Plan du réseau radio",
+    get name() {
+      return t("Plan du réseau radio");
+    },
     extension: ".pdf",
-    detail: "Noms d’appel, groupes, terminaux, remises.",
+    get detail() {
+      return t("Noms d’appel, groupes, terminaux, remises.");
+    },
     options: [],
     needs: ["radio"],
     mime: "application/pdf",
@@ -156,9 +207,13 @@ export const FORMATS = [
   {
     id: "labels-pdf",
     group: "Documents imprimables",
-    name: "Étiquettes radio",
+    get name() {
+      return t("Étiquettes radio");
+    },
     extension: ".pdf",
-    detail: "Une étiquette QR par terminal, A4.",
+    get detail() {
+      return t("Une étiquette QR par terminal, A4.");
+    },
     options: [],
     needs: ["radio"],
     mime: "application/pdf",
@@ -168,16 +223,22 @@ export const FORMATS = [
     group: "Tableurs et données",
     name: "Excel",
     extension: ".xlsx",
-    detail: "Une feuille par tableau, filtres, en-tête figé.",
+    get detail() {
+      return t("Une feuille par tableau, filtres, en-tête figé.");
+    },
     options: ["watermark", "versions"],
     mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   },
   {
     id: "ods",
     group: "Tableurs et données",
-    name: "OpenDocument tableur",
+    get name() {
+      return t("OpenDocument tableur");
+    },
     extension: ".ods",
-    detail: "LibreOffice Calc, mêmes feuilles.",
+    get detail() {
+      return t("LibreOffice Calc, mêmes feuilles.");
+    },
     options: ["watermark", "versions"],
     mime: "application/vnd.oasis.opendocument.spreadsheet",
   },
@@ -186,7 +247,9 @@ export const FORMATS = [
     group: "Tableurs et données",
     name: "CSV",
     extension: ".csv",
-    detail: "Un fichier par tableau, point-virgule, UTF-8.",
+    get detail() {
+      return t("Un fichier par tableau, point-virgule, UTF-8.");
+    },
     options: ["versions"],
     mime: "text/csv;charset=utf-8",
   },
@@ -195,25 +258,35 @@ export const FORMATS = [
     group: "Tableurs et données",
     name: "TSV",
     extension: ".tsv",
-    detail: "Un fichier par tableau, tabulation, UTF-8.",
+    get detail() {
+      return t("Un fichier par tableau, tabulation, UTF-8.");
+    },
     options: ["versions"],
     mime: "text/tab-separated-values;charset=utf-8",
   },
   {
     id: "json",
     group: "Tableurs et données",
-    name: "JSON données",
+    get name() {
+      return t("JSON données");
+    },
     extension: ".json",
-    detail: "Tableaux structurés, pour d’autres outils.",
+    get detail() {
+      return t("Tableaux structurés, pour d’autres outils.");
+    },
     options: ["versions"],
     mime: "application/json",
   },
   {
     id: "png",
     group: "Carte",
-    name: "Image de la carte",
+    get name() {
+      return t("Image de la carte");
+    },
     extension: ".png",
-    detail: "Chaque carte avec ses objets, haute définition.",
+    get detail() {
+      return t("Chaque carte avec ses objets, haute définition.");
+    },
     options: [],
     needs: ["map"],
     mime: "image/png",
@@ -223,7 +296,9 @@ export const FORMATS = [
     group: "Carte",
     name: "GeoJSON",
     extension: ".geojson",
-    detail: "SIG (QGIS, ArcGIS), coordonnées WGS 84.",
+    get detail() {
+      return t("SIG (QGIS, ArcGIS), coordonnées WGS 84.");
+    },
     options: [],
     needs: ["map"],
     mime: "application/geo+json",
@@ -233,7 +308,9 @@ export const FORMATS = [
     group: "Carte",
     name: "KML",
     extension: ".kml",
-    detail: "Google Earth et cartes en ligne.",
+    get detail() {
+      return t("Google Earth et cartes en ligne.");
+    },
     options: [],
     needs: ["map"],
     mime: "application/vnd.google-earth.kml+xml",
@@ -243,7 +320,9 @@ export const FORMATS = [
     group: "Carte",
     name: "GPX",
     extension: ".gpx",
-    detail: "Appareils GPS : points et traces.",
+    get detail() {
+      return t("Appareils GPS : points et traces.");
+    },
     options: [],
     needs: ["map"],
     mime: "application/gpx+xml",
@@ -251,9 +330,13 @@ export const FORMATS = [
   {
     id: "ics",
     group: "Agenda et contacts",
-    name: "Agenda",
+    get name() {
+      return t("Agenda");
+    },
     extension: ".ics",
-    detail: "Rendez-vous du rythme de conduite, tout agenda.",
+    get detail() {
+      return t("Rendez-vous du rythme de conduite, tout agenda.");
+    },
     options: [],
     needs: ["agenda"],
     mime: "text/calendar;charset=utf-8",
@@ -261,9 +344,13 @@ export const FORMATS = [
   {
     id: "vcf",
     group: "Agenda et contacts",
-    name: "Contacts",
+    get name() {
+      return t("Contacts");
+    },
     extension: ".vcf",
-    detail: "vCard 4.0 pour téléphone et messagerie.",
+    get detail() {
+      return t("vCard 4.0 pour téléphone et messagerie.");
+    },
     options: [],
     needs: ["contacts"],
     mime: "text/vcard;charset=utf-8",
@@ -271,28 +358,41 @@ export const FORMATS = [
   {
     id: "orion",
     group: "Archive",
-    name: "Archive orion aic chiffrée",
+    get name() {
+      return t("Archive orion aic chiffrée");
+    },
     extension: ".orionaic",
-    detail: "Tout l’historique : rejouable après import.",
+    get detail() {
+      return t("Tout l’historique : rejouable après import.");
+    },
     options: ["passphrase"],
     mime: "application/json",
   },
   {
     id: "archive-json",
     group: "Archive",
-    name: "Archive JSON réimportable",
+    get name() {
+      return t("Archive JSON réimportable");
+    },
     extension: ".json",
-    detail: "En clair, historique compris, réimportable.",
+    get detail() {
+      return t("En clair, historique compris, réimportable.");
+    },
     options: [],
     mime: "application/json",
   },
   {
     id: "pack",
     group: "Pack complet",
-    name: "Pack complet",
+    get name() {
+      return t("Pack complet");
+    },
     extension: ".zip",
-    detail:
-      "PDF, Word, Excel, HTML, archive, carte, agenda, contacts, PowerPoint et empreintes.",
+    get detail() {
+      return t(
+        "PDF, Word, Excel, HTML, archive, carte, agenda, contacts, PowerPoint et empreintes.",
+      );
+    },
     options: ["watermark", "orientation", "versions", "animations"],
     mime: "application/zip",
   },

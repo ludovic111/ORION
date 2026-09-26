@@ -16,10 +16,13 @@ import {
   X,
 } from "lucide-react";
 import { dateTime, time } from "../../../shared/journal";
-import { upsert, type AgendaItem } from "../../../shared/ops";
+import { journalLang, upsert, type AgendaItem } from "../../../shared/ops";
+import { formatWith } from "../../../shared/i18n/core.ts";
 import { parseRef, ref } from "../../../shared/links";
 import { recurrence } from "../../../shared/time";
 import { useApp } from "../../app/context";
+import { useLang } from "../../i18n";
+import { t, tIn, tn } from "./i18n.ts";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
 import { RecordSheet, type FieldSpec } from "../../ui/records";
 import {
@@ -59,36 +62,41 @@ const blank = (): Draft => ({
   done: false,
 });
 
-const SPEC: FieldSpec[] = [
+const spec = (): FieldSpec[] => [
   {
     key: "title",
-    label: "Titre",
+    label: t("Titre"),
     kind: "combo",
     list: "agendaKinds",
     quick: 4,
     required: true,
     wide: true,
-    placeholder: "ex. Rapport de conduite",
+    placeholder: t("ex. Rapport de conduite"),
   },
-  { key: "at", label: "Date et heure", kind: "datetime", required: true },
-  { key: "minutes", label: "Durée (minutes)", kind: "number" },
-  { key: "kind", label: "Type", kind: "combo", list: "agendaKinds" },
+  { key: "at", label: t("Date et heure"), kind: "datetime", required: true },
+  { key: "minutes", label: t("Durée (minutes)"), kind: "number" },
+  { key: "kind", label: t("Type"), kind: "combo", list: "agendaKinds" },
   {
     key: "location",
-    label: "Lieu",
+    label: t("Lieu"),
     kind: "text",
-    placeholder: "ex. salle de conduite",
+    placeholder: t("ex. salle de conduite"),
   },
   {
     key: "participants",
-    label: "Participants",
+    label: t("Participants"),
     kind: "area",
     rows: 2,
     max: 1000,
   },
-  { kind: "group", label: "Détails" },
-  { key: "notes", label: "Ordre du jour / remarques", kind: "area", rows: 4 },
-  { key: "done", label: "Tenu", kind: "toggle" },
+  { kind: "group", label: t("Détails") },
+  {
+    key: "notes",
+    label: t("Ordre du jour / remarques"),
+    kind: "area",
+    rows: 4,
+  },
+  { key: "done", label: t("Tenu"), kind: "toggle" },
 ];
 
 const HOUR = 3600000;
@@ -106,6 +114,7 @@ export function Agenda() {
     print,
     graph,
   } = useApp();
+  useLang();
   const items = journal.ops.agenda;
   const at = useTicker(15000);
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -124,7 +133,7 @@ export function Agenda() {
     } else {
       const item = items.find((i) => i.id === id);
       if (item) setEditing(item);
-      else toast("Rendez-vous introuvable.");
+      else toast(t("Rendez-vous introuvable."));
     }
     setFocus(null);
   }, [focus, items, readOnly, setFocus, toast]);
@@ -170,12 +179,15 @@ export function Agenda() {
       const id = addEntry(
         {
           type: "Observation",
-          message: `${item.title} tenu à ${time(item.at)}`,
+          message: t("{title} tenu à {time}", {
+            title: item.title,
+            time: time(item.at),
+          }),
           tags: ["rythme"],
         },
         [ref("agenda", item.id)],
       );
-      if (id) toast("Consigné au journal.");
+      if (id) toast(t("Consigné au journal."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -193,15 +205,15 @@ export function Agenda() {
     const tables: SheetTable[] = [...days.values()].map((list, index) => ({
       id: `day-${index}`,
       title: dayLabel(Date.parse(list[0].at)),
-      caption: `${list.length} rendez-vous`,
+      caption: tn(list.length, "{n} rendez-vous", "{n} rendez-vous (pluriel)"),
       head: [
-        "Heure",
-        "Durée",
-        "Rendez-vous",
-        "Type",
-        "Lieu",
-        "Participants",
-        "Tenu",
+        t("Heure"),
+        t("Durée"),
+        t("Rendez-vous"),
+        t("Type"),
+        t("Lieu"),
+        t("Participants"),
+        t("Tenu"),
       ],
       widths: [16, 16, 46, 26, 28, 36, 14],
       body: list.map((i) => [
@@ -211,14 +223,19 @@ export function Agenda() {
         i.kind || "—",
         i.location || "—",
         i.participants || "—",
-        i.done ? "Oui" : "",
+        i.done ? t("Oui") : "",
       ]),
     }));
     print({
       kind: "tables",
       journal,
-      title: "Rythme de conduite",
-      extra: `${items.length} rendez-vous · état au ${dateTime(new Date().toISOString())}`,
+      title: t("Rythme de conduite"),
+      extra: tn(
+        items.length,
+        "{n} rendez-vous · état au {date}",
+        "{n} rendez-vous · état au {date} (pluriel)",
+        { date: dateTime(new Date().toISOString()) },
+      ),
       tables,
       landscape: false,
       name: "agenda",
@@ -251,14 +268,18 @@ export function Agenda() {
         <button className="agenda-body" onClick={() => setEditing(item)}>
           <strong>{item.title}</strong>
           <span className="agenda-meta">
-            {state === "live" && <span className="pill ok">En cours</span>}
+            {state === "live" && (
+              <span className="pill ok">{t("En cours")}</span>
+            )}
             {state === "late" && (
-              <span className="pill warn">Pas encore tenu</span>
+              <span className="pill warn">{t("Pas encore tenu")}</span>
             )}
             {state === "soon" && (
               <span className="pill accent">{countdown(start, at, false)}</span>
             )}
-            {state === "done" && <span className="pill muted">Tenu</span>}
+            {state === "done" && (
+              <span className="pill muted">{t("Tenu")}</span>
+            )}
             {item.kind && item.kind !== item.title && <span>{item.kind}</span>}
             {item.location && (
               <span>
@@ -283,8 +304,10 @@ export function Agenda() {
         {isReport(item) && !item.done && (
           <button
             className="icon-button agenda-point"
-            title="Préparer le point de situation"
-            aria-label={`Préparer le point de situation pour « ${item.title} »`}
+            title={t("Préparer le point de situation")}
+            aria-label={t("Préparer le point de situation pour « {title} »", {
+              title: item.title,
+            })}
             onClick={() => setPointFor(item.id)}
           >
             <FileText size={18} />
@@ -296,24 +319,24 @@ export function Agenda() {
           disabled={readOnly}
           aria-label={
             item.done
-              ? `Marquer « ${item.title} » comme non tenu`
-              : `Marquer « ${item.title} » comme tenu`
+              ? t("Marquer « {title} » comme non tenu", { title: item.title })
+              : t("Marquer « {title} » comme tenu", { title: item.title })
           }
-          title={item.done ? "Tenu" : "Marquer comme tenu"}
+          title={item.done ? t("Tenu") : t("Marquer comme tenu")}
           onClick={() => toggleDone(item)}
         >
           {item.done ? <CircleCheck size={20} /> : <Circle size={20} />}
         </button>
         {justDone.includes(item.id) && item.done && !readOnly && (
           <div className="agenda-log reveal">
-            <span>Consigner au journal ?</span>
+            <span>{t("Consigner au journal ?")}</span>
             <button className="small primary" onClick={() => log(item)}>
               <NotebookPen size={13} />
-              Consigner
+              {t("Consigner")}
             </button>
             <button
               className="icon-button"
-              aria-label="Ne pas consigner"
+              aria-label={t("Ne pas consigner")}
               onClick={() =>
                 setJustDone((ids) => ids.filter((x) => x !== item.id))
               }
@@ -360,17 +383,17 @@ export function Agenda() {
           <>
             <button onClick={printAgenda} disabled={!items.length}>
               <Printer size={14} />
-              Imprimer
+              {t("Imprimer")}
             </button>
             {!readOnly && (
               <>
                 <button onClick={() => setPlanning(true)}>
                   <Repeat size={14} />
-                  Planifier un rythme
+                  {t("Planifier un rythme")}
                 </button>
                 <button className="primary" onClick={() => setEditing(blank())}>
                   <Plus size={15} />
-                  Nouveau rendez-vous
+                  {t("Nouveau rendez-vous")}
                 </button>
               </>
             )}
@@ -381,25 +404,25 @@ export function Agenda() {
         <div className="card">
           <EmptyState
             icon={<CalendarClock size={28} />}
-            title="Aucun rendez-vous"
+            title={t("Aucun rendez-vous")}
             actions={
               !readOnly && (
                 <>
                   <button className="primary" onClick={() => setPlanning(true)}>
                     <Repeat size={14} />
-                    Planifier un rythme de rapports
+                    {t("Planifier un rythme de rapports")}
                   </button>
                   <button onClick={() => setEditing(blank())}>
                     <CalendarPlus size={14} />
-                    Ajouter un rendez-vous
+                    {t("Ajouter un rendez-vous")}
                   </button>
                 </>
               )
             }
           >
-            Le rythme de conduite rassemble les rapports, orientations, relèves
-            et points de situation, avec un compte à rebours. « Planifier un
-            rythme » crée par exemple un rapport toutes les 2 heures en un clic.
+            {t(
+              "Le rythme de conduite rassemble les rapports, orientations, relèves et points de situation, avec un compte à rebours. « Planifier un rythme » crée par exemple un rapport toutes les 2 heures en un clic.",
+            )}
           </EmptyState>
         </div>
       ) : (
@@ -411,7 +434,7 @@ export function Agenda() {
                 <div className="agenda-point-bar">
                   <button onClick={() => setPointFor(nextItem.id)}>
                     <FileText size={14} />
-                    Préparer le point de situation
+                    {t("Préparer le point de situation")}
                   </button>
                 </div>
               )}
@@ -420,25 +443,26 @@ export function Agenda() {
             <div className="card agenda-hero agenda-hero-empty">
               <CalendarClock size={22} />
               <p>
-                Plus rien de prévu. Ajoutez le prochain rapport pour garder le
-                rythme.
+                {t(
+                  "Plus rien de prévu. Ajoutez le prochain rapport pour garder le rythme.",
+                )}
               </p>
               {!readOnly && (
                 <button className="primary" onClick={() => setEditing(blank())}>
                   <Plus size={14} />
-                  Prochain rendez-vous
+                  {t("Prochain rendez-vous")}
                 </button>
               )}
             </div>
           )}
           <div className="card agenda-card stagger">
-            {section("Maintenant et à venir", sections.soon)}
-            {section("Plus tard aujourd’hui", sections.later)}
-            {section("Jours suivants", sections.next, true)}
+            {section(t("Maintenant et à venir"), sections.soon)}
+            {section(t("Plus tard aujourd’hui"), sections.later)}
+            {section(t("Jours suivants"), sections.next, true)}
             {!sections.soon.length &&
               !sections.later.length &&
               !sections.next.length && (
-                <p className="muted agenda-nothing">Rien à venir.</p>
+                <p className="muted agenda-nothing">{t("Rien à venir.")}</p>
               )}
             {sections.past.length > 0 && (
               <section className="agenda-section">
@@ -448,7 +472,7 @@ export function Agenda() {
                   onClick={() => setShowPast(!showPast)}
                 >
                   <ChevronDown size={15} />
-                  Passés et tenus
+                  {t("Passés et tenus")}
                   <span className="pill plain">{sections.past.length}</span>
                 </button>
                 {showPast && (
@@ -466,18 +490,18 @@ export function Agenda() {
         <RecordSheet
           collection="agenda"
           kind="agenda"
-          noun="un rendez-vous"
-          spec={SPEC}
+          noun={t("un rendez-vous")}
+          spec={spec()}
           initial={editing as Record<string, unknown>}
           onClose={() => setEditing(null)}
-          titleOf={(v) => (v.id ? String(v.title || "Rendez-vous") : "")}
+          titleOf={(v) => (v.id ? String(v.title || t("Rendez-vous")) : "")}
           validate={(v) =>
             !String(v.title ?? "").trim()
-              ? "Indiquez un titre (un clic sur une valeur proposée suffit)."
+              ? t("Indiquez un titre (un clic sur une valeur proposée suffit).")
               : !v.at
-                ? "Indiquez la date et l’heure."
+                ? t("Indiquez la date et l’heure.")
                 : Number(v.minutes) > 24 * 60
-                  ? "Durée maximale : 24 heures (1440 minutes)."
+                  ? t("Durée maximale : 24 heures (1440 minutes).")
                   : ""
           }
           footer={
@@ -491,7 +515,7 @@ export function Agenda() {
                     }}
                   >
                     <FileText size={14} />
-                    Point de situation
+                    {t("Point de situation")}
                   </button>
                 )}
                 {!readOnly && (
@@ -503,7 +527,7 @@ export function Agenda() {
                     }}
                   >
                     <CircleCheck size={14} />
-                    Tenu
+                    {t("Tenu")}
                   </button>
                 )}
               </>
@@ -583,11 +607,13 @@ function NextUp({ item, onOpen }: { item: AgendaItem; onOpen: () => void }) {
       </svg>
       <div className="agenda-hero-text">
         <span className="label">
-          {live ? "En cours" : "Prochain rendez-vous"}
+          {live ? t("En cours") : t("Prochain rendez-vous")}
         </span>
         <strong className="agenda-hero-title">{item.title}</strong>
         <span className="agenda-countdown" aria-live="off">
-          {live ? `se termine ${countdown(end, at)}` : countdown(start, at)}
+          {live
+            ? t("se termine {when}", { when: countdown(end, at) })
+            : countdown(start, at)}
         </span>
         <span className="agenda-meta">
           {item.kind && item.kind !== item.title && <span>{item.kind}</span>}
@@ -613,9 +639,11 @@ const EVERY = [1, 2, 3, 4, 6, 8, 12];
 
 /** Recurring meetings created in one go. */
 function PlanDialog({ onClose }: { onClose: () => void }) {
-  const { updateOps, author, toast, lists } = useApp();
-  const [title, setTitle] = useState("Rapport de conduite");
-  const [kind, setKind] = useState("Rapport de conduite");
+  const { journal, updateOps, author, toast, lists } = useApp();
+  // Default title: the usual report, in the language of the journal.
+  const report = () => tIn(journalLang(journal.ops), "Rapport de conduite");
+  const [title, setTitle] = useState(report);
+  const [kind, setKind] = useState(report);
   const [first, setFirst] = useState(nextRoundHour());
   const [every, setEvery] = useState<number | "custom">(2);
   const [custom, setCustom] = useState("5");
@@ -634,10 +662,10 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
     return recurrence(base, hours, count);
   }, [first, hours, count, valid]);
   function create() {
-    if (!title.trim()) return setError("Indiquez un titre.");
+    if (!title.trim()) return setError(t("Indiquez un titre."));
     if (!times.length)
       return setError(
-        "Vérifiez l’heure du premier rendez-vous et l’intervalle.",
+        t("Vérifiez l’heure du premier rendez-vous et l’intervalle."),
       );
     try {
       updateOps((ops) =>
@@ -661,19 +689,25 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
           ops,
         ),
       );
-      toast(`${times.length} rendez-vous planifiés.`);
+      toast(
+        tn(
+          times.length,
+          "{n} rendez-vous planifié.",
+          "{n} rendez-vous planifiés.",
+        ),
+      );
       onClose();
     } catch (err) {
       setError((err as Error).message);
     }
   }
   return (
-    <Modal title="Planifier un rythme" onClose={onClose}>
+    <Modal title={t("Planifier un rythme")} onClose={onClose}>
       <div className="stack">
         <div className="form-grid">
           <ComboField
             className="span-2"
-            label="Titre"
+            label={t("Titre")}
             required
             value={title}
             onChange={setTitle}
@@ -681,21 +715,21 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
             quick={4}
           />
           <DateTimeField
-            label="Premier rendez-vous"
+            label={t("Premier rendez-vous")}
             required
             value={first}
             onChange={setFirst}
           />
           <NumberField
-            label="Nombre de rendez-vous"
+            label={t("Nombre de rendez-vous")}
             value={count}
             min={1}
             max={48}
             onChange={setCount}
           />
           <div className="span-2 agenda-every">
-            <span className="label">Toutes les</span>
-            <div className="seg" role="group" aria-label="Intervalle">
+            <span className="label">{t("Toutes les")}</span>
+            <div className="seg" role="group" aria-label={t("Intervalle")}>
               {EVERY.map((h) => (
                 <button
                   key={h}
@@ -711,12 +745,12 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
                 aria-pressed={every === "custom"}
                 onClick={() => setEvery("custom")}
               >
-                Autre
+                {t("Autre")}
               </button>
             </div>
             {every === "custom" && (
               <label className="agenda-custom">
-                <span className="sr-only">Intervalle en heures</span>
+                <span className="sr-only">{t("Intervalle en heures")}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -726,44 +760,44 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
                   value={custom}
                   onChange={(e) => setCustom(e.target.value)}
                 />
-                <span>heures</span>
+                <span>{t("heures")}</span>
               </label>
             )}
           </div>
           <NumberField
-            label="Durée (minutes)"
+            label={t("Durée (minutes)")}
             value={minutes}
             max={24 * 60}
             onChange={setMinutes}
           />
           <ComboField
-            label="Type"
+            label={t("Type")}
             value={kind}
             onChange={setKind}
             options={lists("agendaKinds")}
           />
           <TextField
-            label="Lieu"
+            label={t("Lieu")}
             value={location}
             onChange={setLocation}
             maxLength={300}
           />
           <TextField
-            label="Participants"
+            label={t("Participants")}
             value={participants}
             onChange={setParticipants}
             maxLength={1000}
           />
         </div>
         {times.length > 0 && (
-          <div className="agenda-preview" aria-label="Aperçu">
-            {times.slice(0, 12).map((t) => (
-              <span key={t} className="pill plain mono">
-                {new Date(t).toLocaleString("fr-CH", {
-                  timeZone: "Europe/Zurich",
+          <div className="agenda-preview" aria-label={t("Aperçu")}>
+            {times.slice(0, 12).map((at) => (
+              <span key={at} className="pill plain mono">
+                {formatWith(at, {
                   weekday: "short",
                   hour: "2-digit",
                   minute: "2-digit",
+                  hourCycle: "h23",
                 })}
               </span>
             ))}
@@ -778,10 +812,14 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
           </p>
         )}
         <div className="agenda-dialog-actions">
-          <button onClick={onClose}>Annuler</button>
+          <button onClick={onClose}>{t("Annuler")}</button>
           <button className="primary" disabled={!times.length} onClick={create}>
             <Repeat size={14} />
-            Créer {times.length} rendez-vous
+            {tn(
+              times.length,
+              "Créer {n} rendez-vous",
+              "Créer {n} rendez-vous (pluriel)",
+            )}
           </button>
         </div>
       </div>

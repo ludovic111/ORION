@@ -2,20 +2,16 @@ import type { Journal } from "./journal.ts";
 import type { Item } from "./links.ts";
 import { orderLabels } from "./orders.ts";
 import { recipientStates } from "./diffusion.ts";
+import { formatTime } from "./i18n/core.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t } from "./i18n/conduct-items.ts";
 
 // Orders and diffusions as items of the link graph (search ⌘K, previews,
 // links), see shared/links.ts.
 
 const clip = (s: string, n = 90) =>
   s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
-const hhmm = (iso: string) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("fr-CH", {
-        timeZone: "Europe/Zurich",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+const hhmm = (iso: string) => (iso ? formatTime(iso) : "");
 
 export function conductItems(journal: Journal): Omit<Item, "ref">[] {
   const o = journal.ops;
@@ -26,12 +22,15 @@ export function conductItems(journal: Journal): Omit<Item, "ref">[] {
     out.push({
       kind: "order",
       id: x.id,
-      title: `Ordre ${labels.get(x.id) ?? x.number} · ${clip(x.title, 70)}`,
+      title: t("Ordre {number} · {title}", {
+        number: labels.get(x.id) ?? x.number,
+        title: clip(x.title, 70),
+      }),
       subtitle: [
         x.kind,
-        x.status,
+        enumLabel(x.status),
         x.issuedAt && hhmm(x.issuedAt),
-        x.source && `de ${x.source}`,
+        x.source && t("de {source}", { source: x.source }),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -45,6 +44,7 @@ export function conductItems(journal: Journal): Omit<Item, "ref">[] {
       text: [
         x.title,
         x.kind,
+        x.status,
         x.situation,
         x.danger,
         x.intention,
@@ -72,10 +72,10 @@ export function conductItems(journal: Journal): Omit<Item, "ref">[] {
         b.kind,
         hhmm(b.sentAt),
         b.ack === "Aucun"
-          ? "sans accusé"
+          ? t("sans accusé")
           : waiting
-            ? `${waiting} sans accusé`
-            : "tous ont répondu",
+            ? t("{n} sans accusé", { n: waiting })
+            : t("tous ont répondu"),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -105,14 +105,15 @@ export function conductEdges(journal: Journal): [string, string, string][] {
   const out: [string, string, string][] = [];
   for (const x of journal.ops.orders) {
     const self = `order:${x.id}`;
-    if (x.entryId) out.push([self, `entry:${x.entryId}`, "inscrit au journal"]);
-    if (x.baseId) out.push([self, `order:${x.baseId}`, "complète"]);
+    if (x.entryId)
+      out.push([self, `entry:${x.entryId}`, t("inscrit au journal")]);
+    if (x.baseId) out.push([self, `order:${x.baseId}`, t("complète")]);
     if (x.broadcastId)
-      out.push([self, `broadcast:${x.broadcastId}`, "diffusé"]);
+      out.push([self, `broadcast:${x.broadcastId}`, t("diffusé")]);
     for (const m of x.missions)
-      for (const r of m.refs) out.push([self, r, m.unit || "mission"]);
+      for (const r of m.refs) out.push([self, r, m.unit || t("mission")]);
   }
   for (const b of journal.ops.broadcasts)
-    if (b.target) out.push([`broadcast:${b.id}`, b.target, "diffuse"]);
+    if (b.target) out.push([`broadcast:${b.id}`, b.target, t("diffuse")]);
   return out;
 }

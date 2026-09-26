@@ -12,6 +12,7 @@ import { Modal } from "../../journal/Modal";
 import { TextField, Toggle } from "../../ui/fields";
 import { TraceLine } from "../../timeline/TraceLine";
 import { MAIN_NAME, mapsForNewMap, onMap, sortMaps } from "./maps";
+import { t, tn } from "./i18n.ts";
 
 type View = { lat: number; lng: number; zoom: number };
 type Seed = { base: string; hidden: string[]; view: View };
@@ -23,12 +24,13 @@ const framing = (v: View) => ({
   zoom: Math.min(22, Math.max(1, Math.round(v.zoom * 100) / 100)),
 });
 
-const PURPOSES = [
-  "Vue d’ensemble de l’événement",
-  "Secteur en détail",
-  "Itinéraires et circulation",
-  "Moyens et logistique",
-  "Information à la population",
+/** Frequent purposes, offered in the language of the post. */
+const purposes = () => [
+  t("Vue d’ensemble de l’événement"),
+  t("Secteur en détail"),
+  t("Itinéraires et circulation"),
+  t("Moyens et logistique"),
+  t("Information à la population"),
 ];
 
 /**
@@ -83,13 +85,13 @@ export function MapDialog({
 
   function save() {
     const n = name.trim();
-    if (!n) return setError("Donnez un nom à la carte.");
+    if (!n) return setError(t("Donnez un nom à la carte."));
     try {
       if (map) {
         updateOps((ops) =>
           record({ ...map, name: n, purpose: purpose.trim(), notes }, ops),
         );
-        toast("Carte enregistrée.");
+        toast(t("Carte enregistrée."));
         onClose();
         return;
       }
@@ -166,7 +168,9 @@ export function MapDialog({
           next,
         );
       });
-      toast(main ? "Carte nommée." : `Carte « ${n} » créée.`);
+      toast(
+        main ? t("Carte nommée.") : t("Carte « {name} » créée.", { name: n }),
+      );
       onSelect(id);
       onClose();
     } catch (err) {
@@ -205,8 +209,12 @@ export function MapDialog({
     }
     toast(
       withObjects && own
-        ? `Carte supprimée avec ${own} objet${own > 1 ? "s" : ""}.`
-        : "Carte supprimée.",
+        ? tn(
+            own,
+            "Carte supprimée avec {n} objet.",
+            "Carte supprimée avec {n} objets.",
+          )
+        : t("Carte supprimée."),
     );
     onSelect(maps.find((m) => m.id !== gone)?.id ?? "");
     onClose();
@@ -234,7 +242,11 @@ export function MapDialog({
   return (
     <Modal
       title={
-        map ? "Modifier la carte" : main ? "Nommer la carte" : "Nouvelle carte"
+        map
+          ? t("Modifier la carte")
+          : main
+            ? t("Nommer la carte")
+            : t("Nouvelle carte")
       }
       onClose={onClose}
     >
@@ -246,23 +258,27 @@ export function MapDialog({
         }}
       >
         <TextField
-          label="Nom"
+          label={t("Nom")}
           required
           autoFocus
           value={name}
           maxLength={120}
           onChange={setName}
-          placeholder="ex. Secteur Nord (détail)"
+          placeholder={t("ex. Secteur Nord (détail)")}
         />
         <TextField
-          label="But de la carte"
+          label={t("But de la carte")}
           value={purpose}
           maxLength={300}
           onChange={setPurpose}
-          placeholder="ex. Suivi des évacuations du quartier nord"
+          placeholder={t("ex. Suivi des évacuations du quartier nord")}
         />
-        <div className="map-chips" role="group" aria-label="Buts fréquents">
-          {PURPOSES.map((p) => (
+        <div
+          className="map-chips"
+          role="group"
+          aria-label={t("Buts fréquents")}
+        >
+          {purposes().map((p) => (
             <button
               key={p}
               type="button"
@@ -274,7 +290,7 @@ export function MapDialog({
           ))}
         </div>
         <TextField
-          label="Remarques"
+          label={t("Remarques")}
           value={notes}
           rows={2}
           maxLength={2000}
@@ -282,22 +298,29 @@ export function MapDialog({
         />
         {creating && (
           <p className="muted map-dialog-note">
-            La nouvelle carte part vide, du cadrage et du fond affichés. Elle
-            garde ensuite son propre fond, son cadrage et ses calques masqués,
-            partagés avec tous les postes.
+            {t(
+              "La nouvelle carte part vide, du cadrage et du fond affichés. Elle garde ensuite son propre fond, son cadrage et ses calques masqués, partagés avec tous les postes.",
+            )}
           </p>
         )}
         {creating && shownCount > 0 && (
           <Toggle
-            label={`Reprendre les ${shownCount} objet${shownCount > 1 ? "s" : ""} de « ${shownMap?.name ?? MAIN_NAME} »`}
-            hint="Les mêmes objets, visibles sur les deux cartes. Sinon, la nouvelle carte part vide."
+            label={tn(
+              shownCount,
+              "Reprendre les {n} objet de « {name} »",
+              "Reprendre les {n} objets de « {name} »",
+              { name: shownMap?.name ?? MAIN_NAME },
+            )}
+            hint={t(
+              "Les mêmes objets, visibles sur les deux cartes. Sinon, la nouvelle carte part vide.",
+            )}
             checked={takeAlong}
             onChange={setTakeAlong}
           />
         )}
         {map && maps.length > 1 && (
           <div className="map-dialog-row">
-            <span className="map-field-label">Ordre</span>
+            <span className="map-field-label">{t("Ordre (rang)")}</span>
             <button
               type="button"
               className="small"
@@ -305,7 +328,7 @@ export function MapDialog({
               onClick={() => move(-1)}
             >
               <ArrowLeft size={13} />
-              Avant
+              {t("Avant")}
             </button>
             <button
               type="button"
@@ -313,7 +336,7 @@ export function MapDialog({
               disabled={index >= maps.length - 1}
               onClick={() => move(1)}
             >
-              Après
+              {t("Après")}
               <ArrowRight size={13} />
             </button>
           </div>
@@ -335,18 +358,24 @@ export function MapDialog({
           {map &&
             (confirming ? (
               <div className="map-dialog-confirm">
-                <span className="crit-text">Supprimer cette carte ?</span>
+                <span className="crit-text">
+                  {t("Supprimer cette carte ?")}
+                </span>
                 {own > 0 && (
                   <Toggle
-                    label={`Supprimer aussi ses ${own} objet${own > 1 ? "s" : ""} propres`}
-                    hint="Sinon, ils passent sur toutes les cartes."
+                    label={tn(
+                      own,
+                      "Supprimer aussi ses {n} objet propres",
+                      "Supprimer aussi ses {n} objets propres",
+                    )}
+                    hint={t("Sinon, ils passent sur toutes les cartes.")}
                     checked={withObjects}
                     onChange={setWithObjects}
                   />
                 )}
                 <div className="map-dialog-row">
                   <button type="button" onClick={() => setConfirming(false)}>
-                    Annuler
+                    {t("Annuler")}
                   </button>
                   <button
                     type="button"
@@ -354,7 +383,7 @@ export function MapDialog({
                     onClick={remove}
                   >
                     <Trash2 size={14} />
-                    Supprimer la carte
+                    {t("Supprimer la carte")}
                   </button>
                 </div>
               </div>
@@ -365,16 +394,20 @@ export function MapDialog({
                 onClick={() => setConfirming(true)}
               >
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             ))}
           {!confirming && (
             <>
               <button type="button" className="push" onClick={onClose}>
-                Annuler
+                {t("Annuler")}
               </button>
               <button type="submit" className="primary">
-                {map ? "Enregistrer" : main ? "Nommer" : "Créer la carte"}
+                {map
+                  ? t("Enregistrer")
+                  : main
+                    ? t("Nommer")
+                    : t("Créer la carte")}
               </button>
             </>
           )}

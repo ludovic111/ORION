@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../journal/Modal";
+import { t } from "./i18n.ts";
 
 type PromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -47,29 +48,29 @@ export function useInstall() {
 
 export function InstallHelp({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="Installer orion aic" onClose={onClose}>
+    <Modal title={t("Installer orion aic")} onClose={onClose}>
       <dl className="spec">
         <div>
           <dt>iPhone · iPad</dt>
-          <dd>Safari → Partager → « Sur l’écran d’accueil ».</dd>
+          <dd>{t("Safari → Partager → « Sur l’écran d’accueil ».")}</dd>
         </div>
         <div>
           <dt>Android</dt>
-          <dd>Chrome → menu ⋮ → « Installer l’application ».</dd>
+          <dd>{t("Chrome → menu ⋮ → « Installer l’application ».")}</dd>
         </div>
         <div>
-          <dt>Ordinateur</dt>
+          <dt>{t("Ordinateur")}</dt>
           <dd>
-            Chrome, Edge ou Brave → icône d’installation dans la barre
-            d’adresse.
+            {t(
+              "Chrome, Edge ou Brave → icône d’installation dans la barre d’adresse.",
+            )}
           </dd>
         </div>
       </dl>
       <p className="hint">
-        L’app installée s’ouvre en plein écran et fonctionne hors ligne. Ses
-        données restent propres à ce navigateur : une session ouverte dans
-        Safari n’apparaît pas dans l’app installée, et inversement. Transférer
-        par archive .orionaic si besoin.
+        {t(
+          "L’app installée s’ouvre en plein écran et fonctionne hors ligne. Ses données restent propres à ce navigateur : une session ouverte dans Safari n’apparaît pas dans l’app installée, et inversement. Transférer par archive .orionaic si besoin.",
+        )}
       </p>
     </Modal>
   );

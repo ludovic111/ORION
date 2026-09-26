@@ -28,6 +28,8 @@ import type { Module } from "./links.ts";
 import { internState, resolveState } from "./blobs.ts";
 import { canonicalStamp, later, nodeOf, tick } from "./hlc.ts";
 import { nextStamp } from "./stamps.ts";
+import { formatDayMonth, formatTime } from "./i18n/core.ts";
+import { t, type HistoryKey } from "./i18n/history.ts";
 
 export type { HistoryEvent } from "./events.ts";
 
@@ -49,154 +51,84 @@ const UNTRACKED = new Set(["ops.forecasts"]);
 const FOLD_MS = 20_000;
 
 export type ScopeInfo = { label: string; plural: string; module: Module };
+/** Names in the language of the post, read when displayed. */
+const named = (
+  label: HistoryKey,
+  plural: HistoryKey,
+  module: Module,
+): ScopeInfo => ({
+  get label() {
+    return t(label);
+  },
+  get plural() {
+    return t(plural);
+  },
+  module,
+});
 const RADIO_SCOPES: Record<string, ScopeInfo> = {
-  "radio.talkgroups": {
-    label: "Groupe radio",
-    plural: "Groupes radio",
-    module: "radio",
-  },
-  "radio.stations": {
-    label: "Nom d’appel",
-    plural: "Noms d’appel",
-    module: "radio",
-  },
-  "radio.terminals": {
-    label: "Terminal radio",
-    plural: "Terminaux radio",
-    module: "radio",
-  },
-  "radio.checks": {
-    label: "Contrôle de liaison",
-    plural: "Contrôles de liaison",
-    module: "radio",
-  },
+  "radio.talkgroups": named("Groupe radio", "Groupes radio", "radio"),
+  "radio.stations": named("Nom d’appel", "Noms d’appel", "radio"),
+  "radio.terminals": named("Terminal radio", "Terminaux radio", "radio"),
+  "radio.checks": named("Contrôle de liaison", "Contrôles de liaison", "radio"),
 };
 const OPS_SCOPES: Record<Collection, ScopeInfo> = {
-  messages: { label: "Message", plural: "Messages", module: "messages" },
-  cells: { label: "Poste", plural: "Postes / cellules", module: "team" },
-  members: { label: "Personne", plural: "Équipe", module: "team" },
-  resources: { label: "Moyen", plural: "Moyens", module: "resources" },
-  contacts: { label: "Contact", plural: "Contacts", module: "contacts" },
-  places: { label: "Objet de carte", plural: "Carte", module: "map" },
-  agenda: { label: "Rendez-vous", plural: "Agenda", module: "agenda" },
-  facts: {
-    label: "Renseignement clé",
-    plural: "Renseignements clés",
-    module: "situation",
-  },
-  boards: {
-    label: "Tableau de situation",
-    plural: "Tableaux de situation",
-    module: "situation",
-  },
-  observations: {
-    label: "Observation météo",
-    plural: "Observations météo",
-    module: "weather",
-  },
-  alerts: { label: "Alerte météo", plural: "Alertes météo", module: "weather" },
-  links: { label: "Lien", plural: "Liens", module: "network" },
-  maps: { label: "Carte", plural: "Cartes", module: "map" },
-  symbols: {
-    label: "Signe personnalisé",
-    plural: "Signes personnalisés",
-    module: "map",
-  },
-  snapshots: {
-    label: "Point de situation figé",
-    plural: "Points de situation figés",
-    module: "situation",
-  },
-  exports: { label: "Export", plural: "Exports", module: "trace" },
-  presentations: {
-    label: "Présentation",
-    plural: "Présentations",
-    module: "trace",
-  },
-  forecasts: {
-    label: "Prévision météo",
-    plural: "Prévisions météo",
-    module: "weather",
-  },
-  orders: { label: "Ordre", plural: "Ordres", module: "orders" },
-  broadcasts: { label: "Diffusion", plural: "Diffusions", module: "orders" },
-  acks: {
-    label: "Accusé de lecture",
-    plural: "Accusés de lecture",
-    module: "orders",
-  },
-  assignments: {
-    label: "Attribution",
-    plural: "Attributions",
-    module: "tasks",
-  },
-  liaisons: {
-    label: "Liaison entre PC",
-    plural: "Liaisons entre PC",
-    module: "orders",
-  },
-  exchanges: {
-    label: "Échange de liaison",
-    plural: "Échanges de liaison",
-    module: "orders",
-  },
-  checklistTemplates: {
-    label: "Modèle de liste de contrôle",
-    plural: "Modèles de listes de contrôle",
-    module: "checklists",
-  },
-  checklists: {
-    label: "Liste de contrôle",
-    plural: "Listes de contrôle",
-    module: "checklists",
-  },
-  checklistTicks: {
-    label: "Étape cochée",
-    plural: "Étapes cochées",
-    module: "checklists",
-  },
-  requests: {
-    label: "Demande de moyens",
-    plural: "Demandes de moyens",
-    module: "resources",
-  },
-  presences: { label: "Présence", plural: "Présences", module: "team" },
-  shifts: { label: "Relève", plural: "Plan de relève", module: "team" },
-  thresholds: {
-    label: "Seuil météo",
-    plural: "Seuils météo",
-    module: "weather",
-  },
-  reminders: { label: "Rappel", plural: "Rappels", module: "agenda" },
-  scenarios: {
-    label: "Scénario d’exercice",
-    plural: "Scénarios d’exercice",
-    module: "debrief",
-  },
-  injects: { label: "Inject", plural: "Injects", module: "debrief" },
-  retex: {
-    label: "Point du débriefing",
-    plural: "Débriefing",
-    module: "debrief",
-  },
+  messages: named("Message", "Messages", "messages"),
+  cells: named("Poste", "Postes / cellules", "team"),
+  members: named("Personne", "Équipe", "team"),
+  resources: named("Moyen", "Moyens", "resources"),
+  contacts: named("Contact", "Contacts", "contacts"),
+  places: named("Objet de carte", "Carte", "map"),
+  agenda: named("Rendez-vous", "Agenda", "agenda"),
+  facts: named("Renseignement clé", "Renseignements clés", "situation"),
+  boards: named("Tableau de situation", "Tableaux de situation", "situation"),
+  observations: named("Observation météo", "Observations météo", "weather"),
+  alerts: named("Alerte météo", "Alertes météo", "weather"),
+  links: named("Lien", "Liens", "network"),
+  maps: named("Carte", "Cartes", "map"),
+  symbols: named("Signe personnalisé", "Signes personnalisés", "map"),
+  snapshots: named(
+    "Point de situation figé",
+    "Points de situation figés",
+    "situation",
+  ),
+  exports: named("Export", "Exports", "trace"),
+  presentations: named("Présentation", "Présentations", "trace"),
+  forecasts: named("Prévision météo", "Prévisions météo", "weather"),
+  orders: named("Ordre", "Ordres", "orders"),
+  broadcasts: named("Diffusion", "Diffusions", "orders"),
+  acks: named("Accusé de lecture", "Accusés de lecture", "orders"),
+  assignments: named("Attribution", "Attributions", "tasks"),
+  liaisons: named("Liaison entre PC", "Liaisons entre PC", "orders"),
+  exchanges: named("Échange de liaison", "Échanges de liaison", "orders"),
+  checklistTemplates: named(
+    "Modèle de liste de contrôle",
+    "Modèles de listes de contrôle",
+    "checklists",
+  ),
+  checklists: named("Liste de contrôle", "Listes de contrôle", "checklists"),
+  checklistTicks: named("Étape cochée", "Étapes cochées", "checklists"),
+  requests: named("Demande de moyens", "Demandes de moyens", "resources"),
+  presences: named("Présence", "Présences", "team"),
+  shifts: named("Relève", "Plan de relève", "team"),
+  thresholds: named("Seuil météo", "Seuils météo", "weather"),
+  reminders: named("Rappel", "Rappels", "agenda"),
+  scenarios: named("Scénario d’exercice", "Scénarios d’exercice", "debrief"),
+  injects: named("Inject", "Injects", "debrief"),
+  retex: named("Point du débriefing", "Débriefing", "debrief"),
 };
 export const SCOPES: Record<string, ScopeInfo> = {
-  entries: { label: "Entrée", plural: "Journal", module: "journal" },
-  meta: {
-    label: "Propriétés du journal",
-    plural: "Propriétés du journal",
-    module: "journal",
-  },
-  settings: {
-    label: "Référentiels et réglages",
-    plural: "Référentiels et réglages",
-    module: "situation",
-  },
+  entries: named("Entrée", "Journal", "journal"),
+  meta: named("Propriétés du journal", "Propriétés du journal", "journal"),
+  settings: named(
+    "Référentiels et réglages",
+    "Référentiels et réglages",
+    "situation",
+  ),
   ...RADIO_SCOPES,
   ...Object.fromEntries(COLLECTIONS.map((c) => [`ops.${c}`, OPS_SCOPES[c]])),
 };
 export const scopeInfo = (scope: string): ScopeInfo =>
-  SCOPES[scope] ?? { label: "Élément", plural: "Éléments", module: "trace" };
+  SCOPES[scope] ?? named("Élément", "Éléments", "trace");
 
 // ---------- Helpers ----------
 
@@ -668,23 +600,24 @@ export function titleOf(scope: string, state: unknown): string {
   const v = state as Record<string, unknown>;
   if (scope === "entries")
     return `#${String(v.number ?? "").padStart(3, "0")} ${clip(String(v.message ?? "").split("\n")[0], 70)}`;
-  if (scope === "meta") return String(v.title ?? "Journal");
-  if (scope === "settings") return "Référentiels et réglages";
+  if (scope === "meta") return String(v.title ?? t("Journal"));
+  if (scope === "settings") return t("Référentiels et réglages");
   if (scope === "ops.presentations")
     return clip(
-      [v.presenter, v.audience].filter(Boolean).join(" → ") || "Présentation",
+      [v.presenter, v.audience].filter(Boolean).join(" → ") ||
+        t("Présentation"),
     );
   if (scope === "ops.exports")
-    return clip(String(v.name || v.format || "Export"));
+    return clip(String(v.name || v.format || t("Export")));
   for (const key of ["label", "name", "title", "subject", "callsign", "hazard"])
     if (typeof v[key] === "string" && v[key]) return clip(v[key] as string);
   if (scope === "ops.observations")
     return clip(
       [v.place, v.conditions, v.temperature].filter(Boolean).join(" · ") ||
-        "Observation",
+        t("Observation"),
     );
   if (scope === "ops.links")
-    return clip(`Lien ${String(v.label ?? "")}`.trim());
+    return clip(t("Lien {label}", { label: String(v.label ?? "") }).trim());
   return scopeInfo(scope).label;
 }
 
@@ -755,7 +688,9 @@ export function auditTrail(journal: Journal): AuditItem[] {
       state: null,
       previous: { number: d.number },
       note: d.reason,
-      title: `#${String(d.number).padStart(3, "0")} (contenu supprimé)`,
+      title: t("#{n} (contenu supprimé)", {
+        n: String(d.number).padStart(3, "0"),
+      }),
     });
   return out.sort((a, b) => ms(b.at) - ms(a.at) || b.id.localeCompare(a.id));
 }
@@ -812,27 +747,21 @@ export function restoreState(
   now = new Date().toISOString(),
 ): Journal {
   if (!item.state || typeof item.state !== "object")
-    throw new Error("Cette version ne peut pas être restaurée.");
-  const note = `Restauration de la version du ${new Date(
-    item.at,
-  ).toLocaleString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
+    throw new Error(t("Cette version ne peut pas être restaurée."));
+  const note = t("Restauration de la version du {when}", {
+    when: `${formatDayMonth(item.at)} ${formatTime(item.at)}`,
+  });
   let next: Journal;
   let state: unknown;
   if (item.scope.startsWith("ops.")) {
     const c = item.scope.slice(4) as Collection;
-    if (!COLLECTIONS.includes(c)) throw new Error("Élément inconnu.");
+    if (!COLLECTIONS.includes(c)) throw new Error(t("Élément inconnu."));
     const parsed = RECORD_SCHEMAS[c].safeParse({
       ...(resolveState(item.scope, item.state, journal.blobs) as object),
       updatedAt: now,
     });
     if (!parsed.success)
-      throw new Error("Cette version n’est plus compatible.");
+      throw new Error(t("Cette version n’est plus compatible."));
     state = parsed.data;
     const list = journal.ops[c] as { id: string }[];
     const exists = list.some((r) => r.id === item.target);
@@ -849,7 +778,7 @@ export function restoreState(
     const k = item.scope.slice(6) as RadioKey;
     const parsed = RADIO_SCHEMAS[k]?.safeParse(item.state);
     if (!parsed?.success)
-      throw new Error("Cette version n’est plus compatible.");
+      throw new Error(t("Cette version n’est plus compatible."));
     state = parsed.data;
     const list = journal.radio[k] as { id: string }[];
     const exists = list.some((r) => r.id === item.target);
@@ -865,18 +794,23 @@ export function restoreState(
   } else if (item.scope === "settings") {
     const parsed = settingsSchema.safeParse(item.state);
     if (!parsed.success)
-      throw new Error("Cette version n’est plus compatible.");
+      throw new Error(t("Cette version n’est plus compatible."));
     state = parsed.data;
     next = {
       ...journal,
       ops: { ...journal.ops, settings: parsed.data },
     };
-  } else throw new Error("Cette version se restaure depuis son module.");
+  } else throw new Error(t("Cette version se restaure depuis son module."));
   // The whole journal must stay valid (e.g. a call sign taken since).
   const valid = journalSchema.safeParse(next);
   if (!valid.success)
     throw new Error(
-      `Impossible de restaurer : ${valid.error.issues[0]?.message ?? "version incompatible"}. Modifiez d’abord l’élément en conflit.`,
+      t(
+        "Impossible de restaurer : {reason}. Modifiez d’abord l’élément en conflit.",
+        {
+          reason: valid.error.issues[0]?.message ?? t("version incompatible"),
+        },
+      ),
     );
   const index = latestIndex(journal.history);
   const last = index.get(item.target);

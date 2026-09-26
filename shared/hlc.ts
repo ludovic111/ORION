@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "./i18n/hlc.ts";
 
 // Hybrid logical clock (HLC) stamps.
 //
@@ -55,7 +56,7 @@ export const isStamp = (value: unknown) =>
 export const stampSchema = z
   .string()
   .max(64)
-  .refine(isStamp, "Horodatage invalide.")
+  .refine(isStamp, { error: () => t("Horodatage invalide.") })
   .transform(canonicalStamp);
 
 export type Parts = { wall: number; counter: number; node: string };

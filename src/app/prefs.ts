@@ -5,6 +5,7 @@ import {
   paletteOf,
   type PaletteId,
 } from "./palettes";
+import { initialLang, isLang, setLang, type Lang } from "../i18n";
 
 // Preferences of this post (this browser). Not part of the session: another
 // post keeps its own theme, printer options and visible modules.
@@ -27,6 +28,8 @@ export type Prefs = {
   docsLevel: "short" | "guide" | "full";
   /** Microphone button for voice dictation (off: audio may leave the post). */
   dictation: boolean;
+  /** Language of the interface on this post (default: the browser's). */
+  lang: Lang;
 };
 const KEY = "orion-aic-prefs";
 export const DEFAULT_PREFS: Prefs = {
@@ -40,6 +43,7 @@ export const DEFAULT_PREFS: Prefs = {
   autoPrintMessages: false,
   docsLevel: "guide",
   dictation: false,
+  lang: "fr",
 };
 // The editorial design (cream paper) replaced the deep-space look: posts
 // still on the former default dark theme switch to it once.
@@ -49,20 +53,21 @@ function read(): Prefs {
     const raw = localStorage.getItem(KEY);
     const prefs: Prefs = raw
       ? { ...DEFAULT_PREFS, ...JSON.parse(raw) }
-      : DEFAULT_PREFS;
+      : { ...DEFAULT_PREFS, lang: initialLang() };
     // A palette removed or mistyped falls back to the default of its mode.
     if (!isLightPalette(prefs.lightPalette))
       prefs.lightPalette = DEFAULT_PREFS.lightPalette;
     if (!isDarkPalette(prefs.darkPalette))
       prefs.darkPalette = DEFAULT_PREFS.darkPalette;
     if (typeof prefs.dictation !== "boolean") prefs.dictation = false;
+    if (!isLang(prefs.lang)) prefs.lang = initialLang();
     if (localStorage.getItem(DESIGN) !== "atelier") {
       localStorage.setItem(DESIGN, "atelier");
       if (prefs.theme === "dark") return { ...prefs, theme: "light" };
     }
     return prefs;
   } catch {
-    return DEFAULT_PREFS;
+    return { ...DEFAULT_PREFS, lang: initialLang() };
   }
 }
 export function usePrefs() {
@@ -95,6 +100,8 @@ export function usePrefs() {
     return () => media.removeEventListener("change", apply);
   }, [prefs.theme, prefs.motion, prefs.lightPalette, prefs.darkPalette]);
   const setPrefs = useCallback((patch: Partial<Prefs>) => {
+    // The language changes at once, before the next render reads it.
+    if (patch.lang) setLang(patch.lang);
     set((previous) => {
       const next = { ...previous, ...patch };
       try {

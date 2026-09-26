@@ -7,15 +7,16 @@ import {
   profileStats,
   type Profile,
 } from "./profile";
+import { formatNumber, formatWith } from "../../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 type LatLng = [number, number];
 const W = 320;
 const H = 120;
 const PAD = { l: 34, r: 6, t: 8, b: 18 };
 
-const m = (n: number) => `${Math.round(n).toLocaleString("fr-CH")} m`;
-const pct = (n: number) =>
-  `${n.toLocaleString("fr-CH", { maximumFractionDigits: 1 })} %`;
+const m = (n: number) => `${formatNumber(Math.round(n))} m`;
+const pct = (n: number) => `${formatNumber(n, { maximumFractionDigits: 1 })} %`;
 
 /**
  * Elevation profile of a line (swissALTI3D): chart, lowest and highest
@@ -69,9 +70,9 @@ export function ProfilePanel({ points }: { points: LatLng[] }) {
   }, [profile, stats]);
 
   return (
-    <section className="map-profile" aria-label="Profil altimétrique">
+    <section className="map-profile" aria-label={t("Profil altimétrique")}>
       <header>
-        <span className="label">Profil altimétrique</span>
+        <span className="label">{t("Profil altimétrique")}</span>
         <button
           type="button"
           className="small"
@@ -83,7 +84,7 @@ export function ProfilePanel({ points }: { points: LatLng[] }) {
           ) : (
             <Mountain size={13} />
           )}
-          {profile ? "Recalculer" : "Calculer"}
+          {profile ? t("Recalculer") : t("Calculer")}
         </button>
       </header>
       {error && (
@@ -93,8 +94,9 @@ export function ProfilePanel({ points }: { points: LatLng[] }) {
       )}
       {!profile && !error && (
         <p className="muted">
-          Altitudes le long de la ligne (swissALTI3D, swisstopo) : dénivelé,
-          pentes, point le plus haut.
+          {t(
+            "Altitudes le long de la ligne (swissALTI3D, swisstopo) : dénivelé, pentes, point le plus haut.",
+          )}
         </p>
       )}
       {profile && stats && chart && (
@@ -103,7 +105,11 @@ export function ProfilePanel({ points }: { points: LatLng[] }) {
             className="map-profile-chart"
             viewBox={`0 0 ${W} ${H}`}
             role="img"
-            aria-label={`Profil : de ${m(stats.min)} à ${m(stats.max)} sur ${formatDistance(stats.length)}`}
+            aria-label={t("Profil : de {min} à {max} sur {len}", {
+              min: m(stats.min),
+              max: m(stats.max),
+              len: formatDistance(stats.length),
+            })}
           >
             <path className="area" d={chart.area} />
             <path className="line" d={chart.line} />
@@ -128,28 +134,29 @@ export function ProfilePanel({ points }: { points: LatLng[] }) {
             </text>
           </svg>
           <dl>
-            <dt>Longueur</dt>
+            <dt>{t("Longueur")}</dt>
             <dd className="mono">{formatDistance(stats.length)}</dd>
-            <dt>Altitude</dt>
+            <dt>{t("Altitude")}</dt>
             <dd className="mono">
               {m(stats.min)} – {m(stats.max)}
             </dd>
-            <dt>Montée</dt>
+            <dt>{t("Montée")}</dt>
             <dd className="mono">+{m(stats.climb)}</dd>
-            <dt>Descente</dt>
+            <dt>{t("Descente")}</dt>
             <dd className="mono">−{m(stats.descent)}</dd>
-            <dt>Pente max.</dt>
+            <dt>{t("Pente max.")}</dt>
             <dd className="mono">{pct(stats.maxSlope)}</dd>
-            <dt>Pente moyenne</dt>
+            <dt>{t("Pente moyenne")}</dt>
             <dd className="mono">{pct(stats.meanSlope)}</dd>
           </dl>
           <small className="muted">
-            swissALTI3D © swisstopo · calculé le{" "}
-            {new Date(profile.at).toLocaleString("fr-CH", {
-              day: "2-digit",
-              month: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
+            {t("swissALTI3D © swisstopo · calculé le {when}", {
+              when: formatWith(profile.at, {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             })}
           </small>
         </>

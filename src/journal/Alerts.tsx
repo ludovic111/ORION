@@ -9,6 +9,7 @@ import {
   type Entry,
   type Journal,
 } from "../../shared/journal";
+import { t, tn } from "./i18n.ts";
 
 const SOON = 15 * 60_000;
 const STORAGE = "orion-alert-sound";
@@ -44,7 +45,9 @@ function relative(ms: number) {
     minutes < 60
       ? `${minutes} min`
       : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
-  return ms < 0 ? `dépassée de ${label}` : `dans ${label}`;
+  return ms < 0
+    ? t("dépassée de {d}", { d: label })
+    : t("dans {d}", { d: label });
 }
 
 /** Due and overdue follow-ups, with snooze, completion and an audible alarm. */
@@ -103,10 +106,10 @@ export function Alerts({
         <button
           className="link muted"
           onClick={toggleSound}
-          title="Signal sonore quand une échéance est dépassée"
+          title={t("Signal sonore quand une échéance est dépassée")}
         >
           {sound ? <Bell size={12} /> : <BellOff size={12} />}
-          Alarme échéances {sound ? "active" : "muette"}
+          {sound ? t("Alarme échéances active") : t("Alarme échéances muette")}
         </button>
       </div>
     );
@@ -114,22 +117,28 @@ export function Alerts({
   return (
     <section
       className={`alerts ${late.length ? "crit" : "warn"}`}
-      aria-label="Échéances"
+      aria-label={t("Échéances")}
     >
       <header>
         <span className="label">
           {late.length
-            ? `${late.length} échéance${late.length > 1 ? "s" : ""} dépassée${late.length > 1 ? "s" : ""}`
-            : "Échéances proches"}
+            ? tn(
+                late.length,
+                "{n} échéance dépassée",
+                "{n} échéances dépassées",
+              )
+            : t("Échéances proches")}
           {due.length > late.length &&
-            ` · ${due.length - late.length} dans moins de 15 min`}
+            ` · ${t("{n} dans moins de 15 min", { n: due.length - late.length })}`}
         </span>
         <button
           className="icon-button"
           onClick={toggleSound}
           aria-pressed={sound}
-          title={sound ? "Couper l’alarme" : "Activer l’alarme sonore"}
-          aria-label={sound ? "Couper l’alarme" : "Activer l’alarme sonore"}
+          title={sound ? t("Couper l’alarme") : t("Activer l’alarme sonore")}
+          aria-label={
+            sound ? t("Couper l’alarme") : t("Activer l’alarme sonore")
+          }
         >
           {sound ? <Bell size={14} /> : <BellOff size={14} />}
         </button>
@@ -156,7 +165,7 @@ export function Alerts({
                   </button>
                   <button className="small" onClick={() => onDone(e)}>
                     <Check size={13} />
-                    Terminé
+                    {t("Terminé (action)")}
                   </button>
                 </span>
               )}
@@ -166,8 +175,11 @@ export function Alerts({
       </ul>
       {due.length > shown.length && (
         <footer className="muted">
-          + {due.length - shown.length} autre
-          {due.length - shown.length > 1 ? "s" : ""} · filtre « À suivre »
+          {tn(
+            due.length - shown.length,
+            "+ {n} autre · filtre « À suivre »",
+            "+ {n} autres · filtre « À suivre »",
+          )}
         </footer>
       )}
     </section>

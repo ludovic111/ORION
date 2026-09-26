@@ -27,7 +27,14 @@ import { ItemSearch, LinkChip } from "../../ui/links";
 import { TraceLine } from "../../timeline/TraceLine";
 import { dateTime, time } from "../../../shared/journal";
 import { parseRef, type Ref } from "../../../shared/links";
-import { removeRecords, upsert } from "../../../shared/ops";
+import {
+  journalLang,
+  listValues,
+  removeRecords,
+  upsert,
+  type Ops,
+} from "../../../shared/ops";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
 import { localNode } from "../../../shared/hlc";
 import type { Broadcast, Order, OrderMission } from "../../../shared/conduct";
 import {
@@ -41,13 +48,25 @@ import {
   type OrderDraft,
 } from "../../../shared/orders";
 import { recipientStates } from "../../../shared/diffusion";
-import { addBroadcast } from "../../post/actions";
+import { addBroadcast, journalDefault } from "../../post/actions";
 import { RecipientsField } from "../../post/dialogs";
 import { openDiffusion } from "../../post/bus";
 import { useIdentity } from "../../post/roles";
 import { LiaisonPanel } from "../../liaison/LiaisonPanel";
 import { orderSheet } from "./orderSheet";
+import { rich, useLang } from "../../i18n";
+import { t, tIn, tn } from "./i18n.ts";
 import "../../post/conduct.css";
+
+/**
+ * Kind of a new order in the language of the journal: a default kind
+ * ("Ordre d’engagement"…) becomes the same default of that language;
+ * anything else stays as it is (data). No kind: the first of the list.
+ */
+function journalKind(ops: Ops, kind?: string): string {
+  if (!kind) return listValues(ops, "orderKinds")[0] ?? "";
+  return journalDefault(ops, "orderKinds", kind);
+}
 
 type Tab = "orders" | "broadcasts" | "liaison";
 
@@ -58,7 +77,9 @@ export function Orders() {
   const [editing, setEditing] = useState<OrderDraft | null>(null);
   const [picking, setPicking] = useState(false);
   const [broadcast, setBroadcast] = useState<string | null>(null);
-  const labels = useMemo(() => orderLabels(journal), [journal]);
+  const lang = useLang();
+  // Labels may hold words ("n°"): recomputed when the language changes.
+  const labels = useMemo(() => orderLabels(journal), [journal, lang]);
 
   useEffect(() => {
     if (!focus) return;
@@ -108,42 +129,42 @@ export function Orders() {
             <>
               <button onClick={() => openDiffusion()}>
                 <Megaphone size={15} />
-                Diffuser
+                {t("Diffuser")}
               </button>
               <button className="primary" onClick={() => setPicking(true)}>
                 <Plus size={15} />
-                Nouvel ordre
+                {t("Nouvel ordre")}
               </button>
             </>
           )
         }
       />
       <Figures
-        label="Ordres et diffusions en chiffres"
+        label={t("Ordres et diffusions en chiffres")}
         items={[
           {
-            label: "Ordres émis",
+            label: t("Ordres émis"),
             value: orders.filter((o) => o.status === "Émis").length,
           },
           {
-            label: "Projets",
+            label: t("Projets"),
             value: orders.filter((o) => o.status === "Brouillon").length,
             tone: "",
           },
           {
-            label: "Accusés attendus",
+            label: t("Accusés attendus"),
             value: waiting,
             tone: waiting ? "warn" : "",
             onClick: waiting ? () => setTab("broadcasts") : undefined,
           },
           {
-            label: "Sans accusé à temps",
+            label: t("Sans accusé à temps"),
             value: lateCount,
             tone: lateCount ? "crit" : "",
             onClick: lateCount ? () => setTab("broadcasts") : undefined,
           },
           {
-            label: "Liaisons ouvertes",
+            label: t("Liaisons ouvertes"),
             value: openLiaisons,
             onClick: () => setTab("liaison"),
           },
@@ -151,20 +172,20 @@ export function Orders() {
       />
       <div style={{ margin: "4px 0 18px" }}>
         <Segmented
-          label="Rubrique"
+          label={t("Rubrique")}
           value={tab}
           onChange={setTab}
           options={[
-            { value: "orders", label: "Ordres" },
-            { value: "broadcasts", label: "Diffusions" },
-            { value: "liaison", label: "Liaison entre PC" },
+            { value: "orders", label: t("Ordres") },
+            { value: "broadcasts", label: t("Diffusions") },
+            { value: "liaison", label: t("Liaison entre PC") },
           ]}
         />
       </div>
 
       {tab === "orders" &&
         (orders.length ? (
-          <ul className="conduct-list" aria-label="Ordres">
+          <ul className="conduct-list" aria-label={t("Ordres")}>
             {orders.map((o) => (
               <OrderRow
                 key={o.id}
@@ -177,26 +198,25 @@ export function Orders() {
         ) : (
           <EmptyState
             icon={<ScrollText size={28} />}
-            title="Aucun ordre"
+            title={t("Aucun ordre")}
             actions={
               !readOnly && (
                 <button className="primary" onClick={() => setPicking(true)}>
                   <Plus size={15} />
-                  Nouvel ordre
+                  {t("Nouvel ordre")}
                 </button>
               )
             }
           >
-            Un ordre suit le schéma en cinq points : orientation, intention,
-            missions, dispositions particulières, emplacements et liaisons. Il
-            reçoit un numéro, part aux destinataires avec accusé de lecture et
-            s’inscrit au journal quand il est émis.
+            {t(
+              "Un ordre suit le schéma en cinq points : orientation, intention, missions, dispositions particulières, emplacements et liaisons. Il reçoit un numéro, part aux destinataires avec accusé de lecture et s’inscrit au journal quand il est émis.",
+            )}
           </EmptyState>
         ))}
 
       {tab === "broadcasts" &&
         (broadcasts.length ? (
-          <ul className="conduct-list" aria-label="Diffusions">
+          <ul className="conduct-list" aria-label={t("Diffusions")}>
             {broadcasts.map((b) => (
               <BroadcastRow
                 key={b.id}
@@ -208,20 +228,19 @@ export function Orders() {
         ) : (
           <EmptyState
             icon={<Megaphone size={28} />}
-            title="Aucune diffusion"
+            title={t("Aucune diffusion")}
             actions={
               !readOnly && (
                 <button className="primary" onClick={() => openDiffusion()}>
                   <Megaphone size={15} />
-                  Diffuser
+                  {t("Diffuser")}
                 </button>
               )
             }
           >
-            Une diffusion envoie une information, une consigne ou un ordre à
-            plusieurs fonctions, cellules ou PC. Chacun la voit en haut de son
-            écran jusqu’à ce qu’il réponde « Lu » ou « Compris » ; vous voyez
-            qui a répondu et quand.
+            {t(
+              "Une diffusion envoie une information, une consigne ou un ordre à plusieurs fonctions, cellules ou PC. Chacun la voit en haut de son écran jusqu’à ce qu’il réponde « Lu » ou « Compris » ; vous voyez qui a répondu et quand.",
+            )}
           </EmptyState>
         ))}
 
@@ -279,20 +298,26 @@ function OrderRow({
   const answered = states.filter((s) => s.ack).length;
   return (
     <li className={`conduct-row${states.some((s) => s.late) ? " late" : ""}`}>
-      <span className="when">{o.issuedAt ? time(o.issuedAt) : "projet"}</span>
+      <span className="when">
+        {o.issuedAt ? time(o.issuedAt) : t("projet")}
+      </span>
       <div className="what">
         <button onClick={onOpen}>
-          <span className="conduct-kind">Ordre {label}</span>
+          <span className="conduct-kind">{t("Ordre {label}", { label })}</span>
           {o.title}
         </button>
         <small>
           {[
             o.kind,
-            o.status,
-            o.source && `reçu de ${o.source}`,
+            enumLabel(o.status),
+            o.source && t("reçu de {source}", { source: o.source }),
             o.missions.length &&
-              `${o.missions.length} mission${o.missions.length > 1 ? "s" : ""}`,
-            b && `accusés ${answered}/${states.length}`,
+              tn(o.missions.length, "{n} mission", "{n} missions"),
+            b &&
+              t("accusés {answered}/{total}", {
+                answered,
+                total: states.length,
+              }),
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -300,7 +325,7 @@ function OrderRow({
       </div>
       <div className="row-actions">
         <button className="small" onClick={onOpen}>
-          Ouvrir
+          {t("Ouvrir")}
         </button>
       </div>
     </li>
@@ -325,19 +350,19 @@ function BroadcastRow({
         <button onClick={onOpen}>
           <span className="conduct-kind">{b.kind}</span>
           {b.priority === "Urgent" && (
-            <span className="pill crit">Urgent</span>
+            <span className="pill crit">{enumLabel("Urgent")}</span>
           )}{" "}
           {b.title}
         </button>
         <small>
           {[
-            b.source ? `de ${b.sender || b.source}` : b.sender,
-            `à ${b.recipients.join(", ")}`,
+            b.source ? t("de {who}", { who: b.sender || b.source }) : b.sender,
+            t("à {recipients}", { recipients: b.recipients.join(", ") }),
             b.ack === "Aucun"
-              ? "sans accusé"
-              : `« ${b.ack} » ${answered}/${states.length}`,
-            late && "réponse en retard",
-            b.closedAt && "suivi arrêté",
+              ? t("sans accusé")
+              : `« ${enumLabel(b.ack)} » ${answered}/${states.length}`,
+            late && t("réponse en retard"),
+            b.closedAt && t("suivi arrêté"),
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -345,7 +370,7 @@ function BroadcastRow({
       </div>
       <div className="row-actions">
         <button className="small" onClick={onOpen}>
-          Accusés
+          {t("Accusés")}
         </button>
       </div>
     </li>
@@ -382,11 +407,11 @@ function BroadcastSheet({
                       author,
                     ),
                   );
-                  toast("Suivi des accusés arrêté.");
+                  toast(t("Suivi des accusés arrêté."));
                 }}
               >
                 <Ban size={14} />
-                Arrêter le suivi
+                {t("Arrêter le suivi")}
               </button>
             )}
             <button
@@ -405,14 +430,16 @@ function BroadcastSheet({
               }
             >
               <Send size={14} />
-              Relancer les absents
+              {t("Relancer les absents")}
             </button>
             <button
               className="danger"
               onClick={() => {
                 if (!canWrite()) return;
                 if (
-                  !window.confirm("Supprimer cette diffusion et ses accusés ?")
+                  !window.confirm(
+                    t("Supprimer cette diffusion et ses accusés ?"),
+                  )
                 )
                   return;
                 updateOps((ops) => {
@@ -426,7 +453,7 @@ function BroadcastSheet({
               }}
             >
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           </div>
         )
@@ -441,25 +468,25 @@ function BroadcastSheet({
         )}
         <dl className="spec compact">
           <div>
-            <dt>De</dt>
+            <dt>{t("De")}</dt>
             <dd>{b.sender || b.by}</dd>
           </div>
           <div>
-            <dt>Priorité</dt>
-            <dd>{b.priority}</dd>
+            <dt>{t("Priorité")}</dt>
+            <dd>{enumLabel(b.priority)}</dd>
           </div>
           <div>
-            <dt>Accusé demandé</dt>
+            <dt>{t("Accusé demandé")}</dt>
             <dd>
-              {b.ack}
+              {enumLabel(b.ack)}
               {b.ack !== "Aucun" && b.deadline
-                ? ` · signalé après ${b.deadline} min`
+                ? ` · ${t("signalé après {n} min", { n: b.deadline })}`
                 : ""}
             </dd>
           </div>
         </dl>
         <section>
-          <span className="label">Destinataires</span>
+          <span className="label">{t("Destinataires")}</span>
           <ul className="receipts">
             {states.map((s) => (
               <li key={s.recipient}>
@@ -468,17 +495,27 @@ function BroadcastSheet({
                   className={`state ${s.ack ? "ok" : s.late ? "late" : ""}`}
                 >
                   {s.ack
-                    ? `${s.ack.kind} · ${time(s.ack.at)}`
+                    ? `${enumLabel(s.ack.kind)} · ${time(s.ack.at)}`
                     : b.ack === "Aucun"
-                      ? "sans accusé"
-                      : `en attente · ${s.minutes} min`}
+                      ? t("sans accusé")
+                      : t("en attente · {n} min", { n: s.minutes })}
                 </span>
                 {s.acks.length > 0 && (
                   <small>
                     {s.acks
-                      .map(
-                        (a) =>
-                          `${[a.role, a.post].filter(Boolean).join(" · ") || a.by} (${a.kind} à ${time(a.at)}${a.source ? `, par la liaison` : ""})`,
+                      .map((a) =>
+                        t(
+                          a.source
+                            ? "{who} ({kind} à {time}, par la liaison)"
+                            : "{who} ({kind} à {time})",
+                          {
+                            who:
+                              [a.role, a.post].filter(Boolean).join(" · ") ||
+                              a.by,
+                            kind: enumLabel(a.kind),
+                            time: time(a.at),
+                          },
+                        ),
                       )
                       .join(" ; ")}
                   </small>
@@ -503,20 +540,37 @@ function TemplatePicker({
   const { live } = useApp();
   const prefill = orderPrefill(live, Date.now(), time);
   return (
-    <Sheet title="Nouvel ordre" eyebrow="Choisir un modèle" onClose={onClose}>
+    <Sheet
+      title={t("Nouvel ordre")}
+      eyebrow={t("Choisir un modèle")}
+      onClose={onClose}
+    >
       <ul className="conduct-list">
-        {ORDER_TEMPLATES.map((t) => (
-          <li key={t.id} className="conduct-row">
+        {ORDER_TEMPLATES.map((m) => (
+          <li key={m.id} className="conduct-row">
             <span className="when">
               <FilePlus2 size={16} />
             </span>
             <div className="what">
               <button
-                onClick={() => onPick(emptyOrder({ ...prefill, ...t.patch }))}
+                onClick={() => {
+                  const kind = journalKind(live.ops, m.patch.kind);
+                  onPick(
+                    emptyOrder({
+                      ...prefill,
+                      ...m.patch,
+                      kind,
+                      // A title that is the kind follows it.
+                      ...(m.patch.title && m.patch.title === m.patch.kind
+                        ? { title: kind }
+                        : {}),
+                    }),
+                  );
+                }}
               >
-                {t.label}
+                {m.label}
               </button>
-              <small>{t.hint}</small>
+              <small>{m.hint}</small>
             </div>
             <div />
           </li>
@@ -526,16 +580,22 @@ function TemplatePicker({
             <FilePlus2 size={16} />
           </span>
           <div className="what">
-            <button onClick={() => onPick(emptyOrder())}>Ordre vide</button>
-            <small>Aucun champ prérempli.</small>
+            <button
+              onClick={() =>
+                onPick(emptyOrder({ kind: journalKind(live.ops) }))
+              }
+            >
+              {t("Ordre vide")}
+            </button>
+            <small>{t("Aucun champ prérempli.")}</small>
           </div>
           <div />
         </li>
       </ul>
       <p className="hint" style={{ marginTop: 14 }}>
-        Les modèles reprennent les tableaux de situation (situation, dangers,
-        intention), les postes, les groupes du plan radio et les prochains
-        rapports. Tout reste modifiable.
+        {t(
+          "Les modèles reprennent les tableaux de situation (situation, dangers, intention), les postes, les groupes du plan radio et les prochains rapports. Tout reste modifiable.",
+        )}
       </p>
     </Sheet>
   );
@@ -565,45 +625,45 @@ function MissionEditor({
   return (
     <div className="order-mission">
       <div className="order-mission-head">
-        <span>Mission {index + 1}</span>
+        <span>{t("Mission {n}", { n: index + 1 })}</span>
         <button
           type="button"
           className="icon-button"
           onClick={onRemove}
-          aria-label={`Retirer la mission ${index + 1}`}
+          aria-label={t("Retirer la mission {n}", { n: index + 1 })}
         >
           <X size={14} />
         </button>
       </div>
       <div className="form-grid">
         <ComboField
-          label="Unité / cellule"
+          label={t("Unité / cellule")}
           value={mission.unit}
           onChange={(unit) => onChange({ ...mission, unit })}
           options={units}
         />
         <ComboField
-          label="Fonction responsable"
+          label={t("Fonction responsable")}
           value={mission.role}
           onChange={(role) => onChange({ ...mission, role })}
           options={lists("postRoles")}
-          hint="Apparaît dans « Mes tâches » des postes de cette fonction."
+          hint={t("Apparaît dans « Mes tâches » des postes de cette fonction.")}
         />
         <TextField
           className="span-2"
-          label="Mission"
+          label={t("Mission")}
           value={mission.task}
           onChange={(task) => onChange({ ...mission, task })}
           rows={2}
           maxLength={4000}
         />
         <DateTimeField
-          label="Échéance"
+          label={t("Échéance")}
           value={mission.dueAt}
           onChange={(dueAt) => onChange({ ...mission, dueAt })}
         />
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Moyens, personnes, entrées liés</span>
+          <span className="label">{t("Moyens, personnes, entrées liés")}</span>
           <div className="conduct-target">
             {mission.refs.map((r) => (
               <LinkChip
@@ -624,7 +684,7 @@ function MissionEditor({
                 onClick={() => setPicking(true)}
               >
                 <Link2 size={14} />
-                Lier
+                {t("Lier")}
               </button>
             )}
           </div>
@@ -652,7 +712,7 @@ function MissionEditor({
               onClick={() => setPicking(false)}
             >
               <X size={14} />
-              Fermer
+              {t("Fermer")}
             </button>
           </div>
         )}
@@ -705,7 +765,7 @@ function OrderEditor({
           author,
         ),
       );
-      toast(draft.id ? "Ordre enregistré." : "Projet d’ordre créé.");
+      toast(draft.id ? t("Ordre enregistré.") : t("Projet d’ordre créé."));
       onSaved(id);
     } catch (err) {
       toast((err as Error).message);
@@ -713,19 +773,19 @@ function OrderEditor({
   }
   return (
     <Sheet
-      title={draft.id ? "Modifier l’ordre" : "Nouvel ordre"}
+      title={draft.id ? t("Modifier l’ordre") : t("Nouvel ordre")}
       eyebrow={draft.kind}
       onClose={onClose}
       dirty={dirty}
       footer={
         <>
-          <button onClick={onClose}>Annuler</button>
+          <button onClick={onClose}>{t("Annuler")}</button>
           <button
             className="primary"
             disabled={!draft.title.trim()}
             onClick={save}
           >
-            Enregistrer
+            {t("Enregistrer")}
           </button>
         </>
       }
@@ -740,20 +800,20 @@ function OrderEditor({
         <div className="form-grid">
           <TextField
             className="span-2"
-            label="Titre"
+            label={t("Titre")}
             value={draft.title}
             onChange={(title) => set({ title })}
             required
             maxLength={200}
           />
           <ComboField
-            label="Type"
+            label={t("Type")}
             value={draft.kind}
             onChange={(kind) => set({ kind })}
             options={lists("orderKinds")}
           />
           <ComboField
-            label="Donné par"
+            label={t("Donné par")}
             value={draft.issuer}
             onChange={(issuer) => set({ issuer })}
             options={[
@@ -764,25 +824,25 @@ function OrderEditor({
         </div>
         <section className="order-chapter">
           <h3>
-            <span>1</span> Orientation
+            <span>1</span> {t("Orientation")}
           </h3>
           <div className="form-grid">
-            {area("situation", "Situation", 4)}
-            {area("danger", "Danger / évolution probable")}
-            {area("neighbours", "Moyens voisins et partenaires", 2)}
+            {area("situation", t("Situation"), 4)}
+            {area("danger", t("Danger / évolution probable"))}
+            {area("neighbours", t("Moyens voisins et partenaires"), 2)}
           </div>
         </section>
         <section className="order-chapter">
           <h3>
-            <span>2</span> Intention
+            <span>2</span> {t("Intention")}
           </h3>
           <div className="form-grid">
-            {area("intention", "Idée de manœuvre", 4)}
+            {area("intention", t("Idée de manœuvre"), 4)}
           </div>
         </section>
         <section className="order-chapter">
           <h3>
-            <span>3</span> Missions
+            <span>3</span> {t("Missions")}
           </h3>
           {draft.missions.map((m, i) => (
             <MissionEditor
@@ -806,37 +866,37 @@ function OrderEditor({
             onClick={() => set({ missions: [...draft.missions, newMission()] })}
           >
             <Plus size={14} />
-            Ajouter une mission
+            {t("Ajouter une mission")}
           </button>
         </section>
         <section className="order-chapter">
           <h3>
-            <span>4</span> Dispositions particulières
+            <span>4</span> {t("Dispositions particulières")}
           </h3>
           <div className="form-grid">
-            {area("logistics", "Logistique", 2)}
-            {area("medical", "Sanitaire", 2)}
-            {area("safety", "Sécurité", 2)}
+            {area("logistics", t("Logistique"), 2)}
+            {area("medical", t("Sanitaire"), 2)}
+            {area("safety", t("Sécurité"), 2)}
           </div>
         </section>
         <section className="order-chapter">
           <h3>
-            <span>5</span> Emplacements et liaisons
+            <span>5</span> {t("Emplacements et liaisons")}
           </h3>
           <div className="form-grid">
-            {area("pc", "PC / emplacements", 2)}
-            {area("radio", "Liaisons radio (plan radio)", 3)}
-            {area("reports", "Heures des rapports", 2)}
+            {area("pc", t("PC / emplacements"), 2)}
+            {area("radio", t("Liaisons radio (plan radio)"), 3)}
+            {area("reports", t("Heures des rapports"), 2)}
           </div>
         </section>
         <section className="order-chapter">
-          <h3>Distribution</h3>
+          <h3>{t("Distribution")}</h3>
           <div className="form-grid">
             <RecipientsField
               value={draft.distribution}
               onChange={(distribution) => set({ distribution })}
             />
-            {area("notes", "Remarques", 2)}
+            {area("notes", t("Remarques"), 2)}
           </div>
         </section>
       </form>
@@ -879,7 +939,9 @@ function OrderView({
     if (
       !o.distribution.length &&
       !window.confirm(
-        "Aucun destinataire : l’ordre sera émis et inscrit au journal sans diffusion. Continuer ?",
+        t(
+          "Aucun destinataire : l’ordre sera émis et inscrit au journal sans diffusion. Continuer ?",
+        ),
       )
     )
       return;
@@ -887,7 +949,7 @@ function OrderView({
     const entryId = addEntry(
       {
         type: "Décision",
-        message: `Ordre ${label} émis : ${o.title}`,
+        message: t("Ordre {label} émis : {title}", { label, title: o.title }),
         source: o.issuer || me.role || author,
         recipient: o.distribution.join(", "),
         channel: "Message",
@@ -911,14 +973,20 @@ function OrderView({
           next = addBroadcast(
             next,
             {
-              title: `Ordre ${label} : ${o.title}`,
+              title: t("Ordre {label} : {title}", { label, title: o.title }),
               body: [
-                o.intention && `Intention : ${o.intention}`,
-                ...o.missions.map((m) => `${m.unit || "Mission"} : ${m.task}`),
+                o.intention && t("Intention : {text}", { text: o.intention }),
+                ...o.missions.map((m) =>
+                  t("{unit} : {task}", {
+                    unit: m.unit || t("Mission"),
+                    task: m.task,
+                  }),
+                ),
               ]
                 .filter(Boolean)
                 .join("\n"),
-              kind: "Ordre",
+              // Référentiel value "Ordre" of the journal's language.
+              kind: journalDefault(ops, "broadcastKinds", "Ordre"),
               priority: "Important",
               target: `order:${o.id}`,
               recipients: o.distribution,
@@ -931,7 +999,9 @@ function OrderView({
         return next;
       });
       toast(
-        `Ordre ${label} émis, inscrit au journal${broadcastId ? " et diffusé" : ""}.`,
+        broadcastId
+          ? t("Ordre {label} émis, inscrit au journal et diffusé.", { label })
+          : t("Ordre {label} émis, inscrit au journal.", { label }),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -939,12 +1009,14 @@ function OrderView({
   }
 
   function complement() {
+    // Default texts of a new order: in the language of the journal.
+    const lang = journalLang(live.ops);
     onEdit(
       emptyOrder({
-        kind: "Ordre complémentaire",
+        kind: journalKind(live.ops, "Ordre complémentaire"),
         baseId: o.id,
-        title: `Complément à l’ordre ${label}`,
-        intention: "Inchangée.",
+        title: tIn(lang, "Complément à l’ordre {label}", { label }),
+        intention: tIn(lang, "Inchangée."),
         pc: o.pc,
         radio: o.radio,
         reports: o.reports,
@@ -964,12 +1036,12 @@ function OrderView({
 
   return (
     <Sheet
-      title={`Ordre ${label} · ${o.title}`}
+      title={t("Ordre {label} · {title}", { label, title: o.title })}
       eyebrow={[
         o.kind,
-        o.status,
+        enumLabel(o.status),
         o.issuedAt && dateTime(o.issuedAt),
-        o.source && `reçu de ${o.source}`,
+        o.source && t("reçu de {source}", { source: o.source }),
       ]
         .filter(Boolean)
         .join(" · ")}
@@ -984,8 +1056,8 @@ function OrderView({
                 kind: "forms",
                 journal,
                 sheets: [orderSheet(o, label, b, journal.ops.acks, describe)],
-                title: `Ordre ${label}`,
-                name: `ordre-${o.number}`,
+                title: t("Ordre {label}", { label }),
+                name: t("ordre-{n}", { n: o.number }),
               });
             }}
           >
@@ -996,20 +1068,23 @@ function OrderView({
             <>
               <button onClick={() => onEdit({ ...o })}>
                 <Pencil size={14} />
-                Modifier
+                {t("Modifier")}
               </button>
               {o.status === "Émis" && (
                 <button onClick={complement}>
                   <Copy size={14} />
-                  Ordre complémentaire
+                  {t("Ordre complémentaire")}
                 </button>
               )}
               {o.status === "Émis" && (
                 <button
                   onClick={() =>
                     openDiffusion({
-                      title: `Ordre ${label} : ${o.title}`,
-                      kind: "Ordre",
+                      title: t("Ordre {label} : {title}", {
+                        label,
+                        title: o.title,
+                      }),
+                      kind: journalDefault(live.ops, "broadcastKinds", "Ordre"),
                       target: `order:${o.id}`,
                       ack: "Compris",
                       priority: "Important",
@@ -1017,13 +1092,13 @@ function OrderView({
                   }
                 >
                   <Megaphone size={14} />
-                  Diffuser
+                  {t("Diffuser")}
                 </button>
               )}
               {o.status === "Brouillon" && (
                 <button className="primary" onClick={issue}>
                   <Send size={14} />
-                  Émettre
+                  {t("Émettre")}
                 </button>
               )}
               {o.status === "Émis" && (
@@ -1031,14 +1106,20 @@ function OrderView({
                   className="danger"
                   onClick={() => {
                     if (!canWrite()) return;
-                    if (!window.confirm(`Annuler l’ordre ${label} ?`)) return;
+                    if (
+                      !window.confirm(t("Annuler l’ordre {label} ?", { label }))
+                    )
+                      return;
                     updateOps((ops) =>
                       upsert(ops, "orders", { ...o, status: "Annulé" }, author),
                     );
                     addEntry(
                       {
                         type: "Décision",
-                        message: `Ordre ${label} annulé : ${o.title}`,
+                        message: t("Ordre {label} annulé : {title}", {
+                          label,
+                          title: o.title,
+                        }),
                         source: me.role || author,
                         tags: ["ordre"],
                       },
@@ -1047,7 +1128,7 @@ function OrderView({
                   }}
                 >
                   <Ban size={14} />
-                  Annuler l’ordre
+                  {t("Annuler l’ordre")}
                 </button>
               )}
               {o.status === "Brouillon" && (
@@ -1055,14 +1136,14 @@ function OrderView({
                   className="danger"
                   onClick={() => {
                     if (!canWrite()) return;
-                    if (!window.confirm("Supprimer ce projet d’ordre ?"))
+                    if (!window.confirm(t("Supprimer ce projet d’ordre ?")))
                       return;
                     updateOps((ops) => removeRecords(ops, [o.id]));
                     onClose();
                   }}
                 >
                   <Trash2 size={14} />
-                  Supprimer
+                  {t("Supprimer")}
                 </button>
               )}
             </>
@@ -1073,7 +1154,9 @@ function OrderView({
       <div className="order-view stack" style={{ gap: 12 }}>
         {base && (
           <p className="muted">
-            Complète <LinkChip target={`order:${base.id}` as Ref} />
+            {rich(t("Complète <0/>"), [
+              <LinkChip target={`order:${base.id}` as Ref} />,
+            ])}
           </p>
         )}
         {CHAPTERS.map((c) => (
@@ -1084,20 +1167,20 @@ function OrderView({
             <dl>
               {c.n === 1 && (
                 <>
-                  {text("Situation", o.situation)}
-                  {text("Danger / évolution probable", o.danger)}
-                  {text("Moyens voisins et partenaires", o.neighbours)}
+                  {text(t("Situation"), o.situation)}
+                  {text(t("Danger / évolution probable"), o.danger)}
+                  {text(t("Moyens voisins et partenaires"), o.neighbours)}
                 </>
               )}
-              {c.n === 2 && text("Idée de manœuvre", o.intention)}
+              {c.n === 2 && text(t("Idée de manœuvre"), o.intention)}
               {c.n === 3 &&
                 o.missions.map((m) => (
                   <div key={m.id}>
                     <dt>
-                      {m.unit || "Mission"}
+                      {m.unit || t("Mission")}
                       {m.role && ` · ${m.role}`}
                       {m.dueAt && ` · ${time(m.dueAt)}`}
-                      {m.done && " · terminée"}
+                      {m.done && ` · ${t("terminée")}`}
                     </dt>
                     <dd>{m.task || "—"}</dd>
                     {m.refs.length > 0 && (
@@ -1111,23 +1194,23 @@ function OrderView({
                 ))}
               {c.n === 4 && (
                 <>
-                  {text("Logistique", o.logistics)}
-                  {text("Sanitaire", o.medical)}
-                  {text("Sécurité", o.safety)}
+                  {text(t("Logistique"), o.logistics)}
+                  {text(t("Sanitaire"), o.medical)}
+                  {text(t("Sécurité"), o.safety)}
                 </>
               )}
               {c.n === 5 && (
                 <>
-                  {text("PC / emplacements", o.pc)}
-                  {text("Liaisons radio", o.radio)}
-                  {text("Heures des rapports", o.reports)}
+                  {text(t("PC / emplacements"), o.pc)}
+                  {text(t("Liaisons radio"), o.radio)}
+                  {text(t("Heures des rapports"), o.reports)}
                 </>
               )}
             </dl>
           </section>
         ))}
         <section className="order-chapter">
-          <h3>Distribution</h3>
+          <h3>{t("Distribution")}</h3>
           {o.distribution.length ? (
             <ul className="receipts">
               {(states.length
@@ -1145,22 +1228,22 @@ function OrderView({
                     className={`state ${s.ack ? "ok" : s.late ? "late" : ""}`}
                   >
                     {s.ack
-                      ? `${s.ack.kind} · ${time(s.ack.at)}${s.ack.post ? ` · ${s.ack.post}` : ""}`
+                      ? `${enumLabel(s.ack.kind)} · ${time(s.ack.at)}${s.ack.post ? ` · ${s.ack.post}` : ""}`
                       : b
-                        ? `en attente · ${s.minutes} min`
-                        : "à l’émission"}
+                        ? t("en attente · {n} min", { n: s.minutes })
+                        : t("à l’émission")}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">Aucun destinataire.</p>
+            <p className="muted">{t("Aucun destinataire.")}</p>
           )}
           {o.notes && <p className="muted">{o.notes}</p>}
         </section>
         {o.entryId && (
           <p className="muted">
-            Inscrit au journal :{" "}
+            {t("Inscrit au journal :")}{" "}
             <LinkChip target={`entry:${o.entryId}` as Ref} />
           </p>
         )}

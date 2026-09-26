@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Journal } from "../../shared/journal";
 import { qrMatrix, qrPath } from "./qr";
+import { t } from "./i18n.ts";
 
 /** A person's badge: name, function, and a QR code read at the roll-call. */
 export type Badge = {
@@ -36,7 +37,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
         <path d={qrPath(matrix)} fill="#101318" />
       </svg>
       <div>
-        <span className="cell-label">orion aic · présence</span>
+        <span className="cell-label">{t("orion aic · présence")}</span>
         <strong>{badge.name}</strong>
         {badge.line && <small>{badge.line}</small>}
         {badge.sub && <small>{badge.sub}</small>}
@@ -69,8 +70,10 @@ export function BadgesView({
             ))}
           </div>
           <footer className="sheet-foot">
-            <span>{journal.title} · badges de présence</span>
-            <span>Édité le {stamp}</span>
+            <span>
+              {journal.title} · {t("badges de présence")}
+            </span>
+            <span>{t("Édité le {stamp}", { stamp })}</span>
           </footer>
         </article>
       ))}

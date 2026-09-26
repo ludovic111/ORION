@@ -5,6 +5,7 @@ import type { Journal } from "../../../shared/journal";
 import type { Place } from "../../../shared/ops";
 import { BASES, SWISS_BOUNDS, isBase } from "./bases";
 import { builtinInfo, customId, isCustom, OFFICIAL } from "./builtins";
+import { t } from "./i18n-2.ts";
 import { effectiveColor } from "./geoformats";
 import { hexColor, layerKey, placesOf, sortMaps } from "./maps";
 import { iconOf } from "./symbols";
@@ -448,7 +449,7 @@ export async function renderMap(
     const base = BASES[baseId];
     attribution = base.swiss
       ? "© swisstopo"
-      : "© les contributeurs d’OpenStreetMap";
+      : t("© les contributeurs d’OpenStreetMap");
     await drawTiles(base.url, base.native, base.swiss, 1);
     if (baseId === "night") {
       const data = ctx.getImageData(0, 0, W, H);
@@ -566,7 +567,7 @@ export async function renderMap(
       ctx.font = `700 ${px}px ${DISPLAY}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const lines = (p.label || "Texte").split("\n").slice(0, 12);
+      const lines = (p.label || t("Texte")).split("\n").slice(0, 12);
       const lh = px * 1.15;
       const color = hexColor(p.color) || INK;
       if (p.boxed) {
@@ -764,7 +765,8 @@ export async function renderMap(
   const dataUrl = canvas.toDataURL("image/png");
   const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Image de carte impossible."))),
+      (b) =>
+        b ? resolve(b) : reject(new Error(t("Image de carte impossible."))),
       "image/png",
     ),
   );

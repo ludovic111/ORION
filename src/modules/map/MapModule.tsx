@@ -46,12 +46,17 @@ import {
 } from "lucide-react";
 import { current } from "../../../shared/journal";
 import {
+  defaultListValues,
+  journalLang,
+  listValues,
   upsert,
   type InputOf,
   type Ops,
   type OpsMap,
   type Place,
 } from "../../../shared/ops";
+import { formatNumber, getLang } from "../../../shared/i18n/core.ts";
+import { t, tn } from "./i18n.ts";
 import {
   KIND_INFO,
   addLink,
@@ -158,80 +163,118 @@ type Style = Pick<Place, "size" | "rotation">;
 /** Background or hidden layers chosen while the journal is read-only. */
 type Override = { base?: BaseId; hidden?: string[] };
 
-const SWISSTOPO =
-  '© <a href="https://www.swisstopo.admin.ch/fr/" target="_blank" rel="noopener noreferrer">swisstopo</a>';
-const OSM =
-  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">les contributeurs d’OpenStreetMap</a>';
+const SWISSTOPO = () =>
+  `© <a href="https://www.swisstopo.admin.ch/${getLang()}/" target="_blank" rel="noopener noreferrer">swisstopo</a>`;
+const OSM = () =>
+  `© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">${t("les contributeurs d’OpenStreetMap")}</a>`;
 
 const TOOLS: {
   id: Tool;
-  label: string;
+  readonly label: string;
   icon: LucideIcon;
   write: boolean;
-  hint: string;
+  readonly hint: string;
 }[] = [
   {
     id: "select",
-    label: "Sélection",
+    get label() {
+      return t("Sélection");
+    },
     icon: MousePointer2,
     write: false,
-    hint: "Sélectionner et déplacer",
+    get hint() {
+      return t("Sélectionner et déplacer");
+    },
   },
   {
     id: "point",
-    label: "Point",
+    get label() {
+      return t("Point");
+    },
     icon: MapPin,
     write: true,
-    hint: "Placer un signe",
+    get hint() {
+      return t("Placer un signe");
+    },
   },
   {
     id: "line",
-    label: "Ligne",
+    get label() {
+      return t("Ligne");
+    },
     icon: Spline,
     write: true,
-    hint: "Tracer une ligne ou un itinéraire",
+    get hint() {
+      return t("Tracer une ligne ou un itinéraire");
+    },
   },
   {
     id: "area",
-    label: "Zone",
+    get label() {
+      return t("Zone");
+    },
     icon: Pentagon,
     write: true,
-    hint: "Dessiner une zone",
+    get hint() {
+      return t("Dessiner une zone");
+    },
   },
   {
     id: "circle",
-    label: "Périmètre",
+    get label() {
+      return t("Périmètre");
+    },
     icon: CircleDashed,
     write: true,
-    hint: "Périmètre circulaire : un centre, un rayon",
+    get hint() {
+      return t("Périmètre circulaire : un centre, un rayon");
+    },
   },
   {
     id: "sector",
-    label: "Panache",
+    get label() {
+      return t("Panache");
+    },
     icon: Wind,
     write: true,
-    hint: "Secteur ou panache depuis un point : direction, ouverture et longueur (vent)",
+    get hint() {
+      return t(
+        "Secteur ou panache depuis un point : direction, ouverture et longueur (vent)",
+      );
+    },
   },
   {
     id: "freehand",
-    label: "Dessin",
+    get label() {
+      return t("Dessin");
+    },
     icon: Pencil,
     write: true,
-    hint: "Dessin libre, à la souris ou au doigt",
+    get hint() {
+      return t("Dessin libre, à la souris ou au doigt");
+    },
   },
   {
     id: "text",
-    label: "Texte",
+    get label() {
+      return t("Texte");
+    },
     icon: Type,
     write: true,
-    hint: "Écrire un texte sur la carte",
+    get hint() {
+      return t("Écrire un texte sur la carte");
+    },
   },
   {
     id: "measure",
-    label: "Mesurer",
+    get label() {
+      return t("Mesurer");
+    },
     icon: Ruler,
     write: false,
-    hint: "Mesurer une distance ou une surface",
+    get hint() {
+      return t("Mesurer une distance ou une surface");
+    },
   },
 ];
 const DRAWING: Tool[] = ["line", "area", "circle", "sector", "measure", "box"];
@@ -285,12 +328,26 @@ function writeStore(key: string, value: unknown) {
   }
 }
 
-const layerForKind = (kind: string) =>
+/**
+ * Standard layers of the journal (référentiel « layers »), in its language:
+ * the first one (Effets) is the default layer of the drawings.
+ */
+function standardLayers(ops: Ops) {
+  const defaults = defaultListValues("layers", journalLang(ops));
+  return {
+    effects: listValues(ops, "layers")[0] ?? "Effets",
+    dangers: defaults[1] ?? "Dangers",
+    means: defaults[2] ?? "Moyens",
+    other: defaults[5] ?? "Autre",
+  };
+}
+type Layers = ReturnType<typeof standardLayers>;
+const layerForKind = (kind: string, layers: Layers) =>
   kind === "resource"
-    ? "Moyens"
+    ? layers.means
     : kind === "message" || kind === "entry"
-      ? "Effets"
-      : "Autre";
+      ? layers.effects
+      : layers.other;
 const symbolForKind = (kind: string) =>
   kind === "resource"
     ? "b:vehicule"
@@ -403,24 +460,26 @@ function Handles({
         className="map-handle rotate"
         role="slider"
         tabIndex={0}
-        aria-label="Rotation : glisser, ou flèches pour tourner de 15°"
+        aria-label={t("Rotation : glisser, ou flèches pour tourner de 15°")}
         aria-valuemin={-180}
         aria-valuemax={180}
         aria-valuenow={value.rotation}
         aria-valuetext={`${value.rotation}°`}
-        title="Glisser pour tourner (flèches : 15°)"
+        title={t("Glisser pour tourner (flèches : 15°)")}
       />
       <span
         data-handle="size"
         className="map-handle size"
         role="slider"
         tabIndex={0}
-        aria-label="Taille : glisser, ou flèches pour agrandir ou réduire"
+        aria-label={t("Taille : glisser, ou flèches pour agrandir ou réduire")}
         aria-valuemin={0.25}
         aria-valuemax={8}
         aria-valuenow={value.size}
         aria-valuetext={`×${value.size}`}
-        title="Glisser pour agrandir ou réduire (flèches : ±0,1)"
+        title={t("Glisser pour agrandir ou réduire (flèches : ±{step})", {
+          step: formatNumber(0.1),
+        })}
       />
     </div>
   );
@@ -470,7 +529,7 @@ const PinBody = memo(function PinBody({
           } as CSSProperties
         }
       >
-        {place.label || "Texte"}
+        {place.label || t("Texte")}
         {handles}
       </div>
     );
@@ -645,7 +704,7 @@ export function MapModule() {
       if (!change) return;
       if (readOnlyRef.current)
         return toast(
-          "Lecture seule : vous consultez le passé ou un journal clôturé.",
+          t("Lecture seule : vous consultez le passé ou un journal clôturé."),
         );
       const now = new Date().toISOString();
       let result: ReturnType<typeof applyChange> | null = null;
@@ -665,8 +724,14 @@ export function MapModule() {
       if (done.conflicts)
         toast(
           done.applied
-            ? `${done.conflicts} objet${done.conflicts > 1 ? "s" : ""} modifié${done.conflicts > 1 ? "s" : ""} depuis par un autre poste : laissé${done.conflicts > 1 ? "s" : ""} tel${done.conflicts > 1 ? "s" : ""} quel${done.conflicts > 1 ? "s" : ""}.`
-            : "Rien à annuler : l’objet a été modifié depuis par un autre poste.",
+            ? tn(
+                done.conflicts,
+                "{n} objet modifié depuis par un autre poste : laissé tel quel.",
+                "{n} objets modifiés depuis par un autre poste : laissés tels quels.",
+              )
+            : t(
+                "Rien à annuler : l’objet a été modifié depuis par un autre poste.",
+              ),
         );
     },
     [updateOpsRaw, toast],
@@ -708,8 +773,14 @@ export function MapModule() {
   );
   const [draft, setDraft] = useState<LatLng[]>([]);
   const [measureDone, setMeasureDone] = useState(false);
+  // Standard layers in the language of the journal (Effets, Auswirkungen…).
+  const layers = standardLayers(journal.ops);
   const [drawLayer, setDrawLayer] = useState(() =>
-    readStore("orion.map.drawLayer", "Effets", (v) => typeof v === "string"),
+    readStore(
+      "orion.map.drawLayer",
+      layers.effects,
+      (v) => typeof v === "string",
+    ),
   );
   const [panel, setPanel] = useState<Panel>(() => (narrow() ? null : "list"));
   const [sheetId, setSheetId] = useState<string | null>(null);
@@ -1186,7 +1257,7 @@ export function MapModule() {
       maxNativeZoom: b.native,
       crossOrigin: true,
       className: b.className,
-      attribution: b.swiss ? SWISSTOPO : OSM,
+      attribution: b.swiss ? SWISSTOPO() : OSM(),
       ...(b.swiss ? { bounds: L.latLngBounds(SWISS_BOUNDS) } : {}),
     });
     layer.on("loading", () => {
@@ -1311,7 +1382,7 @@ export function MapModule() {
       icon?.setAttribute("role", "button");
       icon?.setAttribute(
         "aria-label",
-        state.current.byId.get(p.id)?.label || "Objet de la carte",
+        state.current.byId.get(p.id)?.label || t("Objet de la carte"),
       );
     });
     marker.on("click", (e: L.LeafletMouseEvent) =>
@@ -1458,7 +1529,7 @@ export function MapModule() {
         marker.setLatLng(p.points[0]);
         marker
           .getElement()
-          ?.setAttribute("aria-label", p.label || "Objet de la carte");
+          ?.setAttribute("aria-label", p.label || t("Objet de la carte"));
         known.updatedAt = p.updatedAt;
         continue;
       }
@@ -1556,7 +1627,10 @@ export function MapModule() {
       marker.on("add", () => {
         marker
           .getElement()
-          ?.setAttribute("aria-label", `Position citée : ${ghost.title}`);
+          ?.setAttribute(
+            "aria-label",
+            t("Position citée : {title}", { title: ghost.title }),
+          );
       });
       marker.on("mouseover", (e: L.LeafletMouseEvent) =>
         handlers.current.ghostOver(ghost, e.originalEvent),
@@ -1573,8 +1647,8 @@ export function MapModule() {
   function drawSketch(cursor: L.LatLng | null) {
     const g = groups.current;
     if (!g) return;
-    const { tool: t, draft: pts, measureDone: done } = state.current;
-    const drawing = DRAWING.includes(t);
+    const { tool: tl, draft: pts, measureDone: done } = state.current;
+    const drawing = DRAWING.includes(tl);
     const live =
       drawing && !done && cursor
         ? [...pts, [cursor.lat, cursor.lng] as LatLng]
@@ -1586,7 +1660,7 @@ export function MapModule() {
       if (liveEl.current) liveEl.current.textContent = "";
       return;
     }
-    if (t === "circle") {
+    if (tl === "circle") {
       const center = pts[0];
       const r = cursor && !done ? lengthOf([center, live[live.length - 1]]) : 0;
       g.line.setLatLngs([]);
@@ -1594,11 +1668,14 @@ export function MapModule() {
       g.rubber.setLatLngs(r ? [center, live[live.length - 1]] : []);
       if (liveEl.current)
         liveEl.current.textContent = r
-          ? `rayon ${formatDistance(r)} · surface ${formatArea(Math.PI * r * r)}`
+          ? t("rayon {r} · surface {a}", {
+              r: formatDistance(r),
+              a: formatArea(Math.PI * r * r),
+            })
           : "";
       return;
     }
-    if (t === "sector") {
+    if (tl === "sector") {
       // The cursor sets direction and length; without it, the values typed.
       const apex = pts[0];
       const end = cursor && !done ? live[live.length - 1] : null;
@@ -1609,10 +1686,14 @@ export function MapModule() {
       g.poly.setLatLngs(sectorPoints(apex, bearing, pl.angle, length));
       g.rubber.setLatLngs(end ? [apex, end] : []);
       if (liveEl.current)
-        liveEl.current.textContent = `vers ${compass(bearing)} ${Math.round(bearing)}° · ${formatDistance(length)}`;
+        liveEl.current.textContent = t("vers {dir} {deg}° · {len}", {
+          dir: compass(bearing),
+          deg: Math.round(bearing),
+          len: formatDistance(length),
+        });
       return;
     }
-    if (t === "box") {
+    if (tl === "box") {
       const a = pts[0];
       const b = cursor ? live[live.length - 1] : null;
       g.line.setLatLngs([]);
@@ -1631,29 +1712,33 @@ export function MapModule() {
         liveEl.current.textContent = `${formatDistance(lengthOf([a, [a[0], b[1]]]))} × ${formatDistance(lengthOf([a, [b[0], a[1]]]))}`;
       return;
     }
-    if (t === "area") {
+    if (tl === "area") {
       g.line.setLatLngs([]);
       g.poly.setLatLngs(live);
     } else {
       g.line.setLatLngs(pts);
-      g.poly.setLatLngs(t === "measure" && live.length >= 3 ? live : []);
+      g.poly.setLatLngs(tl === "measure" && live.length >= 3 ? live : []);
     }
     const last = pts[pts.length - 1];
     g.rubber.setLatLngs(
       cursor && !done
-        ? t === "area" && pts.length > 1
+        ? tl === "area" && pts.length > 1
           ? [last, [cursor.lat, cursor.lng], pts[0]]
           : [last, [cursor.lat, cursor.lng]]
         : [],
     );
     if (liveEl.current) {
       const parts: string[] = [];
-      if (t !== "area" || live.length < 3)
+      if (tl !== "area" || live.length < 3)
         parts.push(formatDistance(lengthOf(live)));
       else
-        parts.push(`périmètre ${formatDistance(lengthOf([...live, live[0]]))}`);
-      if (live.length >= 3 && t !== "line")
-        parts.push(`surface ${formatArea(areaOf(live))}`);
+        parts.push(
+          t("périmètre {d}", {
+            d: formatDistance(lengthOf([...live, live[0]])),
+          }),
+        );
+      if (live.length >= 3 && tl !== "line")
+        parts.push(t("surface {a}", { a: formatArea(areaOf(live)) }));
       liveEl.current.textContent = parts.join(" · ");
     }
   }
@@ -1827,7 +1912,10 @@ export function MapModule() {
         const el = v.getElement();
         el?.setAttribute(
           "aria-label",
-          `Sommet ${i + 1} sur ${pts.length} : glisser ou flèches pour déplacer, Entrée pour retirer`,
+          t(
+            "Sommet {i} sur {n} : glisser ou flèches pour déplacer, Entrée pour retirer",
+            { i: i + 1, n: pts.length },
+          ),
         );
         el?.addEventListener("keydown", (e) => {
           if (nudge(v, e)) refocus.current = i;
@@ -1847,7 +1935,8 @@ export function MapModule() {
         setShapeEdit((s) => (s ? { ...s, points: [...pts] } : s)),
       );
       v.on("click", () => {
-        if (pts.length <= min) return toast(`Au moins ${min} sommets.`);
+        if (pts.length <= min)
+          return toast(t("Au moins {n} sommets.", { n: min }));
         setShapeEdit((s) =>
           s ? { ...s, points: pts.filter((_, j) => j !== i) } : s,
         );
@@ -1872,7 +1961,7 @@ export function MapModule() {
           .getElement()
           ?.setAttribute(
             "aria-label",
-            `Ajouter un sommet après le sommet ${i + 1}`,
+            t("Ajouter un sommet après le sommet {i}", { i: i + 1 }),
           ),
       );
       add.on("click", () =>
@@ -1986,7 +2075,7 @@ export function MapModule() {
       updateOps((ops) => {
         const next = upsert(ops, "places", { maps: own, ...place, id }, author);
         return link
-          ? addLink(next, ref("place", id), link, "position", author)
+          ? addLink(next, ref("place", id), link, t("position"), author)
           : next;
       });
       return id;
@@ -2021,7 +2110,7 @@ export function MapModule() {
               next,
               ref("place", ids[0]),
               ref("place", ids[i]),
-              "périmètre",
+              t("périmètre"),
               author,
             );
         });
@@ -2037,39 +2126,56 @@ export function MapModule() {
   /** Concentric perimeters (e.g. 100 / 300 / 1000 m) around a point. */
   function createRings(center: LatLng, radii: number[]) {
     if (!radii.length)
-      return toast("Indiquez des rayons, par exemple « 100, 300, 1000 ».");
+      return toast(t("Indiquez des rayons, par exemple « 100, 300, 1000 »."));
     const where = formatPosition(center[0], center[1]);
     const ids = createMany(
       radii.map((r, i) => ({
-        label: `Périmètre ${formatDistance(r)}`,
+        label: t("Périmètre {d}", { d: formatDistance(r) }),
         kind: "area" as const,
         symbol: "",
         color: "",
         layer: drawLayer,
         points: circlePoints(center, r),
-        notes: `Centre ${where} · rayon ${formatDistance(r)} · anneau ${i + 1} sur ${radii.length}`,
+        notes: t("Centre {where} · rayon {r} · anneau {i} sur {n}", {
+          where,
+          r: formatDistance(r),
+          i: i + 1,
+          n: radii.length,
+        }),
         dash: i ? ("dash" as const) : ("solid" as const),
       })),
     );
     if (!ids.length) return;
-    toast(`${ids.length} périmètres créés et reliés.`);
+    toast(t("{n} périmètres créés et reliés.", { n: ids.length }));
     chooseTool("select");
     setSheetId(ids[0]);
   }
 
   /** Plume or wind sector from a point, as a normal area. */
   function createSector(apex: LatLng, bearing: number, length: number) {
-    if (length < 10) return toast("Longueur trop courte : au moins 10 m.");
+    if (length < 10) return toast(t("Longueur trop courte : au moins 10 m."));
     const b = ((Math.round(bearing) % 360) + 360) % 360;
     const { angle } = state.current.plume;
     const id = create({
-      label: `Panache ${compass(b)} · ${formatDistance(length)}`,
+      label: t("Panache {dir} · {len}", {
+        dir: compass(b),
+        len: formatDistance(length),
+      }),
       kind: "area",
       symbol: "",
       color: "",
-      layer: drawLayer === "Effets" ? "Dangers" : drawLayer,
+      layer: drawLayer === layers.effects ? layers.dangers : drawLayer,
       points: sectorPoints(apex, b, angle, length),
-      notes: `Origine ${formatPosition(apex[0], apex[1])} · direction ${b}° (${compass(b)}) · ouverture ${angle}° · longueur ${formatDistance(length)}`,
+      notes: t(
+        "Origine {where} · direction {deg}° ({dir}) · ouverture {angle}° · longueur {len}",
+        {
+          where: formatPosition(apex[0], apex[1]),
+          deg: b,
+          dir: compass(b),
+          angle,
+          len: formatDistance(length),
+        },
+      ),
     });
     if (!id) return;
     const next = {
@@ -2112,7 +2218,7 @@ export function MapModule() {
   }
 
   function placePoint(at: L.LatLng) {
-    const info = describeSymbol(armed, catalog);
+    const info = describeSymbol(armed, catalog, journalLang(journal.ops));
     const target = pending?.target;
     const id = create(
       {
@@ -2120,7 +2226,9 @@ export function MapModule() {
         kind: "point",
         symbol: armed,
         color: "",
-        layer: target ? layerForKind(parseRef(target).kind) : info.layer,
+        layer: target
+          ? layerForKind(parseRef(target).kind, layers)
+          : info.layer,
         points: [[round6(at.lat), round6(at.lng)]],
         notes: "",
       },
@@ -2128,7 +2236,8 @@ export function MapModule() {
     );
     if (!id) return;
     rememberSymbol(armed);
-    if (pending) toast(`« ${pending.title} » est placé sur la carte.`);
+    if (pending)
+      toast(t("« {title} » est placé sur la carte.", { title: pending.title }));
     setPending(null);
     chooseTool("select");
     setSheetId(id);
@@ -2136,14 +2245,14 @@ export function MapModule() {
 
   function finish() {
     const m = map.current;
-    const { tool: t, draft: raw, readOnly: locked } = state.current;
+    const { tool: tl, draft: raw, readOnly: locked } = state.current;
     if (
       !m ||
-      !DRAWING.includes(t) ||
-      t === "circle" ||
-      t === "sector" ||
-      t === "box" ||
-      (locked && t !== "measure")
+      !DRAWING.includes(tl) ||
+      tl === "circle" ||
+      tl === "sector" ||
+      tl === "box" ||
+      (locked && tl !== "measure")
     )
       return;
     // A double click adds the same vertex twice.
@@ -2152,18 +2261,18 @@ export function MapModule() {
       const a = m.latLngToContainerPoint(raw[i - 1]);
       return a.distanceTo(m.latLngToContainerPoint(p)) > 5;
     });
-    if (t === "measure") {
+    if (tl === "measure") {
       setDraft(pts);
       setMeasureDone(true);
       return;
     }
-    if (t === "line" && pts.length < 2)
-      return toast("Un tracé demande au moins deux points.");
-    if (t === "area" && pts.length < 3)
-      return toast("Une zone demande au moins trois points.");
+    if (tl === "line" && pts.length < 2)
+      return toast(t("Un tracé demande au moins deux points."));
+    if (tl === "area" && pts.length < 3)
+      return toast(t("Une zone demande au moins trois points."));
     const id = create({
       label: "",
-      kind: t === "area" ? "area" : "line",
+      kind: tl === "area" ? "area" : "line",
       symbol: "",
       color: "",
       layer: drawLayer,
@@ -2177,15 +2286,18 @@ export function MapModule() {
 
   /** A perimeter: an area drawn as a circle, labelled with its radius. */
   function createCircle(center: LatLng, radius: number) {
-    if (radius < 5) return toast("Rayon trop petit : au moins 5 m.");
+    if (radius < 5) return toast(t("Rayon trop petit : au moins 5 m."));
     const id = create({
-      label: `Périmètre ${formatDistance(radius)}`,
+      label: t("Périmètre {d}", { d: formatDistance(radius) }),
       kind: "area",
       symbol: "",
       color: "",
       layer: drawLayer,
       points: circlePoints(center, radius),
-      notes: `Centre ${formatPosition(center[0], center[1])} · rayon ${formatDistance(radius)}`,
+      notes: t("Centre {where} · rayon {r}", {
+        where: formatPosition(center[0], center[1]),
+        r: formatDistance(radius),
+      }),
     });
     if (!id) return;
     chooseTool("select");
@@ -2201,7 +2313,7 @@ export function MapModule() {
       updateOps((ops) =>
         upsert(ops, "places", { ...p, points: shapeEdit.points }, author),
       );
-      toast("Forme enregistrée.");
+      toast(t("Forme enregistrée."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -2216,7 +2328,7 @@ export function MapModule() {
         kind: "point",
         symbol: symbolForKind(kind),
         color: "",
-        layer: layerForKind(kind),
+        layer: layerForKind(kind, layers),
         points: [[round6(g.lat), round6(g.lng)]],
         notes: "",
       },
@@ -2235,7 +2347,7 @@ export function MapModule() {
         kind: "point",
         symbol: symbolForKind(kind),
         color: "",
-        layer: "Moyens",
+        layer: layers.means,
         points: [[round6(u.lat), round6(u.lng)]],
         notes: "",
       },
@@ -2270,8 +2382,9 @@ export function MapModule() {
       return setInfo({
         ...where,
         items: [],
-        error:
+        error: t(
           "Hors ligne : les informations des couches ne sont pas disponibles.",
+        ),
       });
     setInfo({ ...where, items: [], loading: true });
     try {
@@ -2289,7 +2402,7 @@ export function MapModule() {
       setInfo({
         ...where,
         items: [],
-        error: "Le service d’information de geo.admin.ch ne répond pas.",
+        error: t("Le service d’information de geo.admin.ch ne répond pas."),
       });
     }
   }
@@ -2336,11 +2449,11 @@ export function MapModule() {
       if (tool === "point") placePoint(at.wrap());
       else if (tool === "text") {
         const id = create({
-          label: "Texte",
+          label: t("Texte"),
           kind: "text",
           symbol: "",
           color: "",
-          layer: "Autre",
+          layer: layers.other,
           points: [pt],
           notes: "",
         });
@@ -2400,8 +2513,8 @@ export function MapModule() {
             hint:
               tool === "select"
                 ? readOnly || locked
-                  ? "Cliquer pour ouvrir"
-                  : "Cliquer pour ouvrir · glisser pour déplacer"
+                  ? t("Cliquer pour ouvrir")
+                  : t("Cliquer pour ouvrir · glisser pour déplacer")
                 : "",
           }),
         120,
@@ -2436,7 +2549,7 @@ export function MapModule() {
             target: g.target,
             x,
             y,
-            hint: "Position citée · cliquer pour la placer",
+            hint: t("Position citée · cliquer pour la placer"),
           }),
         120,
       );
@@ -2460,10 +2573,12 @@ export function MapModule() {
       if (readOnly)
         return toast(
           viewAt !== null
-            ? "Lecture seule : vous consultez le passé. Revenez au direct pour placer un objet."
-            : "Journal clôturé : la carte est en lecture seule.",
+            ? t(
+                "Lecture seule : vous consultez le passé. Revenez au direct pour placer un objet.",
+              )
+            : t("Journal clôturé : la carte est en lecture seule."),
         );
-      if (!item) return toast("Élément introuvable.");
+      if (!item) return toast(t("Élément introuvable."));
       setDraft([]);
       setShapeEdit(null);
       setTool("point");
@@ -2474,7 +2589,7 @@ export function MapModule() {
     }
     const p = byId.get(id);
     if (p) showPlace(p, true);
-    else toast("Cet objet n’est plus sur la carte.");
+    else toast(t("Cet objet n’est plus sur la carte."));
   }, [focus, setFocus, graph.byRef, byId, readOnly, showPlace, toast]);
 
   /* ---------- Keyboard ---------- */
@@ -2572,7 +2687,7 @@ export function MapModule() {
     const m = map.current;
     const pts = visible.flatMap((p) => p.points);
     if (!m) return;
-    if (!pts.length) return toast("Aucun objet visible à afficher.");
+    if (!pts.length) return toast(t("Aucun objet visible à afficher."));
     m.fitBounds(L.latLngBounds(pts), {
       padding: [60, 60],
       maxZoom: 17,
@@ -2587,15 +2702,17 @@ export function MapModule() {
 
   function locate() {
     if (!navigator.geolocation)
-      return toast("Position indisponible sur cet appareil.");
+      return toast(t("Position indisponible sur cet appareil."));
     navigator.geolocation.getCurrentPosition(
       (pos) =>
-        goTo(pos.coords.latitude, pos.coords.longitude, 16, "Ma position"),
+        goTo(pos.coords.latitude, pos.coords.longitude, 16, t("Ma position")),
       (err) =>
         toast(
           err.code === err.PERMISSION_DENIED
-            ? "Position refusée : autorisez la localisation dans le navigateur."
-            : "Position indisponible pour le moment.",
+            ? t(
+                "Position refusée : autorisez la localisation dans le navigateur.",
+              )
+            : t("Position indisponible pour le moment."),
         ),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
     );
@@ -2606,7 +2723,7 @@ export function MapModule() {
     const m = map.current;
     if (!m) return;
     if (readOnly)
-      return toast("Lecture seule : le cadrage n’est pas enregistré.");
+      return toast(t("Lecture seule : le cadrage n’est pas enregistré."));
     const c = m.getCenter().wrap();
     const view = {
       lat: round6(c.lat),
@@ -2622,8 +2739,8 @@ export function MapModule() {
         }));
       toast(
         currentMap
-          ? `Cadrage enregistré pour « ${currentMap.name} ».`
-          : "Vue par défaut enregistrée pour ce journal.",
+          ? t("Cadrage enregistré pour « {name} ».", { name: currentMap.name })
+          : t("Vue par défaut enregistrée pour ce journal."),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -2666,7 +2783,12 @@ export function MapModule() {
         ),
       }));
       toast(
-        `${list.length} objet${list.length > 1 ? "s" : ""} gardé${list.length > 1 ? "s" : ""} sur « ${home.name} » seulement.`,
+        tn(
+          list.length,
+          "{n} objet gardé sur « {name} » seulement.",
+          "{n} objets gardés sur « {name} » seulement.",
+          { name: home.name },
+        ),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -2698,16 +2820,15 @@ export function MapModule() {
         ),
       );
       const d = Math.hypot(east, north);
-      const dir =
-        north > 0
-          ? "le nord"
-          : north < 0
-            ? "le sud"
-            : east > 0
-              ? "l’est"
-              : "l’ouest";
+      const params = { name: p.label || t("Objet"), d: formatDistance(d) };
       setNudged(
-        `${p.label || "Objet"} déplacé de ${formatDistance(d)} vers ${dir}.`,
+        north > 0
+          ? t("{name} déplacé de {d} vers le nord.", params)
+          : north < 0
+            ? t("{name} déplacé de {d} vers le sud.", params)
+            : east > 0
+              ? t("{name} déplacé de {d} vers l’est.", params)
+              : t("{name} déplacé de {d} vers l’ouest.", params),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -2728,12 +2849,12 @@ export function MapModule() {
         .replace(/^-|-$/g, "")
         .toLowerCase();
       a.href = url;
-      a.download = `${name || "carte"}-mn95.geojson`;
+      a.download = `${name || t("carte")}-mn95.geojson`;
       document.body.append(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-      toast("GeoJSON MN95 (EPSG:2056) enregistré.");
+      toast(t("GeoJSON MN95 (EPSG:2056) enregistré."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -2761,7 +2882,7 @@ export function MapModule() {
     return () => window.removeEventListener("keydown", key);
   }, [full]);
 
-  const armedInfo = describeSymbol(armed, catalog);
+  const armedInfo = describeSymbol(armed, catalog, journalLang(journal.ops));
   const drawing = DRAWING.includes(tool);
   const tools = TOOLS.filter((t) => !readOnly || !t.write);
   const layerOptions = lists("layers");
@@ -2771,19 +2892,20 @@ export function MapModule() {
     hint = (
       <>
         <span>
-          Glissez les sommets · cliquez un sommet pour le retirer · « + » pour
-          en ajouter
+          {t(
+            "Glissez les sommets · cliquez un sommet pour le retirer · « + » pour en ajouter",
+          )}
         </span>
         <button type="button" className="small primary" onClick={saveShape}>
           <Check size={13} />
-          Enregistrer
+          {t("Enregistrer")}
         </button>
         <button
           type="button"
           className="small"
           onClick={() => setShapeEdit(null)}
         >
-          Annuler
+          {t("Annuler")}
         </button>
       </>
     );
@@ -2792,14 +2914,14 @@ export function MapModule() {
       <>
         <Glyph symbol={armed} size={24} />
         <span>
-          {pending
-            ? `Cliquez sur la carte pour placer « ${pending.title} »`
-            : `Cliquez sur la carte pour placer « ${armedInfo.name} »`}
+          {t("Cliquez sur la carte pour placer « {name} »", {
+            name: pending ? pending.title : armedInfo.name,
+          })}
         </span>
         <button
           type="button"
           className="icon-button"
-          aria-label="Annuler le placement"
+          aria-label={t("Annuler le placement")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -2811,12 +2933,14 @@ export function MapModule() {
       <>
         <Pencil size={15} aria-hidden="true" />
         <span>
-          Dessinez à la souris ou au doigt · chaque trait devient un tracé
+          {t(
+            "Dessinez à la souris ou au doigt · chaque trait devient un tracé",
+          )}
         </span>
         <select
           className="map-hint-layer"
           value={drawLayer}
-          aria-label="Calque des traits"
+          aria-label={t("Calque des traits")}
           onChange={(e) => {
             setDrawLayer(e.target.value);
             writeStore("orion.map.drawLayer", e.target.value);
@@ -2831,7 +2955,7 @@ export function MapModule() {
         <button
           type="button"
           className="icon-button"
-          aria-label="Fermer le dessin libre"
+          aria-label={t("Fermer le dessin libre")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -2841,11 +2965,11 @@ export function MapModule() {
   else if (tool === "text")
     hint = (
       <>
-        <span>Cliquez à l’endroit où écrire le texte.</span>
+        <span>{t("Cliquez à l’endroit où écrire le texte.")}</span>
         <button
           type="button"
           className="icon-button"
-          aria-label="Annuler"
+          aria-label={t("Annuler")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -2857,8 +2981,8 @@ export function MapModule() {
       <>
         <span>
           {draft.length
-            ? "Cliquez pour fixer le rayon, ou choisissez :"
-            : "Cliquez le centre du périmètre"}
+            ? t("Cliquez pour fixer le rayon, ou choisissez :")
+            : t("Cliquez le centre du périmètre")}
         </span>
         {draft.length > 0 && (
           <>
@@ -2869,7 +2993,9 @@ export function MapModule() {
                 className="small"
                 onClick={() => createCircle(draft[0], r)}
               >
-                {r < 1000 ? `${r} m` : `${r / 1000} km`}
+                {r < 1000
+                  ? `${formatNumber(r)} m`
+                  : `${formatNumber(r / 1000)} km`}
               </button>
             ))}
             <strong className="mono map-live" ref={liveEl} />
@@ -2878,8 +3004,10 @@ export function MapModule() {
                 className="mono"
                 value={ringsText}
                 size={14}
-                aria-label="Rayons des anneaux, en mètres (ex. 100, 300, 1000)"
-                title="Rayons des anneaux concentriques, en m (ou km)"
+                aria-label={t(
+                  "Rayons des anneaux, en mètres (ex. 100, 300, 1000)",
+                )}
+                title={t("Rayons des anneaux concentriques, en m (ou km)")}
                 onChange={(e) => {
                   setRingsText(e.target.value);
                   writeStore("orion.map.rings", e.target.value);
@@ -2894,7 +3022,7 @@ export function MapModule() {
                 className="small primary"
                 onClick={() => createRings(draft[0], parseRadii(ringsText))}
               >
-                Anneaux
+                {t("Anneaux")}
               </button>
             </span>
           </>
@@ -2902,7 +3030,7 @@ export function MapModule() {
         <select
           className="map-hint-layer"
           value={drawLayer}
-          aria-label="Calque du périmètre"
+          aria-label={t("Calque du périmètre")}
           onChange={(e) => {
             setDrawLayer(e.target.value);
             writeStore("orion.map.drawLayer", e.target.value);
@@ -2917,7 +3045,7 @@ export function MapModule() {
         <button
           type="button"
           className="icon-button"
-          aria-label="Fermer l’outil"
+          aria-label={t("Fermer l’outil")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -2934,18 +3062,18 @@ export function MapModule() {
       <>
         <span>
           {draft.length
-            ? "Cliquez la direction et la longueur, ou saisissez-les :"
-            : "Cliquez l’origine du panache (source, foyer)"}
+            ? t("Cliquez la direction et la longueur, ou saisissez-les :")
+            : t("Cliquez l’origine du panache (source, foyer)")}
         </span>
         <label className="map-hint-field">
-          <span>Vers</span>
+          <span>{t("Vers")}</span>
           <input
             type="number"
             className="mono"
             min={0}
             max={359}
             value={plume.bearing}
-            aria-label="Direction du panache, en degrés depuis le nord"
+            aria-label={t("Direction du panache, en degrés depuis le nord")}
             onChange={(e) =>
               setPl({ bearing: ((Number(e.target.value) % 360) + 360) % 360 })
             }
@@ -2956,17 +3084,33 @@ export function MapModule() {
           <button
             type="button"
             className="small"
-            title={`Vent de ${compass(wind.from)} (${Math.round(wind.from)}°)${wind.speed !== null ? `, ${Math.round(wind.speed)} km/h` : ""} · prévision ${wind.place || ""}`}
+            title={
+              wind.speed !== null
+                ? t(
+                    "Vent de {dir} ({deg}°), {speed} km/h · prévision {place}",
+                    {
+                      dir: compass(wind.from),
+                      deg: Math.round(wind.from),
+                      speed: Math.round(wind.speed),
+                      place: wind.place || "",
+                    },
+                  )
+                : t("Vent de {dir} ({deg}°) · prévision {place}", {
+                    dir: compass(wind.from),
+                    deg: Math.round(wind.from),
+                    place: wind.place || "",
+                  })
+            }
             onClick={() => setPl({ bearing: Math.round(wind.towards) })}
           >
             <Wind size={13} />
-            Vent actuel
+            {t("Vent actuel")}
           </button>
         )}
         <select
           className="map-hint-layer"
           value={plume.angle}
-          aria-label="Ouverture du secteur"
+          aria-label={t("Ouverture du secteur")}
           onChange={(e) => setPl({ angle: Number(e.target.value) })}
         >
           {[...new Set([...PLUME_ANGLES, plume.angle])].map((a) => (
@@ -2976,7 +3120,7 @@ export function MapModule() {
           ))}
         </select>
         <label className="map-hint-field">
-          <span>Long.</span>
+          <span>{t("Long.")}</span>
           <input
             type="number"
             className="mono"
@@ -2984,7 +3128,7 @@ export function MapModule() {
             max={50000}
             step={50}
             value={plume.length}
-            aria-label="Longueur du panache, en mètres"
+            aria-label={t("Longueur du panache, en mètres")}
             onChange={(e) =>
               setPl({
                 length: Math.max(
@@ -3007,14 +3151,14 @@ export function MapModule() {
               }
             >
               <Check size={13} />
-              Créer
+              {t("Créer")}
             </button>
           </>
         )}
         <button
           type="button"
           className="icon-button"
-          aria-label="Fermer l’outil"
+          aria-label={t("Fermer l’outil")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -3026,14 +3170,14 @@ export function MapModule() {
       <>
         <span>
           {draft.length
-            ? "Cliquez le coin opposé du secteur à garder hors ligne"
-            : "Cliquez un coin du secteur à garder hors ligne"}
+            ? t("Cliquez le coin opposé du secteur à garder hors ligne")
+            : t("Cliquez un coin du secteur à garder hors ligne")}
         </span>
         <strong className="mono map-live" ref={liveEl} />
         <button
           type="button"
           className="icon-button"
-          aria-label="Annuler"
+          aria-label={t("Annuler")}
           onClick={() => {
             chooseTool("select");
             setSectorDialog(true);
@@ -3049,22 +3193,22 @@ export function MapModule() {
         <span>
           {tool === "measure"
             ? measureDone
-              ? "Mesure terminée · cliquez pour recommencer"
+              ? t("Mesure terminée · cliquez pour recommencer")
               : draft.length
-                ? "Double-clic pour terminer la mesure"
-                : "Cliquez des points pour mesurer"
+                ? t("Double-clic pour terminer la mesure")
+                : t("Cliquez des points pour mesurer")
             : draft.length
-              ? "Double-clic ou « Terminer » pour finir · Échap pour annuler"
+              ? t("Double-clic ou « Terminer » pour finir · Échap pour annuler")
               : tool === "line"
-                ? "Cliquez pour tracer la ligne, point par point"
-                : "Cliquez les coins de la zone"}
+                ? t("Cliquez pour tracer la ligne, point par point")
+                : t("Cliquez les coins de la zone")}
         </span>
         <strong className="mono map-live" ref={liveEl} />
         {tool !== "measure" && (
           <select
             className="map-hint-layer"
             value={drawLayer}
-            aria-label="Calque du nouvel objet"
+            aria-label={t("Calque du nouvel objet")}
             onChange={(e) => {
               setDrawLayer(e.target.value);
               writeStore("orion.map.drawLayer", e.target.value);
@@ -3081,8 +3225,8 @@ export function MapModule() {
           <button
             type="button"
             className="icon-button"
-            aria-label="Retirer le dernier point"
-            title="Retirer le dernier point (⌫)"
+            aria-label={t("Retirer le dernier point")}
+            title={t("Retirer le dernier point (⌫)")}
             onClick={() => setDraft((d) => d.slice(0, -1))}
           >
             <Undo2 size={15} />
@@ -3091,13 +3235,13 @@ export function MapModule() {
         {tool !== "measure" && draft.length >= (tool === "area" ? 3 : 2) && (
           <button type="button" className="small primary" onClick={finish}>
             <Check size={13} />
-            Terminer
+            {t("Terminer")}
           </button>
         )}
         <button
           type="button"
           className="icon-button"
-          aria-label="Fermer l’outil"
+          aria-label={t("Fermer l’outil")}
           onClick={() => chooseTool("select")}
         >
           <X size={15} />
@@ -3113,10 +3257,16 @@ export function MapModule() {
             <button
               type="button"
               onClick={saveFraming}
-              title={`${currentMap ? `« ${currentMap.name} »` : "La carte"} s’ouvrira ici pour tous les postes`}
+              title={
+                currentMap
+                  ? t("« {name} » s’ouvrira ici pour tous les postes", {
+                      name: currentMap.name,
+                    })
+                  : t("La carte s’ouvrira ici pour tous les postes")
+              }
             >
               <Pin size={14} />
-              Enregistrer le cadrage
+              {t("Enregistrer le cadrage")}
             </button>
           )
         }
@@ -3130,7 +3280,7 @@ export function MapModule() {
           ref={root}
           className="map-canvas"
           role="application"
-          aria-label="Carte de situation"
+          aria-label={t("Carte de situation")}
         />
         {crosshair && <div className="map-reticle" aria-hidden="true" />}
 
@@ -3153,7 +3303,7 @@ export function MapModule() {
           {panel && (
             <aside
               className="map-panel map-glass"
-              aria-label="Panneau de la carte"
+              aria-label={t("Panneau de la carte")}
             >
               <header className="map-panel-head">
                 <div className="seg" role="tablist">
@@ -3162,7 +3312,7 @@ export function MapModule() {
                     aria-pressed={panel === "list"}
                     onClick={() => setPanel("list")}
                   >
-                    Objets <small>{places.length}</small>
+                    {t("Objets")} <small>{places.length}</small>
                   </button>
                   {!readOnly && (
                     <button
@@ -3170,7 +3320,7 @@ export function MapModule() {
                       aria-pressed={panel === "symbols"}
                       onClick={() => setPanel("symbols")}
                     >
-                      Signes
+                      {t("Signes")}
                     </button>
                   )}
                   <button
@@ -3178,13 +3328,13 @@ export function MapModule() {
                     aria-pressed={panel === "layers"}
                     onClick={() => setPanel("layers")}
                   >
-                    Calques
+                    {t("Calques")}
                   </button>
                 </div>
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label="Fermer le panneau"
+                  aria-label={t("Fermer le panneau")}
                   onClick={() => setPanel(null)}
                 >
                   <X size={16} />
@@ -3197,11 +3347,11 @@ export function MapModule() {
                   !readOnly && (
                     <div className="map-stray" role="note">
                       <p>
-                        {strays.places.length} objet
-                        {strays.places.length > 1 ? "s posés" : " posé"} avant
-                        la deuxième carte s’affiche
-                        {strays.places.length > 1 ? "nt" : ""} sur toutes les
-                        cartes.
+                        {tn(
+                          strays.places.length,
+                          "{n} objet posé avant la deuxième carte s’affiche sur toutes les cartes.",
+                          "{n} objets posés avant la deuxième carte s’affichent sur toutes les cartes.",
+                        )}
                       </p>
                       <div className="map-dialog-row">
                         <button
@@ -3209,14 +3359,16 @@ export function MapModule() {
                           className="small primary"
                           onClick={fixStrays}
                         >
-                          Garder sur « {strays.home.name} » seulement
+                          {t("Garder sur « {name} » seulement", {
+                            name: strays.home.name,
+                          })}
                         </button>
                         <button
                           type="button"
                           className="small"
                           onClick={keepStrays}
                         >
-                          C’est voulu
+                          {t("C’est voulu")}
                         </button>
                       </div>
                     </div>
@@ -3308,8 +3460,8 @@ export function MapModule() {
             <button
               type="button"
               className="icon-button"
-              aria-label="Zoom avant"
-              title="Zoom avant"
+              aria-label={t("Zoom avant")}
+              title={t("Zoom avant")}
               onClick={() => map.current?.zoomIn()}
             >
               <Plus size={17} />
@@ -3317,8 +3469,8 @@ export function MapModule() {
             <button
               type="button"
               className="icon-button"
-              aria-label="Zoom arrière"
-              title="Zoom arrière"
+              aria-label={t("Zoom arrière")}
+              title={t("Zoom arrière")}
               onClick={() => map.current?.zoomOut()}
             >
               <Minus size={17} />
@@ -3331,12 +3483,18 @@ export function MapModule() {
                 className="icon-button"
                 aria-pressed={locked}
                 aria-label={
-                  locked ? "Déverrouiller les objets" : "Verrouiller les objets"
+                  locked
+                    ? t("Déverrouiller les objets")
+                    : t("Verrouiller les objets")
                 }
                 title={
                   locked
-                    ? "Objets verrouillés : aucun déplacement possible. Cliquer pour déverrouiller."
-                    : "Verrouiller les objets (évite de les déplacer par erreur)"
+                    ? t(
+                        "Objets verrouillés : aucun déplacement possible. Cliquer pour déverrouiller.",
+                      )
+                    : t(
+                        "Verrouiller les objets (évite de les déplacer par erreur)",
+                      )
                 }
                 onClick={() => {
                   const next = !locked;
@@ -3344,8 +3502,12 @@ export function MapModule() {
                   writeStore("orion.map.locked", next);
                   toast(
                     next
-                      ? "Objets verrouillés : ils ne bougent plus, même en glissant dessus."
-                      : "Objets déverrouillés : glisser un objet le déplace.",
+                      ? t(
+                          "Objets verrouillés : ils ne bougent plus, même en glissant dessus.",
+                        )
+                      : t(
+                          "Objets déverrouillés : glisser un objet le déplace.",
+                        ),
                   );
                 }}
               >
@@ -3357,8 +3519,8 @@ export function MapModule() {
             <button
               type="button"
               className="icon-button"
-              aria-label="Voir tous les objets"
-              title="Voir tous les objets"
+              aria-label={t("Voir tous les objets")}
+              title={t("Voir tous les objets")}
               onClick={fitAll}
             >
               <Expand size={16} />
@@ -3366,8 +3528,8 @@ export function MapModule() {
             <button
               type="button"
               className="icon-button"
-              aria-label="Ma position"
-              title="Ma position"
+              aria-label={t("Ma position")}
+              title={t("Ma position")}
               onClick={locate}
             >
               <LocateFixed size={16} />
@@ -3376,8 +3538,8 @@ export function MapModule() {
             <button
               type="button"
               className="icon-button"
-              aria-label="Vue par défaut"
-              title="Revenir à la vue par défaut"
+              aria-label={t("Vue par défaut")}
+              title={t("Revenir à la vue par défaut")}
               onClick={home}
             >
               <House size={16} />
@@ -3387,10 +3549,12 @@ export function MapModule() {
               className="icon-button"
               aria-pressed={full}
               aria-label={
-                full ? "Quitter le plein écran" : "Carte en plein écran"
+                full ? t("Quitter le plein écran") : t("Carte en plein écran")
               }
               title={
-                full ? "Quitter le plein écran (Échap)" : "Carte en plein écran"
+                full
+                  ? t("Quitter le plein écran (Échap)")
+                  : t("Carte en plein écran")
               }
               onClick={() => setFull((v) => !v)}
             >
@@ -3409,8 +3573,15 @@ export function MapModule() {
             <WifiOff size={15} />
             <span>
               {tileError === "offline"
-                ? "Hors ligne : le fond de carte n’est plus téléchargé. Les objets restent visibles ; les zones déjà consultées restent en cache."
-                : `Le serveur du fond (${BASES[base].swiss ? "swisstopo" : "OpenStreetMap"}) ne répond pas. Les objets restent visibles.`}
+                ? t(
+                    "Hors ligne : le fond de carte n’est plus téléchargé. Les objets restent visibles ; les zones déjà consultées restent en cache.",
+                  )
+                : t(
+                    "Le serveur du fond ({server}) ne répond pas. Les objets restent visibles.",
+                    {
+                      server: BASES[base].swiss ? "swisstopo" : "OpenStreetMap",
+                    },
+                  )}
             </span>
             {tileError === "unreachable" && (
               <button
@@ -3421,13 +3592,13 @@ export function MapModule() {
                   baseLayer.current?.redraw();
                 }}
               >
-                Réessayer
+                {t("Réessayer")}
               </button>
             )}
             <button
               type="button"
               className="icon-button"
-              aria-label="Masquer"
+              aria-label={t("Masquer")}
               onClick={() => setTileError(null)}
             >
               <X size={14} />
@@ -3442,8 +3613,8 @@ export function MapModule() {
             className="map-coords map-glass"
             title={
               crosshair
-                ? "Centre de la carte : cliquer pour copier (MN95 ou WGS84)"
-                : "Position du curseur : cliquer pour copier (MN95 ou WGS84)"
+                ? t("Centre de la carte : cliquer pour copier (MN95 ou WGS84)")
+                : t("Position du curseur : cliquer pour copier (MN95 ou WGS84)")
             }
             aria-haspopup="menu"
             aria-expanded={!!coordsMenu}
@@ -3464,7 +3635,7 @@ export function MapModule() {
           </button>
           <nav
             className="map-toolbar map-glass"
-            aria-label="Outils de la carte"
+            aria-label={t("Outils de la carte")}
           >
             {tools.map((t) => {
               const Icon = t.icon;
@@ -3492,8 +3663,8 @@ export function MapModule() {
                 <button
                   type="button"
                   className="map-tool icon"
-                  aria-label="Annuler la dernière opération sur la carte"
-                  title="Annuler (⌘Z / Ctrl+Z) : opérations de ce poste"
+                  aria-label={t("Annuler la dernière opération sur la carte")}
+                  title={t("Annuler (⌘Z / Ctrl+Z) : opérations de ce poste")}
                   disabled={!canUndo}
                   onClick={() => step("undo")}
                 >
@@ -3502,8 +3673,8 @@ export function MapModule() {
                 <button
                   type="button"
                   className="map-tool icon"
-                  aria-label="Rétablir l’opération annulée"
-                  title="Rétablir (⇧⌘Z / Ctrl+Y)"
+                  aria-label={t("Rétablir l’opération annulée")}
+                  title={t("Rétablir (⇧⌘Z / Ctrl+Y)")}
                   disabled={!canRedo}
                   onClick={() => step("redo")}
                 >
@@ -3516,11 +3687,11 @@ export function MapModule() {
               type="button"
               className={`map-tool${panel ? " on" : ""}`}
               aria-pressed={!!panel}
-              title="Liste des objets, signes et calques"
+              title={t("Liste des objets, signes et calques")}
               onClick={() => setPanel(panel ? null : "list")}
             >
               <List size={18} />
-              <span>Liste</span>
+              <span>{t("Liste")}</span>
             </button>
           </nav>
         </div>
@@ -3575,8 +3746,10 @@ export function MapModule() {
           >
             <Grid3x3 size={16} />
             <span className="row-main">
-              <strong>Quadrillage MN95</strong>
-              <small className="muted">1 km, 100 m en zoom rapproché</small>
+              <strong>{t("Quadrillage MN95")}</strong>
+              <small className="muted">
+                {t("1 km, 100 m en zoom rapproché")}
+              </small>
             </span>
             {showGrid && <Check size={14} />}
           </button>
@@ -3588,8 +3761,10 @@ export function MapModule() {
           >
             <Crosshair size={16} />
             <span className="row-main">
-              <strong>Réticule au centre</strong>
-              <small className="muted">Coordonnées du centre, à copier</small>
+              <strong>{t("Réticule au centre")}</strong>
+              <small className="muted">
+                {t("Coordonnées du centre, à copier")}
+              </small>
             </span>
             {crosshair && <Check size={14} />}
           </button>
@@ -3604,11 +3779,11 @@ export function MapModule() {
           >
             <Layers size={16} />
             <span className="row-main">
-              <strong>Couches geo.admin.ch…</strong>
+              <strong>{t("Couches geo.admin.ch…")}</strong>
               <small className="muted">
-                Dangers, cadastre, crues et vent en direct
+                {t("Dangers, cadastre, crues et vent en direct")}
                 {Object.keys(overlays).length
-                  ? ` · ${Object.keys(overlays).length} affichée(s)`
+                  ? ` · ${t("{n} affichée(s)", { n: Object.keys(overlays).length })}`
                   : ""}
               </small>
             </span>
@@ -3639,7 +3814,7 @@ export function MapModule() {
               ),
             }}
             role="dialog"
-            aria-label="Position citée"
+            aria-label={t("Position citée")}
           >
             <ItemPreview target={ghostMenu.target} limit={5} />
             <p className="map-ghost-where mono">
@@ -3653,7 +3828,7 @@ export function MapModule() {
                   onClick={() => createFromGhost(ghostMenu)}
                 >
                   <MapPin size={13} />
-                  Créer un objet ici
+                  {t("Créer un objet ici")}
                 </button>
               )}
               <button
@@ -3664,12 +3839,12 @@ export function MapModule() {
                   open(ghostMenu.target);
                 }}
               >
-                Ouvrir
+                {t("Ouvrir")}
               </button>
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Fermer"
+                aria-label={t("Fermer")}
                 onClick={() => setGhostMenu(null)}
               >
                 <X size={14} />
@@ -3688,18 +3863,18 @@ export function MapModule() {
               top: Math.max(8, Math.min(info.y + 12, window.innerHeight - 340)),
             }}
             role="dialog"
-            aria-label="Informations de la couche"
+            aria-label={t("Informations de la couche")}
           >
             <header>
               <span className="label">
                 {info.loading
-                  ? "Recherche…"
+                  ? t("Recherche…")
                   : (info.items[0]?.source ?? "geo.admin.ch")}
               </span>
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Fermer"
+                aria-label={t("Fermer")}
                 onClick={() => setInfo(null)}
               >
                 <X size={14} />
@@ -3733,10 +3908,15 @@ export function MapModule() {
           {(() => {
             const [lat, lng] = coordsMenu;
             const mn95 = mn95Text(lat, lng);
-            const copy = (text: string, label: string) => {
+            const copy = (
+              text: string,
+              done:
+                | "Coordonnées MN95 copiées : {text}"
+                | "Coordonnées WGS84 copiées : {text}",
+            ) => {
               navigator.clipboard?.writeText(text).then(
-                () => toast(`${label} copiées : ${text}`),
-                () => toast("Copie impossible."),
+                () => toast(t(done, { text })),
+                () => toast(t("Copie impossible.")),
               );
             };
             return (
@@ -3746,11 +3926,13 @@ export function MapModule() {
                     type="button"
                     role="menuitem"
                     data-close
-                    onClick={() => copy(mn95, "Coordonnées MN95")}
+                    onClick={() =>
+                      copy(mn95, "Coordonnées MN95 copiées : {text}")
+                    }
                   >
                     <Copy size={14} />
                     <span className="row-main">
-                      <strong>MN95</strong>
+                      <strong>{t("MN95")}</strong>
                       <small className="mono">{formatMN95(lat, lng)}</small>
                     </span>
                   </button>
@@ -3759,7 +3941,12 @@ export function MapModule() {
                   type="button"
                   role="menuitem"
                   data-close
-                  onClick={() => copy(formatWgs(lat, lng), "Coordonnées WGS84")}
+                  onClick={() =>
+                    copy(
+                      formatWgs(lat, lng),
+                      "Coordonnées WGS84 copiées : {text}",
+                    )
+                  }
                 >
                   <Copy size={14} />
                   <span className="row-main">

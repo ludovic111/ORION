@@ -1,4 +1,5 @@
 import type { Encrypted, VaultRecord } from "../../shared/crypto";
+import { t } from "./i18n.ts";
 // The name stays: sessions saved by earlier versions open from the same
 // database. The vault holds one record, "workspace": a VaultRecord (2.1,
 // compressed, raw bytes) or an Encrypted envelope written before 2.1.
@@ -12,7 +13,9 @@ async function database(): Promise<IDBDatabase> {
     request.onerror = () =>
       reject(
         new Error(
-          "Le navigateur refuse le stockage local. Exportez une copie avant de quitter.",
+          t(
+            "Le navigateur refuse le stockage local. Exportez une copie avant de quitter.",
+          ),
         ),
       );
   });
@@ -35,8 +38,12 @@ async function transaction<T>(
       reject(
         new Error(
           quota
-            ? "Espace de stockage du navigateur plein : la sauvegarde locale a échoué. Exportez une copie, puis libérez de l’espace (anciens journaux, images)."
-            : "Sauvegarde locale impossible. Exportez une copie avant de quitter.",
+            ? t(
+                "Espace de stockage du navigateur plein : la sauvegarde locale a échoué. Exportez une copie, puis libérez de l’espace (anciens journaux, images).",
+              )
+            : t(
+                "Sauvegarde locale impossible. Exportez une copie avant de quitter.",
+              ),
         ),
       );
     };

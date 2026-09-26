@@ -1,6 +1,7 @@
 import { createdKey, nodeOr, suffixes } from "./journal.ts";
 import type { HistoryEvent } from "./events.ts";
 import type { Order, OrderMission } from "./conduct.ts";
+import { t } from "./i18n/orders.ts";
 
 // Structured orders (armée / PCi scheme): numbers, labels, templates and
 // the prefill taken from the situation, the radio plan and the rhythm.
@@ -68,7 +69,9 @@ export function orderLabels(j: {
   );
   const out = new Map<string, string>();
   for (const o of j.ops.orders) {
-    const n = `n° ${o.number}${extra.has(o.id) ? `·${extra.get(o.id)}` : ""}`;
+    const n = t("n° {n}", {
+      n: `${o.number}${extra.has(o.id) ? `·${extra.get(o.id)}` : ""}`,
+    });
     out.set(o.id, o.source ? `${o.source} ${n}` : n);
   }
   return out;
@@ -128,42 +131,68 @@ export type OrderTemplate = {
 };
 
 /** Starting points; every field stays editable. */
+// The kind is a value of the référentiel « Types d’ordre » (stored in
+// French); label, hint, title and intention follow the language of the post.
 export const ORDER_TEMPLATES: OrderTemplate[] = [
   {
     id: "engagement",
-    label: "Ordre d’engagement",
-    hint: "Les cinq chapitres, préremplis depuis la situation.",
-    patch: { kind: "Ordre d’engagement", title: "Ordre d’engagement" },
+    get label() {
+      return t("Ordre d’engagement");
+    },
+    get hint() {
+      return t("Les cinq chapitres, préremplis depuis la situation.");
+    },
+    get patch(): Partial<OrderDraft> {
+      return { kind: "Ordre d’engagement", title: t("Ordre d’engagement") };
+    },
   },
   {
     id: "complement",
-    label: "Ordre complémentaire",
-    hint: "Ce qui change par rapport à un ordre émis.",
-    patch: {
-      kind: "Ordre complémentaire",
-      title: "Ordre complémentaire",
-      intention: "Inchangée.",
+    get label() {
+      return t("Ordre complémentaire");
+    },
+    get hint() {
+      return t("Ce qui change par rapport à un ordre émis.");
+    },
+    get patch(): Partial<OrderDraft> {
+      return {
+        kind: "Ordre complémentaire",
+        title: t("Ordre complémentaire"),
+        intention: t("Inchangée."),
+      };
     },
   },
   {
     id: "preparatory",
-    label: "Ordre préparatoire",
-    hint: "Prévenir tôt : ce qui va venir, se préparer.",
-    patch: {
-      kind: "Ordre préparatoire",
-      title: "Ordre préparatoire",
-      intention: "Engagement probable. Se tenir prêts à…",
+    get label() {
+      return t("Ordre préparatoire");
+    },
+    get hint() {
+      return t("Prévenir tôt : ce qui va venir, se préparer.");
+    },
+    get patch(): Partial<OrderDraft> {
+      return {
+        kind: "Ordre préparatoire",
+        title: t("Ordre préparatoire"),
+        intention: t("Engagement probable. Se tenir prêts à…"),
+      };
     },
   },
   {
     id: "relief",
-    label: "Ordre de relève",
-    hint: "Qui relève qui, où et quand.",
-    patch: {
-      kind: "Ordre de relève",
-      title: "Ordre de relève",
-      intention: "Assurer la continuité de la conduite pendant la relève.",
-      missions: [],
+    get label() {
+      return t("Ordre de relève");
+    },
+    get hint() {
+      return t("Qui relève qui, où et quand.");
+    },
+    get patch(): Partial<OrderDraft> {
+      return {
+        kind: "Ordre de relève",
+        title: t("Ordre de relève"),
+        intention: t("Assurer la continuité de la conduite pendant la relève."),
+        missions: [],
+      };
     },
   },
 ];
@@ -184,9 +213,14 @@ export function orderPrefill(
   now = Date.now(),
   time: (iso: string) => string = (iso) => iso.slice(11, 16),
 ): Partial<OrderDraft> {
-  const board = (start: string) =>
+  // Titles of the standard boards, in the three languages of the journals.
+  const board = (...starts: string[]) =>
     j.ops.boards
-      .find((b) => b.title.toLocaleLowerCase("fr").startsWith(start))
+      .find((b) =>
+        starts.some((start) =>
+          b.title.toLocaleLowerCase("fr").startsWith(start),
+        ),
+      )
       ?.body.trim() ?? "";
   const pcs = j.ops.cells.filter((c) =>
     /pc|poste/i.test(`${c.kind} ${c.name}`),
@@ -197,9 +231,9 @@ export function orderPrefill(
     .slice(0, 4)
     .map((a) => `${time(a.at)} ${a.title}`);
   return {
-    situation: board("situation"),
-    danger: board("dangers"),
-    intention: board("intention"),
+    situation: board("situation", "allgemeine lage", "situazione"),
+    danger: board("dangers", "gefahren", "pericoli"),
+    intention: board("intention", "absicht", "intenzione"),
     pc: pcs.length
       ? pcs
           .map((c) => [c.name, c.location].filter(Boolean).join(" : "))
@@ -216,9 +250,34 @@ export function orderPrefill(
 
 /** The five chapters, for display and print. */
 export const CHAPTERS = [
-  { n: 1, title: "Orientation" },
-  { n: 2, title: "Intention" },
-  { n: 3, title: "Missions" },
-  { n: 4, title: "Dispositions particulières" },
-  { n: 5, title: "Emplacements et liaisons" },
+  {
+    n: 1,
+    get title() {
+      return t("Orientation");
+    },
+  },
+  {
+    n: 2,
+    get title() {
+      return t("Intention");
+    },
+  },
+  {
+    n: 3,
+    get title() {
+      return t("Missions");
+    },
+  },
+  {
+    n: 4,
+    get title() {
+      return t("Dispositions particulières");
+    },
+  },
+  {
+    n: 5,
+    get title() {
+      return t("Emplacements et liaisons");
+    },
+  },
 ] as const;

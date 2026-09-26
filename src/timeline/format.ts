@@ -1,9 +1,12 @@
+import { enumLabel } from "../../shared/i18n/enums.ts";
 import { dateTime } from "../../shared/journal";
+import { dict, t, tn } from "./i18n.ts";
 
 // Readable names and values of record fields, for the history, the
 // comparisons and the audit exports.
 
-export const FIELD_LABELS: Record<string, string> = {
+// French names (keys of ./i18n.ts), translated when shown.
+export const FIELD_LABELS: Record<string, keyof typeof dict & string> = {
   label: "Libellé",
   name: "Nom",
   title: "Titre",
@@ -117,33 +120,55 @@ export const FIELD_LABELS: Record<string, string> = {
   bytes: "Taille (octets)",
   fingerprint: "Empreinte du contenu",
 };
-export const fieldLabel = (key: string) => FIELD_LABELS[key] ?? key;
+export const fieldLabel = (key: string) =>
+  Object.hasOwn(FIELD_LABELS, key) ? t(FIELD_LABELS[key]) : key;
 
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+// Fields holding a fixed value of a schema (shown in the post language).
+const ENUM_FIELDS = new Set([
+  "status",
+  "priority",
+  "type",
+  "channel",
+  "reliability",
+  "via",
+  "mode",
+  "classification",
+  "condition",
+  "returnCondition",
+  "battery",
+  "usage",
+  "ack",
+]);
 
 /** A field value as a short readable text. */
 export function formatValue(key: string, value: unknown, max = 160): string {
   if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Oui" : "Non";
+  if (typeof value === "boolean") return value ? t("Oui") : t("Non");
   if (typeof value === "number") return String(value);
   if (typeof value === "string") {
-    if (key === "image") return "image";
-    const text = ISO.test(value) ? dateTime(value) : value;
+    if (key === "image") return t("image");
+    const text = ISO.test(value)
+      ? dateTime(value)
+      : ENUM_FIELDS.has(key)
+        ? enumLabel(value)
+        : value;
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
   }
   if (Array.isArray(value)) {
     if (key === "points")
       return value.length === 1 && Array.isArray(value[0])
         ? `${Number(value[0][0]).toFixed(5)}, ${Number(value[0][1]).toFixed(5)}`
-        : `${value.length} points`;
+        : t("{n} points", { n: value.length });
     if (!value.length) return "—";
     if (value.every((v) => typeof v === "string"))
       return formatValue(key, value.join(", "), max);
-    return `${value.length} élément${value.length > 1 ? "s" : ""}`;
+    return tn(value.length, "{n} élément", "{n} éléments");
   }
   if (typeof value === "object") {
     const keys = Object.keys(value as object);
-    return keys.length ? `${keys.length} réglage(s)` : "—";
+    return keys.length ? t("{n} réglage(s)", { n: keys.length }) : "—";
   }
   return String(value);
 }
@@ -163,17 +188,12 @@ export const personHue = (name: string) =>
 
 /** "il y a 5 min", "il y a 2 h", or the date. */
 export function ago(at: string | number, now = Date.now()): string {
-  const t = typeof at === "number" ? at : Date.parse(at);
-  const s = Math.round((now - t) / 1000);
-  if (s < 0) return dateTime(new Date(t).toISOString());
-  if (s < 45) return "à l’instant";
-  if (s < 3600) return `il y a ${Math.max(1, Math.round(s / 60))} min`;
-  if (s < 86400) return `il y a ${Math.round(s / 3600)} h`;
-  return dateTime(new Date(t).toISOString());
+  const ms = typeof at === "number" ? at : Date.parse(at);
+  const s = Math.round((now - ms) / 1000);
+  if (s < 0) return dateTime(new Date(ms).toISOString());
+  if (s < 45) return t("à l’instant");
+  if (s < 3600)
+    return t("il y a {n} min", { n: Math.max(1, Math.round(s / 60)) });
+  if (s < 86400) return t("il y a {n} h", { n: Math.round(s / 3600) });
+  return dateTime(new Date(ms).toISOString());
 }
-
-export const ACTION_LABELS = {
-  create: "a créé",
-  update: "a modifié",
-  remove: "a supprimé",
-} as const;

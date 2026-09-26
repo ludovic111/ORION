@@ -6,6 +6,10 @@
  * points, presentations, forecasts) are not changes of the situation and
  * skip the gate.
  */
+import { t } from "./i18n.ts";
+
+// The constants keep the French text (key of the dictionary, asserted by
+// the tests); writeRefusal returns it in the language of the post.
 export const PAST_READ_ONLY =
   "Lecture seule : vous consultez le passé. Revenez au direct pour écrire.";
 export const CLOSED_READ_ONLY = "Journal clôturé — rouvrez-le pour écrire.";
@@ -22,8 +26,8 @@ export function writeRefusal(
   state: GateState,
   { allowClosed = false }: { allowClosed?: boolean } = {},
 ): string | null {
-  if (state.viewAt !== null) return PAST_READ_ONLY;
-  if (state.closedAt && !allowClosed) return CLOSED_READ_ONLY;
+  if (state.viewAt !== null) return t(PAST_READ_ONLY);
+  if (state.closedAt && !allowClosed) return t(CLOSED_READ_ONLY);
   return null;
 }
 

@@ -9,6 +9,7 @@ import {
 } from "../../../shared/coordinates.ts";
 import { builtinInfo, symbolName } from "./builtins.ts";
 import { TONE_COLOR, hexColor, placesOf, simplifyTo, toneOf } from "./maps.ts";
+import { t, tn } from "./i18n-2.ts";
 
 // Geographic files: export of the map objects (GeoJSON, KML, GPX) and
 // import of files received from partners. Owned by the map module. Pure:
@@ -201,14 +202,14 @@ export function toKML(journal: Journal, mapId = ""): string {
     .sort((a, b) => a[0].localeCompare(b[0], "fr"))
     .map(
       ([layer, list]) =>
-        `<Folder><name>${escapeXml(layer || "Sans calque")}</name>${list.map(placemark).join("\n")}</Folder>`,
+        `<Folder><name>${escapeXml(layer || t("Sans calque"))}</name>${list.map(placemark).join("\n")}</Folder>`,
     )
     .join("\n");
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>' +
     `<name>${escapeXml(title)}</name>` +
-    `<description>${escapeXml(`orion aic · ${places.length} objet(s)`)}</description>\n` +
+    `<description>${escapeXml(`orion aic · ${tn(places.length, "{n} objet", "{n} objets")}`)}</description>\n` +
     folders +
     "\n</Document></kml>\n"
   );
@@ -224,9 +225,13 @@ export function toGPX(journal: Journal, mapId = ""): string {
     const props = properties(journal, p, names);
     const lines = [
       p.notes,
-      `Calque : ${p.layer || "sans calque"}`,
-      props.symbolName && `Signe : ${props.symbolName}`,
-      `Posé par ${p.by || "?"} le ${p.createdAt}, modifié le ${p.updatedAt}`,
+      t("Calque : {layer}", { layer: p.layer || t("sans calque") }),
+      props.symbolName && t("Signe : {name}", { name: props.symbolName }),
+      t("Posé par {by} le {created}, modifié le {updated}", {
+        by: p.by || "?",
+        created: p.createdAt,
+        updated: p.updatedAt,
+      }),
     ].filter(Boolean);
     return escapeXml(lines.join("\n"));
   };
@@ -256,7 +261,7 @@ export function toGPX(journal: Journal, mapId = ""): string {
     if (p.kind === "point" || p.kind === "text")
       out.push(
         `<wpt ${at(p.points[0])}><time>${p.updatedAt}</time><name>${escapeXml(p.label)}</name><desc>${describe(p)}</desc>` +
-          `<sym>${escapeXml(symbolName(p.symbol, journal.ops.symbols ?? []) || (p.kind === "text" ? "Texte" : "Point"))}</sym>` +
+          `<sym>${escapeXml(symbolName(p.symbol, journal.ops.symbols ?? []) || (p.kind === "text" ? t("Texte") : t("Point")))}</sym>` +
           `<type>${escapeXml(p.layer)}</type>${extensions(p)}</wpt>`,
       );
   for (const p of places)
@@ -345,7 +350,7 @@ export function parseXml(source: string): XmlNode {
       i = j + 1;
     } else if (source[lt + 1] === "/") {
       const close = source.indexOf(">", lt);
-      if (close < 0) throw new Error("XML incomplet.");
+      if (close < 0) throw new Error(t("XML incomplet."));
       const name = local(source.slice(lt + 2, close).trim());
       // Tolerate unbalanced documents: close up to the matching element.
       for (let k = stack.length - 1; k > 0; k--)
@@ -365,12 +370,12 @@ export function parseXml(source: string): XmlNode {
         } else if (c === '"' || c === "'") quote = c;
         else if (c === ">") break;
       }
-      if (j >= n) throw new Error("XML incomplet.");
+      if (j >= n) throw new Error(t("XML incomplet."));
       let body = source.slice(lt + 1, j);
       const selfClosing = body.endsWith("/");
       if (selfClosing) body = body.slice(0, -1);
       const nameMatch = /^\s*([^\s/>]+)/.exec(body);
-      if (!nameMatch) throw new Error("XML invalide.");
+      if (!nameMatch) throw new Error(t("XML invalide."));
       const node: XmlNode = {
         name: local(nameMatch[1]),
         attrs: {},
@@ -387,7 +392,7 @@ export function parseXml(source: string): XmlNode {
     }
   }
   const top = root.children[0];
-  if (!top) throw new Error("Document XML vide.");
+  if (!top) throw new Error(t("Document XML vide."));
   return top;
 }
 
@@ -599,7 +604,7 @@ function readGeoJSON(text: string): ImportResult {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("Fichier GeoJSON illisible (JSON invalide).");
+    throw new Error(t("Fichier GeoJSON illisible (JSON invalide)."));
   }
   const out = new Collector();
   const crs = swissCrs(data);
@@ -692,7 +697,7 @@ function readGeoJSON(text: string): ImportResult {
   else if (root?.type === "Feature") feature(root);
   else if (root && typeof root.type === "string")
     geometry(root, { label: "", notes: "" });
-  else throw new Error("Ce fichier n’est pas du GeoJSON.");
+  else throw new Error(t("Ce fichier n’est pas du GeoJSON."));
   return {
     format: "GeoJSON",
     crs,
@@ -727,7 +732,7 @@ const fromKmlColor = (s: string) => {
 function readKML(text: string): ImportResult {
   const root = parseXml(text);
   if (root.name !== "kml" && root.name !== "Document")
-    throw new Error("Ce fichier n’est pas du KML.");
+    throw new Error(t("Ce fichier n’est pas du KML."));
   const out = new Collector();
   type Style = { line?: string; poly?: string; icon?: string; width?: number };
   const readStyle = (s: XmlNode | undefined): Style => ({
@@ -850,7 +855,7 @@ function readKML(text: string): ImportResult {
 
 function readGPX(text: string): ImportResult {
   const root = parseXml(text);
-  if (root.name !== "gpx") throw new Error("Ce fichier n’est pas du GPX.");
+  if (root.name !== "gpx") throw new Error(t("Ce fichier n’est pas du GPX."));
   const out = new Collector();
   const at = (n: XmlNode): LatLng => [Number(n.attrs.lat), Number(n.attrs.lon)];
   const own = (n: XmlNode) => {
@@ -902,6 +907,6 @@ export function parseGeoFile(name: string, text: string): ImportResult {
   if (ext === "gpx" || /<gpx[\s>]/.test(head)) return readGPX(text);
   if (ext === "kml" || /<kml[\s>]/.test(head)) return readKML(text);
   throw new Error(
-    "Format non reconnu : choisissez un fichier KML, KMZ, GeoJSON ou GPX.",
+    t("Format non reconnu : choisissez un fichier KML, KMZ, GeoJSON ou GPX."),
   );
 }

@@ -5,6 +5,7 @@ import { removeRecords } from "../../shared/ops";
 import { useApp } from "../app/context";
 import { Modal } from "../journal/Modal";
 import { DateTimeField, TextField } from "../ui/fields";
+import { t } from "./i18n.ts";
 
 /**
  * Freeze a point of situation: a named moment ("Point de situation 14:00")
@@ -20,7 +21,9 @@ export function SnapshotDialog({
 }) {
   const { live, record, setViewAt, updateOps, toast } = useApp();
   const initial = new Date(at ?? Date.now()).toISOString();
-  const [title, setTitle] = useState(`Point de situation ${time(initial)}`);
+  const [title, setTitle] = useState(() =>
+    t("Point de situation {time}", { time: time(initial) }),
+  );
   const [when, setWhen] = useState(initial);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -31,47 +34,50 @@ export function SnapshotDialog({
   function save(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
-      setError("Donnez un nom à ce point de situation.");
+      setError(t("Donnez un nom à ce point de situation."));
       return;
     }
     if (Date.parse(when) > Date.now() + 60_000) {
-      setError("Un point de situation fige un moment passé ou présent.");
+      setError(t("Un point de situation fige un moment passé ou présent."));
       return;
     }
     record("snapshots", { title: title.trim(), at: when, notes });
     toast(
-      `« ${title.trim()} » figé. Retrouvez-le dans la machine à remonter le temps, les exports et les présentations.`,
+      t(
+        "« {title} » figé. Retrouvez-le dans la machine à remonter le temps, les exports et les présentations.",
+        { title: title.trim() },
+      ),
     );
     onClose();
   }
   return (
-    <Modal title="Figer un point de situation" onClose={onClose}>
+    <Modal title={t("Figer un point de situation")} onClose={onClose}>
       <p className="modal-intro">
-        Donne un nom à un moment de l’opération. Il reste consultable tel quel,
-        même si tout change ensuite, et se choisit en un clic pour présenter,
-        comparer ou exporter.
+        {t(
+          "Donne un nom à un moment de l’opération. Il reste consultable tel quel, même si tout change ensuite, et se choisit en un clic pour présenter, comparer ou exporter.",
+        )}
       </p>
       <form className="stack" onSubmit={save}>
         <TextField
-          label="Nom"
+          label={t("Nom")}
           value={title}
           onChange={setTitle}
           maxLength={200}
           required
         />
         <DateTimeField
-          label="Moment figé"
+          label={t("Moment figé")}
           value={when}
           onChange={setWhen}
           required
         />
         <TextField
-          label="Remarques"
+          label={t("Remarques")}
           rows={2}
           value={notes}
           onChange={setNotes}
           maxLength={4000}
-          placeholder="Ex. état présenté au rapport de conduite de 14 h"
+          placeholder={t("Ex. état présenté au rapport de conduite de 14 h")}
         />
         {error && (
           <p className="error" role="alert">
@@ -80,17 +86,17 @@ export function SnapshotDialog({
         )}
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary">
             <Snowflake size={14} />
-            Figer
+            {t("Figer")}
           </button>
         </div>
       </form>
       {list.length > 0 && (
         <>
-          <h3 className="section-label">Points déjà figés</h3>
+          <h3 className="section-label">{t("Points déjà figés")}</h3>
           <ul className="snapshot-list">
             {list.map((s) => (
               <li key={s.id}>
@@ -109,12 +115,14 @@ export function SnapshotDialog({
                   }}
                 >
                   <Clock3 size={12} />
-                  Revoir
+                  {t("Revoir")}
                 </button>
                 <button
                   className="icon-button"
-                  aria-label={`Supprimer ${s.title}`}
-                  title="Supprimer ce point (l’historique en garde la trace)"
+                  aria-label={t("Supprimer {title}", { title: s.title })}
+                  title={t(
+                    "Supprimer ce point (l’historique en garde la trace)",
+                  )}
                   onClick={() => {
                     try {
                       updateOps((ops) => removeRecords(ops, [s.id]));

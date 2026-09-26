@@ -41,6 +41,14 @@ import {
   type ExportScope,
   type SectionId,
 } from "./scope.ts";
+import {
+  formatNumber,
+  formatTime,
+  formatWith,
+  locale,
+} from "../../shared/i18n/core.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t, tn, type Key } from "./i18n.ts";
 
 // One structured extraction of the operation for a scope. Every writer
 // (PDF, Word, OpenDocument, spreadsheets, HTML, text…) consumes the same
@@ -153,56 +161,30 @@ const clip = (s: string, n: number) =>
   s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
 const lines = (...parts: (string | false | undefined)[]) =>
   parts.filter(Boolean).join("\n");
-const plural = (n: number, one: string, many = `${one}s`) =>
-  `${n} ${n > 1 ? many : one}`;
-const KEEP = new Set([
-  "en",
-  "à",
-  "de",
-  "d’appel",
-  "hors",
-  "service",
-  "cours",
-  "retard",
-  "route",
-  "vigueur",
-  "rendez-vous",
-  "suivre",
-]);
-/** "renseignements clés" → "renseignement clé" for 0 or 1 item. */
-const singular = (label: string) =>
-  label
-    .split(" ")
-    .map((w) =>
-      KEEP.has(w)
-        ? w
-        : w.endsWith("aux")
-          ? w.slice(0, -1).replace(/x$/, "")
-          : w.replace(/s$/, ""),
-    )
-    .join(" ");
-const cols = (...list: [string, number?][]): Column[] =>
-  list.map(([label, weight]) => ({ label, weight: weight ?? 1 }));
-const hhmm = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/** Indicator counting items: singular or plural label (French: 0 and 1). */
+const count = (n: number, one: Key, other: Key, tone?: Kpi["tone"]): Kpi => ({
+  label: tn(n, one, other),
+  value: String(n),
+  ...(tone ? { tone } : {}),
+});
+/** Columns of a table: labels in the language of the post. */
+const cols = (...list: [Key, number?][]): Column[] =>
+  list.map(([label, weight]) => ({ label: t(label), weight: weight ?? 1 }));
+/** "value : text", with the colon of the language. */
+const labelled = (label: string, value: string) =>
+  t("{label} : {value}", { label, value });
+const hhmm = (ms: number) => formatTime(ms);
 const dayName = (ms: number) =>
-  new Date(ms).toLocaleDateString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-  });
+  formatWith(ms, { weekday: "short", day: "2-digit", month: "2-digit" });
 const num = (v: number | null, unit = "", digits = 0) =>
   v === null
     ? ""
-    : `${v.toLocaleString("fr-CH", { maximumFractionDigits: digits })}${unit}`;
+    : `${formatNumber(v, { maximumFractionDigits: digits })}${unit}`;
+/** Sorting of texts in the language of the post. */
+const byText = (a: string, b: string) => a.localeCompare(b, locale());
 
 // WMO weather codes (Open-Meteo), same wording as the weather module.
-const WMO: Record<number, string> = {
+const WMO: Record<number, Key> = {
   0: "Ciel dégagé",
   1: "Peu nuageux",
   2: "Partiellement nuageux",
@@ -233,10 +215,14 @@ const WMO: Record<number, string> = {
   99: "Orage avec forte grêle",
 };
 const weather = (code: number | null) =>
-  code === null ? "" : (WMO[code] ?? `Code ${code}`);
+  code === null
+    ? ""
+    : Object.hasOwn(WMO, code)
+      ? t(WMO[code])
+      : t("Code {code}", { code });
 
 // Field names shown in the change details.
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<string, Key> = {
   happenedAt: "Heure de l’événement",
   receivedAt: "Réception",
   type: "Type",
@@ -268,7 +254,7 @@ const FIELD_LABELS: Record<string, string> = {
   contact: "Contact",
   role: "Fonction",
   grade: "Grade",
-  cellId: "Poste",
+  cellId: "Poste (cellule)",
   phone: "Téléphone",
   phone2: "Téléphone 2",
   email: "E-mail",
@@ -310,13 +296,14 @@ const FIELD_LABELS: Record<string, string> = {
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 function showValue(v: unknown): string {
   if (v === undefined || v === null || v === "") return "∅";
-  if (typeof v === "string") return ISO.test(v) ? dateTime(v) : clip(v, 70);
-  if (typeof v === "boolean") return v ? "oui" : "non";
+  if (typeof v === "string")
+    return ISO.test(v) ? dateTime(v) : clip(enumLabel(v), 70);
+  if (typeof v === "boolean") return v ? t("oui") : t("non");
   if (typeof v === "number") return String(v);
   if (Array.isArray(v))
     return v.every((x) => typeof x === "string")
       ? clip(v.join(", "), 70) || "∅"
-      : plural(v.length, "élément");
+      : tn(v.length, "{n} élément", "{n} éléments");
   return clip(stableStringify(v), 70);
 }
 /** "État : Disponible → Engagé", one line per field changed. */
@@ -326,9 +313,10 @@ export function changeDetail(before: unknown, after: unknown, max = 6) {
     .slice(0, max)
     .map(
       (c) =>
-        `${FIELD_LABELS[c.key] ?? c.key} : ${showValue(c.before)} → ${showValue(c.after)}`,
+        `${labelled(Object.hasOwn(FIELD_LABELS, c.key) ? t(FIELD_LABELS[c.key]) : c.key, showValue(c.before))} → ${showValue(c.after)}`,
     );
-  if (changes.length > max) out.push(`… ${changes.length - max} autres champs`);
+  if (changes.length > max)
+    out.push(t("… {n} autres champs", { n: changes.length - max }));
   return out.join("\n");
 }
 
@@ -351,9 +339,9 @@ function situation({ journal }: Ctx): Built {
     blocks.push(
       table({
         id: "facts",
-        title: "Renseignements clés",
-        sheet: "Renseignements clés",
-        caption: plural(facts.length, "renseignement"),
+        title: t("Renseignements clés"),
+        sheet: t("Renseignements clés"),
+        caption: tn(facts.length, "{n} renseignement", "{n} renseignements"),
         columns: cols(
           ["Renseignement", 3],
           ["Valeur", 1.4],
@@ -371,15 +359,20 @@ function situation({ journal }: Ctx): Built {
       kind: "text",
       title: b.title,
       body: b.body.trim() || "—",
-      meta: `Mis à jour le ${when(b.updatedAt)}${b.by ? ` par ${b.by}` : ""}`,
+      meta: b.by
+        ? t("Mis à jour le {date} par {name}", {
+            date: when(b.updatedAt),
+            name: b.by,
+          })
+        : t("Mis à jour le {date}", { date: when(b.updatedAt) }),
     });
   if (snapshots.length)
     blocks.push(
       table({
         id: "snapshots",
-        title: "Points de situation figés",
-        sheet: "Points de situation",
-        caption: plural(snapshots.length, "point"),
+        title: t("Points de situation figés"),
+        sheet: t("Points de situation"),
+        caption: tn(snapshots.length, "{n} point", "{n} points"),
         columns: cols(
           ["Point de situation", 3],
           ["Heure", 1.4],
@@ -392,8 +385,8 @@ function situation({ journal }: Ctx): Built {
     );
   return {
     kpis: [
-      { label: "renseignements clés", value: String(facts.length) },
-      { label: "tableaux de situation", value: String(boards.length) },
+      count(facts.length, "renseignement clé", "renseignements clés"),
+      count(boards.length, "tableau de situation", "tableaux de situation"),
     ],
     blocks,
   };
@@ -432,9 +425,13 @@ function journalChapter({ journal, options }: Ctx): Built {
   blocks.push(
     table({
       id: "entries",
-      title: "Entrées du journal",
-      sheet: "Journal",
-      caption: `${plural(entries.length, "entrée")} · ordre chronologique`,
+      title: t("Entrées du journal"),
+      sheet: t("Journal"),
+      caption: tn(
+        entries.length,
+        "{n} entrée · ordre chronologique",
+        "{n} entrées · ordre chronologique",
+      ),
       columns: full,
       rows: entries.map((e) => {
         const f = current(e);
@@ -442,19 +439,19 @@ function journalChapter({ journal, options }: Ctx): Built {
           numberLabel(e),
           when(f.happenedAt),
           when(f.receivedAt),
-          f.type,
-          f.priority,
-          f.reliability,
+          enumLabel(f.type),
+          enumLabel(f.priority),
+          enumLabel(f.reliability),
           f.message,
           f.source,
           f.recipient,
-          f.channel,
+          enumLabel(f.channel),
           f.location,
           f.coordinates,
           f.action,
           f.assignee,
           when(f.dueAt),
-          f.status,
+          enumLabel(f.status),
           f.resources,
           f.reference,
           f.notes,
@@ -476,22 +473,28 @@ function journalChapter({ journal, options }: Ctx): Built {
           return [
             lines(
               numberLabel(e),
-              f.type,
-              f.priority !== "Normal" && f.priority,
+              enumLabel(f.type),
+              f.priority !== "Normal" && enumLabel(f.priority),
             ),
             lines(
               when(f.happenedAt),
-              f.receivedAt !== f.happenedAt && `reçu ${when(f.receivedAt)}`,
+              f.receivedAt !== f.happenedAt &&
+                t("reçu {date}", { date: when(f.receivedAt) }),
             ),
             lines(
               f.message,
-              f.action && `Mesure : ${f.action}`,
-              f.location && `Lieu : ${f.location}`,
-              f.resources && `Moyens : ${f.resources}`,
-              e.revisions.length > 1 && `${e.revisions.length} versions`,
+              f.action && labelled(t("Mesure"), f.action),
+              f.location && labelled(t("Lieu"), f.location),
+              f.resources && labelled(t("Moyens"), f.resources),
+              e.revisions.length > 1 &&
+                t("{n} versions", { n: e.revisions.length }),
             ),
-            lines(route(f), f.channel),
-            lines(f.status, f.assignee, f.dueAt && `Échéance ${when(f.dueAt)}`),
+            lines(route(f), enumLabel(f.channel)),
+            lines(
+              enumLabel(f.status),
+              f.assignee,
+              f.dueAt && t("Échéance {date}", { date: when(f.dueAt) }),
+            ),
           ];
         }),
       },
@@ -509,15 +512,15 @@ function journalChapter({ journal, options }: Ctx): Built {
           r.reason,
           i
             ? changeDetail(e.revisions[i - 1].fields, r.fields, 12)
-            : "Saisie initiale",
+            : t("Saisie initiale"),
         ]),
       );
     blocks.push(
       table({
         id: "versions",
-        title: "Versions des entrées",
-        sheet: "Versions",
-        caption: plural(rows.length, "version"),
+        title: t("Versions des entrées"),
+        sheet: t("Versions"),
+        caption: tn(rows.length, "{n} version", "{n} versions"),
         columns: cols(
           ["N°", 0.7],
           ["Version", 0.7],
@@ -534,9 +537,9 @@ function journalChapter({ journal, options }: Ctx): Built {
     blocks.push(
       table({
         id: "deleted",
-        title: "Entrées supprimées",
-        sheet: "Supprimées",
-        caption: "Le contenu d’une entrée supprimée n’est pas conservé",
+        title: t("Entrées supprimées"),
+        sheet: t("Supprimées"),
+        caption: t("Le contenu d’une entrée supprimée n’est pas conservé"),
         columns: cols(
           ["N°", 1],
           ["Supprimée le", 1.6],
@@ -556,23 +559,26 @@ function journalChapter({ journal, options }: Ctx): Built {
   const f = entries.map(current);
   return {
     kpis: [
-      { label: "entrées", value: String(entries.length) },
-      {
-        label: "urgentes",
-        value: String(f.filter((x) => x.priority === "Urgent").length),
-        tone: "crit",
-      },
-      {
-        label: "à suivre",
-        value: String(entries.filter(needsFollowUp).length),
-        tone: "warn",
-      },
-      {
-        label: "modifiées",
-        value: String(entries.filter((e) => e.revisions.length > 1).length),
-      },
+      count(entries.length, "entrée", "entrées"),
+      count(
+        f.filter((x) => x.priority === "Urgent").length,
+        "urgente",
+        "urgentes",
+        "crit",
+      ),
+      count(
+        entries.filter(needsFollowUp).length,
+        "à suivre",
+        "à suivre",
+        "warn",
+      ),
+      count(
+        entries.filter((e) => e.revisions.length > 1).length,
+        "modifiée",
+        "modifiées",
+      ),
       ...(journal.deleted.length
-        ? [{ label: "supprimées", value: String(journal.deleted.length) }]
+        ? [count(journal.deleted.length, "supprimée", "supprimées")]
         : []),
     ],
     blocks,
@@ -595,21 +601,22 @@ function missions({ journal, scope, shownAt }: Ctx): Built {
   const late = open.filter((e) => overdue(e, shownAt));
   return {
     kpis: [
-      { label: "ouvertes", value: String(open.length) },
-      {
-        label: "en cours",
-        value: String(
-          open.filter((e) => current(e).status === "En cours").length,
-        ),
-      },
-      { label: "en retard", value: String(late.length), tone: "crit" },
+      count(open.length, "ouverte", "ouvertes"),
+      count(
+        open.filter((e) => current(e).status === "En cours").length,
+        "en cours",
+        "en cours",
+      ),
+      count(late.length, "en retard", "en retard", "crit"),
     ],
     blocks: [
       table({
         id: "missions",
-        title: "Missions et points ouverts",
-        sheet: "Missions",
-        caption: `État au ${dateTime(new Date(shownAt).toISOString())}`,
+        title: t("Missions et points ouverts"),
+        sheet: t("Missions"),
+        caption: t("État au {date}", {
+          date: dateTime(new Date(shownAt).toISOString()),
+        }),
         columns: cols(
           ["N°", 0.7],
           ["Type", 1],
@@ -625,14 +632,14 @@ function missions({ journal, scope, shownAt }: Ctx): Built {
           const f = current(e);
           return [
             numberLabel(e),
-            f.type,
-            f.priority,
+            enumLabel(f.type),
+            enumLabel(f.priority),
             f.message,
             f.action,
             f.assignee,
             when(f.dueAt),
-            f.status,
-            overdue(e, shownAt) ? "EN RETARD" : "",
+            enumLabel(f.status),
+            overdue(e, shownAt) ? t("EN RETARD") : "",
           ];
         }),
         compact: {
@@ -647,12 +654,15 @@ function missions({ journal, scope, shownAt }: Ctx): Built {
             return [
               lines(
                 numberLabel(e),
-                f.type,
-                f.priority !== "Normal" && f.priority,
+                enumLabel(f.type),
+                f.priority !== "Normal" && enumLabel(f.priority),
               ),
-              lines(f.message, f.action && `Mesure : ${f.action}`),
-              lines(f.assignee || "—", f.status),
-              lines(when(f.dueAt) || "—", overdue(e, shownAt) && "EN RETARD"),
+              lines(f.message, f.action && labelled(t("Mesure"), f.action)),
+              lines(f.assignee || "—", enumLabel(f.status)),
+              lines(
+                when(f.dueAt) || "—",
+                overdue(e, shownAt) && t("EN RETARD"),
+              ),
             ];
           }),
         },
@@ -667,30 +677,31 @@ function messagesChapter({ journal }: Ctx): Built {
   );
   return {
     kpis: [
-      { label: "messages", value: String(list.length) },
-      {
-        label: "nouveaux",
-        value: String(list.filter((m) => m.status === "Nouveau").length),
-        tone: "warn",
-      },
-      {
-        label: "urgents",
-        value: String(list.filter((m) => m.priority === "Urgent").length),
-        tone: "crit",
-      },
-      {
-        label: "réponses attendues",
-        value: String(
-          list.filter((m) => m.replyNeeded && m.status !== "Classé").length,
-        ),
-      },
+      count(list.length, "message", "messages"),
+      count(
+        list.filter((m) => m.status === "Nouveau").length,
+        "nouveau",
+        "nouveaux",
+        "warn",
+      ),
+      count(
+        list.filter((m) => m.priority === "Urgent").length,
+        "urgent",
+        "urgents",
+        "crit",
+      ),
+      count(
+        list.filter((m) => m.replyNeeded && m.status !== "Classé").length,
+        "réponse attendue",
+        "réponses attendues",
+      ),
     ],
     blocks: [
       table({
         id: "messages",
-        title: "Messages reçus",
-        sheet: "Messages",
-        caption: plural(list.length, "message"),
+        title: t("Messages reçus"),
+        sheet: t("Messages"),
+        caption: tn(list.length, "{n} message", "{n} messages"),
         columns: cols(
           ["N°", 0.6],
           ["Reçu", 1.3],
@@ -712,14 +723,14 @@ function messagesChapter({ journal }: Ctx): Built {
           when(m.receivedAt),
           m.from,
           m.to,
-          m.via,
-          m.priority,
+          enumLabel(m.via),
+          enumLabel(m.priority),
           m.category,
           m.subject,
           m.body,
           m.location,
-          m.status,
-          m.replyNeeded ? when(m.replyBy) || "oui" : "",
+          enumLabel(m.status),
+          m.replyNeeded ? when(m.replyBy) || t("oui") : "",
           m.handledBy,
           m.notes,
         ]),
@@ -734,18 +745,21 @@ function messagesChapter({ journal }: Ctx): Built {
             lines(
               `M${String(i + 1).padStart(3, "0")}`,
               when(m.receivedAt),
-              m.via,
+              enumLabel(m.via),
             ),
             lines(`${m.from || "?"} → ${m.to || "?"}`),
             lines(
               m.subject && m.subject.toUpperCase(),
               m.body,
-              m.location && `Lieu : ${m.location}`,
+              m.location && labelled(t("Lieu"), m.location),
             ),
             lines(
-              m.status,
-              m.priority !== "Normal" && m.priority,
-              m.replyNeeded && `Réponse ${when(m.replyBy) || "attendue"}`,
+              enumLabel(m.status),
+              m.priority !== "Normal" && enumLabel(m.priority),
+              m.replyNeeded &&
+                (m.replyBy
+                  ? t("Réponse {date}", { date: when(m.replyBy) })
+                  : t("Réponse attendue")),
             ),
           ]),
         },
@@ -754,7 +768,7 @@ function messagesChapter({ journal }: Ctx): Built {
   };
 }
 
-const PLACE_KIND: Record<Place["kind"], string> = {
+const PLACE_KIND: Record<Place["kind"], Key> = {
   point: "Signe",
   line: "Ligne",
   area: "Zone",
@@ -766,7 +780,10 @@ function position(p: Place) {
   if (p.points.length === 1) return coordinate(p.points[0]);
   const lat = p.points.reduce((s, [a]) => s + a, 0) / p.points.length;
   const lng = p.points.reduce((s, [, b]) => s + b, 0) / p.points.length;
-  return `${p.points.length} points · centre ${coordinate([lat, lng])}`;
+  return t("{n} points · centre {position}", {
+    n: p.points.length,
+    position: coordinate([lat, lng]),
+  });
 }
 /** Maps of the operation; a main map when none is defined. */
 export function mapsOf(
@@ -774,7 +791,7 @@ export function mapsOf(
 ): Pick<OpsMap, "id" | "name" | "purpose">[] {
   return journal.ops.maps.length
     ? [...journal.ops.maps].sort((a, b) => a.order - b.order)
-    : [{ id: "", name: "Carte de situation", purpose: "" }];
+    : [{ id: "", name: t("Carte de situation"), purpose: "" }];
 }
 export const placesOn = (journal: Journal, mapId: string) =>
   journal.ops.places.filter(
@@ -786,15 +803,13 @@ function mapChapter({ journal, base }: Ctx): Built {
   const blocks: Block[] = [];
   for (const [i, m] of maps.entries()) {
     const places = placesOn(journal, m.id).sort(
-      (a, b) =>
-        a.layer.localeCompare(b.layer, "fr") ||
-        a.label.localeCompare(b.label, "fr"),
+      (a, b) => byText(a.layer, b.layer) || byText(a.label, b.label),
     );
     blocks.push({
       kind: "map",
       mapId: m.id,
       title: m.name,
-      caption: [m.purpose, plural(places.length, "objet")]
+      caption: [m.purpose, tn(places.length, "{n} objet", "{n} objets")]
         .filter(Boolean)
         .join(" · "),
       objects: places.length,
@@ -802,9 +817,13 @@ function mapChapter({ journal, base }: Ctx): Built {
     blocks.push(
       table({
         id: `places-${i + 1}`,
-        title: maps.length > 1 ? `Objets · ${m.name}` : "Objets de la carte",
-        sheet: maps.length > 1 ? `Carte ${m.name}` : "Carte",
-        caption: plural(places.length, "objet"),
+        title:
+          maps.length > 1
+            ? t("Objets · {map}", { map: m.name })
+            : t("Objets de la carte"),
+        sheet:
+          maps.length > 1 ? t("Carte {title}", { title: m.name }) : t("Carte"),
+        caption: tn(places.length, "{n} objet", "{n} objets"),
         columns: cols(
           ["Désignation", 2.6],
           ["Type", 0.9],
@@ -815,8 +834,8 @@ function mapChapter({ journal, base }: Ctx): Built {
           ["Modifié", 1.3],
         ),
         rows: places.map((p) => [
-          p.label || "(sans nom)",
-          PLACE_KIND[p.kind],
+          p.label || t("(sans nom)"),
+          t(PLACE_KIND[p.kind]),
           symbolName(p.symbol, base.ops.symbols),
           p.layer,
           position(p),
@@ -828,17 +847,15 @@ function mapChapter({ journal, base }: Ctx): Built {
   }
   return {
     kpis: [
-      {
-        label: maps.length > 1 ? "cartes" : "carte",
-        value: String(maps.length),
-      },
-      { label: "objets", value: String(journal.ops.places.length) },
+      count(maps.length, "carte", "cartes"),
+      count(journal.ops.places.length, "objet", "objets"),
       ...(journal.ops.symbols.length
         ? [
-            {
-              label: "signes personnalisés",
-              value: String(journal.ops.symbols.length),
-            },
+            count(
+              journal.ops.symbols.length,
+              "signe personnalisé",
+              "signes personnalisés",
+            ),
           ]
         : []),
     ],
@@ -849,32 +866,32 @@ function mapChapter({ journal, base }: Ctx): Built {
 function resourcesChapter({ journal }: Ctx): Built {
   const order = (s: string) => RESOURCE_STATUSES.indexOf(s as never);
   const list = [...journal.ops.resources].sort(
-    (a, b) =>
-      order(a.status) - order(b.status) || a.name.localeCompare(b.name, "fr"),
+    (a, b) => order(a.status) - order(b.status) || byText(a.name, b.name),
   );
-  const count = (s: string) => list.filter((r) => r.status === s).length;
+  const inState = (s: string) => list.filter((r) => r.status === s).length;
   return {
     kpis: [
-      { label: "moyens", value: String(list.length) },
-      { label: "engagés", value: String(count("Engagé")), tone: "ok" },
-      { label: "en route", value: String(count("En route")) },
-      { label: "disponibles", value: String(count("Disponible")) },
-      ...(count("Hors service")
+      count(list.length, "moyen", "moyens"),
+      count(inState("Engagé"), "engagé", "engagés", "ok"),
+      count(inState("En route"), "en route", "en route"),
+      count(inState("Disponible"), "disponible", "disponibles"),
+      ...(inState("Hors service")
         ? [
-            {
-              label: "hors service",
-              value: String(count("Hors service")),
-              tone: "crit" as const,
-            },
+            count(
+              inState("Hors service"),
+              "hors service",
+              "hors service",
+              "crit",
+            ),
           ]
         : []),
     ],
     blocks: [
       table({
         id: "resources",
-        title: "Moyens",
-        sheet: "Moyens",
-        caption: plural(list.length, "moyen"),
+        title: t("Moyens"),
+        sheet: t("Moyens"),
+        caption: tn(list.length, "{n} moyen", "{n} moyens"),
         columns: cols(
           ["Désignation", 2],
           ["Type", 1.2],
@@ -894,7 +911,7 @@ function resourcesChapter({ journal }: Ctx): Built {
           r.organization,
           r.callsign,
           String(r.count),
-          r.status,
+          enumLabel(r.status),
           r.location,
           r.mission,
           when(r.eta),
@@ -916,7 +933,7 @@ function resourcesChapter({ journal }: Ctx): Built {
               r.callsign,
             ),
             String(r.count),
-            r.status,
+            enumLabel(r.status),
             lines(r.location, r.mission),
             when(r.eta),
           ]),
@@ -929,7 +946,7 @@ function resourcesChapter({ journal }: Ctx): Built {
 function teamChapter({ journal, base }: Ctx): Built {
   const cells = [...journal.ops.cells].sort((a, b) => a.order - b.order);
   const members = [...journal.ops.members].sort((a, b) =>
-    a.name.localeCompare(b.name, "fr"),
+    byText(a.name, b.name),
   );
   const cellName = (id: string) =>
     base.ops.cells.find((c) => c.id === id)?.name ?? "";
@@ -938,11 +955,11 @@ function teamChapter({ journal, base }: Ctx): Built {
     blocks.push(
       table({
         id: "cells",
-        title: "Postes et cellules",
-        sheet: "Postes",
-        caption: plural(cells.length, "poste"),
+        title: t("Postes et cellules"),
+        sheet: t("Postes"),
+        caption: tn(cells.length, "{n} poste", "{n} postes"),
         columns: cols(
-          ["Poste", 2],
+          ["Poste (cellule)", 2],
           ["Type", 1.4],
           ["Lieu", 2],
           ["Téléphone", 1.4],
@@ -965,14 +982,14 @@ function teamChapter({ journal, base }: Ctx): Built {
     blocks.push(
       table({
         id: "members",
-        title: "Personnes",
-        sheet: "Équipe",
-        caption: plural(members.length, "personne"),
+        title: t("Personnes"),
+        sheet: t("Équipe"),
+        caption: tn(members.length, "{n} personne", "{n} personnes"),
         columns: cols(
           ["Nom", 1.8],
           ["Grade", 0.8],
           ["Fonction", 1.8],
-          ["Poste", 1.4],
+          ["Poste (cellule)", 1.4],
           ["Nom d’appel", 1.1],
           ["Téléphone", 1.3],
           ["E-mail", 1.8],
@@ -989,7 +1006,7 @@ function teamChapter({ journal, base }: Ctx): Built {
           m.callsign,
           m.phone,
           m.email,
-          m.status,
+          enumLabel(m.status),
           when(m.from),
           when(m.to),
           m.notes,
@@ -1005,26 +1022,30 @@ function teamChapter({ journal, base }: Ctx): Built {
             lines([m.grade, m.name].filter(Boolean).join(" "), m.callsign),
             lines(m.role, cellName(m.cellId)),
             lines(m.phone, m.email),
-            lines(m.status, m.to && `jusqu’à ${when(m.to)}`),
+            lines(
+              enumLabel(m.status),
+              m.to && t("jusqu’à {date}", { date: when(m.to) }),
+            ),
           ]),
         },
       }),
     );
   return {
     kpis: [
-      { label: "postes", value: String(cells.length) },
-      { label: "personnes", value: String(members.length) },
-      {
-        label: "présentes",
-        value: String(members.filter((m) => m.status === "Présent").length),
-        tone: "ok",
-      },
+      count(cells.length, "poste", "postes"),
+      count(members.length, "personne", "personnes"),
+      count(
+        members.filter((m) => m.status === "Présent").length,
+        "présente",
+        "présentes",
+        "ok",
+      ),
     ],
     blocks,
   };
 }
 
-const RADIO_SHEETS: Record<string, string> = {
+const RADIO_SHEETS: Record<string, Key> = {
   plan: "Radio plan",
   groups: "Radio groupes",
   terminals: "Radio terminaux",
@@ -1034,26 +1055,28 @@ const RADIO_SHEETS: Record<string, string> = {
 function radioChapter({ journal }: Ctx): Built {
   const s = radioSummary(journal.radio);
   const tables = radioTables(journal.radio).filter(
-    (t) => t.body.length || t.id === "plan",
+    (r) => r.body.length || r.id === "plan",
   );
   return {
     kpis: [
-      { label: "noms d’appel", value: String(journal.radio.stations.length) },
-      { label: "groupes", value: String(journal.radio.talkgroups.length) },
-      { label: "terminaux remis", value: `${s.issued} / ${s.terminals}` },
-      { label: "contrôles", value: String(journal.radio.checks.length) },
+      count(journal.radio.stations.length, "nom d’appel", "noms d’appel"),
+      count(journal.radio.talkgroups.length, "groupe", "groupes"),
+      { label: t("terminaux remis"), value: `${s.issued} / ${s.terminals}` },
+      count(journal.radio.checks.length, "contrôle", "contrôles"),
     ],
-    blocks: tables.map((t) =>
+    blocks: tables.map((r) =>
       table({
-        id: `radio-${t.id}`,
-        title: t.title,
-        sheet: RADIO_SHEETS[t.id] ?? `Radio ${t.id}`,
-        caption: t.caption,
-        columns: t.head.map((label, i) => ({
+        id: `radio-${r.id}`,
+        title: r.title,
+        sheet: Object.hasOwn(RADIO_SHEETS, r.id)
+          ? t(RADIO_SHEETS[r.id])
+          : t("Radio {id}", { id: r.id }),
+        caption: r.caption,
+        columns: r.head.map((label, i) => ({
           label,
-          weight: t.widths?.[i] ?? 1,
+          weight: r.widths?.[i] ?? 1,
         })),
-        rows: t.body,
+        rows: r.body,
       }),
     ),
   };
@@ -1063,23 +1086,20 @@ function contactsChapter({ journal }: Ctx): Built {
   const list = [...journal.ops.contacts].sort(
     (a, b) =>
       Number(b.favorite) - Number(a.favorite) ||
-      a.category.localeCompare(b.category, "fr") ||
-      a.name.localeCompare(b.name, "fr"),
+      byText(a.category, b.category) ||
+      byText(a.name, b.name),
   );
   return {
     kpis: [
-      { label: "contacts", value: String(list.length) },
-      {
-        label: "favoris",
-        value: String(list.filter((c) => c.favorite).length),
-      },
+      count(list.length, "contact", "contacts"),
+      count(list.filter((c) => c.favorite).length, "favori", "favoris"),
     ],
     blocks: [
       table({
         id: "contacts",
-        title: "Annuaire",
-        sheet: "Contacts",
-        caption: plural(list.length, "contact"),
+        title: t("Annuaire"),
+        sheet: t("Contacts"),
+        caption: tn(list.length, "{n} contact", "{n} contacts"),
         columns: cols(
           ["Nom", 2],
           ["Organisation", 1.8],
@@ -1118,7 +1138,7 @@ function contactsChapter({ journal }: Ctx): Built {
               c.category,
             ),
             lines(c.phone, c.phone2),
-            lines(c.email, c.radio && `Radio ${c.radio}`),
+            lines(c.email, c.radio && t("Radio {id}", { id: c.radio })),
             lines(c.address, c.notes),
           ]),
         },
@@ -1141,20 +1161,32 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
     const c = d.current;
     blocks.push({
       kind: "text",
-      title: `Prévision pour ${forecast.place}`,
+      title: t("Prévision pour {place}", { place: forecast.place }),
       body: [
-        `${weather(c.code) || "Conditions inconnues"}, ${num(c.temperature, " °C", 1)}`,
+        `${weather(c.code) || t("Conditions inconnues")}, ${num(c.temperature, " °C", 1)}`,
         c.wind !== null
-          ? `Vent ${num(c.wind, " km/h")}${c.gusts !== null ? `, rafales ${num(c.gusts, " km/h")}` : ""}`
+          ? c.gusts !== null
+            ? t("Vent {wind}, rafales {gusts}", {
+                wind: num(c.wind, " km/h"),
+                gusts: num(c.gusts, " km/h"),
+              })
+            : t("Vent {wind}", { wind: num(c.wind, " km/h") })
           : "",
         c.precipitation !== null
-          ? `Précipitations ${num(c.precipitation, " mm", 1)}`
+          ? t("Précipitations {value}", {
+              value: num(c.precipitation, " mm", 1),
+            })
           : "",
-        c.humidity !== null ? `Humidité ${num(c.humidity, " %")}` : "",
+        c.humidity !== null
+          ? t("Humidité {value}", { value: num(c.humidity, " %") })
+          : "",
       ]
         .filter(Boolean)
         .join(" · "),
-      meta: `Reçue le ${when(forecast.fetchedAt)} · modèle ${d.model || "—"} · Open-Meteo`,
+      meta: t("Reçue le {date} · modèle {model} · Open-Meteo", {
+        date: when(forecast.fetchedAt),
+        model: d.model || "—",
+      }),
     });
     const hours = d.hours
       .filter((h) => h.at >= shownAt - 3600_000)
@@ -1163,9 +1195,11 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
       blocks.push(
         table({
           id: "forecast-hours",
-          title: "Prochaines heures",
-          sheet: "Météo heures",
-          caption: `Prévision reçue le ${when(forecast.fetchedAt)}`,
+          title: t("Prochaines heures"),
+          sheet: t("Météo heures"),
+          caption: t("Prévision reçue le {date}", {
+            date: when(forecast.fetchedAt),
+          }),
           columns: cols(
             ["Heure", 1.2],
             ["Temps", 2.2],
@@ -1190,9 +1224,9 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
       blocks.push(
         table({
           id: "forecast-days",
-          title: "Prochains jours",
-          sheet: "Météo jours",
-          caption: plural(d.days.length, "jour"),
+          title: t("Prochains jours"),
+          sheet: t("Météo jours"),
+          caption: tn(d.days.length, "{n} jour", "{n} jours"),
           columns: cols(
             ["Jour", 1.2],
             ["Temps", 2.2],
@@ -1221,13 +1255,14 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
       : a.to && Date.parse(a.to) < shownAt
         ? "Terminée"
         : "En vigueur";
+  const stateLabel = (a: (typeof alerts)[number]) => t(state(a));
   if (alerts.length)
     blocks.push(
       table({
         id: "alerts",
-        title: "Alertes météo",
-        sheet: "Alertes",
-        caption: plural(alerts.length, "alerte"),
+        title: t("Alertes météo"),
+        sheet: t("Alertes"),
+        caption: tn(alerts.length, "{n} alerte", "{n} alertes"),
         columns: cols(
           ["Danger", 1.6],
           ["Degré", 2.2],
@@ -1240,11 +1275,11 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
         ),
         rows: alerts.map((a) => [
           a.hazard,
-          ALERT_LABELS[a.level],
+          enumLabel(ALERT_LABELS[a.level]),
           a.region,
           when(a.from),
           when(a.to),
-          state(a),
+          stateLabel(a),
           a.source,
           a.notes,
         ]),
@@ -1257,9 +1292,9 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
     blocks.push(
       table({
         id: "observations",
-        title: "Observations sur place",
-        sheet: "Observations",
-        caption: plural(observations.length, "observation"),
+        title: t("Observations sur place"),
+        sheet: t("Observations"),
+        caption: tn(observations.length, "{n} observation", "{n} observations"),
         columns: cols(
           ["Heure", 1.3],
           ["Lieu", 1.6],
@@ -1284,16 +1319,18 @@ function weatherChapter({ journal, shownAt }: Ctx): Built {
     );
   return {
     kpis: [
-      {
-        label: "alertes en vigueur",
-        value: String(alerts.filter((a) => state(a) === "En vigueur").length),
-        tone: "warn",
-      },
-      { label: "observations", value: String(observations.length) },
-      {
-        label: "prévisions reçues",
-        value: String(journal.ops.forecasts.length),
-      },
+      count(
+        alerts.filter((a) => state(a) === "En vigueur").length,
+        "alerte en vigueur",
+        "alertes en vigueur",
+        "warn",
+      ),
+      count(observations.length, "observation", "observations"),
+      count(
+        journal.ops.forecasts.length,
+        "prévision reçue",
+        "prévisions reçues",
+      ),
     ],
     blocks,
   };
@@ -1313,18 +1350,19 @@ function agendaChapter({ journal, shownAt }: Ctx): Built {
   };
   return {
     kpis: [
-      { label: "rendez-vous", value: String(list.length) },
-      {
-        label: "à venir",
-        value: String(list.filter((a) => state(a) === "À venir").length),
-      },
+      count(list.length, "rendez-vous (un)", "rendez-vous"),
+      count(
+        list.filter((a) => state(a) === "À venir").length,
+        "à venir",
+        "à venir",
+      ),
     ],
     blocks: [
       table({
         id: "agenda",
-        title: "Rythme de conduite",
-        sheet: "Agenda",
-        caption: plural(list.length, "rendez-vous", "rendez-vous"),
+        title: t("Rythme de conduite"),
+        sheet: t("Agenda"),
+        caption: tn(list.length, "{n} rendez-vous (un)", "{n} rendez-vous"),
         columns: cols(
           ["Début", 1.3],
           ["Durée", 0.8],
@@ -1342,7 +1380,7 @@ function agendaChapter({ journal, shownAt }: Ctx): Built {
           a.kind,
           a.location,
           a.participants,
-          state(a),
+          t(state(a)),
           a.notes,
         ]),
       }),
@@ -1356,19 +1394,21 @@ function linksChapter({ journal, base }: Ctx): Built {
     const item = known.get(ref);
     if (item) return `${KIND_INFO[item.kind].label} · ${item.title}`;
     const { kind } = parseRef(ref);
-    return `${KIND_INFO[kind]?.label ?? "Élément"} (absent à cette heure)`;
+    return t("{kind} (absent à cette heure)", {
+      kind: KIND_INFO[kind]?.label ?? t("Élément"),
+    });
   };
   const list = [...journal.ops.links].sort(
     (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
   );
   return {
-    kpis: [{ label: "liens", value: String(list.length) }],
+    kpis: [count(list.length, "lien", "liens")],
     blocks: [
       table({
         id: "links",
-        title: "Liens entre les éléments",
-        sheet: "Liens",
-        caption: "Liens créés par les opérateurs",
+        title: t("Liens entre les éléments"),
+        sheet: t("Liens"),
+        caption: t("Liens créés par les opérateurs"),
         columns: cols(
           ["Élément", 3],
           ["Lien", 1.6],
@@ -1388,22 +1428,29 @@ function linksChapter({ journal, base }: Ctx): Built {
   };
 }
 
-const ACTIONS: Record<AuditItem["action"], string> = {
+const ACTIONS: Record<AuditItem["action"], Key> = {
   create: "Création",
   update: "Modification",
   remove: "Suppression",
 };
+/** Mode of a presentation (fixed values written by the presentation mode). */
+const presentationMode = (mode: string) =>
+  mode === "Présentation" || mode === "Affichage mural" ? t(mode) : mode;
 function traceChapter({ journal }: Ctx): Built {
   // The trail of what this export covers (the history is already limited to
   // the parts and items chosen), entries included, up to the time shown.
   const trail = auditTrail(journal).reverse();
-  const people = new Set(trail.map((t) => t.by).filter(Boolean));
+  const people = new Set(trail.map((x) => x.by).filter(Boolean));
   const blocks: Block[] = [
     table({
       id: "trail",
-      title: "Historique des changements",
-      sheet: "Traçabilité",
-      caption: `${plural(trail.length, "changement")} · ordre chronologique`,
+      title: t("Historique des changements"),
+      sheet: t("Traçabilité"),
+      caption: tn(
+        trail.length,
+        "{n} changement · ordre chronologique",
+        "{n} changements · ordre chronologique",
+      ),
       columns: cols(
         ["Heure", 1.3],
         ["Qui", 1.4],
@@ -1412,15 +1459,15 @@ function traceChapter({ journal }: Ctx): Built {
         ["Désignation", 2.4],
         ["Détail", 4],
       ),
-      rows: trail.map((t) => [
-        when(t.at),
-        t.by,
-        ACTIONS[t.action],
-        scopeInfo(t.scope).label,
-        t.title,
+      rows: trail.map((x) => [
+        when(x.at),
+        x.by,
+        t(ACTIONS[x.action]),
+        scopeInfo(x.scope).label,
+        x.title,
         lines(
-          t.note,
-          t.action === "update" && changeDetail(t.previous, t.state),
+          x.note,
+          x.action === "update" && changeDetail(x.previous, x.state),
         ),
       ]),
     }),
@@ -1432,9 +1479,9 @@ function traceChapter({ journal }: Ctx): Built {
     blocks.push(
       table({
         id: "exports",
-        title: "Registre des exports",
-        sheet: "Exports",
-        caption: plural(exports.length, "fichier"),
+        title: t("Registre des exports"),
+        sheet: t("Exports"),
+        caption: tn(exports.length, "{n} fichier", "{n} fichiers"),
         columns: cols(
           ["Heure", 1.3],
           ["Par", 1.3],
@@ -1462,9 +1509,9 @@ function traceChapter({ journal }: Ctx): Built {
     blocks.push(
       table({
         id: "presentations",
-        title: "Présentations données",
-        sheet: "Présentations",
-        caption: plural(talks.length, "présentation"),
+        title: t("Présentations données"),
+        sheet: t("Présentations"),
+        caption: tn(talks.length, "{n} présentation", "{n} présentations"),
         columns: cols(
           ["Début", 1.3],
           ["Fin", 1.3],
@@ -1479,17 +1526,17 @@ function traceChapter({ journal }: Ctx): Built {
           when(p.endedAt),
           p.presenter,
           p.audience,
-          p.viewAt ? when(p.viewAt) : "état en direct",
+          p.viewAt ? when(p.viewAt) : t("état en direct"),
           String(p.slides),
-          p.mode,
+          presentationMode(p.mode),
         ]),
       }),
     );
   return {
     kpis: [
-      { label: "changements", value: String(trail.length) },
-      { label: "personnes", value: String(people.size) },
-      { label: "exports", value: String(exports.length) },
+      count(trail.length, "changement", "changements"),
+      count(people.size, "personne", "personnes"),
+      count(exports.length, "export", "exports"),
     ],
     blocks,
   };
@@ -1523,7 +1570,7 @@ export async function buildDossier(
     scope.sections.includes(id),
   );
   const total = sections.length + 1;
-  options.onProgress?.(0, total, "Reconstitution de la version choisie");
+  options.onProgress?.(0, total, t("Reconstitution de la version choisie"));
   await pause();
   const { base, journal } = resolveScope(live, scope);
   const shownAt = scope.viewAt ?? Date.now();
@@ -1533,13 +1580,7 @@ export async function buildDossier(
     const title = SECTIONS.find((s) => s.id === id)!.label;
     options.onProgress?.(i + 1, total, title);
     await pause();
-    const built = BUILDERS[id](ctx);
-    const kpis = built.kpis.map((k) =>
-      /^\d+$/.test(k.value) && Number(k.value) <= 1
-        ? { ...k, label: singular(k.label) }
-        : k,
-    );
-    const blocks = built.blocks;
+    const { kpis, blocks } = BUILDERS[id](ctx);
     chapters.push({
       id,
       number: i + 1,
@@ -1562,8 +1603,10 @@ export async function buildDossier(
       closedAt: base.closedAt,
       shown:
         scope.viewAt === null
-          ? "État actuel"
-          : `Version du ${dateTime(new Date(scope.viewAt).toISOString())}`,
+          ? t("État actuel")
+          : t("Version du {date}", {
+              date: dateTime(new Date(scope.viewAt).toISOString()),
+            }),
       viewAt: scope.viewAt === null ? "" : new Date(scope.viewAt).toISOString(),
       snapshot: scope.snapshot ?? "",
       scope: describeScope(scope),
@@ -1580,20 +1623,25 @@ export async function buildDossier(
 /** Key facts of the cover, as label / value pairs. */
 export function coverFacts(cover: Cover): [string, string][] {
   return [
-    ["Organisation", cover.organization],
-    ["Lieu", cover.location],
-    ["Référence", cover.reference],
-    ["Mode", cover.mode],
-    ["Classification", cover.classification],
-    ["Journal ouvert le", when(cover.createdAt)],
-    ["Journal clôturé le", when(cover.closedAt)],
+    [t("Organisation"), cover.organization],
+    [t("Lieu"), cover.location],
+    [t("Référence"), cover.reference],
+    [t("Mode"), enumLabel(cover.mode)],
+    [t("Classification"), enumLabel(cover.classification)],
+    [t("Journal ouvert le"), when(cover.createdAt)],
+    [t("Journal clôturé le"), when(cover.closedAt)],
     [
-      "Version présentée",
+      t("Version présentée"),
       cover.snapshot ? `${cover.shown} · « ${cover.snapshot} »` : cover.shown,
     ],
-    ["Contenu", cover.scope],
-    ["Établi par", cover.author],
-    ["Exporté le", `${dateTime(cover.exportedAt)} · heures Europe/Zurich`],
+    [t("Contenu"), cover.scope],
+    [t("Établi par"), cover.author],
+    [
+      t("Exporté le"),
+      t("{date} · heures Europe/Zurich", {
+        date: dateTime(cover.exportedAt),
+      }),
+    ],
   ].filter(([, v]) => v) as [string, string][];
 }
 
@@ -1654,8 +1702,8 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
     title: `${numberLabel(e)} ${clip(current(e).message.split("\n")[0], 90)}`,
     detail: [
       dateTime(current(e).happenedAt),
-      current(e).type,
-      current(e).status,
+      enumLabel(current(e).type),
+      enumLabel(current(e).status),
     ].join(" · "),
   });
   switch (id) {
@@ -1664,12 +1712,12 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
         ...o.facts.map((f) => ({
           id: f.id,
           title: f.label,
-          detail: `Renseignement · ${[f.value, f.unit].filter(Boolean).join(" ") || "—"}`,
+          detail: `${t("Renseignement")} · ${[f.value, f.unit].filter(Boolean).join(" ") || "—"}`,
         })),
         ...o.boards.map((b) => ({
           id: b.id,
           title: b.title,
-          detail: "Tableau de situation",
+          detail: t("Tableau de situation"),
         })),
       ];
     case "journal":
@@ -1679,14 +1727,18 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
     case "messages":
       return o.messages.map((m) => ({
         id: m.id,
-        title: m.subject || clip(m.body, 80) || "(sans objet)",
+        title: m.subject || clip(m.body, 80) || t("(sans objet)"),
         detail: `${dateTime(m.receivedAt)} · ${m.from || "?"} → ${m.to || "?"}`,
       }));
     case "map":
       return o.places.map((p) => ({
         id: p.id,
-        title: p.label || "(sans nom)",
-        detail: [PLACE_KIND[p.kind], p.layer, symbolName(p.symbol, o.symbols)]
+        title: p.label || t("(sans nom)"),
+        detail: [
+          t(PLACE_KIND[p.kind]),
+          p.layer,
+          symbolName(p.symbol, o.symbols),
+        ]
           .filter(Boolean)
           .join(" · "),
       }));
@@ -1694,19 +1746,21 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
       return o.resources.map((r) => ({
         id: r.id,
         title: r.name,
-        detail: [r.kind, r.status, r.location].filter(Boolean).join(" · "),
+        detail: [r.kind, enumLabel(r.status), r.location]
+          .filter(Boolean)
+          .join(" · "),
       }));
     case "team":
       return [
         ...o.cells.map((c) => ({
           id: c.id,
           title: c.name,
-          detail: `Poste · ${c.kind || "—"}`,
+          detail: `${t("Poste (cellule)")} · ${c.kind || "—"}`,
         })),
         ...o.members.map((m) => ({
           id: m.id,
           title: m.name,
-          detail: [m.role, m.status].filter(Boolean).join(" · "),
+          detail: [m.role, enumLabel(m.status)].filter(Boolean).join(" · "),
         })),
       ];
     case "contacts":
@@ -1719,18 +1773,21 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
       return [
         ...o.alerts.map((a) => ({
           id: a.id,
-          title: `${a.hazard} · degré ${a.level}`,
-          detail: a.region || "Alerte",
+          title: t("{hazard} · degré {level}", {
+            hazard: a.hazard,
+            level: a.level,
+          }),
+          detail: a.region || t("Alerte"),
         })),
         ...o.observations.map((x) => ({
           id: x.id,
-          title: x.place || "Observation",
-          detail: `Observation · ${dateTime(x.at)}`,
+          title: x.place || t("Observation"),
+          detail: `${t("Observation")} · ${dateTime(x.at)}`,
         })),
         ...o.forecasts.map((f) => ({
           id: f.id,
-          title: `Prévision ${f.place}`,
-          detail: `Reçue le ${dateTime(f.fetchedAt)}`,
+          title: t("Prévision {place}", { place: f.place }),
+          detail: t("Reçue le {date}", { date: dateTime(f.fetchedAt) }),
         })),
       ];
     case "agenda":
@@ -1742,7 +1799,7 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
     case "links":
       return o.links.map((l) => ({
         id: l.id,
-        title: l.label || "Lien",
+        title: l.label || t("Lien"),
         detail: `${KIND_INFO[parseRef(l.a).kind]?.label ?? "?"} ↔ ${KIND_INFO[parseRef(l.b).kind]?.label ?? "?"}`,
       }));
     case "trace":
@@ -1750,12 +1807,12 @@ export function sectionItems(journal: Journal, id: SectionId): Pickable[] {
         ...o.exports.map((e) => ({
           id: e.id,
           title: e.name,
-          detail: `Export · ${dateTime(e.at)} · ${e.by}`,
+          detail: `${t("Export")} · ${dateTime(e.at)} · ${e.by}`,
         })),
         ...o.presentations.map((p) => ({
           id: p.id,
-          title: p.audience || "Présentation",
-          detail: `Présentation · ${dateTime(p.startedAt)}`,
+          title: p.audience || t("Présentation"),
+          detail: `${t("Présentation")} · ${dateTime(p.startedAt)}`,
         })),
       ];
     case "radio":

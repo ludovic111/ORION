@@ -7,6 +7,7 @@ import {
   scenarioOf,
 } from "../../shared/exercise";
 import { useDirector } from "./director";
+import { t } from "./i18n.ts";
 
 /** Checks for injects due, every few seconds. */
 const TICK = 5000;
@@ -48,8 +49,8 @@ export function ExerciseRunner() {
       const read = due.filter((i) => !send.includes(i));
       if (send.length) {
         const by = auto
-          ? "Direction d’exercice · fictive"
-          : `${a.author} · direction d’exercice`;
+          ? t("Direction d’exercice · fictive")
+          : t("{author} · direction d’exercice", { author: a.author });
         try {
           a.updateOps((ops) =>
             send.reduce(
@@ -63,10 +64,11 @@ export function ExerciseRunner() {
               ops,
             ),
           );
+          const titles = send.map((i) => i.title).join(" · ");
           a.toast(
             auto
-              ? `Message reçu : ${send.map((i) => i.title).join(" · ")}`
-              : `Inject envoyé : ${send.map((i) => i.title).join(" · ")}`,
+              ? t("Message reçu : {titles}", { titles })
+              : t("Inject envoyé : {titles}", { titles }),
           );
         } catch {
           // Refused (journal closed meanwhile): tried again at the next tick.
@@ -76,7 +78,10 @@ export function ExerciseRunner() {
       if (fresh.length) {
         fresh.forEach((i) => told.current.add(i.id));
         a.toast(
-          `Inject à lire maintenant : ${fresh.map((i) => i.title).join(" · ")} (Débriefing → Direction d’exercice)`,
+          t(
+            "Inject à lire maintenant : {titles} (Débriefing → Direction d’exercice)",
+            { titles: fresh.map((i) => i.title).join(" · ") },
+          ),
         );
       }
     };

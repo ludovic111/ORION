@@ -28,19 +28,25 @@ import { acknowledge } from "../../post/actions";
 import { openAssign, openDiffusion } from "../../post/bus";
 import { roleProfile, useIdentity } from "../../post/roles";
 import { usePost } from "../../post/store";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { useLang } from "../../i18n";
+import { t } from "./i18n.ts";
 import "../../post/conduct.css";
 
-const KIND_LABEL: Record<Task["kind"], string> = {
-  entry: "Journal",
-  assignment: "Attribué",
-  mission: "Mission d’ordre",
-  broadcast: "Diffusion",
-};
+// A function: read in the language of the post at each render.
+const kindLabel = (kind: Task["kind"]): string =>
+  kind === "entry"
+    ? t("Journal")
+    : kind === "assignment"
+      ? t("Attribué")
+      : kind === "mission"
+        ? t("Mission d’ordre")
+        : t("Diffusion");
 
 function dueText(task: Task, now: number) {
   if (task.due === null) return "—";
   const minutes = Math.round((task.due - now) / 60_000);
-  if (task.late) return `+${Math.max(1, -minutes)} min`;
+  if (task.late) return t("+{n} min", { n: Math.max(1, -minutes) });
   return time(new Date(task.due).toISOString());
 }
 
@@ -63,11 +69,17 @@ export function MyTasks() {
   } = useApp();
   const [post, setPost] = usePost();
   const me = useIdentity(journal, author);
-  const tasks = useMemo(() => myTasks(journal, me, now), [journal, me, now]);
+  const lang = useLang();
+  // Titles and details of the tasks hold words: recomputed on a change of
+  // language.
+  const tasks = useMemo(
+    () => myTasks(journal, me, now),
+    [journal, me, now, lang],
+  );
   const profile = roleProfile(post.role);
-  const late = tasks.filter((t) => t.late).length;
-  const toAck = tasks.filter((t) => t.kind === "broadcast").length;
-  const next = tasks.find((t) => !t.late && t.due !== null);
+  const late = tasks.filter((x) => x.late).length;
+  const toAck = tasks.filter((x) => x.kind === "broadcast").length;
+  const next = tasks.find((x) => !x.late && x.due !== null);
 
   function done(task: Task) {
     if (!canWrite()) return;
@@ -82,11 +94,11 @@ export function MyTasks() {
               entry.id,
               { ...current(entry), status: "Terminé" },
               author,
-              "Terminé (Mes tâches)",
+              t("Terminé (Mes tâches)"),
             ),
           )
         )
-          toast(`${numberLabel(entry)} : terminé.`);
+          toast(t("{entry} : terminé.", { entry: numberLabel(entry) }));
       } else if (task.kind === "assignment") {
         updateOps((ops) => {
           const a = ops.assignments.find((x) => x.id === task.id);
@@ -94,7 +106,7 @@ export function MyTasks() {
             ? upsert(ops, "assignments", { ...a, done: true }, author)
             : ops;
         });
-        toast("Tâche terminée.");
+        toast(t("Tâche terminée."));
       } else if (task.kind === "mission") {
         updateOps((ops) => {
           const o = ops.orders.find((x) => x.id === task.orderId);
@@ -111,7 +123,7 @@ export function MyTasks() {
             author,
           );
         });
-        toast("Mission terminée.");
+        toast(t("Mission terminée."));
       }
     } catch (err) {
       toast((err as Error).message);
@@ -132,11 +144,16 @@ export function MyTasks() {
               entry.id,
               { ...f, dueAt: snooze(f.dueAt, 15) },
               author,
-              "Échéance reportée de 15 min",
+              t("Échéance reportée de {n} min", { n: 15 }),
             ),
           )
         )
-          toast(`${numberLabel(entry)} : échéance reportée de 15 min.`);
+          toast(
+            t("{entry} : échéance reportée de {n} min.", {
+              entry: numberLabel(entry),
+              n: 15,
+            }),
+          );
       } else if (task.kind === "assignment") {
         updateOps((ops) => {
           const a = ops.assignments.find((x) => x.id === task.id);
@@ -149,7 +166,7 @@ export function MyTasks() {
               )
             : ops;
         });
-        toast("Échéance reportée de 15 min.");
+        toast(t("Échéance reportée de {n} min.", { n: 15 }));
       } else if (task.kind === "mission") {
         updateOps((ops) => {
           const o = ops.orders.find((x) => x.id === task.orderId);
@@ -166,7 +183,7 @@ export function MyTasks() {
             author,
           );
         });
-        toast("Échéance reportée de 15 min.");
+        toast(t("Échéance reportée de {n} min.", { n: 15 }));
       }
     } catch (err) {
       toast((err as Error).message);
@@ -179,7 +196,7 @@ export function MyTasks() {
       if (!entry) return;
       compose({
         type: "Quittance",
-        reference: `Suite de ${numberLabel(entry)}`,
+        reference: t("Suite de {entry}", { entry: numberLabel(entry) }),
         recipient: current(entry).source,
         source: me.role || author,
       });
@@ -198,7 +215,7 @@ export function MyTasks() {
     if (!b || !canWrite()) return;
     try {
       updateOps((ops) => acknowledge(ops, b, me, kind));
-      toast(`« ${kind} » envoyé.`);
+      toast(t("« {ack} » envoyé.", { ack: enumLabel(kind) }));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -208,17 +225,19 @@ export function MyTasks() {
   return (
     <>
       <ModuleHead
-        description="Tout ce qui est attribué à votre fonction ou à votre nom : entrées à suivre, missions des ordres, éléments attribués, diffusions à quittancer."
+        description={t(
+          "Tout ce qui est attribué à votre fonction ou à votre nom : entrées à suivre, missions des ordres, éléments attribués, diffusions à quittancer.",
+        )}
         actions={
           !readOnly && (
             <>
               <button onClick={() => openAssign()}>
                 <UserCheck size={15} />
-                Attribuer
+                {t("Attribuer")}
               </button>
               <button className="primary" onClick={() => openDiffusion()}>
                 <Megaphone size={15} />
-                Diffuser
+                {t("Diffuser")}
               </button>
             </>
           )
@@ -226,7 +245,7 @@ export function MyTasks() {
       />
       <div className="conduct-me">
         <ComboField
-          label="Ma fonction (ce poste)"
+          label={t("Ma fonction (ce poste)")}
           value={post.role}
           onChange={(role) => setPost({ role })}
           options={lists("postRoles")}
@@ -234,40 +253,47 @@ export function MyTasks() {
           hint={
             profile
               ? profile.hint
-              : "Choisissez la fonction de ce poste : elle décide de ce qui vous est attribué, des alertes et du module d’arrivée."
+              : t(
+                  "Choisissez la fonction de ce poste : elle décide de ce qui vous est attribué, des alertes et du module d’arrivée.",
+                )
           }
         />
         <ComboField
-          label="Ma cellule (facultatif)"
+          label={t("Ma cellule (facultatif)")}
           value={post.cell}
           onChange={(cell) => setPost({ cell })}
           options={cells}
-          hint={`Opérateur : ${author}. Une tâche attribuée à ce nom, à cette fonction ou à cette cellule apparaît ici.`}
+          hint={t(
+            "Opérateur : {author}. Une tâche attribuée à ce nom, à cette fonction ou à cette cellule apparaît ici.",
+            { author },
+          )}
         />
       </div>
 
       <Figures
-        label="Mes tâches en chiffres"
+        label={t("Mes tâches en chiffres")}
         items={[
-          { label: "À faire", value: tasks.length },
+          { label: t("À faire"), value: tasks.length },
           {
-            label: "En retard",
+            label: t("En retard"),
             value: late,
             tone: late ? "crit" : "",
           },
           {
-            label: "À quittancer",
+            label: t("À quittancer"),
             value: toAck,
             tone: toAck ? "warn" : "",
           },
           next
             ? {
                 id: "next",
-                label: `Prochaine échéance · ${next.title.slice(0, 40)}`,
+                label: t("Prochaine échéance · {title}", {
+                  title: next.title.slice(0, 40),
+                }),
                 value: time(new Date(next.due!).toISOString()),
                 onClick: () => open(next.ref as Ref),
               }
-            : { id: "next", label: "Aucune échéance à venir", value: "—" },
+            : { id: "next", label: t("Aucune échéance à venir"), value: "—" },
         ]}
       />
 
@@ -276,59 +302,67 @@ export function MyTasks() {
           icon={<ListChecks size={28} />}
           title={
             me.role || me.cell
-              ? "Rien d’attribué à ce poste pour l’instant"
-              : "Choisissez d’abord votre fonction"
+              ? t("Rien d’attribué à ce poste pour l’instant")
+              : t("Choisissez d’abord votre fonction")
           }
         >
-          Une entrée dont le responsable est « {me.role || "votre fonction"} »
-          ou « {author} », une mission d’ordre pour votre fonction, un élément
-          attribué ou une diffusion qui vous est destinée apparaît ici, la plus
-          en retard d’abord.
+          {t(
+            "Une entrée dont le responsable est « {role} » ou « {author} », une mission d’ordre pour votre fonction, un élément attribué ou une diffusion qui vous est destinée apparaît ici, la plus en retard d’abord.",
+            { role: me.role || t("votre fonction"), author },
+          )}
         </EmptyState>
       ) : (
-        <ul className="conduct-list" aria-label="Mes tâches">
-          {tasks.map((t) => (
-            <li key={t.key} className={`conduct-row${t.late ? " late" : ""}`}>
-              <span className="when" title={t.late ? "En retard" : "Échéance"}>
-                {dueText(t, now)}
+        <ul className="conduct-list" aria-label={t("Mes tâches")}>
+          {tasks.map((task) => (
+            <li
+              key={task.key}
+              className={`conduct-row${task.late ? " late" : ""}`}
+            >
+              <span
+                className="when"
+                title={task.late ? t("En retard") : t("Échéance")}
+              >
+                {dueText(task, now)}
               </span>
               <div className="what">
-                <button onClick={() => open(t.ref as Ref)}>
-                  <span className="conduct-kind">{KIND_LABEL[t.kind]}</span>
-                  {t.urgent && <span className="pill crit">Urgent</span>}{" "}
-                  {t.title}
+                <button onClick={() => open(task.ref as Ref)}>
+                  <span className="conduct-kind">{kindLabel(task.kind)}</span>
+                  {task.urgent && (
+                    <span className="pill crit">{enumLabel("Urgent")}</span>
+                  )}{" "}
+                  {task.title}
                 </button>
-                <small>{t.detail}</small>
+                <small>{task.detail}</small>
               </div>
               {!readOnly && (
                 <div className="row-actions">
-                  {t.kind === "broadcast" ? (
+                  {task.kind === "broadcast" ? (
                     <>
-                      <button className="small" onClick={() => ack(t, "Lu")}>
+                      <button className="small" onClick={() => ack(task, "Lu")}>
                         <Check size={14} />
-                        Lu
+                        {enumLabel("Lu")}
                       </button>
                       <button
                         className="small"
-                        onClick={() => ack(t, "Compris")}
+                        onClick={() => ack(task, "Compris")}
                       >
                         <CheckCheck size={14} />
-                        Compris
+                        {enumLabel("Compris")}
                       </button>
                     </>
                   ) : (
                     <>
-                      <button className="small" onClick={() => done(t)}>
+                      <button className="small" onClick={() => done(task)}>
                         <CheckCircle2 size={14} />
-                        Terminé
+                        {enumLabel("Terminé")}
                       </button>
-                      <button className="small" onClick={() => later(t)}>
+                      <button className="small" onClick={() => later(task)}>
                         <AlarmClockPlus size={14} />
-                        +15 min
+                        {t("+{n} min", { n: 15 })}
                       </button>
-                      <button className="small" onClick={() => note(t)}>
+                      <button className="small" onClick={() => note(task)}>
                         <NotebookPen size={14} />
-                        Noter au journal
+                        {t("Noter au journal")}
                       </button>
                     </>
                   )}
@@ -341,7 +375,7 @@ export function MyTasks() {
 
       {profile && (
         <section className="conduct-section">
-          <h2>Pour votre fonction</h2>
+          <h2>{t("Pour votre fonction")}</h2>
           <p className="muted">{profile.hint}</p>
           <div className="conduct-focus">
             {profile.focus.map((m) => {

@@ -2,6 +2,7 @@ import { dateTime, needsFollowUp, type Journal } from "../../shared/journal.ts";
 import { COLLECTIONS, emptyOps, type Collection } from "../../shared/ops.ts";
 import { emptyRadio } from "../../shared/radio.ts";
 import { journalAt } from "../../shared/history.ts";
+import { t, tn } from "./i18n.ts";
 
 // What an export or a presentation covers: parts of the operation, some
 // items of these parts, and the moment shown (now or any past time).
@@ -10,61 +11,129 @@ import { journalAt } from "../../shared/history.ts";
 export const SECTIONS = [
   {
     id: "situation",
-    label: "Situation",
-    detail: "Renseignements clés, tableaux de situation",
+    get label() {
+      return t("Situation");
+    },
+    get detail() {
+      return t("Renseignements clés, tableaux de situation");
+    },
   },
   {
     id: "journal",
-    label: "Journal d’intervention",
-    detail: "Toutes les entrées et leurs versions",
+    get label() {
+      return t("Journal d’intervention");
+    },
+    get detail() {
+      return t("Toutes les entrées et leurs versions");
+    },
   },
   {
     id: "missions",
-    label: "Missions et suivi",
-    detail: "Entrées à traiter ou en cours",
+    get label() {
+      return t("Missions et suivi");
+    },
+    get detail() {
+      return t("Entrées à traiter ou en cours");
+    },
   },
-  { id: "messages", label: "Messages", detail: "Réception et synthèse" },
-  { id: "map", label: "Cartes", detail: "Cartes, signes, zones, textes" },
+  {
+    id: "messages",
+    get label() {
+      return t("Messages");
+    },
+    get detail() {
+      return t("Réception et synthèse");
+    },
+  },
+  {
+    id: "map",
+    get label() {
+      return t("Cartes");
+    },
+    get detail() {
+      return t("Cartes, signes, zones, textes");
+    },
+  },
   {
     id: "resources",
-    label: "Moyens",
-    detail: "Véhicules, personnel, matériel",
+    get label() {
+      return t("Moyens");
+    },
+    get detail() {
+      return t("Véhicules, personnel, matériel");
+    },
   },
   {
     id: "team",
-    label: "Équipe et postes",
-    detail: "Postes, cellules, personnes",
+    get label() {
+      return t("Équipe et postes");
+    },
+    get detail() {
+      return t("Postes, cellules, personnes");
+    },
   },
   {
     id: "radio",
-    label: "Réseau radio",
-    detail: "Groupes, noms d’appel, terminaux",
+    get label() {
+      return t("Réseau radio");
+    },
+    get detail() {
+      return t("Groupes, noms d’appel, terminaux");
+    },
   },
-  { id: "contacts", label: "Contacts", detail: "Annuaire" },
+  {
+    id: "contacts",
+    get label() {
+      return t("Contacts");
+    },
+    get detail() {
+      return t("Annuaire");
+    },
+  },
   {
     id: "weather",
-    label: "Météo",
-    detail: "Prévisions reçues, observations, alertes",
+    get label() {
+      return t("Météo");
+    },
+    get detail() {
+      return t("Prévisions reçues, observations, alertes");
+    },
   },
   {
     id: "agenda",
-    label: "Rythme de conduite",
-    detail: "Rapports et rendez-vous",
+    get label() {
+      return t("Rythme de conduite");
+    },
+    get detail() {
+      return t("Rapports et rendez-vous");
+    },
   },
   {
     id: "links",
-    label: "Réseau des liens",
-    detail: "Liens entre les éléments",
+    get label() {
+      return t("Réseau des liens");
+    },
+    get detail() {
+      return t("Liens entre les éléments");
+    },
   },
   {
     id: "trace",
-    label: "Traçabilité",
-    detail: "Qui a fait quoi, quand : historique complet",
+    get label() {
+      return t("Traçabilité");
+    },
+    get detail() {
+      return t("Qui a fait quoi, quand : historique complet");
+    },
   },
   {
     id: "exercise",
-    label: "Exercice et débriefing",
-    detail: "Scénario, injects et réactions, échéances, RETEX",
+    get label() {
+      return t("Exercice et débriefing");
+    },
+    get detail() {
+      return t("Scénario, injects et réactions, échéances, RETEX");
+    },
   },
 ] as const;
 export type SectionId = (typeof SECTIONS)[number]["id"];
@@ -180,7 +249,7 @@ export function scopedJournal(journal: Journal, scope: ExportScope): Journal {
 export function describeScope(scope: ExportScope): string {
   const parts =
     scope.sections.length === SECTION_IDS.length
-      ? "Opération complète"
+      ? t("Opération complète")
       : scope.sections.map(sectionLabel).join(", ");
   const selected = Object.values(scope.items ?? {}).reduce(
     (n, list) => n + (list?.length ?? 0),
@@ -188,9 +257,9 @@ export function describeScope(scope: ExportScope): string {
   );
   const when =
     scope.viewAt === null
-      ? "état actuel"
-      : `${scope.snapshot ? `« ${scope.snapshot} » · ` : ""}version du ${dateTime(new Date(scope.viewAt).toISOString())}`;
-  return `${parts}${selected ? ` (${selected} élément${selected > 1 ? "s" : ""} choisi${selected > 1 ? "s" : ""})` : ""} · ${when}`;
+      ? t("état actuel")
+      : `${scope.snapshot ? `« ${scope.snapshot} » · ` : ""}${t("version du {date}", { date: dateTime(new Date(scope.viewAt).toISOString()) })}`;
+  return `${parts}${selected ? ` (${tn(selected, "{n} élément choisi", "{n} éléments choisis")})` : ""} · ${when}`;
 }
 
 /**

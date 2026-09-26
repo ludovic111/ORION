@@ -11,8 +11,8 @@ import {
 import {
   MEMBER_STATUSES,
   RESOURCE_STATUSES,
-  SWISS_EMERGENCY,
   emptyMessage,
+  swissEmergency,
   upsert,
   type Collection,
   type Contact,
@@ -37,6 +37,7 @@ import {
 } from "../../shared/radio.ts";
 
 import { withConductDemo } from "./demo-conduct.ts";
+import { t } from "./i18n-demo.ts";
 
 // Fictitious numbering: real talkgroups and RFSI come from the cantonal fleet plan.
 function demoRadio(at: (minutes: number) => string): Radio {
@@ -55,15 +56,15 @@ function demoRadio(at: (minutes: number) => string): Radio {
     notes,
   });
   const talkgroups = [
-    group("G101", "PCi Conduite", "Groupe", "Conduite"),
-    group("G102", "PCi Engagement Arve", "Groupe", "Engagement"),
-    group("G103", "PCi Logistique", "Groupe", "Logistique"),
+    group("G101", t("PCi Conduite"), "Groupe", "Conduite"),
+    group("G102", t("PCi Engagement Arve"), "Groupe", "Engagement"),
+    group("G103", t("PCi Logistique"), "Groupe", "Logistique"),
     group(
       "D481",
-      "Direct secteur Acacias",
+      t("Direct secteur Acacias"),
       "Direct",
       "Engagement",
-      "Si couverture insuffisante sous les ponts.",
+      t("Si couverture insuffisante sous les ponts."),
     ),
   ];
   const [cdt, eng, log, direct] = talkgroups.map((g) => g.id);
@@ -83,6 +84,18 @@ function demoRadio(at: (minutes: number) => string): Radio {
     fallback,
     notes,
   });
+  const pcCarouge = t("PC Carouge");
+  const command = t("Conduite (unité)");
+  const chiefCall = t("Chef section appui");
+  const chief = t("Chef de section");
+  const support = t("Section appui");
+  const alpha = t("Patrouille Alpha");
+  const bravo = t("Équipe Bravo");
+  const groupChief = t("Chef de groupe");
+  const logistics = t("Logistique");
+  const keeper = t("Préposé au matériel");
+  const operatorA = t("Opérateur A · fictif");
+  const operatorB = t("Opérateur B · fictif");
   let radio: Radio = {
     ...terminalSeries(emptyRadio(), "R-", 1, 8, {
       kind: "Portatif",
@@ -91,89 +104,70 @@ function demoRadio(at: (minutes: number) => string): Radio {
     talkgroups,
     stations: [
       station(
-        "PC Carouge",
-        "Poste de commandement",
-        "Conduite",
+        pcCarouge,
+        t("Poste de commandement"),
+        command,
         cdt,
         direct,
-        "Station de transit",
+        t("Station de transit"),
       ),
       station(
-        "Direction exercice",
-        "Direction de l’exercice",
-        "Conduite",
+        t("Direction exercice"),
+        t("Direction de l’exercice"),
+        command,
         cdt,
         "",
       ),
-      station(
-        "Chef section appui",
-        "Chef de section",
-        "Section appui",
-        eng,
-        direct,
-      ),
-      station(
-        "Patrouille Alpha",
-        "Reconnaissance",
-        "Section appui",
-        eng,
-        direct,
-      ),
-      station("Équipe Bravo", "Chef de groupe", "Section appui", eng, direct),
-      station("Logistique", "Préposé au matériel", "Logistique", log, cdt),
+      station(chiefCall, chief, support, eng, direct),
+      station(alpha, t("Reconnaissance"), support, eng, direct),
+      station(bravo, groupChief, support, eng, direct),
+      station(logistics, keeper, logistics, log, cdt),
     ],
   };
-  radio.terminals = radio.terminals.map((t, i) => ({
-    ...t,
+  radio.terminals = radio.terminals.map((terminal, i) => ({
+    ...terminal,
     rfsi: `900 00 ${String(1001 + i)}`,
-    serial: `FICTIF-${String(i + 1).padStart(4, "0")}`,
+    serial: `${t("FICTIF")}-${String(i + 1).padStart(4, "0")}`,
     condition: i === 7 ? "Défectueux" : "Opérationnel",
-    notes: i === 7 ? "Écran fissuré. Retourné à l’arsenal." : "",
+    notes: i === 7 ? t("Écran fissuré. Retourné à l’arsenal.") : "",
   }));
   const hand = [
     [
       "R-01",
-      "Sgt Fictif A",
-      "PC Carouge",
-      "Poste de commandement",
-      "Conduite",
+      `${t("Sgt")} Fictif A`,
+      pcCarouge,
+      t("Poste de commandement"),
+      command,
       "Microtel, Chargeur",
     ],
     [
       "R-02",
-      "Lt Fictif B",
-      "Chef section appui",
-      "Chef de section",
-      "Section appui",
+      `${t("Lt")} Fictif B`,
+      chiefCall,
+      chief,
+      support,
       "Batterie de rechange, Microtel",
     ],
     [
       "R-03",
-      "Pionnier Fictif C",
-      "Patrouille Alpha",
-      "Reconnaissance",
-      "Section appui",
+      `${t("Pionnier")} Fictif C`,
+      alpha,
+      t("Reconnaissance"),
+      support,
       "Batterie de rechange",
     ],
     [
       "R-04",
-      "Cpl Fictif D",
-      "Équipe Bravo",
-      "Chef de groupe",
-      "Section appui",
+      `${t("Cpl")} Fictif D`,
+      bravo,
+      groupChief,
+      support,
       "Batterie de rechange, Housse",
     ],
-    [
-      "R-05",
-      "Préposé Fictif E",
-      "Logistique",
-      "Préposé au matériel",
-      "Logistique",
-      "",
-    ],
+    ["R-05", `${t("Préposé")} Fictif E`, logistics, keeper, logistics, ""],
   ];
   hand.forEach(([label, holder, callsign, role, unit, accessories], i) => {
-    const terminal = radio.terminals.find((t) => t.label === label)!;
+    const terminal = radio.terminals.find((x) => x.label === label)!;
     radio = issueTerminal(radio, terminal.id, {
       holder,
       callsign,
@@ -182,18 +176,18 @@ function demoRadio(at: (minutes: number) => string): Radio {
       accessories,
       battery: "Pleine",
       issuedAt: at(-20 + i * 2),
-      issuedBy: "Opérateur A · fictif",
+      issuedBy: operatorA,
       notes: "",
     });
   });
-  const r05 = radio.terminals.find((t) => t.label === "R-05")!;
+  const r05 = radio.terminals.find((x) => x.label === "R-05")!;
   radio = returnTerminal(
     radio,
     r05.id,
     at(40),
-    "Opérateur B · fictif",
+    operatorB,
     "À recharger",
-    "Retour complet.",
+    t("Retour complet."),
   );
   const check = (
     minutes: number,
@@ -204,30 +198,41 @@ function demoRadio(at: (minutes: number) => string): Radio {
   ) => ({
     id: crypto.randomUUID(),
     at: at(minutes),
-    by: "PC Carouge",
+    by: pcCarouge,
     callsign,
     talkgroupId,
     result,
     notes,
   });
   radio.checks = [
-    check(-5, "Chef section appui", eng, "3"),
-    check(-4, "Patrouille Alpha", eng, "3"),
+    check(-5, chiefCall, eng, "3"),
+    check(-4, alpha, eng, "3"),
     check(
       -3,
-      "Équipe Bravo",
+      bravo,
       eng,
       "2",
-      "Passerelle de la Fontenette : réception faible.",
+      t("Passerelle de la Fontenette : réception faible."),
     ),
-    check(-2, "Logistique", log, "3"),
-    check(30, "Équipe Bravo", direct, "3", "Passage en mode direct D481."),
+    check(-2, logistics, log, "3"),
+    check(30, bravo, direct, "3", t("Passage en mode direct D481.")),
   ];
   return radio;
 }
 // Every name, number and position below is fictitious.
 function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
-  const author = "Opérateur A · fictif";
+  const author = t("Opérateur A · fictif");
+  const pcCarouge = t("PC Carouge");
+  const pcFrontName = t("PC front");
+  const bravoName = t("Équipe Bravo");
+  const alphaName = t("Patrouille Alpha");
+  const logisticsName = t("Logistique");
+  const civil = t("Protection civile");
+  const staff = t("Personnel");
+  const vehicle = t("Véhicule");
+  const material = t("Matériel");
+  const sites = t("Emplacements");
+  const effects = t("Effets");
   const entry = (i: number) => ref("entry", journal.entries[i].id);
   const id = () => crypto.randomUUID();
   let ops = journal.ops;
@@ -263,35 +268,35 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       order,
     });
   const front = cell(
-    "PC front",
-    "PC front",
+    pcFrontName,
+    pcFrontName,
     "#ff72c8",
     "Quai Charles-Page",
-    "PC front",
+    pcFrontName,
     0,
   );
   const back = cell(
-    "PC arrière",
-    "PC arrière",
+    t("PC arrière"),
+    t("PC arrière"),
     "#8b7bff",
-    "PC Carouge",
-    "PC Carouge",
+    pcCarouge,
+    pcCarouge,
     1,
   );
   const situation = cell(
-    "Cellule situation",
-    "Cellule",
+    t("Cellule situation"),
+    t("Cellule"),
     "#3fdcff",
-    "PC Carouge",
+    pcCarouge,
     "",
     2,
   );
   const logistics = cell(
-    "Cellule logistique",
-    "Cellule",
+    t("Cellule logistique"),
+    t("Cellule"),
     "#ffb35c",
-    "PC Carouge",
-    "Logistique",
+    pcCarouge,
+    logisticsName,
     3,
   );
   const member = (
@@ -316,22 +321,28 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       to: at(660),
       notes: "",
     });
-  member("Cap", "Fictif Arnaud", "Chef d’intervention", back, "PC Carouge");
-  member("Plt", "Fictive Bernasconi", "Chef AIC", back);
-  member("Sgt", "Fictif A", "Opérateur journal", situation);
-  member("Sgt", "Fictive Delacrétaz", "Synthèse des messages", situation);
-  member("Cpl", "Fictif Egger", "Cartographe", situation, "", "En pause");
-  member("App", "Fictive Favre", "Opérateur radio", back);
-  member("Lt", "Fictif B", "Chef de section", front, "Chef section appui");
-  member("Cpl", "Fictif D", "Chef de groupe", front, "Équipe Bravo");
+  member(t("Cap"), "Fictif Arnaud", t("Chef d’intervention"), back, pcCarouge);
+  member(t("Plt"), "Fictive Bernasconi", t("Chef AIC"), back);
+  member(t("Sgt"), "Fictif A", t("Opérateur journal"), situation);
+  member(t("Sgt"), "Fictive Delacrétaz", t("Synthèse des messages"), situation);
+  member(t("Cpl"), "Fictif Egger", t("Cartographe"), situation, "", "En pause");
+  member(t("App"), "Fictive Favre", t("Opérateur radio"), back);
   member(
-    "Sgtm",
-    "Fictif Gilliéron",
-    "Chef logistique",
-    logistics,
-    "Logistique",
+    t("Lt"),
+    "Fictif B",
+    t("Chef de section"),
+    front,
+    t("Chef section appui"),
   );
-  member("Sdt", "Fictive Huber", "Téléphoniste", logistics, "", "Absent");
+  member(t("Cpl"), "Fictif D", t("Chef de groupe"), front, bravoName);
+  member(
+    t("Sgtm"),
+    "Fictif Gilliéron",
+    t("Chef logistique"),
+    logistics,
+    logisticsName,
+  );
+  member("Sdt", "Fictive Huber", t("Téléphoniste"), logistics, "", "Absent");
 
   const resource = (
     name: string,
@@ -356,66 +367,46 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       notes: "",
       ...extra,
     });
-  const bravo = resource(
-    "Équipe Bravo",
-    "Personnel",
-    "Protection civile",
-    6,
-    "Engagé",
-    {
-      callsign: "Équipe Bravo",
-      location: "Passerelle de la Fontenette",
-      mission: "Sécuriser l’accès aux berges.",
-    },
-  );
-  resource("Patrouille Alpha", "Personnel", "Protection civile", 3, "Engagé", {
-    callsign: "Patrouille Alpha",
+  const bravo = resource(bravoName, staff, civil, 6, "Engagé", {
+    callsign: bravoName,
+    location: "Passerelle de la Fontenette",
+    mission: t("Sécuriser l’accès aux berges."),
+  });
+  resource(alphaName, staff, civil, 3, "Engagé", {
+    callsign: alphaName,
     location: "Pont des Acacias",
-    mission: "Reconnaissance du niveau de l’Arve.",
+    mission: t("Reconnaissance du niveau de l’Arve."),
   });
   const trucks = resource(
-    "Camions de transport PCi",
-    "Véhicule",
-    "Protection civile",
+    t("Camions de transport PCi"),
+    vehicle,
+    civil,
     2,
     "En route",
     {
-      location: "Arsenal → Point de rassemblement Acacias",
-      mission: "Livrer 200 sacs de sable.",
+      location: `${t("Arsenal")} → ${t("Point de rassemblement Acacias")}`,
+      mission: t("Livrer 200 sacs de sable."),
       eta: at(115),
     },
   );
-  const bags = resource(
-    "Sacs de sable",
-    "Matériel",
-    "Protection civile",
-    200,
-    "En route",
-    {
-      location: "Camions de transport PCi",
-    },
-  );
+  const bags = resource(t("Sacs de sable"), material, civil, 200, "En route", {
+    location: t("Camions de transport PCi"),
+  });
   const pump = resource(
-    "Tonne-pompe SIS (fictif)",
-    "Véhicule",
-    "Pompiers (SIS)",
+    t("Tonne-pompe SIS (fictif)"),
+    vehicle,
+    t("Pompiers (SIS)"),
     1,
     "Engagé",
     {
       location: "Quai Charles-Page",
-      mission: "Pompage des caves inondées.",
+      mission: t("Pompage des caves inondées."),
     },
   );
-  resource("Motopompes", "Matériel", "Protection civile", 4, "Disponible", {
-    location: "PC Carouge",
+  resource(t("Motopompes"), material, civil, 4, "Disponible", {
+    location: pcCarouge,
   });
-  resource(
-    "Section appui (réserve)",
-    "Personnel",
-    "Protection civile",
-    12,
-    "Alerté",
-  );
+  resource(t("Section appui (réserve)"), staff, civil, 12, "Alerté");
 
   const contact = (
     name: string,
@@ -438,33 +429,40 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       favorite: false,
       ...extra,
     });
-  SWISS_EMERGENCY.slice(0, 5).forEach((c) =>
-    contact(c.name, c.category, c.phone, {
-      organization: c.organization,
-      notes: c.notes,
-    }),
-  );
+  swissEmergency(ops)
+    .slice(0, 5)
+    .forEach((c) =>
+      contact(c.name, c.category, c.phone, {
+        organization: c.organization,
+        notes: c.notes,
+      }),
+    );
   const commune = contact(
-    "Permanence de la commune (fictif)",
-    "Autorités",
+    t("Permanence de la commune (fictif)"),
+    t("Autorités"),
     "022 000 00 01",
     {
-      organization: "Commune de Carouge · fictif",
-      role: "Permanence technique",
+      organization: t("Commune de Carouge · fictif"),
+      role: t("Permanence technique"),
       favorite: true,
     },
   );
-  contact("Centrale d’engagement (fictif)", "Partenaires", "022 000 00 02", {
-    organization: "Protection civile · fictif",
-    radio: "PC Carouge",
-    favorite: true,
-  });
   contact(
-    "Fournisseur de sacs de sable (fictif)",
-    "Fournisseurs",
+    t("Centrale d’engagement (fictif)"),
+    t("Partenaires"),
+    "022 000 00 02",
+    {
+      organization: t("Protection civile · fictif"),
+      radio: pcCarouge,
+      favorite: true,
+    },
+  );
+  contact(
+    t("Fournisseur de sacs de sable (fictif)"),
+    t("Fournisseurs"),
     "022 000 00 03",
     {
-      organization: "Entreprise fictive SA",
+      organization: t("Entreprise fictive SA"),
     },
   );
 
@@ -474,13 +472,15 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
     });
   const rising = message({
     receivedAt: at(8),
-    from: "Patrouille Alpha",
-    to: "PC arrière",
-    via: "Radio",
+    from: alphaName,
+    to: t("PC arrière"),
+    via: t("Radio"),
     priority: "Important",
-    category: "Renseignement",
-    subject: "Niveau de l’Arve en hausse",
-    body: "Niveau en hausse rapide au pont des Acacias, environ 20 cm en 30 minutes.",
+    category: t("Renseignement"),
+    subject: t("Niveau de l’Arve en hausse"),
+    body: t(
+      "Niveau en hausse rapide au pont des Acacias, environ 20 cm en 30 minutes.",
+    ),
     location: "Pont des Acacias",
     status: "Transmis",
     entryId: journal.entries[1].id,
@@ -488,36 +488,40 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
   });
   const road = message({
     receivedAt: at(62),
-    from: "Équipe Bravo",
-    to: "PC front",
-    via: "Radio",
+    from: bravoName,
+    to: pcFrontName,
+    via: t("Radio"),
     priority: "Urgent",
-    category: "Alerte",
-    subject: "Eau sur la chaussée",
-    body: "Eau sur la chaussée route de Veyrier à la hauteur de la Fontenette. Circulation dangereuse.",
+    category: t("Alerte"),
+    subject: t("Eau sur la chaussée"),
+    body: t(
+      "Eau sur la chaussée route de Veyrier à la hauteur de la Fontenette. Circulation dangereuse.",
+    ),
     location: "Route de Veyrier",
     replyNeeded: true,
     replyBy: at(80),
   });
   message({
     receivedAt: at(70),
-    from: "Logistique",
-    to: "PC arrière",
-    via: "Téléphone",
-    category: "Compte rendu",
-    subject: "Sacs de sable en route",
-    body: "Deux camions partis de l’arsenal avec 200 sacs. Arrivée estimée dans 45 minutes.",
+    from: logisticsName,
+    to: t("PC arrière"),
+    via: t("Téléphone"),
+    category: t("Compte rendu"),
+    subject: t("Sacs de sable en route"),
+    body: t(
+      "Deux camions partis de l’arsenal avec 200 sacs. Arrivée estimée dans 45 minutes.",
+    ),
     status: "En traitement",
     handledBy: "Fictive Delacrétaz",
   });
   message({
     receivedAt: at(74),
-    from: "Police",
-    to: "Chef d’intervention",
-    via: "Téléphone",
-    category: "Information",
-    subject: "Fermeture du pont",
-    body: "La police ferme le pont de Carouge à la circulation dès 09:30.",
+    from: t("Police"),
+    to: t("Chef d’intervention"),
+    via: t("Téléphone"),
+    category: t("Information"),
+    subject: t("Fermeture du pont"),
+    body: t("La police ferme le pont de Carouge à la circulation dès 09:30."),
     location: "Pont de Carouge",
   });
 
@@ -541,23 +545,23 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       notes,
     });
   const pc = place(
-    "PC Carouge",
+    pcCarouge,
     "point",
-    "Emplacements",
+    sites,
     [[46.1829, 6.1398]],
     "c57efe9980d514d6",
   );
   const pcFront = place(
-    "PC front",
+    pcFrontName,
     "point",
-    "Emplacements",
+    sites,
     [[46.1953, 6.1463]],
     "997aec2a2a12cbfc",
   );
   const flood = place(
-    "Zone inondée Acacias",
+    t("Zone inondée Acacias"),
     "area",
-    "Effets",
+    effects,
     [
       [46.1941, 6.1352],
       [46.1952, 6.1391],
@@ -567,12 +571,12 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
     ],
     "",
     "#3fdcff",
-    "Surface estimée d’après la reconnaissance de 08:08.",
+    t("Surface estimée d’après la reconnaissance de 08:08."),
   );
   const closure = place(
-    "Fermeture des berges",
+    t("Fermeture des berges"),
     "line",
-    "Mesures",
+    t("Mesures"),
     [
       [46.1962, 6.1441],
       [46.1956, 6.1467],
@@ -582,57 +586,57 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
     "#34e0a1",
   );
   const pumpPlace = place(
-    "Tonne-pompe SIS",
+    t("Tonne-pompe SIS"),
     "point",
-    "Moyens",
+    t("Moyens"),
     [[46.1949, 6.1478]],
     "7e9d403b48f7e265",
   );
   const gathering = place(
-    "Point de rassemblement Acacias",
+    t("Point de rassemblement Acacias"),
     "point",
-    "Emplacements",
+    sites,
     [[46.1912, 6.1336]],
     "35501db9d9a6e728",
   );
   const walkway = place(
     "Passerelle de la Fontenette",
     "point",
-    "Dangers",
+    t("Dangers"),
     [[46.1843, 6.1537]],
     "b3bc72f54c8ed2e5",
     "",
-    "Second accès aux berges encore ouvert.",
+    t("Second accès aux berges encore ouvert."),
   );
   const roadPlace = place(
-    "Route de Veyrier inondée",
+    t("Route de Veyrier inondée"),
     "point",
-    "Effets",
+    effects,
     [[46.1861, 6.1548]],
     "85d41c22bf08bbff",
   );
 
-  link(ref("place", pc), ref("cell", back), "emplacement");
-  link(ref("place", pcFront), ref("cell", front), "emplacement");
-  link(ref("place", flood), entry(1), "reconnaissance");
-  link(ref("place", flood), ref("message", rising), "signalé par");
-  link(ref("place", closure), entry(2), "décision");
-  link(ref("place", closure), entry(4), "quittance");
-  link(ref("place", pumpPlace), ref("resource", pump), "position");
-  link(ref("place", gathering), entry(3), "livraison");
-  link(ref("resource", trucks), entry(3), "répond à");
-  link(ref("resource", bags), entry(3), "répond à");
-  link(ref("resource", bags), ref("resource", trucks), "transporté par");
-  link(ref("place", walkway), entry(5), "concerne");
-  link(ref("place", walkway), ref("resource", bravo), "position");
-  link(ref("place", roadPlace), ref("message", road), "signalé par");
-  link(ref("contact", commune), ref("message", road), "à informer");
+  link(ref("place", pc), ref("cell", back), t("emplacement"));
+  link(ref("place", pcFront), ref("cell", front), t("emplacement"));
+  link(ref("place", flood), entry(1), t("reconnaissance"));
+  link(ref("place", flood), ref("message", rising), t("signalé par"));
+  link(ref("place", closure), entry(2), t("décision"));
+  link(ref("place", closure), entry(4), t("quittance"));
+  link(ref("place", pumpPlace), ref("resource", pump), t("position"));
+  link(ref("place", gathering), entry(3), t("livraison"));
+  link(ref("resource", trucks), entry(3), t("répond à"));
+  link(ref("resource", bags), entry(3), t("répond à"));
+  link(ref("resource", bags), ref("resource", trucks), t("transporté par"));
+  link(ref("place", walkway), entry(5), t("concerne"));
+  link(ref("place", walkway), ref("resource", bravo), t("position"));
+  link(ref("place", roadPlace), ref("message", road), t("signalé par"));
+  link(ref("contact", commune), ref("message", road), t("à informer"));
 
   const agenda = (
     minutes: number,
     title: string,
     kind: string,
-    location = "PC Carouge",
+    location = pcCarouge,
     participants = "",
   ) =>
     put("agenda", {
@@ -646,58 +650,65 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
       notes: "",
       done: minutes < 0,
     });
+  const report = t("Rapport de conduite");
   agenda(
     0,
-    "Orientation initiale",
-    "Orientation",
-    "PC Carouge",
-    "Chef d’intervention, chefs de cellule",
+    t("Orientation initiale"),
+    t("Orientation"),
+    pcCarouge,
+    t("Chef d’intervention, chefs de cellule"),
   );
   agenda(
     120,
-    "Rapport de conduite",
-    "Rapport de conduite",
-    "PC Carouge",
-    "Chefs de cellule, chef de section",
+    report,
+    report,
+    pcCarouge,
+    t("Chefs de cellule, chef de section"),
   );
   agenda(
     210,
-    "Point presse",
-    "Conférence de presse",
-    "Mairie de Carouge (fictif)",
+    t("Point presse"),
+    t("Conférence de presse"),
+    t("Mairie de Carouge (fictif)"),
   );
   agenda(
     360,
-    "Rapport de conduite",
-    "Rapport de conduite",
-    "PC Carouge",
-    "Chefs de cellule, chef de section",
+    report,
+    report,
+    pcCarouge,
+    t("Chefs de cellule, chef de section"),
   );
-  agenda(660, "Relève", "Relève");
+  agenda(660, t("Relève"), t("Relève"));
 
   const facts: [string, string, string, string][] = [
-    ["Personnes blessées", "0", "pers.", "Personnes"],
-    ["Personnes évacuées", "12", "pers.", "Personnes"],
-    ["Bâtiments touchés", "3", "bât.", "Bâtiments"],
-    ["Routes fermées", "2", "", "Infrastructures"],
-    ["Personnel engagé", "27", "pers.", "Engagement"],
-    ["Niveau de l’Arve (Acacias)", "+ 45", "cm", "Infrastructures"],
+    [t("Personnes blessées"), "0", t("pers."), t("Personnes")],
+    [t("Personnes évacuées"), "12", t("pers."), t("Personnes")],
+    [t("Bâtiments touchés"), "3", t("bât."), t("Bâtiments")],
+    [t("Routes fermées"), "2", "", t("Infrastructures")],
+    [t("Personnel engagé"), "27", t("pers."), t("Engagement")],
+    [t("Niveau de l’Arve (Acacias)"), "+ 45", "cm", t("Infrastructures")],
   ];
   facts.forEach(([label, value, unit, category], order) =>
     put("facts", { id: id(), label, value, unit, category, note: "", order }),
   );
   const boards: [string, string][] = [
     [
-      "Situation générale",
-      "Crue de l’Arve après de fortes pluies. Montée d’environ 45 cm depuis 08:00 au pont des Acacias. Caves inondées quai Charles-Page.",
+      t("Situation générale"),
+      t(
+        "Crue de l’Arve après de fortes pluies. Montée d’environ 45 cm depuis 08:00 au pont des Acacias. Caves inondées quai Charles-Page.",
+      ),
     ],
     [
-      "Dangers et évolution probable",
-      "Pic attendu vers 13:00. Risque de débordement sur la route de Veyrier et aux accès des berges.",
+      t("Dangers et évolution probable"),
+      t(
+        "Pic attendu vers 13:00. Risque de débordement sur la route de Veyrier et aux accès des berges.",
+      ),
     ],
     [
-      "Intention / idée de manœuvre",
-      "Fermer et baliser tous les accès aux berges, protéger les bâtiments du quai avec des sacs de sable, garder une réserve alertée.",
+      t("Intention / idée de manœuvre"),
+      t(
+        "Fermer et baliser tous les accès aux berges, protéger les bâtiments du quai avec des sacs de sable, garder une réserve alertée.",
+      ),
     ],
   ];
   boards.forEach(([title, body], order) =>
@@ -708,30 +719,30 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
     at: at(30),
     place: "Pont des Acacias",
     temperature: "11 °C",
-    wind: "SO 20 km/h",
-    precipitation: "Pluie modérée",
-    visibility: "Bonne",
-    conditions: "Couvert, pluie continue",
+    wind: t("SO 20 km/h"),
+    precipitation: t("Pluie modérée"),
+    visibility: t("Bonne"),
+    conditions: t("Couvert, pluie continue"),
     notes: "",
   });
   put("alerts", {
     id: id(),
     level: "3",
-    hazard: "Fortes pluies",
-    region: "Genève",
+    hazard: t("Fortes pluies"),
+    region: t("Genève"),
     from: at(-240),
     to: at(720),
-    source: "MétéoSuisse (exemple fictif)",
+    source: t("MétéoSuisse (exemple fictif)"),
     notes: "",
   });
   put("alerts", {
     id: id(),
     level: "3",
-    hazard: "Crues",
+    hazard: t("Crues"),
     region: "Arve",
     from: at(-60),
     to: at(1440),
-    source: "Canton (exemple fictif)",
+    source: t("Canton (exemple fictif)"),
     notes: "",
   });
   return {
@@ -753,9 +764,11 @@ export function demoStart(now = Date.now()): number {
 }
 
 export function demoWorkspace(now = Date.now()): Workspace {
-  let journal = newJournal("Crue de l’Arve", {
-    organization: "PCi · Exercice de démonstration",
-    location: "Carouge · Genève",
+  // Written in the language of this post (newJournal also records it in
+  // ops.settings.lang, so the référentiels match the demonstration).
+  let journal = newJournal(t("Crue de l’Arve"), {
+    organization: t("PCi · Exercice de démonstration"),
+    location: t("Carouge · Genève"),
     reference: "EX-2026-09",
     mode: "Exercice",
   });
@@ -764,72 +777,86 @@ export function demoWorkspace(now = Date.now()): Workspace {
   const base = demoStart(now);
   const at = (minutes: number) =>
     new Date(base + minutes * 60_000).toISOString();
+  const alpha = t("Patrouille Alpha");
+  const bravo = t("Équipe Bravo");
+  const chief = t("Chef de section");
+  const support = t("Section appui");
+  const logistics = t("Logistique");
   const examples: Partial<Fields>[] = [
     {
-      message: "Ouverture du poste de conduite. Début de la tenue du journal.",
+      message: t(
+        "Ouverture du poste de conduite. Début de la tenue du journal.",
+      ),
       type: "Observation",
-      source: "Chef de cellule",
-      location: "PC Carouge",
+      source: t("Chef de cellule"),
+      location: t("PC Carouge"),
       reliability: "Confirmé",
     },
     {
-      message:
+      message: t(
         "Hausse du niveau de l’Arve signalée au pont des Acacias. Reconnaissance demandée.",
-      source: "Patrouille Alpha",
+      ),
+      source: alpha,
       location: "Pont des Acacias",
       reliability: "À vérifier",
       priority: "Important",
       status: "À traiter",
-      assignee: "Chef de section",
-      action: "Vérifier le niveau sur place et transmettre un compte rendu.",
+      assignee: chief,
+      action: t("Vérifier le niveau sur place et transmettre un compte rendu."),
       dueAt: at(65),
     },
     {
-      message:
+      message: t(
         "Fermeture préventive de l’accès aux berges décidée par la direction de l’exercice.",
+      ),
       type: "Décision",
-      source: "Direction de l’exercice",
-      recipient: "Section appui",
+      source: t("Direction de l’exercice"),
+      recipient: support,
       location: "Quai Charles-Page",
       reliability: "Confirmé",
       status: "En cours",
-      assignee: "Section appui",
-      action: "Mettre en place le balisage. Confirmer la fermeture des accès.",
+      assignee: support,
+      action: t(
+        "Mettre en place le balisage. Confirmer la fermeture des accès.",
+      ),
     },
     {
-      message:
+      message: t(
         "Demande de 200 sacs de sable et de deux véhicules de transport.",
+      ),
       type: "Demande",
-      source: "Section appui",
-      recipient: "Logistique",
-      location: "Point de rassemblement Acacias",
+      source: support,
+      recipient: logistics,
+      location: t("Point de rassemblement Acacias"),
       status: "À traiter",
-      resources: "200 sacs de sable · 2 véhicules",
-      assignee: "Logistique",
+      resources: t("200 sacs de sable · 2 véhicules"),
+      assignee: logistics,
       dueAt: at(100),
     },
     {
-      message:
+      message: t(
         "Balisage du premier accès terminé. Aucun civil dans le périmètre.",
+      ),
       type: "Quittance",
-      source: "Équipe Bravo",
+      source: bravo,
       location: "Quai Charles-Page",
       reliability: "Confirmé",
       status: "Terminé",
-      reference: "Suite de l’entrée #003",
-      action: "Maintenir la surveillance du périmètre.",
+      reference: t("Suite de l’entrée #003"),
+      action: t("Maintenir la surveillance du périmètre."),
     },
     {
-      message:
+      message: t(
         "Un second accès aux berges reste ouvert. Une équipe est requise pour sécuriser le passage.",
-      source: "Équipe Bravo",
+      ),
+      source: bravo,
       location: "Passerelle de la Fontenette",
       priority: "Urgent",
       reliability: "Confirmé",
       status: "À traiter",
-      assignee: "Chef de section",
+      assignee: chief,
       dueAt: at(55),
-      action: "Faire confirmer la fermeture et consigner la quittance.",
+      action: t("Faire confirmer la fermeture et consigner la quittance."),
     },
   ];
   examples.forEach((example, i) => {
@@ -841,7 +868,7 @@ export function demoWorkspace(now = Date.now()): Workspace {
         receivedAt: at(i * 9 + 1),
         ...example,
       },
-      i % 2 ? "Opérateur B · fictif" : "Opérateur A · fictif",
+      i % 2 ? t("Opérateur B · fictif") : t("Opérateur A · fictif"),
     );
   });
   journal = updateRadio(journal, demoRadio(at));
@@ -853,7 +880,7 @@ export function demoWorkspace(now = Date.now()): Workspace {
   journal = journalSchema.parse(withDemoExercise(journal, base, now));
   return {
     version: 1,
-    author: "Opérateur · démo",
+    author: t("Opérateur · démo"),
     journals: [journal],
     activeId: journal.id,
   };
@@ -862,23 +889,20 @@ export function demoWorkspace(now = Date.now()): Workspace {
 // ---------- History of the demonstration ----------
 
 type Step = { m: number; by: string; patch?: object; note?: string };
-const OPERATOR_A = "Opérateur A · fictif";
-const OPERATOR_B = "Opérateur B · fictif";
-const MAPPER = "Cartographe · fictif";
 
 /** Forecast as received at a time, rain increasing with `wet`. */
 function demoForecast(fetched: number, wet: number) {
   const hour = 3_600_000;
   const start = Math.floor(fetched / hour) * hour;
   const hours = Array.from({ length: 72 }, (_, i) => {
-    const t = start + i * hour;
-    const h = zurichHour(t);
+    const time = start + i * hour;
+    const h = zurichHour(time);
     const rain = Math.max(
       0,
       wet * (1.6 + Math.sin(i / 5)) - (i > 30 ? 1.5 : 0),
     );
     return {
-      at: t,
+      at: time,
       temperature:
         Math.round((10 + 3 * Math.sin(((h - 9) / 24) * 2 * Math.PI)) * 10) / 10,
       precipitation: Math.round(rain * 10) / 10,
@@ -910,7 +934,7 @@ function demoForecast(fetched: number, wet: number) {
     };
   });
   return {
-    model: "MétéoSuisse ICON-CH2 (exemple fictif)",
+    model: t("MétéoSuisse ICON-CH2 (exemple fictif)"),
     current: {
       at: fetched,
       temperature: hours[0].temperature,
@@ -936,6 +960,11 @@ function demoHistory(
   journal: Journal,
   at: (minutes: number) => string,
 ): Journal {
+  const OPERATOR_A = t("Opérateur A · fictif");
+  const OPERATOR_B = t("Opérateur B · fictif");
+  const MAPPER = t("Cartographe · fictif");
+  const pcCarouge = t("PC Carouge");
+  const arsenal = t("Arsenal");
   const events: HistoryEvent[] = [];
   const push = (
     scope: string,
@@ -986,11 +1015,11 @@ function demoHistory(
     return state;
   };
   const minutesOf = (iso: string, fallback: number) => {
-    const t = Date.parse(iso);
+    const time = Date.parse(iso);
     const start = Date.parse(at(0));
-    return Number.isNaN(t)
+    return Number.isNaN(time)
       ? fallback
-      : Math.min(130, Math.round((t - start) / 60_000));
+      : Math.min(130, Math.round((time - start) / 60_000));
   };
 
   // Journal header and entries: created when received.
@@ -1012,22 +1041,22 @@ function demoHistory(
     "create",
   );
   const entries = journal.entries.map((e, i) => {
-    const t = at(i * 9 + 1);
-    const revisions = e.revisions.map((r) => ({ ...r, at: t }));
+    const received = at(i * 9 + 1);
+    const revisions = e.revisions.map((r) => ({ ...r, at: received }));
     if (i === 1)
       revisions.push({
         ...revisions[0],
         id: crypto.randomUUID(),
         at: at(40),
         author: OPERATOR_B,
-        reason: "Niveau confirmé par la patrouille sur place",
+        reason: t("Niveau confirmé par la patrouille sur place"),
         fields: {
           ...revisions[0].fields,
           reliability: "Confirmé",
           status: "En cours",
         },
       });
-    return { ...e, createdAt: t, revisions };
+    return { ...e, createdAt: received, revisions };
   });
 
   // Records of the modules.
@@ -1039,35 +1068,38 @@ function demoHistory(
     by: string,
   ) => list.map((r, i) => track(scope, r, [{ m: minute(r, i), by }]));
   const statuses: Record<string, Step[]> = {
-    "Équipe Bravo": [
+    [t("Équipe Bravo")]: [
       {
         m: -15,
         by: OPERATOR_B,
-        patch: { status: "Disponible", location: "PC Carouge", mission: "" },
+        patch: { status: "Disponible", location: pcCarouge, mission: "" },
       },
       {
         m: 10,
         by: OPERATOR_B,
-        patch: { status: "Alerté", location: "PC Carouge", mission: "" },
+        patch: { status: "Alerté", location: pcCarouge, mission: "" },
       },
       {
         m: 25,
         by: OPERATOR_B,
-        patch: { status: "En route", mission: "Sécuriser l’accès aux berges." },
+        patch: {
+          status: "En route",
+          mission: t("Sécuriser l’accès aux berges."),
+        },
       },
       { m: 45, by: OPERATOR_A },
     ],
-    "Patrouille Alpha": [
+    [t("Patrouille Alpha")]: [
       { m: -15, by: OPERATOR_B, patch: { status: "Alerté" } },
       { m: 5, by: OPERATOR_B },
     ],
-    "Camions de transport PCi": [
+    [t("Camions de transport PCi")]: [
       {
         m: -15,
         by: OPERATOR_B,
         patch: {
           status: "Disponible",
-          location: "Arsenal",
+          location: arsenal,
           mission: "",
           eta: "",
         },
@@ -1075,23 +1107,23 @@ function demoHistory(
       {
         m: 50,
         by: OPERATOR_A,
-        patch: { status: "Alerté", location: "Arsenal" },
+        patch: { status: "Alerté", location: arsenal },
       },
       { m: 70, by: OPERATOR_B },
     ],
-    "Sacs de sable": [
+    [t("Sacs de sable")]: [
       {
         m: -15,
         by: OPERATOR_B,
-        patch: { status: "Disponible", location: "Arsenal" },
+        patch: { status: "Disponible", location: arsenal },
       },
       { m: 70, by: OPERATOR_B },
     ],
-    "Tonne-pompe SIS (fictif)": [
+    [t("Tonne-pompe SIS (fictif)")]: [
       { m: 30, by: OPERATOR_A, patch: { status: "Alerté", mission: "" } },
       { m: 60, by: OPERATOR_A },
     ],
-    "Section appui (réserve)": [
+    [t("Section appui (réserve)")]: [
       { m: -15, by: OPERATOR_B, patch: { status: "Disponible" } },
       { m: 100, by: OPERATOR_A },
     ],
@@ -1100,22 +1132,22 @@ function demoHistory(
     track("ops.resources", r, statuses[r.name] ?? [{ m: -15, by: OPERATOR_B }]),
   );
   const factSteps: Record<string, Step[]> = {
-    "Personnes évacuées": [
+    [t("Personnes évacuées")]: [
       { m: -10, by: OPERATOR_A, patch: { value: "0" } },
       { m: 35, by: OPERATOR_A, patch: { value: "5" } },
       { m: 85, by: OPERATOR_B },
     ],
-    "Niveau de l’Arve (Acacias)": [
+    [t("Niveau de l’Arve (Acacias)")]: [
       { m: -10, by: OPERATOR_A, patch: { value: "+ 10" } },
       { m: 30, by: OPERATOR_B, patch: { value: "+ 25" } },
       { m: 90, by: OPERATOR_B },
     ],
-    "Personnel engagé": [
+    [t("Personnel engagé")]: [
       { m: -10, by: OPERATOR_A, patch: { value: "12" } },
       { m: 40, by: OPERATOR_A, patch: { value: "20" } },
       { m: 95, by: OPERATOR_A },
     ],
-    "Bâtiments touchés": [
+    [t("Bâtiments touchés")]: [
       { m: -10, by: OPERATOR_A, patch: { value: "0" } },
       { m: 55, by: OPERATOR_B },
     ],
@@ -1133,7 +1165,9 @@ function demoHistory(
               m: 0,
               by: OPERATOR_A,
               patch: {
-                body: "Crue de l’Arve après de fortes pluies. Montée du niveau signalée au pont des Acacias.",
+                body: t(
+                  "Crue de l’Arve après de fortes pluies. Montée du niveau signalée au pont des Acacias.",
+                ),
               },
             },
             { m: 75, by: OPERATOR_A },
@@ -1150,8 +1184,8 @@ function demoHistory(
       "ops.maps",
       {
         id: general,
-        name: "Suivi général",
-        purpose: "Vue d’ensemble pour le rapport de conduite",
+        name: t("Suivi général"),
+        purpose: t("Vue d’ensemble pour le rapport de conduite"),
         base: "gray",
         lat: 46.1895,
         lng: 6.1445,
@@ -1166,8 +1200,8 @@ function demoHistory(
       "ops.maps",
       {
         id: detail,
-        name: "Secteur Acacias (détail)",
-        purpose: "Engagement au pont des Acacias et au quai Charles-Page",
+        name: t("Secteur Acacias (détail)"),
+        purpose: t("Engagement au pont des Acacias et au quai Charles-Page"),
         base: "color",
         lat: 46.1938,
         lng: 6.1415,
@@ -1188,27 +1222,27 @@ function demoHistory(
     );
   };
   const placeSteps = (p: (typeof o.places)[number], i: number): Step[] => {
-    if (p.label === "PC front")
+    if (p.label === t("PC front"))
       return [
         { m: 20, by: MAPPER, patch: { points: [[46.1962, 6.1432]] } },
         { m: 65, by: MAPPER, note: "" },
       ];
-    if (p.label === "Zone inondée Acacias")
+    if (p.label === t("Zone inondée Acacias"))
       return [
         { m: 15, by: MAPPER, patch: { points: shrink(p.points, 0.55) } },
         { m: 40, by: MAPPER, patch: { points: shrink(p.points, 0.8) } },
         { m: 88, by: MAPPER },
       ];
-    if (p.label === "Tonne-pompe SIS") return [{ m: 62, by: MAPPER }];
-    if (p.label === "Route de Veyrier inondée")
+    if (p.label === t("Tonne-pompe SIS")) return [{ m: 62, by: MAPPER }];
+    if (p.label === t("Route de Veyrier inondée"))
       return [{ m: 72, by: OPERATOR_B }];
     return [{ m: 8 + i * 5, by: MAPPER }];
   };
   const onMaps: Record<string, string[]> = {
-    "PC Carouge": [general],
-    "Route de Veyrier inondée": [general],
-    "Point de rassemblement Acacias": [detail],
-    "Tonne-pompe SIS": [detail],
+    [pcCarouge]: [general],
+    [t("Route de Veyrier inondée")]: [general],
+    [t("Point de rassemblement Acacias")]: [detail],
+    [t("Tonne-pompe SIS")]: [detail],
   };
   const places = o.places.map((p, i) =>
     track(
@@ -1222,13 +1256,13 @@ function demoHistory(
   const blockState = {
     ...o.places[0],
     id: block,
-    label: "Barrage provisoire quai Ernest-Ansermet",
+    label: t("Barrage provisoire quai Ernest-Ansermet"),
     kind: "point",
-    layer: "Mesures",
+    layer: t("Mesures"),
     symbol: "b:barrage",
     color: "",
     points: [[46.1931, 6.1449]],
-    notes: "Levé après l’ouverture de la déviation.",
+    notes: t("Levé après l’ouverture de la déviation."),
     maps: [],
   };
   track("ops.places", blockState, [{ m: 25, by: MAPPER }]);
@@ -1261,9 +1295,9 @@ function demoHistory(
         "ops.snapshots",
         {
           id: crypto.randomUUID(),
-          title: "Point de situation de 08:30",
+          title: t("Point de situation de 08:30"),
           at: at(30),
-          notes: "État transmis à la centrale d’engagement.",
+          notes: t("État transmis à la centrale d’engagement."),
         },
         [{ m: 31, by: OPERATOR_A }],
       ),
@@ -1271,9 +1305,9 @@ function demoHistory(
         "ops.snapshots",
         {
           id: crypto.randomUUID(),
-          title: "Rapport de conduite",
+          title: t("Rapport de conduite"),
           at: at(120),
-          notes: "Présenté aux chefs de cellule.",
+          notes: t("Présenté aux chefs de cellule."),
         },
         [{ m: 121, by: OPERATOR_A }],
       ),
@@ -1286,7 +1320,7 @@ function demoHistory(
           startedAt: at(122),
           endedAt: at(134),
           presenter: "Fictive Bernasconi",
-          audience: "Maire de Carouge et préfet (fictifs)",
+          audience: t("Maire de Carouge et préfet (fictifs)"),
           viewAt: at(120),
           slides: 9,
           mode: "Présentation",

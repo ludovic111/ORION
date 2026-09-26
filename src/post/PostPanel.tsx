@@ -21,6 +21,7 @@ import {
 } from "./notify";
 import { landingOf, roleProfile } from "./roles";
 import { usePost } from "./store";
+import { t } from "./i18n.ts";
 
 /** Réglages → Ce poste: the function of this post and where it lands. */
 export function PostRoleSettings() {
@@ -30,34 +31,43 @@ export function PostRoleSettings() {
   const landing = landingOf(post);
   return (
     <section className="settings-section">
-      <h3 className="section-label">Fonction de ce poste</h3>
+      <h3 className="section-label">{t("Fonction de ce poste")}</h3>
       <div className="form-grid">
         <ComboField
-          label="Fonction"
+          label={t("Fonction")}
           value={post.role}
           onChange={(role) => setPost({ role })}
           options={lists("postRoles")}
           quick={7}
           hint={
             profile?.hint ??
-            "Ce qui est attribué à cette fonction apparaît dans « Mes tâches » et déclenche vos alertes. Liste modifiable dans les référentiels (Fonctions des postes)."
+            t(
+              "Ce qui est attribué à cette fonction apparaît dans « Mes tâches » et déclenche vos alertes. Liste modifiable dans les référentiels (Fonctions des postes).",
+            )
           }
         />
         <ComboField
-          label="Cellule ou poste (facultatif)"
+          label={t("Cellule ou poste (facultatif)")}
           value={post.cell}
           onChange={(cell) => setPost({ cell })}
           options={live.ops.cells.map((c) => c.name)}
-          hint={`Une diffusion adressée à cette cellule, à la fonction ou à « ${author} » s’affiche sur ce poste.`}
+          hint={t(
+            "Une diffusion adressée à cette cellule, à la fonction ou à « {author} » s’affiche sur ce poste.",
+            { author },
+          )}
         />
         <ChoiceField
-          label="Module à l’ouverture"
+          label={t("Module à l’ouverture")}
           value={post.landing}
           onChange={(value) => setPost({ landing: value as Module | "" })}
           options={[
             {
               value: "",
-              label: `Selon la fonction${landing ? ` (${MODULES.find((m) => m.id === landing)?.short ?? landing})` : " (Situation)"}`,
+              label: t("Selon la fonction ({module})", {
+                module: landing
+                  ? (MODULES.find((m) => m.id === landing)?.short ?? landing)
+                  : t("Situation"),
+              }),
             },
             ...MODULES.map((m) => ({ value: m.id, label: m.label })),
           ]}
@@ -67,13 +77,17 @@ export function PostRoleSettings() {
   );
 }
 
-const PERMISSION_TEXT: Record<string, string> = {
-  granted: "Autorisées par le navigateur.",
-  denied:
-    "Refusées par le navigateur. Pour les autoriser : cliquez sur le cadenas à gauche de l’adresse, puis Notifications → Autoriser.",
-  default: "Pas encore autorisées.",
-  unsupported: "Ce navigateur n’affiche pas de notifications.",
-};
+// A function, not a constant: read in the language of the post.
+const permissionText = (state: string): string =>
+  state === "granted"
+    ? t("Autorisées par le navigateur.")
+    : state === "denied"
+      ? t(
+          "Refusées par le navigateur. Pour les autoriser : cliquez sur le cadenas à gauche de l’adresse, puis Notifications → Autoriser.",
+        )
+      : state === "default"
+        ? t("Pas encore autorisées.")
+        : t("Ce navigateur n’affiche pas de notifications.");
 
 /** Réglages → Ce poste: how alerts reach this post. */
 export function AlertSettings() {
@@ -82,18 +96,16 @@ export function AlertSettings() {
   const [state, setState] = useState(permission());
   return (
     <section className="settings-section">
-      <h3 className="section-label">Alertes</h3>
+      <h3 className="section-label">{t("Alertes")}</h3>
       <p className="muted" style={{ marginBottom: 10 }}>
-        Ce poste peut vous prévenir même quand orion aic est dans un autre
-        onglet ou derrière une autre fenêtre : message urgent, échéance
-        dépassée, rapport qui approche, tâche pour votre fonction, diffusion à
-        quittancer. Rien ne part sur internet : c’est le navigateur de ce poste
-        qui affiche et sonne. L’onglet doit rester ouvert.
+        {t(
+          "Ce poste peut vous prévenir même quand orion aic est dans un autre onglet ou derrière une autre fenêtre : message urgent, échéance dépassée, rapport qui approche, tâche pour votre fonction, diffusion à quittancer. Rien ne part sur internet : c’est le navigateur de ce poste qui affiche et sonne. L’onglet doit rester ouvert.",
+        )}
       </p>
       <div className="stack">
         <Toggle
-          label="Notifications du système"
-          hint={PERMISSION_TEXT[state]}
+          label={t("Notifications du système")}
+          hint={permissionText(state)}
           checked={post.notify && state === "granted"}
           onChange={async (on) => {
             if (!on) {
@@ -106,15 +118,17 @@ export function AlertSettings() {
             if (answer === "granted")
               void showNotification(
                 "orion aic",
-                "Les alertes de ce poste s’afficheront ainsi.",
+                t("Les alertes de ce poste s’afficheront ainsi."),
                 "orion-aic-test",
               );
-            else toast(PERMISSION_TEXT[answer]);
+            else toast(permissionText(answer));
           }}
         />
         <Toggle
-          label="Son"
-          hint="Deux notes courtes, trois si c’est urgent. Plus bas et plus doux avec le thème Nuit tactique."
+          label={t("Son")}
+          hint={t(
+            "Deux notes courtes, trois si c’est urgent. Plus bas et plus doux avec le thème Nuit tactique.",
+          )}
           checked={post.sound}
           onChange={(sound) => {
             unlockAudio();
@@ -129,22 +143,22 @@ export function AlertSettings() {
               setTimeout(() => playTone(true), 60);
               if (post.notify)
                 void showNotification(
-                  "Essai d’alerte",
-                  "Voici comment ce poste vous prévient.",
+                  t("Essai d’alerte"),
+                  t("Voici comment ce poste vous prévient."),
                   "orion-aic-test",
                 );
-              toast("Essai d’alerte.");
+              toast(t("Essai d’alerte."));
             }}
             disabled={!notificationsSupported() && !post.sound}
           >
             {post.sound ? <Volume2 size={14} /> : <BellRing size={14} />}
-            Essayer
+            {t("Essayer")}
           </button>
         </div>
       </div>
       <div className="form-grid" style={{ marginTop: 14 }}>
         <NumberField
-          label="Prévenir avant un rapport ou rendez-vous (min)"
+          label={t("Prévenir avant un rapport ou rendez-vous (min)")}
           value={post.agendaLead}
           min={0}
           max={120}
@@ -152,7 +166,7 @@ export function AlertSettings() {
         />
       </div>
       <fieldset style={{ marginTop: 14 }}>
-        <legend>Me prévenir pour</legend>
+        <legend>{t("Me prévenir pour")}</legend>
         <div className="stack" style={{ gap: 6 }}>
           {ALARM_KINDS.map((k) => (
             <Toggle
@@ -168,21 +182,23 @@ export function AlertSettings() {
       </fieldset>
       <div className="stack" style={{ marginTop: 14 }}>
         <Toggle
-          label="Heures calmes"
-          hint="Pendant ces heures (heure de Zurich), aucun son ; seules les alertes urgentes s’affichent."
+          label={t("Heures calmes")}
+          hint={t(
+            "Pendant ces heures (heure de Zurich), aucun son ; seules les alertes urgentes s’affichent.",
+          )}
           checked={post.quiet}
           onChange={(quiet) => setPost({ quiet })}
         />
         {post.quiet && (
           <div className="form-grid">
             <TextField
-              label="De"
+              label={t("De")}
               type="time"
               value={post.quietFrom}
               onChange={(quietFrom) => setPost({ quietFrom })}
             />
             <TextField
-              label="À"
+              label={t("À")}
               type="time"
               value={post.quietTo}
               onChange={(quietTo) => setPost({ quietTo })}

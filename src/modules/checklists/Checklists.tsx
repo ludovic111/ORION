@@ -43,6 +43,7 @@ import { Figures } from "../../ui/Figures";
 import { Modal } from "../../journal/Modal";
 import { ComboField, TextField } from "../../ui/fields";
 import { StepsSheet, type TemplateDraft } from "./TemplateSheet";
+import { t, tn } from "./i18n.ts";
 import "./checklists.css";
 
 type Editing =
@@ -98,7 +99,7 @@ export function Checklists() {
     }
     const found = ops.checklists.find((c) => c.id === id);
     if (!found) {
-      toast("Cette liste n’existe plus.");
+      toast(t("Cette liste n’existe plus."));
       return;
     }
     if (found.closedAt) setShowClosed(true);
@@ -145,24 +146,26 @@ export function Checklists() {
     print({
       kind: "tables",
       journal,
-      title: `Liste de contrôle · ${c.title}`,
-      extra: `Démarrée le ${dateTime(c.startedAt)}${c.location ? ` · ${c.location}` : ""}`,
+      title: t("Liste de contrôle · {title}", { title: c.title }),
+      extra: `${t("Démarrée le {date}", { date: dateTime(c.startedAt) })}${c.location ? ` · ${c.location}` : ""}`,
       landscape: false,
-      name: "liste-de-controle",
+      name: t("liste-de-controle"),
       tables: [
         {
           id: c.id,
           title: c.title,
-          caption: `${progress(journal, c, now).done}/${c.steps.length} étapes`,
-          head: ["", "Étape", "Fonction", "Fait", "Par"],
+          caption: tn(c.steps.length, "{done}/{n} étape", "{done}/{n} étapes", {
+            done: progress(journal, c, now).done,
+          }),
+          head: ["", t("Étape"), t("Fonction"), t("Fait"), t("Par")],
           body: c.steps.map((s) => {
-            const t = ticks.get(s.id);
+            const tick = ticks.get(s.id);
             return [
-              t?.done ? "☑" : "☐",
-              `${s.text}${s.minutes ? ` (contrôle ${s.minutes} min)` : ""}`,
+              tick?.done ? "☑" : "☐",
+              `${s.text}${s.minutes ? ` ${t("(contrôle {n} min)", { n: s.minutes })}` : ""}`,
               s.role,
-              t?.done ? time(t.at) : "",
-              t?.done ? t.who : "",
+              tick?.done ? time(tick.at) : "",
+              tick?.done ? tick.who : "",
             ];
           }),
           widths: [8, 102, 34, 14, 24],
@@ -171,8 +174,8 @@ export function Checklists() {
     });
   }
 
-  const visibleTemplates = all.filter((t) => showHidden || !t.hidden);
-  const hiddenCount = all.filter((t) => t.hidden).length;
+  const visibleTemplates = all.filter((m) => showHidden || !m.hidden);
+  const hiddenCount = all.filter((m) => m.hidden).length;
 
   return (
     <>
@@ -184,11 +187,11 @@ export function Checklists() {
                 onClick={() => setEditing({ kind: "template", view: null })}
               >
                 <Plus size={14} />
-                Nouveau modèle
+                {t("Nouveau modèle")}
               </button>
               <button className="primary" onClick={() => setStarting("pick")}>
                 <Play size={14} />
-                Démarrer une liste
+                {t("Démarrer une liste")}
               </button>
             </>
           )
@@ -196,20 +199,20 @@ export function Checklists() {
       />
       {running.length > 0 && (
         <Figures
-          label="Listes en cours"
+          label={t("Listes en cours")}
           items={[
-            { label: "Listes en cours", value: running.length },
+            { label: t("Listes en cours"), value: running.length },
             {
-              label: "Étapes faites",
+              label: t("Étapes faites"),
               value: totals.done,
               unit: `/${totals.total}`,
             },
             {
-              label: "Contrôles en retard",
+              label: t("Contrôles en retard"),
               value: totals.late,
               tone: totals.late ? "crit" : "",
             },
-            { label: "Listes closes", value: closed.length },
+            { label: t("Listes closes"), value: closed.length },
           ]}
         />
       )}
@@ -217,19 +220,19 @@ export function Checklists() {
         <div className="card">
           <EmptyState
             icon={<ListChecks size={28} />}
-            title="Aucune liste en cours"
+            title={t("Aucune liste en cours")}
             actions={
               !readOnly && (
                 <button className="primary" onClick={() => setStarting("pick")}>
                   <Play size={14} />
-                  Démarrer une liste
+                  {t("Démarrer une liste")}
                 </button>
               )
             }
           >
-            Une liste de contrôle rappelle ce qu’il ne faut pas oublier pour un
-            type d’événement (crue, black-out, canicule…). Cochez les étapes au
-            fur et à mesure : le journal note qui l’a fait et quand.
+            {t(
+              "Une liste de contrôle rappelle ce qu’il ne faut pas oublier pour un type d’événement (crue, black-out, canicule…). Cochez les étapes au fur et à mesure : le journal note qui l’a fait et quand.",
+            )}
           </EmptyState>
         </div>
       )}
@@ -244,7 +247,7 @@ export function Checklists() {
               else cards.current.delete(c.id);
             }}
             onTick={(stepId, log) =>
-              run("Étape cochée.", () =>
+              run(t("Étape cochée."), () =>
                 changeJournal((j) =>
                   tickStep(j, c.id, stepId, { author, log }),
                 ),
@@ -253,7 +256,7 @@ export function Checklists() {
             onUntick={(stepId) =>
               write(
                 (o) => untickStep(o, c.id, stepId, author),
-                "Étape décochée.",
+                t("Étape décochée."),
               )
             }
             onEdit={() => setEditing({ kind: "list", list: c })}
@@ -262,7 +265,7 @@ export function Checklists() {
               write(
                 (o) =>
                   setChecklistClosed(o, c.id, new Date().toISOString(), author),
-                "Liste close.",
+                t("Liste close."),
               )
             }
           />
@@ -277,7 +280,7 @@ export function Checklists() {
             onClick={() => setShowClosed(!showClosed)}
           >
             <ChevronDown size={15} />
-            Listes closes
+            {t("Listes closes")}
             <span className="pill plain">{closed.length}</span>
           </button>
           {showClosed && (
@@ -295,13 +298,16 @@ export function Checklists() {
                   onReopen={() =>
                     write(
                       (o) => setChecklistClosed(o, c.id, "", author),
-                      "Liste rouverte.",
+                      t("Liste rouverte."),
                     )
                   }
                   onRemove={() => {
                     if (
                       !window.confirm(
-                        `Supprimer la liste « ${c.title} » ? Les entrées du journal restent.`,
+                        t(
+                          "Supprimer la liste « {title} » ? Les entrées du journal restent.",
+                          { title: c.title },
+                        ),
                       )
                     )
                       return;
@@ -310,10 +316,10 @@ export function Checklists() {
                         removeRecords(o, [
                           c.id,
                           ...o.checklistTicks
-                            .filter((t) => t.checklistId === c.id)
-                            .map((t) => t.id),
+                            .filter((k) => k.checklistId === c.id)
+                            .map((k) => k.id),
                         ]),
-                      "Liste supprimée.",
+                      t("Liste supprimée."),
                     );
                   }}
                 />
@@ -323,38 +329,40 @@ export function Checklists() {
         </section>
       )}
 
-      <section className="card ck-templates" aria-label="Modèles">
+      <section className="card ck-templates" aria-label={t("Modèles")}>
         <div className="card-head">
           <ListChecks size={15} />
-          <h2>Modèles par type d’événement</h2>
+          <h2>{t("Modèles par type d’événement")}</h2>
           {hiddenCount > 0 && (
             <button
               className="small"
               onClick={() => setShowHidden(!showHidden)}
             >
               {showHidden ? <EyeOff size={13} /> : <Eye size={13} />}
-              {showHidden ? "Cacher les masqués" : `Masqués (${hiddenCount})`}
+              {showHidden
+                ? t("Cacher les masqués")
+                : t("Masqués ({n})", { n: hiddenCount })}
             </button>
           )}
         </div>
         <div className="rows">
-          {visibleTemplates.map((t) => (
+          {visibleTemplates.map((m) => (
             <div
-              key={t.id}
-              className={`row-item ck-template ${t.hidden ? "muted" : ""}`}
+              key={m.id}
+              className={`row-item ck-template ${m.hidden ? "muted" : ""}`}
             >
               <span className="row-main">
-                <strong>{t.name}</strong>
+                <strong>{m.name}</strong>
                 <small>
                   {[
-                    `${t.steps.length} étapes`,
-                    t.builtIn
-                      ? t.changed
-                        ? "standard modifié"
-                        : "standard"
-                      : "du journal",
-                    t.hidden && "masqué",
-                    t.description,
+                    tn(m.steps.length, "{n} étape", "{n} étapes"),
+                    m.builtIn
+                      ? m.changed
+                        ? t("standard modifié")
+                        : t("standard")
+                      : t("du journal"),
+                    m.hidden && t("masqué"),
+                    m.description,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -362,26 +370,26 @@ export function Checklists() {
               </span>
               {!readOnly && (
                 <span className="ck-template-actions">
-                  <button className="small" onClick={() => setStarting(t)}>
+                  <button className="small" onClick={() => setStarting(m)}>
                     <Play size={13} />
-                    Démarrer
+                    {t("Démarrer")}
                   </button>
                   <button
                     className="icon-button"
-                    aria-label={`Modifier « ${t.name} »`}
-                    title="Modifier"
-                    onClick={() => setEditing({ kind: "template", view: t })}
+                    aria-label={t("Modifier « {name} »", { name: m.name })}
+                    title={t("Modifier")}
+                    onClick={() => setEditing({ kind: "template", view: m })}
                   >
                     <Pencil size={14} />
                   </button>
                   <button
                     className="icon-button"
-                    aria-label={`Dupliquer « ${t.name} »`}
-                    title="Dupliquer"
+                    aria-label={t("Dupliquer « {name} »", { name: m.name })}
+                    title={t("Dupliquer")}
                     onClick={() =>
                       write(
-                        (o) => duplicateTemplate(o, t, author).ops,
-                        "Modèle dupliqué.",
+                        (o) => duplicateTemplate(o, m, author).ops,
+                        t("Modèle dupliqué."),
                       )
                     }
                   >
@@ -389,44 +397,54 @@ export function Checklists() {
                   </button>
                   <button
                     className="icon-button"
-                    aria-label={t.hidden ? "Afficher" : "Masquer"}
-                    title={t.hidden ? "Afficher" : "Masquer"}
+                    aria-label={m.hidden ? t("Afficher") : t("Masquer")}
+                    title={m.hidden ? t("Afficher") : t("Masquer")}
                     onClick={() =>
                       write(
                         (o) =>
-                          saveTemplate(o, { ...t, hidden: !t.hidden }, author)
+                          saveTemplate(o, { ...m, hidden: !m.hidden }, author)
                             .ops,
-                        t.hidden ? "Modèle affiché." : "Modèle masqué.",
+                        m.hidden ? t("Modèle affiché.") : t("Modèle masqué."),
                       )
                     }
                   >
-                    {t.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {m.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
                   </button>
-                  {t.recordId && (
+                  {m.recordId && (
                     <button
                       className="icon-button"
                       aria-label={
-                        t.builtIn
-                          ? "Rétablir le modèle standard"
-                          : "Supprimer le modèle"
+                        m.builtIn
+                          ? t("Rétablir le modèle standard")
+                          : t("Supprimer le modèle")
                       }
-                      title={t.builtIn ? "Rétablir le standard" : "Supprimer"}
+                      title={
+                        m.builtIn ? t("Rétablir le standard") : t("Supprimer")
+                      }
                       onClick={() => {
                         if (
                           !window.confirm(
-                            t.builtIn
-                              ? `Rétablir « ${t.name} » tel que livré ? Vos changements du modèle sont retirés (les listes démarrées ne changent pas).`
-                              : `Supprimer le modèle « ${t.name} » ? Les listes démarrées restent.`,
+                            m.builtIn
+                              ? t(
+                                  "Rétablir « {name} » tel que livré ? Vos changements du modèle sont retirés (les listes démarrées ne changent pas).",
+                                  { name: m.name },
+                                )
+                              : t(
+                                  "Supprimer le modèle « {name} » ? Les listes démarrées restent.",
+                                  { name: m.name },
+                                ),
                           )
                         )
                           return;
                         write(
-                          (o) => removeRecords(o, [t.recordId]),
-                          t.builtIn ? "Modèle rétabli." : "Modèle supprimé.",
+                          (o) => removeRecords(o, [m.recordId]),
+                          m.builtIn
+                            ? t("Modèle rétabli.")
+                            : t("Modèle supprimé."),
                         );
                       }}
                     >
-                      {t.builtIn ? (
+                      {m.builtIn ? (
                         <RotateCcw size={14} />
                       ) : (
                         <Trash2 size={14} />
@@ -442,17 +460,17 @@ export function Checklists() {
 
       {starting && (
         <StartDialog
-          templates={all.filter((t) => !t.hidden)}
+          templates={all.filter((m) => !m.hidden)}
           initial={starting === "pick" ? null : starting}
           onClose={() => setStarting(null)}
-          onStart={(t, extra) => {
+          onStart={(m, extra) => {
             if (!canWrite()) return;
             try {
               let id = "";
               updateOps((o) => {
                 const r = startChecklist(
                   o,
-                  t,
+                  m,
                   author,
                   new Date().toISOString(),
                   extra,
@@ -460,7 +478,11 @@ export function Checklists() {
                 id = r.id;
                 return r.ops;
               });
-              toast(`Liste « ${extra.title || t.name} » démarrée.`);
+              toast(
+                t("Liste « {title} » démarrée.", {
+                  title: extra.title || m.name,
+                }),
+              );
               setStarting(null);
               setHighlight(id);
             } catch (err) {
@@ -472,12 +494,14 @@ export function Checklists() {
       {editing?.kind === "template" && (
         <StepsSheet
           title={
-            editing.view ? `Modèle « ${editing.view.name} »` : "Nouveau modèle"
+            editing.view
+              ? t("Modèle « {name} »", { name: editing.view.name })
+              : t("Nouveau modèle")
           }
           eyebrow={
             editing.view?.builtIn
-              ? "Modèle standard : vos changements valent pour ce journal"
-              : "Modèle du journal"
+              ? t("Modèle standard : vos changements valent pour ce journal")
+              : t("Modèle du journal")
           }
           initial={
             editing.view
@@ -508,7 +532,7 @@ export function Checklists() {
                     author,
                   ).ops,
               );
-              toast("Modèle enregistré.");
+              toast(t("Modèle enregistré."));
               setEditing(null);
             } catch (err) {
               return (err as Error).message;
@@ -519,7 +543,7 @@ export function Checklists() {
       {editing?.kind === "list" && (
         <StepsSheet
           title={editing.list.title}
-          eyebrow="Liste en cours : les étapes cochées restent"
+          eyebrow={t("Liste en cours : les étapes cochées restent")}
           describe={false}
           initial={{
             name: editing.list.title,
@@ -535,7 +559,10 @@ export function Checklists() {
                 const c = editing.list;
                 if (
                   !window.confirm(
-                    `Supprimer la liste « ${c.title} » ? Les entrées du journal restent.`,
+                    t(
+                      "Supprimer la liste « {title} » ? Les entrées du journal restent.",
+                      { title: c.title },
+                    ),
                   )
                 )
                   return;
@@ -544,16 +571,16 @@ export function Checklists() {
                     removeRecords(o, [
                       c.id,
                       ...o.checklistTicks
-                        .filter((t) => t.checklistId === c.id)
-                        .map((t) => t.id),
+                        .filter((k) => k.checklistId === c.id)
+                        .map((k) => k.id),
                     ]),
-                  "Liste supprimée.",
+                  t("Liste supprimée."),
                 );
                 setEditing(null);
               }}
             >
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           }
           onSave={(v) => {
@@ -562,7 +589,7 @@ export function Checklists() {
               const latest = live.ops.checklists.find(
                 (c) => c.id === editing.list.id,
               );
-              if (!latest) return "Cette liste n’existe plus.";
+              if (!latest) return t("Cette liste n’existe plus.");
               updateOps((o) =>
                 upsert(
                   o,
@@ -571,7 +598,7 @@ export function Checklists() {
                   author,
                 ),
               );
-              toast("Liste enregistrée.");
+              toast(t("Liste enregistrée."));
               setEditing(null);
             } catch (err) {
               return (err as Error).message;
@@ -626,9 +653,9 @@ function ListCard({
           <small>
             {[
               list.event !== list.title && list.event,
-              `démarrée ${dateTime(list.startedAt)}`,
+              t("démarrée {date}", { date: dateTime(list.startedAt) }),
               list.location,
-              closed && `close ${dateTime(list.closedAt)}`,
+              closed && t("close {date}", { date: dateTime(list.closedAt) }),
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -644,16 +671,16 @@ function ListCard({
         aria-valuemin={0}
         aria-valuemax={p.total}
         aria-valuenow={p.done}
-        aria-label="Étapes faites"
+        aria-label={t("Étapes faites")}
       >
         <span style={{ width: `${Math.round(p.ratio * 100)}%` }} />
       </div>
       {list.notes && <p className="muted ck-notes">{list.notes}</p>}
       <ol className="ck-steps">
         {list.steps.map((s, i) => {
-          const t = ticks.get(s.id);
-          const done = !!t?.done;
-          const entry = done ? tickEntry(journal, t) : undefined;
+          const tick = ticks.get(s.id);
+          const done = !!tick?.done;
+          const entry = done ? tickEntry(journal, tick) : undefined;
           const late = entry ? overdue(entry, now) : false;
           const log = logs[s.id] ?? s.log;
           return (
@@ -676,8 +703,13 @@ function ListCard({
                   <small>
                     {[
                       s.role,
-                      s.minutes > 0 && `contrôle ${s.minutes} min après`,
-                      done && `fait à ${time(t!.at)} par ${t!.who}`,
+                      s.minutes > 0 &&
+                        t("contrôle {n} min après", { n: s.minutes }),
+                      done &&
+                        t("fait à {time} par {who}", {
+                          time: time(tick!.at),
+                          who: tick!.who,
+                        }),
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -685,7 +717,9 @@ function ListCard({
                 </span>
               </label>
               <span className="ck-step-side">
-                {late && <span className="pill crit">Contrôle en retard</span>}
+                {late && (
+                  <span className="pill crit">{t("Contrôle en retard")}</span>
+                )}
                 {entry && (
                   <button
                     className="small link mono"
@@ -696,7 +730,10 @@ function ListCard({
                   </button>
                 )}
                 {!done && s.minutes > 0 && (
-                  <span className="ck-timer" title="Contrôle après l’étape">
+                  <span
+                    className="ck-timer"
+                    title={t("Contrôle après l’étape")}
+                  >
                     <Timer size={13} />
                     {s.minutes}
                   </span>
@@ -708,15 +745,15 @@ function ListCard({
                     disabled={s.minutes > 0}
                     title={
                       s.minutes > 0
-                        ? "Consignée (contrôle à suivre)"
+                        ? t("Consignée (contrôle à suivre)")
                         : log
-                          ? "Sera consignée au journal"
-                          : "Ne sera pas consignée"
+                          ? t("Sera consignée au journal")
+                          : t("Ne sera pas consignée")
                     }
                     aria-label={
                       log
-                        ? "Ne pas consigner cette étape"
-                        : "Consigner cette étape"
+                        ? t("Ne pas consigner cette étape")
+                        : t("Consigner cette étape")
                     }
                     onClick={() => setLogs((l) => ({ ...l, [s.id]: !log }))}
                   >
@@ -731,29 +768,29 @@ function ListCard({
       <div className="ck-actions">
         <button className="small" onClick={onPrint}>
           <Printer size={13} />
-          Imprimer
+          {t("Imprimer")}
         </button>
         {!readOnly && onEdit && (
           <button className="small" onClick={onEdit}>
             <Pencil size={13} />
-            Modifier
+            {t("Modifier")}
           </button>
         )}
         {!readOnly && onClose && (
           <button className="small" onClick={onClose}>
-            Clore la liste
+            {t("Clore la liste")}
           </button>
         )}
         {!readOnly && onReopen && (
           <button className="small" onClick={onReopen}>
             <RotateCcw size={13} />
-            Rouvrir
+            {t("Rouvrir")}
           </button>
         )}
         {!readOnly && onRemove && (
           <button className="small danger" onClick={onRemove}>
             <Trash2 size={13} />
-            Supprimer
+            {t("Supprimer")}
           </button>
         )}
       </div>
@@ -771,7 +808,7 @@ function StartDialog({
   initial: TemplateView | null;
   onClose: () => void;
   onStart: (
-    t: TemplateView,
+    template: TemplateView,
     extra: { title: string; location: string; notes: string },
   ) => void;
 }) {
@@ -781,23 +818,24 @@ function StartDialog({
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   return (
-    <Modal title="Démarrer une liste de contrôle" onClose={onClose}>
+    <Modal title={t("Démarrer une liste de contrôle")} onClose={onClose}>
       <div className="ck-pick" role="list">
-        {list.map((t) => (
+        {list.map((m) => (
           <button
-            key={t.id}
+            key={m.id}
             role="listitem"
             className="row-item"
-            aria-pressed={picked?.id === t.id}
+            aria-pressed={picked?.id === m.id}
             onClick={() => {
-              setPicked(t);
-              setTitle(t.name);
+              setPicked(m);
+              setTitle(m.name);
             }}
           >
             <span className="row-main">
-              <strong>{t.name}</strong>
+              <strong>{m.name}</strong>
               <small>
-                {t.steps.length} étapes · {t.description || t.event}
+                {tn(m.steps.length, "{n} étape", "{n} étapes")} ·{" "}
+                {m.description || m.event}
               </small>
             </span>
           </button>
@@ -807,7 +845,7 @@ function StartDialog({
         <div className="form-grid ck-start-fields">
           <ComboField
             className="span-2"
-            label="Titre de la liste"
+            label={t("Titre de la liste")}
             value={title}
             options={lists("eventKinds")}
             maxLength={200}
@@ -815,14 +853,14 @@ function StartDialog({
           />
           <TextField
             className="span-2"
-            label="Lieu ou secteur"
+            label={t("Lieu ou secteur")}
             value={location}
             maxLength={300}
             onChange={setLocation}
           />
           <TextField
             className="span-2"
-            label="Remarques"
+            label={t("Remarques")}
             rows={2}
             value={notes}
             maxLength={2000}
@@ -831,7 +869,7 @@ function StartDialog({
         </div>
       )}
       <div className="modal-actions">
-        <button onClick={onClose}>Annuler</button>
+        <button onClick={onClose}>{t("Annuler")}</button>
         <button
           className="primary"
           disabled={!picked || !picked.steps.length}
@@ -845,7 +883,7 @@ function StartDialog({
           }
         >
           <Play size={14} />
-          Démarrer
+          {t("Démarrer")}
         </button>
       </div>
     </Modal>

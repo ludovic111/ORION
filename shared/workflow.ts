@@ -6,6 +6,7 @@ import {
   type Fields,
   type Journal,
 } from "./journal.ts";
+import { t } from "./i18n/workflow.ts";
 
 // "#007", "# 7", "#007·B" (the label of an entry whose number is shared by
 // entries created at the same time on two posts, see shared/journal.ts).
@@ -119,71 +120,98 @@ export type Template = {
 export const TEMPLATES: Template[] = [
   {
     id: "situation",
-    label: "Point de situation",
-    fields: {
-      type: "Renseignement",
-      message:
-        "Point de situation.\nSituation : \nMesures prises : \nMoyens engagés : \nBesoins : \nProchain point : ",
+    get label() {
+      return t("Point de situation");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Renseignement",
+        message: t(
+          "Point de situation.\nSituation : \nMesures prises : \nMoyens engagés : \nBesoins : \nProchain point : ",
+        ),
+      };
     },
   },
   {
     id: "request",
-    label: "Demande de moyens",
-    fields: {
-      type: "Demande",
-      priority: "Important",
-      status: "À traiter",
-      message:
-        "Demande de moyens.\nMoyens : \nQuantité : \nLieu de livraison : \nDélai : \nMotif : ",
+    get label() {
+      return t("Demande de moyens");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Demande",
+        priority: "Important",
+        status: "À traiter",
+        message: t(
+          "Demande de moyens.\nMoyens : \nQuantité : \nLieu de livraison : \nDélai : \nMotif : ",
+        ),
+      };
     },
   },
   {
     id: "mission",
-    label: "Mission",
-    fields: {
-      type: "Mission",
-      status: "À traiter",
-      message: "Mission : ",
-      action: "Quittancer l’exécution au PC.",
+    get label() {
+      return t("Mission");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Mission",
+        status: "À traiter",
+        message: t("Mission : "),
+        action: t("Quittancer l’exécution au PC."),
+      };
     },
   },
   {
     id: "decision",
-    label: "Décision",
-    fields: {
-      type: "Décision",
-      status: "En cours",
-      reliability: "Confirmé",
-      message: "Décision : ",
+    get label() {
+      return t("Décision");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Décision",
+        status: "En cours",
+        reliability: "Confirmé",
+        message: t("Décision : "),
+      };
     },
   },
   {
     id: "receipt",
-    label: "Quittance",
-    fields: {
-      type: "Quittance",
-      reliability: "Confirmé",
-      message: "Quittance : ",
-      reference: "Suite de #",
+    get label() {
+      return t("Quittance");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Quittance",
+        reliability: "Confirmé",
+        message: t("Quittance : "),
+        reference: t("Suite de #"),
+      };
     },
   },
   {
     id: "check",
-    label: "Contrôle de liaison",
-    fields: {
-      type: "Observation",
-      channel: "Radio",
-      reliability: "Confirmé",
-      message: "Contrôle de liaison : ",
-      tags: ["radio"],
+    get label() {
+      return t("Contrôle de liaison");
+    },
+    get fields(): Partial<Fields> {
+      return {
+        type: "Observation",
+        channel: "Radio",
+        reliability: "Confirmé",
+        message: t("Contrôle de liaison : "),
+        tags: ["radio"],
+      };
     },
   },
 ];
 
 export function applyTemplate(fields: Fields, template: Template): Fields {
+  const skeleton = template.fields;
   return {
     ...fields,
-    ...template.fields,
-    tags: [...new Set([...fields.tags, ...(template.fields.tags ?? [])])],
+    ...skeleton,
+    tags: [...new Set([...fields.tags, ...(skeleton.tags ?? [])])],
   };
 }

@@ -28,6 +28,7 @@ import {
   shortId,
   type DocumentStamp,
 } from "./stamp.ts";
+import { t } from "./i18n.ts";
 
 // Produces the file(s) of an export in the browser: builds the dossier,
 // renders the maps, stamps and writes the chosen format. Heavy writers are
@@ -111,7 +112,9 @@ export function exportName(
 function checkArchiveSize(text: string) {
   if (new TextEncoder().encode(text).length > MAX_IMPORT_BYTES)
     throw new Error(
-      "Cette archive dépasse la limite d’import de 32 Mo. Choisissez moins de parties, ou les formats de lecture.",
+      t(
+        "Cette archive dépasse la limite d’import de 32 Mo. Choisissez moins de parties, ou les formats de lecture.",
+      ),
     );
 }
 
@@ -149,7 +152,10 @@ async function renderMaps(
   const { renderMap } = await import("../modules/map/render.ts");
   const out: Record<string, MapPicture> = {};
   for (const [i, mapId] of mapIds.entries()) {
-    progress(`Carte ${i + 1} / ${mapIds.length}`, i / mapIds.length);
+    progress(
+      t("Carte {n} / {total}", { n: i + 1, total: mapIds.length }),
+      i / mapIds.length,
+    );
     try {
       const image = await renderMap(journal, {
         mapId,
@@ -236,14 +242,14 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
     });
     journal = dossier.journal;
   } else {
-    progress("Reconstitution de la version choisie", 0.1);
+    progress(t("Reconstitution de la version choisie"), 0.1);
     await pause();
     journal =
       o.format === "orion" || o.format === "archive-json"
         ? archiveJournal(o.live, o.scope)
         : resolveScope(o.live, o.scope).journal;
   }
-  progress("Empreinte du contenu", 0.46);
+  progress(t("Empreinte du contenu"), 0.46);
   await pause();
   const content = await contentHashOf(journal);
   const fingerprint = content.slice(0, 16);
@@ -273,7 +279,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
   const name = (kind: string, extension: string) =>
     exportName(journal, o.scope, kind, extension);
 
-  progress("Écriture du fichier", 0.68);
+  progress(t("Écriture du fichier"), 0.68);
   await pause();
 
   const one = async (format: FormatId): Promise<Written> => {
@@ -285,7 +291,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
             await (await dossierPdf(dossier!, doc())).arrayBuffer(),
           ),
           extension: ".pdf",
-          kind: "dossier",
+          kind: t("fichier:dossier"),
         };
       }
       case "docx": {
@@ -293,7 +299,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: dossierDocx(dossier!, doc()),
           extension: ".docx",
-          kind: "dossier",
+          kind: t("fichier:dossier"),
         };
       }
       case "odt": {
@@ -301,7 +307,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: dossierOdt(dossier!, doc()),
           extension: ".odt",
-          kind: "dossier",
+          kind: t("fichier:dossier"),
         };
       }
       case "html": {
@@ -309,22 +315,22 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: dossierHtml(dossier!, doc()),
           extension: ".html",
-          kind: "dossier",
+          kind: t("fichier:dossier"),
         };
       }
       case "md":
       case "txt": {
-        const t = await import("./text.ts");
+        const writers = await import("./text.ts");
         return format === "md"
           ? {
-              data: t.dossierMarkdown(dossier!, doc()),
+              data: writers.dossierMarkdown(dossier!, doc()),
               extension: ".md",
-              kind: "dossier",
+              kind: t("fichier:dossier"),
             }
           : {
-              data: t.dossierText(dossier!, doc()),
+              data: writers.dossierText(dossier!, doc()),
               extension: ".txt",
-              kind: "dossier",
+              kind: t("fichier:dossier"),
             };
       }
       case "json": {
@@ -332,7 +338,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: dossierJson(dossier!, doc()),
           extension: ".json",
-          kind: "donnees",
+          kind: t("fichier:donnees"),
         };
       }
       case "xlsx":
@@ -342,12 +348,12 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
           ? {
               data: s.dossierXlsx(dossier!, stamp, o.watermark.trim()),
               extension: ".xlsx",
-              kind: "tableaux",
+              kind: t("fichier:tableaux"),
             }
           : {
               data: s.dossierOds(dossier!, stamp, o.watermark.trim()),
               extension: ".ods",
-              kind: "tableaux",
+              kind: t("fichier:tableaux"),
             };
       }
       case "csv":
@@ -358,10 +364,19 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
           stamp,
           format === "csv" ? ";" : "\t",
         );
-        if (!r.files.length) throw new Error("Aucun tableau dans ce contenu.");
+        if (!r.files.length)
+          throw new Error(t("Aucun tableau dans ce contenu."));
         return r.zip
-          ? { data: r.zip, extension: ".zip", kind: `tableaux-${format}` }
-          : { data: r.files[0].data, extension: `.${format}`, kind: "tableau" };
+          ? {
+              data: r.zip,
+              extension: ".zip",
+              kind: t("fichier:tableaux-{format}", { format }),
+            }
+          : {
+              data: r.files[0].data,
+              extension: `.${format}`,
+              kind: t("fichier:tableau"),
+            };
       }
       case "orion":
       case "archive-json": {
@@ -370,7 +385,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
             ? await (async () => {
                 const { deriveKey, encrypt } =
                   await import("../../shared/crypto.ts");
-                progress("Chiffrement", 0.8);
+                progress(t("Chiffrement"), 0.8);
                 return encrypt(archive(journal), await deriveKey(o.passphrase));
               })()
             : archive(journal);
@@ -388,76 +403,96 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         );
         checkArchiveSize(text);
         return format === "orion"
-          ? { data: text, extension: ".orionaic", kind: "archive" }
-          : { data: text, extension: ".json", kind: "archive" };
+          ? { data: text, extension: ".orionaic", kind: t("fichier:archive") }
+          : { data: text, extension: ".json", kind: t("fichier:archive") };
       }
       case "sheets": {
         const { formsPdf } = await import("../print/pdf.ts");
         const { messageSheet } = await import("../print/sheet.ts");
         const entries = chronological(journal.entries);
         if (!entries.length)
-          throw new Error("Aucune entrée du journal à cette heure.");
+          throw new Error(t("Aucune entrée du journal à cette heure."));
         const blob = await formsPdf(
           journal,
           entries.map(messageSheet),
-          `${entries.length} messages · export ${shortId(id)} · ${fingerprint}`,
+          t("{n} messages · export {id} · {fingerprint}", {
+            n: entries.length,
+            id: shortId(id),
+            fingerprint,
+          }),
         );
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
           extension: ".pdf",
-          kind: "fiches",
+          kind: t("fichier:fiches"),
         };
       }
       case "journal-pdf": {
         const { tablesPdf } = await import("../print/pdf.ts");
-        const t = tablesOf(dossier!).find(
+        const tbl = tablesOf(dossier!).find(
           (x) => x.table.id === "entries" || x.table.id === "missions",
         )?.table;
-        if (!t) throw new Error("Aucune entrée du journal dans ce contenu.");
-        const view = t.compact ?? t;
+        if (!tbl)
+          throw new Error(t("Aucune entrée du journal dans ce contenu."));
+        const view = tbl.compact ?? tbl;
         const sum = view.columns.reduce((n, c) => n + (c.weight ?? 1), 0);
         const blob = await tablesPdf(journal, {
-          kind: "Journal d’intervention",
+          kind: t("Journal d’intervention"),
           extra: dossier!.cover.shown,
           tables: [
             {
-              id: t.id,
-              title: t.title,
-              caption: t.caption,
+              id: tbl.id,
+              title: tbl.title,
+              caption: tbl.caption,
               head: view.columns.map((c) => c.label),
               body: view.rows,
               widths: view.columns.map((c) => ((c.weight ?? 1) / sum) * 269),
             },
           ],
           orientation: "landscape",
-          footer: `export ${shortId(id)} · ${fingerprint}${stamp.key ? ` · clé ${stamp.key.slice(0, 9)}` : ""}`,
+          footer: `export ${shortId(id)} · ${fingerprint}${stamp.key ? ` · ${t("clé {key}", { key: stamp.key.slice(0, 9) })}` : ""}`,
           verify: {
             qr: stamp.qr,
             text: stamp.key
-              ? `Export n° ${stamp.id} · empreinte du contenu ${stamp.content} · signé par la clé ${stamp.key} (${stamp.alg}) le ${dateTime(exportedAt)}. Vérifier : orion aic, Traçabilité → Vérifier un document (déposer ce PDF ou scanner ce code).`
-              : `Export n° ${stamp.id} · empreinte du contenu ${fingerprint}. Vérifier : orion aic, Traçabilité → Vérifier un document.`,
+              ? t(
+                  "Export n° {id} · empreinte du contenu {content} · signé par la clé {key} ({alg}) le {date}. Vérifier : orion aic, Traçabilité → Vérifier un document (déposer ce PDF ou scanner ce code).",
+                  {
+                    id: stamp.id,
+                    content: stamp.content,
+                    key: stamp.key,
+                    alg: stamp.alg,
+                    date: dateTime(exportedAt),
+                  },
+                )
+              : t(
+                  "Export n° {id} · empreinte du contenu {fingerprint}. Vérifier : orion aic, Traçabilité → Vérifier un document.",
+                  { id: stamp.id, fingerprint },
+                ),
           },
         });
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
           extension: ".pdf",
-          kind: "journal",
+          kind: t("fichier:journal"),
         };
       }
       case "radio-pdf": {
         const { tablesPdf } = await import("../print/pdf.ts");
         const { radioTables } = await import("../print/radio-sheet.ts");
         const blob = await tablesPdf(journal, {
-          kind: "Plan du réseau radio",
-          extra: `Établi par ${o.author}`,
+          kind: t("Plan du réseau radio"),
+          extra: t("Établi par {name}", { name: o.author }),
           tables: radioTables(journal.radio),
           orientation: "landscape",
-          footer: `plan radio · export ${shortId(id)} · ${fingerprint}`,
+          footer: t("plan radio · export {id} · {fingerprint}", {
+            id: shortId(id),
+            fingerprint,
+          }),
         });
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
           extension: ".pdf",
-          kind: "radio",
+          kind: t("fichier:radio"),
         };
       }
       case "labels-pdf": {
@@ -466,7 +501,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
           extension: ".pdf",
-          kind: "etiquettes-radio",
+          kind: t("fichier:etiquettes-radio"),
         };
       }
       case "png": {
@@ -479,12 +514,12 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         );
         const files = list.filter((m) => images[m.id]);
         if (!files.length)
-          throw new Error("La carte n’a pas pu être dessinée.");
+          throw new Error(t("La carte n’a pas pu être dessinée."));
         if (files.length === 1)
           return {
             data: images[files[0].id].png,
             extension: ".png",
-            kind: "carte",
+            kind: t("fichier:carte"),
           };
         return {
           data: zip(
@@ -496,7 +531,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
             ),
           ),
           extension: ".zip",
-          kind: "cartes-png",
+          kind: t("fichier:cartes-png"),
         };
       }
       case "geojson":
@@ -514,7 +549,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
           return {
             data: write(journal, list[0].id),
             extension: `.${format}`,
-            kind: "carte",
+            kind: t("fichier:carte"),
           };
         return {
           data: zip(
@@ -526,27 +561,27 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
             ),
           ),
           extension: ".zip",
-          kind: `cartes-${format}`,
+          kind: t("fichier:cartes-{format}", { format }),
         };
       }
       case "ics": {
         const { agendaIcs } = await import("./calendar.ts");
         if (!journal.ops.agenda.length)
-          throw new Error("Aucun rendez-vous à cette heure.");
+          throw new Error(t("Aucun rendez-vous à cette heure."));
         return {
           data: agendaIcs(journal, journal.ops.agenda, stamp),
           extension: ".ics",
-          kind: "agenda",
+          kind: t("fichier:agenda"),
         };
       }
       case "vcf": {
         const { contactsVcf } = await import("./calendar.ts");
         if (!journal.ops.contacts.length)
-          throw new Error("Aucun contact dans ce contenu.");
+          throw new Error(t("Aucun contact dans ce contenu."));
         return {
           data: contactsVcf(journal.ops.contacts, stamp),
           extension: ".vcf",
-          kind: "contacts",
+          kind: t("fichier:contacts"),
         };
       }
       case "pptx":
@@ -570,7 +605,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         return {
           data: new Uint8Array(await blob.arrayBuffer()),
           extension,
-          kind: "presentation",
+          kind: t("fichier:presentation"),
         };
       }
       case "pack":
@@ -579,6 +614,8 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
   };
 
   const outputs: Output[] = [];
+  /** The archive of a pack could be written. */
+  let archived = false;
   let main: Output;
   if (o.format === "pack") {
     const parts: FormatId[] = [
@@ -604,7 +641,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
     const lines: string[] = [];
     for (const [i, f] of chosen.entries()) {
       progress(
-        `Pack : ${formatInfo(f).name}`,
+        t("Pack : {format}", { format: formatInfo(f).name }),
         0.68 + (0.25 * i) / chosen.length,
       );
       await pause();
@@ -619,7 +656,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
                 return {
                   data: text,
                   extension: ".json",
-                  kind: "archive",
+                  kind: t("fichier:archive"),
                 };
               })()
             : await seal(await one(f));
@@ -631,40 +668,59 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
         files[file] = data;
         const sha = await sha256Hex(data);
         lines.push(
-          `${file}\r\n  ${formatInfo(f).name} · ${data.length} octets\r\n  SHA-256 ${sha}`,
+          `${file}\r\n  ${t("{format} · {n} octets", { format: formatInfo(f).name, n: data.length })}\r\n  SHA-256 ${sha}`,
         );
         outputs.push({
           name: file,
           blob: blobOf(data, formatInfo(f).mime),
           format: `Pack · ${formatInfo(f).name} (${formatInfo(f).extension})`,
         });
+        if (f === "archive-json") archived = true;
       } catch (err) {
-        notes.push(`${formatInfo(f).name} : ${(err as Error).message}`);
+        notes.push(
+          t("{label} : {value}", {
+            label: formatInfo(f).name,
+            value: (err as Error).message,
+          }),
+        );
       }
     }
     const readme = [
-      "orion aic · pack complet",
+      `orion aic · ${t("pack complet")}`,
       "",
-      `Opération : ${journal.title}`,
-      `Contenu : ${describeScope(o.scope)}`,
-      `Exporté le ${dateTime(exportedAt)} par ${o.author} (heures Europe/Zurich)`,
-      `Document n° ${stamp.id} · empreinte du contenu ${stamp.fingerprint}`,
-      `Vérification : ${stamp.qr}`,
+      t("{label} : {value}", { label: t("Opération"), value: journal.title }),
+      t("{label} : {value}", {
+        label: t("Contenu"),
+        value: describeScope(o.scope),
+      }),
+      t("Exporté le {date} par {name} (heures Europe/Zurich)", {
+        date: dateTime(exportedAt),
+        name: o.author,
+      }),
+      t("Document n° {id} · empreinte du contenu {fingerprint}", {
+        id: stamp.id,
+        fingerprint: stamp.fingerprint,
+      }),
+      t("Vérification : {code}", { code: stamp.qr }),
       "",
-      "Fichiers et empreintes SHA-256 (vérifiables dans orion aic, Traçabilité → Vérifier un document) :",
+      t(
+        "Fichiers et empreintes SHA-256 (vérifiables dans orion aic, Traçabilité → Vérifier un document) :",
+      ),
       "",
       ...lines,
       ...(notes.length
-        ? ["", "Non inclus :", ...notes.map((n) => `  ${n}`)]
+        ? ["", t("Non inclus :"), ...notes.map((n) => `  ${n}`)]
         : []),
       "",
-      "L’archive JSON se réimporte dans orion aic (Importer → journal séparé) : la machine à remonter le temps rejoue alors toute l’opération.",
+      t(
+        "L’archive JSON se réimporte dans orion aic (Importer → journal séparé) : la machine à remonter le temps rejoue alors toute l’opération.",
+      ),
       "",
     ].join("\r\n");
-    files["LISEZMOI.txt"] = new TextEncoder().encode(readme);
+    files[t("LISEZMOI.txt")] = new TextEncoder().encode(readme);
     const packed = zip(files);
     main = {
-      name: name("pack", ".zip"),
+      name: name(t("fichier:pack"), ".zip"),
       blob: blobOf(packed, info.mime),
       format: `${info.name} (.zip)`,
     };
@@ -677,7 +733,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
       format: `${info.name} (${w.extension})`,
     };
   }
-  progress("Empreinte du fichier", 0.96);
+  progress(t("Empreinte du fichier"), 0.96);
   return {
     main,
     files: [...outputs, main],
@@ -686,8 +742,7 @@ export async function produce(o: ProduceOptions): Promise<Produced> {
     backup:
       (o.format === "orion" ||
         o.format === "archive-json" ||
-        (o.format === "pack" &&
-          outputs.some((f) => f.format.includes("Archive")))) &&
+        (o.format === "pack" && archived)) &&
       isComplete(o.scope),
     notes,
     signing: o.signing,
@@ -747,7 +802,9 @@ export function printHtml(html: string, timeout = 15_000): Promise<void> {
       () =>
         finish(
           new Error(
-            "L’impression n’a pas démarré. Téléchargez la page HTML et imprimez-la.",
+            t(
+              "L’impression n’a pas démarré. Téléchargez la page HTML et imprimez-la.",
+            ),
           ),
         ),
       timeout,
@@ -765,17 +822,17 @@ export function printHtml(html: string, timeout = 15_000): Promise<void> {
           win.print();
           finish();
         } catch {
-          finish(new Error("Impression impossible dans ce navigateur."));
+          finish(new Error(t("Impression impossible dans ce navigateur.")));
         }
       }, 250);
     };
     frame.onerror = () =>
-      finish(new Error("Impression impossible dans ce navigateur."));
+      finish(new Error(t("Impression impossible dans ce navigateur.")));
     try {
       frame.srcdoc = html;
       document.body.append(frame);
     } catch {
-      finish(new Error("Impression impossible dans ce navigateur."));
+      finish(new Error(t("Impression impossible dans ce navigateur.")));
     }
   });
 }

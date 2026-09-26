@@ -39,13 +39,16 @@ import {
 } from "../../../shared/journal";
 import {
   RESOURCE_STATUSES,
-  STANDARD_BOARDS,
-  STANDARD_FACTS,
+  journalLang,
+  standardBoards,
+  standardFacts,
   upsert,
   type Board,
   type Fact,
   type Ops,
 } from "../../../shared/ops";
+import type { Lang } from "../../../shared/i18n/core.ts";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
 import { parseRef, ref, type Module, type Ref } from "../../../shared/links";
 import { radioSummary } from "../../../shared/radio";
 import { useApp } from "../../app/context";
@@ -70,16 +73,24 @@ import "../weather/weather.css";
 import "./situation.css";
 import { FollowCards } from "./FollowCards";
 import { SituationPointDialog } from "./SituationPoint";
+import { t, tn } from "./i18n.ts";
 
 type FactDraft = Omit<Fact, "id" | "createdAt" | "updatedAt" | "by"> &
   Partial<Pick<Fact, "id" | "createdAt" | "updatedAt" | "by">>;
 type BoardDraft = Omit<Board, "id" | "createdAt" | "updatedAt" | "by"> &
   Partial<Pick<Board, "id" | "createdAt" | "updatedAt" | "by">>;
 
-const FACT_SPEC: FieldSpec[] = [
+// Units proposed for a key fact, in the language of the journal (data).
+const UNITS: Record<Lang, string[]> = {
+  fr: ["pers.", "bât.", "véh.", "km", "ha", "m³", "h"],
+  de: ["Pers.", "Geb.", "Fz.", "km", "ha", "m³", "h"],
+  it: ["pers.", "edif.", "veic.", "km", "ha", "m³", "h"],
+};
+
+const factSpec = (ops: Ops): FieldSpec[] => [
   {
     key: "label",
-    label: "Libellé",
+    label: t("Libellé"),
     kind: "text",
     required: true,
     wide: true,
@@ -87,40 +98,44 @@ const FACT_SPEC: FieldSpec[] = [
   },
   {
     key: "value",
-    label: "Valeur",
+    label: t("Valeur"),
     kind: "text",
     max: 120,
-    placeholder: "ex. 12",
+    placeholder: t("ex. 12"),
   },
   {
     key: "unit",
-    label: "Unité",
+    label: t("Unité"),
     kind: "combo",
-    options: ["pers.", "bât.", "véh.", "km", "ha", "m³", "h"],
+    options: UNITS[journalLang(ops)],
   },
   {
     key: "category",
-    label: "Catégorie",
+    label: t("Catégorie"),
     kind: "combo",
     list: "factCategories",
     quick: 5,
     wide: true,
   },
-  { key: "note", label: "Remarque", kind: "area", rows: 2, max: 500 },
-  { kind: "group", label: "Affichage" },
-  { key: "order", label: "Position (plus petit = en premier)", kind: "number" },
+  { key: "note", label: t("Remarque"), kind: "area", rows: 2, max: 500 },
+  { kind: "group", label: t("Affichage") },
+  {
+    key: "order",
+    label: t("Position (plus petit = en premier)"),
+    kind: "number",
+  },
 ];
-const BOARD_SPEC: FieldSpec[] = [
+const boardSpec = (ops: Ops): FieldSpec[] => [
   {
     key: "title",
-    label: "Titre",
+    label: t("Titre"),
     kind: "combo",
-    options: STANDARD_BOARDS,
+    options: standardBoards(ops),
     required: true,
     wide: true,
   },
-  { key: "body", label: "Contenu", kind: "area", rows: 10, max: 12000 },
-  { key: "order", label: "Position", kind: "number" },
+  { key: "body", label: t("Contenu"), kind: "area", rows: 10, max: 12000 },
+  { key: "order", label: t("Position"), kind: "number" },
 ];
 
 const CATEGORY_HUE: Record<string, number> = {
@@ -128,6 +143,15 @@ const CATEGORY_HUE: Record<string, number> = {
   Bâtiments: 30,
   Infrastructures: 190,
   Engagement: 250,
+  // Standard categories of German and Italian journals.
+  Personen: 330,
+  Gebäude: 30,
+  Infrastruktur: 190,
+  Einsatz: 250,
+  Persone: 330,
+  Edifici: 30,
+  Infrastrutture: 190,
+  Impiego: 250,
 };
 const hueOf = (category: string) =>
   CATEGORY_HUE[category] ??
@@ -141,7 +165,7 @@ function elapsed(ms: number) {
   const m = Math.max(0, Math.floor(ms / 60000));
   const d = Math.floor(m / 1440);
   const h = Math.floor((m % 1440) / 60);
-  if (d) return `${d} j ${h} h`;
+  if (d) return t("{d} j {h} h", { d, h });
   if (h) return `${h} h ${String(m % 60).padStart(2, "0")}`;
   return `${m} min`;
 }
@@ -163,12 +187,12 @@ export function Situation() {
       const found = journal.ops.facts.find((f) => f.id === id);
       if (found) setFact(found);
       else if (id === "new" && !readOnly) setFact(blankFact(journal.ops));
-      else if (id !== "new") toast("Renseignement introuvable.");
+      else if (id !== "new") toast(t("Renseignement introuvable."));
     } else {
       const found = journal.ops.boards.find((b) => b.id === id);
       if (found) setBoard(found);
       else if (id === "new" && !readOnly) setBoard(blankBoard(journal.ops));
-      else if (id !== "new") toast("Tableau introuvable.");
+      else if (id !== "new") toast(t("Tableau introuvable."));
     }
     setFocus(null);
   }, [focus, journal.ops, readOnly, setFocus, toast]);
@@ -180,22 +204,24 @@ export function Situation() {
     <>
       <ModuleHead
         title={journal.title}
-        description={`Situation au ${dateTime(new Date(now).toISOString())}`}
+        description={t("Situation au {date}", {
+          date: dateTime(new Date(now).toISOString()),
+        })}
         actions={
           <>
             <button onClick={() => setPointOpen(true)}>
               <FileText size={14} />
-              Point de situation
+              {t("Point de situation")}
             </button>
             {!readOnly && (
               <>
                 <button onClick={() => open("message:new" as Ref)}>
                   <Inbox size={14} />
-                  Nouveau message
+                  {t("Nouveau message")}
                 </button>
                 <button className="primary" onClick={() => compose()}>
                   <Plus size={15} />
-                  Nouvelle entrée
+                  {t("Nouvelle entrée")}
                 </button>
               </>
             )}
@@ -232,16 +258,16 @@ export function Situation() {
         <RecordSheet
           collection="facts"
           kind="fact"
-          noun="un renseignement"
-          spec={FACT_SPEC}
+          noun={t("un renseignement")}
+          spec={factSpec(journal.ops)}
           initial={fact as Record<string, unknown>}
           onClose={() => setFact(null)}
           extraOptions={{ unit: journal.ops.facts.map((f) => f.unit) }}
           validate={(v) =>
             !String(v.label ?? "").trim()
-              ? "Indiquez un libellé."
+              ? t("Indiquez un libellé.")
               : String(v.unit ?? "").length > 40
-                ? "Unité trop longue (40 caractères au plus)."
+                ? t("Unité trop longue (40 caractères au plus).")
                 : ""
           }
           afterSave={(v) => {
@@ -258,12 +284,12 @@ export function Situation() {
         <RecordSheet
           collection="boards"
           kind="board"
-          noun="un tableau"
-          spec={BOARD_SPEC}
+          noun={t("un tableau")}
+          spec={boardSpec(journal.ops)}
           initial={board as Record<string, unknown>}
           onClose={() => setBoard(null)}
           validate={(v) =>
-            !String(v.title ?? "").trim() ? "Indiquez un titre." : ""
+            !String(v.title ?? "").trim() ? t("Indiquez un titre.") : ""
           }
         />
       )}
@@ -286,11 +312,11 @@ const blankBoard = (ops: Ops): BoardDraft => ({
   order: nextOrder(ops.boards),
 });
 
-function GoButton({ to, label = "Ouvrir" }: { to: Module; label?: string }) {
+function GoButton({ to, label }: { to: Module; label?: string }) {
   const { go } = useApp();
   return (
     <button className="small situation-go" onClick={() => go(to)}>
-      {label}
+      {label ?? t("Ouvrir")}
       <ArrowRight size={13} />
     </button>
   );
@@ -337,60 +363,63 @@ function Pulse() {
     ? Math.max(...entries.map((e) => Date.parse(current(e).happenedAt)))
     : null;
   const kpis: { label: string; value: number; to: Module; tone?: string }[] = [
-    { label: "Entrées", value: entries.length, to: "journal" },
+    { label: t("Entrées"), value: entries.length, to: "journal" },
     {
-      label: "À suivre",
+      label: t("À suivre"),
       value: follow.length,
       to: "journal",
       tone: follow.length ? "warn" : "",
     },
     {
-      label: "En retard",
+      label: t("En retard"),
       value: late,
       to: "journal",
       tone: late ? "crit" : "",
     },
     {
-      label: "Messages à traiter",
+      label: t("Messages à traiter"),
       value: inbox,
       to: "messages",
       tone: inbox ? "accent" : "",
     },
-    { label: "Moyens engagés", value: engaged, to: "resources" },
-    { label: "Personnes présentes", value: present, to: "team" },
+    { label: t("Moyens engagés"), value: engaged, to: "resources" },
+    { label: t("Personnes présentes"), value: present, to: "team" },
   ];
   return (
     <section
       className={`card w-12 situation-pulse ${journal.mode === "Intervention" ? "real" : ""} ${journal.closedAt ? "closed" : ""}`}
-      aria-label="Engagement"
+      aria-label={t("Engagement")}
     >
       <div className="situation-pulse-text">
         <div className="situation-pulse-tags">
           <span
             className={`pill ${journal.mode === "Intervention" ? "crit" : "accent"}`}
           >
-            {journal.mode}
+            {enumLabel(journal.mode)}
           </span>
           <span className={`pill ${journal.closedAt ? "muted" : "ok"}`}>
             {journal.closedAt
-              ? `Clôturé le ${dateTime(journal.closedAt)}`
-              : "En cours"}
+              ? t("Clôturé le {date}", { date: dateTime(journal.closedAt) })
+              : t("En cours (journal)")}
           </span>
           {journal.classification === "Confidentiel" && (
-            <span className="pill warn">Confidentiel</span>
+            <span className="pill warn">{enumLabel("Confidentiel")}</span>
           )}
         </div>
         <span className="label situation-live">
           {!journal.closedAt && <i aria-hidden="true" />}
-          Engagement depuis
+          {t("Engagement depuis")}
         </span>
         <strong className="situation-since">{since}</strong>
         <small>
           {[
-            `Ouvert le ${dateTime(journal.createdAt)}`,
+            t("Ouvert le {date}", { date: dateTime(journal.createdAt) }),
             journal.organization,
             journal.location,
-            last !== null && `dernière entrée ${countdown(last, now, false)}`,
+            last !== null &&
+              t("dernière entrée {when}", {
+                when: countdown(last, now, false),
+              }),
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -398,7 +427,7 @@ function Pulse() {
       </div>
       <Figures
         className="situation-kpis"
-        label="L’engagement en chiffres"
+        label={t("L’engagement en chiffres")}
         items={kpis.map((k) => ({
           label: k.label,
           value: k.value,
@@ -458,12 +487,16 @@ function Facts({
       const id = addEntry(
         {
           type: "Renseignement",
-          message: `Renseignements clés : ${f.label} ${before} → ${f.value || "—"}${f.unit ? ` ${f.unit}` : ""}`,
+          message: t("Renseignements clés : {label} {before} → {after}", {
+            label: f.label,
+            before,
+            after: `${f.value || "—"}${f.unit ? ` ${f.unit}` : ""}`,
+          }),
           tags: ["situation"],
         },
         [ref("fact", f.id)],
       );
-      if (id) toast("Consigné au journal.");
+      if (id) toast(t("Consigné au journal."));
       onLogged(f.id);
     } catch (err) {
       toast((err as Error).message);
@@ -476,20 +509,20 @@ function Facts({
           ops.facts.map((f) => f.label.toLocaleLowerCase("fr")),
         );
         const start = nextOrder(ops.facts);
-        return STANDARD_FACTS.filter(
-          (s) => !known.has(s.label.toLocaleLowerCase("fr")),
-        ).reduce(
-          (next, s, i) =>
-            upsert(
-              next,
-              "facts",
-              { ...s, value: "", note: "", order: start + i },
-              author,
-            ),
-          ops,
-        );
+        return standardFacts(ops)
+          .filter((s) => !known.has(s.label.toLocaleLowerCase("fr")))
+          .reduce(
+            (next, s, i) =>
+              upsert(
+                next,
+                "facts",
+                { ...s, value: "", note: "", order: start + i },
+                author,
+              ),
+            ops,
+          );
       });
-      toast("Renseignements standards ajoutés.");
+      toast(t("Renseignements standards ajoutés."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -514,7 +547,7 @@ function Facts({
       toast((err as Error).message);
     }
   }
-  const missingStandard = STANDARD_FACTS.some(
+  const missingStandard = standardFacts(journal.ops).some(
     (s) =>
       !facts.some(
         (f) =>
@@ -525,11 +558,11 @@ function Facts({
   return (
     <section
       className="card w-8 situation-facts"
-      aria-label="Renseignements clés"
+      aria-label={t("Renseignements clés")}
     >
       <div className="card-head">
         <Gauge size={15} />
-        <h2>Renseignements clés</h2>
+        <h2>{t("Renseignements clés")}</h2>
         {facts.length > 0 && <span className="pill plain">{facts.length}</span>}
         {!readOnly && facts.length > 0 && (
           <button
@@ -537,7 +570,7 @@ function Facts({
             onClick={() => onEdit(blankFact(journal.ops))}
           >
             <Plus size={13} />
-            Ajouter
+            {t("Ajouter")}
           </button>
         )}
       </div>
@@ -580,7 +613,7 @@ function Facts({
                   onClick={() => onEdit(f)}
                 >
                   <span className="situation-fact-cat">
-                    {f.category || "Renseignement"}
+                    {f.category || t("Renseignement (catégorie)")}
                   </span>
                   <span className="situation-fact-value">
                     {n !== null ? <CountUp value={n} /> : f.value || "—"}
@@ -595,7 +628,7 @@ function Facts({
                   <div className="situation-fact-steps">
                     <button
                       className="icon-button"
-                      aria-label={`Diminuer « ${f.label} »`}
+                      aria-label={t("Diminuer « {label} »", { label: f.label })}
                       disabled={(n ?? 0) <= 0}
                       onClick={() => step(f, -1)}
                     >
@@ -603,7 +636,9 @@ function Facts({
                     </button>
                     <button
                       className="icon-button"
-                      aria-label={`Augmenter « ${f.label} »`}
+                      aria-label={t("Augmenter « {label} »", {
+                        label: f.label,
+                      })}
                       onClick={() => step(f, 1)}
                     >
                       <Plus size={15} />
@@ -617,14 +652,17 @@ function Facts({
                       <button
                         className="small"
                         onClick={() => log(f)}
-                        title="Consigner ce changement au journal"
+                        title={t("Consigner ce changement au journal")}
                       >
                         <NotebookPen size={12} />
-                        Consigner {previous || "—"} → {f.value || "—"}
+                        {t("Consigner {before} → {after}", {
+                          before: previous || "—",
+                          after: f.value || "—",
+                        })}
                       </button>
                       <button
                         className="icon-button"
-                        aria-label="Ne pas consigner"
+                        aria-label={t("Ne pas consigner")}
                         onClick={() => onLogged(f.id)}
                       >
                         <X size={12} />
@@ -642,23 +680,24 @@ function Facts({
               <>
                 <button className="primary" onClick={addStandard}>
                   <ListPlus size={14} />
-                  Ajouter les renseignements standards
+                  {t("Ajouter les renseignements standards")}
                 </button>
                 <button onClick={() => onEdit(blankFact(journal.ops))}>
                   <Plus size={14} />
-                  Un renseignement
+                  {t("Un renseignement")}
                 </button>
               </>
             )
           }
         >
-          Les chiffres que tout le monde demande : blessés, évacués, bâtiments
-          touchés, personnel engagé… Mis à jour d’un clic avec « + » et « − ».
+          {t(
+            "Les chiffres que tout le monde demande : blessés, évacués, bâtiments touchés, personnel engagé… Mis à jour d’un clic avec « + » et « − ».",
+          )}
         </Empty>
       )}
       {facts.length > 0 && missingStandard && !readOnly && (
         <button className="link situation-more" onClick={addStandard}>
-          Compléter avec les renseignements standards
+          {t("Compléter avec les renseignements standards")}
         </button>
       )}
     </section>
@@ -682,11 +721,16 @@ function OpenPoints() {
   }, [journal.entries, now]);
   const late = list.filter((e) => overdue(e, now)).length;
   return (
-    <section className="card w-4 situation-list" aria-label="Points ouverts">
+    <section
+      className="card w-4 situation-list"
+      aria-label={t("Points ouverts")}
+    >
       <div className="card-head">
         <CircleAlert size={15} />
-        <h2>Points ouverts</h2>
-        {late > 0 && <span className="pill crit">{late} en retard</span>}
+        <h2>{t("Points ouverts")}</h2>
+        {late > 0 && (
+          <span className="pill crit">{t("{n} en retard", { n: late })}</span>
+        )}
         <span className={`pill ${list.length ? "warn" : "ok"}`}>
           {list.length}
         </span>
@@ -707,27 +751,31 @@ function OpenPoints() {
                   <strong>{f.message.split("\n")[0]}</strong>
                   <small>
                     {[
-                      f.status,
+                      enumLabel(f.status),
                       f.assignee,
-                      f.dueAt && `échéance ${time(f.dueAt)}`,
+                      f.dueAt && t("échéance {time}", { time: time(f.dueAt) }),
                     ]
                       .filter(Boolean)
                       .join(" · ")}
                   </small>
                 </span>
-                {isLate && <span className="pill crit">En retard</span>}
+                {isLate && <span className="pill crit">{t("En retard")}</span>}
               </button>
             );
           })}
           {list.length > 6 && (
-            <GoButton to="journal" label={`Voir les ${list.length} points`} />
+            <GoButton
+              to="journal"
+              label={t("Voir les {n} points", { n: list.length })}
+            />
           )}
         </div>
       ) : (
         <Empty>
-          <CheckCircle2 size={14} className="situation-ok-icon" /> Aucun point
-          ouvert. Les entrées « À traiter » ou « En cours » apparaissent ici,
-          les échéances dépassées en premier.
+          <CheckCircle2 size={14} className="situation-ok-icon" />{" "}
+          {t(
+            "Aucun point ouvert. Les entrées « À traiter » ou « En cours » apparaissent ici, les échéances dépassées en premier.",
+          )}
         </Empty>
       )}
     </section>
@@ -771,20 +819,20 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
           ops.boards.map((b) => b.title.toLocaleLowerCase("fr")),
         );
         const start = nextOrder(ops.boards);
-        return STANDARD_BOARDS.filter(
-          (t) => !known.has(t.toLocaleLowerCase("fr")),
-        ).reduce(
-          (next, title, i) =>
-            upsert(
-              next,
-              "boards",
-              { title, body: "", order: start + i },
-              author,
-            ),
-          ops,
-        );
+        return standardBoards(ops)
+          .filter((t) => !known.has(t.toLocaleLowerCase("fr")))
+          .reduce(
+            (next, title, i) =>
+              upsert(
+                next,
+                "boards",
+                { title, body: "", order: start + i },
+                author,
+              ),
+            ops,
+          );
       });
-      toast("Rubriques standards créées.");
+      toast(t("Rubriques standards créées."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -792,18 +840,18 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
   return (
     <section
       className="card w-8 situation-boards"
-      aria-label="Tableaux de situation"
+      aria-label={t("Tableaux de situation")}
     >
       <div className="card-head">
         <LayoutList size={15} />
-        <h2>Tableaux de situation</h2>
+        <h2>{t("Tableaux de situation")}</h2>
         {!readOnly && boards.length > 0 && (
           <button
             className="small"
             onClick={() => onEdit(blankBoard(journal.ops))}
           >
             <Plus size={13} />
-            Ajouter
+            {t("Ajouter")}
           </button>
         )}
       </div>
@@ -818,8 +866,11 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
                 <h3>{b.title}</h3>
                 <button
                   className="icon-button"
-                  aria-label={`Fiche « ${b.title} » (titre, liens, suppression)`}
-                  title="Titre, liens, suppression"
+                  aria-label={t(
+                    "Fiche « {title} » (titre, liens, suppression)",
+                    { title: b.title },
+                  )}
+                  title={t("Titre, liens, suppression")}
                   onClick={() => onEdit(b)}
                 >
                   <Pencil size={13} />
@@ -828,7 +879,7 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
               {editing === b.id ? (
                 <textarea
                   autoFocus
-                  aria-label={`Contenu de « ${b.title} »`}
+                  aria-label={t("Contenu de « {title} »", { title: b.title })}
                   value={text}
                   maxLength={12000}
                   rows={Math.min(14, Math.max(4, text.split("\n").length + 1))}
@@ -846,7 +897,7 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
                 />
               ) : readOnly ? (
                 <div className="situation-board-body">
-                  {b.body || <span className="muted">Vide.</span>}
+                  {b.body || <span className="muted">{t("Vide.")}</span>}
                 </div>
               ) : (
                 <button
@@ -854,14 +905,14 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
                   onClick={() => start(b)}
                 >
                   {b.body || (
-                    <span className="muted">Cliquez pour écrire…</span>
+                    <span className="muted">{t("Cliquez pour écrire…")}</span>
                   )}
                 </button>
               )}
               <footer>
                 {editing === b.id
-                  ? "⌘↵ ou clic ailleurs : enregistrer · Échap : annuler"
-                  : `Mis à jour à ${time(b.updatedAt)}${b.by ? ` · ${b.by}` : ""}`}
+                  ? t("⌘↵ ou clic ailleurs : enregistrer · Échap : annuler")
+                  : `${t("Mis à jour à {time}", { time: time(b.updatedAt) })}${b.by ? ` · ${b.by}` : ""}`}
               </footer>
             </article>
           ))}
@@ -873,19 +924,19 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
               <>
                 <button className="primary" onClick={addStandard}>
                   <ListPlus size={14} />
-                  Créer les rubriques standards
+                  {t("Créer les rubriques standards")}
                 </button>
                 <button onClick={() => onEdit(blankBoard(journal.ops))}>
                   <Plus size={14} />
-                  Un tableau
+                  {t("Un tableau")}
                 </button>
               </>
             )
           }
         >
-          Des tableaux de texte libre pour la situation générale, les dangers,
-          l’intention et les points à traiter au prochain rapport. Modifiables
-          d’un clic, par tous les postes.
+          {t(
+            "Des tableaux de texte libre pour la situation générale, les dangers, l’intention et les points à traiter au prochain rapport. Modifiables d’un clic, par tous les postes.",
+          )}
         </Empty>
       )}
     </section>
@@ -899,12 +950,12 @@ function NextMeetings() {
   return (
     <section
       className="card w-4 situation-list"
-      aria-label="Prochains rendez-vous"
+      aria-label={t("Prochains rendez-vous")}
     >
       <div className="card-head">
         <CalendarClock size={15} />
-        <h2>Prochains rendez-vous</h2>
-        <GoButton to="agenda" label="Agenda" />
+        <h2>{t("Prochains rendez-vous")}</h2>
+        <GoButton to="agenda" label={t("Agenda")} />
       </div>
       {list.length ? (
         <div className="situation-meetings">
@@ -928,7 +979,7 @@ function NextMeetings() {
                   </small>
                 </span>
                 <span className="situation-countdown">
-                  {live ? "en cours" : countdown(start, at, i === 0)}
+                  {live ? t("en cours") : countdown(start, at, i === 0)}
                 </span>
               </button>
             );
@@ -940,12 +991,12 @@ function NextMeetings() {
             !readOnly && (
               <button onClick={() => open("agenda:new" as Ref)}>
                 <Plus size={14} />
-                Prévoir le prochain rapport
+                {t("Prévoir le prochain rapport")}
               </button>
             )
           }
         >
-          Aucun rendez-vous à venir.
+          {t("Aucun rendez-vous à venir.")}
         </Empty>
       )}
     </section>
@@ -961,17 +1012,17 @@ function LatestMessages() {
   return (
     <section
       className="card w-6 situation-list"
-      aria-label="Messages à traiter"
+      aria-label={t("Messages à traiter")}
     >
       <div className="card-head">
         <Inbox size={15} />
-        <h2>Messages à traiter</h2>
+        <h2>{t("Messages à traiter")}</h2>
         {fresh > 0 && (
           <span className="pill accent">
-            {fresh} nouveau{fresh > 1 ? "x" : ""}
+            {tn(fresh, "{n} nouveau", "{n} nouveaux")}
           </span>
         )}
-        <GoButton to="messages" label="Messages" />
+        <GoButton to="messages" label={t("Messages")} />
       </div>
       {pending.length ? (
         <div className="rows">
@@ -984,10 +1035,14 @@ function LatestMessages() {
               <span className="mono situation-num">{time(m.receivedAt)}</span>
               <span className="row-main">
                 <strong>
-                  {m.subject || m.body.split("\n")[0] || "Message"}
+                  {m.subject || m.body.split("\n")[0] || t("Message")}
                 </strong>
                 <small>
-                  {[m.from && `De ${m.from}`, m.to && `à ${m.to}`, m.via]
+                  {[
+                    m.from && t("De {from}", { from: m.from }),
+                    m.to && t("à {to}", { to: m.to }),
+                    m.via && enumLabel(m.via),
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </small>
@@ -996,13 +1051,13 @@ function LatestMessages() {
                 <span
                   className={`pill ${m.priority === "Urgent" ? "crit" : "warn"}`}
                 >
-                  {m.priority}
+                  {enumLabel(m.priority)}
                 </span>
               )}
               <span
                 className={`pill ${m.status === "Nouveau" ? "accent" : "plain"}`}
               >
-                {m.status}
+                {enumLabel(m.status)}
               </span>
             </button>
           ))}
@@ -1013,12 +1068,12 @@ function LatestMessages() {
             !readOnly && (
               <button onClick={() => open("message:new" as Ref)}>
                 <Plus size={14} />
-                Saisir un message reçu
+                {t("Saisir un message reçu")}
               </button>
             )
           }
         >
-          Aucun message en attente de traitement.
+          {t("Aucun message en attente de traitement.")}
         </Empty>
       )}
     </section>
@@ -1031,12 +1086,12 @@ function LatestEntries() {
   return (
     <section
       className="card w-6 situation-list"
-      aria-label="Dernières entrées du journal"
+      aria-label={t("Dernières entrées du journal")}
     >
       <div className="card-head">
         <BookOpen size={15} />
-        <h2>Dernières entrées</h2>
-        <GoButton to="journal" label="Journal" />
+        <h2>{t("Dernières entrées")}</h2>
+        <GoButton to="journal" label={t("Journal")} />
       </div>
       {latest.length ? (
         <div className="rows">
@@ -1055,13 +1110,17 @@ function LatestEntries() {
                     {f.message.split("\n")[0]}
                   </strong>
                   <small>
-                    {[f.type, f.source, f.recipient && `à ${f.recipient}`]
+                    {[
+                      enumLabel(f.type),
+                      f.source,
+                      f.recipient && t("à {to}", { to: f.recipient }),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </small>
                 </span>
                 {f.priority === "Urgent" && (
-                  <span className="pill crit">Urgent</span>
+                  <span className="pill crit">{enumLabel("Urgent")}</span>
                 )}
               </button>
             );
@@ -1073,13 +1132,14 @@ function LatestEntries() {
             !readOnly && (
               <button className="primary" onClick={() => compose()}>
                 <Plus size={14} />
-                Première entrée
+                {t("Première entrée")}
               </button>
             )
           }
         >
-          Le journal est vide. Chaque événement, décision ou message y est
-          consigné et numéroté.
+          {t(
+            "Le journal est vide. Chaque événement, décision ou message y est consigné et numéroté.",
+          )}
         </Empty>
       )}
     </section>
@@ -1114,17 +1174,18 @@ function ResourcesCard() {
     count: resources.filter((r) => r.status === s).length,
   }));
   const personnel = resources
-    .filter((r) => r.kind.toLocaleLowerCase("fr").includes("personnel"))
+    // "Personnel" (fr), "Personal" (de), "Personale" (it).
+    .filter((r) => /personnel|personal/.test(r.kind.toLocaleLowerCase("fr")))
     .reduce((sum, r) => sum + r.count, 0);
   const total = resources.length;
   const C = 2 * Math.PI * 42;
   let offset = 0;
   return (
-    <section className="card w-4 situation-resources" aria-label="Moyens">
+    <section className="card w-4 situation-resources" aria-label={t("Moyens")}>
       <div className="card-head">
         <Truck size={15} />
-        <h2>Moyens</h2>
-        <GoButton to="resources" label="Moyens" />
+        <h2>{t("Moyens")}</h2>
+        <GoButton to="resources" label={t("Moyens")} />
       </div>
       {total ? (
         <button
@@ -1157,7 +1218,7 @@ function ResourcesCard() {
               {total}
             </text>
             <text x="55" y="69" textAnchor="middle" className="small">
-              moyen{total > 1 ? "s" : ""}
+              {tn(total, "moyen", "moyens")}
             </text>
           </svg>
           <ul className="situation-legend">
@@ -1169,31 +1230,38 @@ function ResourcesCard() {
                   style={{ "--c": STATUS_COLOR[c.status] } as CSSProperties}
                 >
                   <i />
-                  <span>{c.status}</span>
+                  <span>{enumLabel(c.status)}</span>
                   <strong>{c.count}</strong>
                 </li>
               ))}
             {personnel > 0 && (
               <li className="situation-personnel">
                 <Users size={13} />
-                <span>Personnel</span>
+                <span>{t("Personnel")}</span>
                 <strong>{personnel}</strong>
               </li>
             )}
           </ul>
           <span className="sr-only">
-            {counts.map((c) => `${c.status} : ${c.count}`).join(", ")}.
-            Personnel : {personnel}.
+            {counts
+              .map((c) =>
+                t("{label} : {n}", { label: enumLabel(c.status), n: c.count }),
+              )
+              .join(", ")}
+            . {t("Personnel : {n}.", { n: personnel })}
           </span>
         </button>
       ) : (
         <Empty
           actions={
-            <button onClick={() => go("resources")}>Saisir les moyens</button>
+            <button onClick={() => go("resources")}>
+              {t("Saisir les moyens")}
+            </button>
           }
         >
-          Véhicules, personnel et matériel, avec leur état (disponible,
-          engagé…).
+          {t(
+            "Véhicules, personnel et matériel, avec leur état (disponible, engagé…).",
+          )}
         </Empty>
       )}
     </section>
@@ -1217,16 +1285,16 @@ function TeamCard() {
     .sort((a, b) => b.present - a.present || b.total - a.total)
     .slice(0, 3);
   const stats = [
-    { label: "Présents", value: by("Présent"), tone: "ok" },
-    { label: "En pause", value: by("En pause"), tone: "warn" },
-    { label: "Absents", value: by("Absent") + by("Relevé"), tone: "muted" },
+    { label: t("Présents"), value: by("Présent"), tone: "ok" },
+    { label: enumLabel("En pause"), value: by("En pause"), tone: "warn" },
+    { label: t("Absents"), value: by("Absent") + by("Relevé"), tone: "muted" },
   ];
   return (
-    <section className="card w-4 situation-team" aria-label="Équipe">
+    <section className="card w-4 situation-team" aria-label={t("Équipe")}>
       <div className="card-head">
         <Users size={15} />
-        <h2>Équipe</h2>
-        <GoButton to="team" label="Équipe" />
+        <h2>{t("Équipe")}</h2>
+        <GoButton to="team" label={t("Équipe")} />
       </div>
       {members.length ? (
         <>
@@ -1246,7 +1314,10 @@ function TeamCard() {
                 <LinkChip
                   key={c.cell.id}
                   target={ref("cell", c.cell.id)}
-                  label={`${c.present}/${c.total} présents`}
+                  label={t("{present}/{total} présents", {
+                    present: c.present,
+                    total: c.total,
+                  })}
                 />
               ))}
             </div>
@@ -1255,10 +1326,10 @@ function TeamCard() {
       ) : (
         <Empty
           actions={
-            <button onClick={() => go("team")}>Composer l’équipe</button>
+            <button onClick={() => go("team")}>{t("Composer l’équipe")}</button>
           }
         >
-          Qui est là, à quelle fonction, dans quel poste ou cellule.
+          {t("Qui est là, à quelle fonction, dans quel poste ou cellule.")}
         </Empty>
       )}
     </section>
@@ -1270,16 +1341,16 @@ function RadioCard() {
   const ready = useMounted();
   const r = radioSummary(journal.radio);
   const parts = [
-    { label: "En service", value: r.issued, color: "var(--accent)" },
-    { label: "Disponibles", value: r.available, color: "var(--ok)" },
-    { label: "Indisponibles", value: r.unavailable, color: "var(--crit)" },
+    { label: t("En service"), value: r.issued, color: "var(--accent)" },
+    { label: t("Disponibles"), value: r.available, color: "var(--ok)" },
+    { label: t("Indisponibles"), value: r.unavailable, color: "var(--crit)" },
   ];
   return (
-    <section className="card w-4 situation-radio" aria-label="Radio">
+    <section className="card w-4 situation-radio" aria-label={t("Radio")}>
       <div className="card-head">
         <Radio size={15} />
-        <h2>Radio</h2>
-        <GoButton to="radio" label="Radio" />
+        <h2>{t("Radio")}</h2>
+        <GoButton to="radio" label={t("Radio")} />
       </div>
       {r.terminals ? (
         <button className="situation-radio-body" onClick={() => go("radio")}>
@@ -1309,19 +1380,27 @@ function RadioCard() {
             ))}
           </div>
           <small className="muted">
-            {r.terminals} terminaux · {r.stations} noms d’appel · {r.talkgroups}{" "}
-            groupes
+            {t(
+              "{terminals} terminaux · {stations} noms d’appel · {talkgroups} groupes",
+              {
+                terminals: r.terminals,
+                stations: r.stations,
+                talkgroups: r.talkgroups,
+              },
+            )}
           </small>
         </button>
       ) : (
         <Empty
           actions={
             <button onClick={() => go("radio")}>
-              Préparer le réseau radio
+              {t("Préparer le réseau radio")}
             </button>
           }
         >
-          Terminaux Polycom, noms d’appel, remises et contrôles de liaison.
+          {t(
+            "Terminaux Polycom, noms d’appel, remises et contrôles de liaison.",
+          )}
         </Empty>
       )}
     </section>
@@ -1343,25 +1422,28 @@ function WeatherCard() {
   const Icon = weatherIcon(c?.code ?? null);
   const today = cached?.forecast.days[0];
   return (
-    <section className="card w-6 situation-weather" aria-label="Météo">
+    <section className="card w-6 situation-weather" aria-label={t("Météo")}>
       <div className="card-head">
         <CloudSun size={15} />
-        <h2>Météo</h2>
+        <h2>{t("Météo")}</h2>
         {alerts.length > 0 && (
           <span className="pill crit">
-            {alerts.length} alerte{alerts.length > 1 ? "s" : ""}
+            {tn(alerts.length, "{n} alerte", "{n} alertes")}
           </span>
         )}
-        <GoButton to="weather" label="Météo" />
+        <GoButton to="weather" label={t("Météo")} />
       </div>
       {!cached && !alerts.length && !lastObs ? (
         <Empty
           actions={
-            <button onClick={() => go("weather")}>Choisir le lieu</button>
+            <button onClick={() => go("weather")}>
+              {t("Choisir le lieu")}
+            </button>
           }
         >
-          Prévision MétéoSuisse pour le lieu d’engagement, observations sur
-          place et alertes de danger.
+          {t(
+            "Prévision MétéoSuisse pour le lieu d’engagement, observations sur place et alertes de danger.",
+          )}
         </Empty>
       ) : (
         <div className="situation-weather-body">
@@ -1385,16 +1467,24 @@ function WeatherCard() {
                 <small>
                   {[
                     c.wind !== null &&
-                      `vent ${round(c.wind)} km/h${c.direction !== null ? ` du ${compass(c.direction)}` : ""}`,
-                    c.gusts !== null && `rafales ${round(c.gusts)}`,
+                      (c.direction !== null
+                        ? t("vent {speed} km/h du {direction}", {
+                            speed: round(c.wind),
+                            direction: compass(c.direction),
+                          })
+                        : t("vent {speed} km/h", { speed: round(c.wind) })),
+                    c.gusts !== null &&
+                      t("rafales {speed}", { speed: round(c.gusts) }),
                     today && `${round(today.min)}° / ${round(today.max)}°`,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 </small>
                 <small className="muted">
-                  {cached.place.name} · données du{" "}
-                  {dateTime(new Date(cached.fetchedAt).toISOString())}
+                  {t("{place} · données du {date}", {
+                    place: cached.place.name,
+                    date: dateTime(new Date(cached.fetchedAt).toISOString()),
+                  })}
                 </small>
               </span>
             </button>
@@ -1408,7 +1498,7 @@ function WeatherCard() {
                   onClick={() => open(ref("alert", a.id))}
                 >
                   <span className={`weather-level lvl-${a.level}`}>
-                    <span className="sr-only">Degré </span>
+                    <span className="sr-only">{t("Degré")} </span>
                     {a.level}
                   </span>
                   <span className="weather-alert-main">
@@ -1426,9 +1516,11 @@ function WeatherCard() {
               className="situation-obs"
               onClick={() => open(ref("observation", lastObs.id))}
             >
-              <span className="label">Observation {time(lastObs.at)}</span>
+              <span className="label">
+                {t("Observation {time}", { time: time(lastObs.at) })}
+              </span>
               <span>
-                {observationText(lastObs) || lastObs.notes || "Observation"}
+                {observationText(lastObs) || lastObs.notes || t("Observation")}
                 {lastObs.place && (
                   <span className="muted"> · {lastObs.place}</span>
                 )}
@@ -1464,18 +1556,18 @@ function NetworkCard() {
   return (
     <section
       className="card w-6 situation-network"
-      aria-label="Réseau des liens"
+      aria-label={t("Réseau des liens")}
     >
       <div className="card-head">
         <Network size={15} />
-        <h2>Réseau des liens</h2>
-        <GoButton to="network" label="Réseau" />
+        <h2>{t("Réseau des liens")}</h2>
+        <GoButton to="network" label={t("Réseau")} />
       </div>
       <div className="situation-network-body">
         <button
           className="situation-constellation"
           onClick={() => go("network")}
-          aria-label="Ouvrir le réseau des liens"
+          aria-label={t("Ouvrir le réseau des liens")}
         >
           <svg viewBox="0 0 120 100" aria-hidden="true">
             {nodes.map((n, i) =>
@@ -1520,30 +1612,31 @@ function NetworkCard() {
               <strong>
                 <CountUp value={graph.items.length} />
               </strong>
-              <small>éléments</small>
+              <small>{t("éléments")}</small>
             </span>
             <span className="situation-stat">
               <strong>
                 <CountUp value={graph.edges.length} />
               </strong>
-              <small>liens</small>
+              <small>{t("liens")}</small>
             </span>
           </div>
           {top.length > 0 ? (
             <div className="situation-top">
-              <span className="label">Les plus reliés</span>
+              <span className="label">{t("Les plus reliés")}</span>
               {top.map(([r, n]) => (
                 <LinkChip
                   key={r}
                   target={r as Ref}
-                  label={`${n} lien${n > 1 ? "s" : ""}`}
+                  label={tn(n, "{n} lien", "{n} liens")}
                 />
               ))}
             </div>
           ) : (
             <p className="muted">
-              Les éléments se relient automatiquement (noms d’appel, références
-              #012…) ou avec « Lier » dans chaque fiche.
+              {t(
+                "Les éléments se relient automatiquement (noms d’appel, références #012…) ou avec « Lier » dans chaque fiche.",
+              )}
             </p>
           )}
         </div>

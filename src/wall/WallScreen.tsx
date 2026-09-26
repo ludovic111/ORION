@@ -4,6 +4,10 @@ import { Expand, X } from "lucide-react";
 import { useApp } from "../app/context";
 import { useLayer } from "../ui/overlay";
 import { burnShift, countdown, wallData } from "./select";
+import { t } from "./i18n.ts";
+import { useLang } from "../i18n";
+import { formatLongDate, formatTime } from "../../shared/i18n/core.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
 import "./wall.css";
 
 // Wall screen for the command post room: read only, full screen, big type,
@@ -13,13 +17,7 @@ import "./wall.css";
 // #mur (a second browser that joined the session). Keeps the screen awake
 // (Wake Lock) and moves by a few pixels every two minutes (burn-in).
 
-const clock = (ms: number, seconds = false) =>
-  new Date(ms).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-    ...(seconds ? { second: "2-digit" } : {}),
-  });
+const clock = (ms: number, seconds = false) => formatTime(ms, seconds);
 
 function useNow(ms: number) {
   const [now, setNow] = useState(Date.now());
@@ -134,10 +132,11 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
   // The data changes every second only for the clock: the rest follows the
   // journal and the minute.
   const minute = Math.floor(now / 30_000);
+  const lang = useLang();
   const data = useMemo(
     () => wallData(live, Date.now()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [live, minute],
+    [live, minute, lang],
   );
   const shift = burnShift(now);
   useEffect(() => {
@@ -199,7 +198,7 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
       className={`wall${idle ? " idle" : ""}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Écran mural"
+      aria-label={t("Écran mural")}
     >
       <div
         className="wall-frame"
@@ -209,11 +208,11 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
           <div className="wall-title">
             <span className="wall-live">
               <i aria-hidden="true" />
-              En direct
+              {t("En direct")}
             </span>
             <h1>{data.title}</h1>
             <p>
-              {[data.exercise ? "EXERCICE" : "", data.location]
+              {[data.exercise ? t("EXERCICE") : "", data.location]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -221,8 +220,7 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
           <div className="wall-clock">
             <strong className="mono">{clock(now, true)}</strong>
             <span>
-              {new Date(now).toLocaleDateString("fr-CH", {
-                timeZone: "Europe/Zurich",
+              {formatLongDate(now, {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -232,24 +230,24 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
         </header>
 
         <div className="wall-grid">
-          <section className="wall-map" aria-label="Carte">
+          <section className="wall-map" aria-label={t("Carte")}>
             <div className="wall-map-box" ref={mapBox}>
               {map.url ? (
-                <img src={map.url} alt="Carte de situation" />
+                <img src={map.url} alt={t("Carte de situation")} />
               ) : (
                 <p className="wall-empty">
                   {live.ops.places.length
                     ? map.failed
-                      ? "Carte indisponible (hors ligne ?)"
-                      : "Carte en préparation…"
-                    : "Aucun objet sur la carte"}
+                      ? t("Carte indisponible (hors ligne ?)")
+                      : t("Carte en préparation…")
+                    : t("Aucun objet sur la carte")}
                 </p>
               )}
             </div>
           </section>
 
-          <section className="wall-next" aria-label="Prochain rapport">
-            <h2>Prochain rapport</h2>
+          <section className="wall-next" aria-label={t("Prochain rapport")}>
+            <h2>{t("Prochain rapport")}</h2>
             {data.next ? (
               <>
                 <strong className="mono">
@@ -261,29 +259,29 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
                 </p>
               </>
             ) : (
-              <p className="wall-empty">Aucun rendez-vous prévu</p>
+              <p className="wall-empty">{t("Aucun rendez-vous prévu")}</p>
             )}
             <dl className="wall-figures">
               <div>
-                <dt>points ouverts</dt>
+                <dt>{t("points ouverts")}</dt>
                 <dd className={`mono${data.openCount ? "" : " zero"}`}>
                   {data.openCount}
                 </dd>
               </div>
               <div className={data.lateCount ? "crit" : ""}>
-                <dt>en retard</dt>
+                <dt>{t("en retard")}</dt>
                 <dd className={`mono${data.lateCount ? "" : " zero"}`}>
                   {data.lateCount}
                 </dd>
               </div>
               <div>
-                <dt>moyens engagés</dt>
+                <dt>{t("moyens engagés")}</dt>
                 <dd className={`mono${data.engagedCount ? "" : " zero"}`}>
                   {data.engagedCount}
                 </dd>
               </div>
               <div>
-                <dt>messages non lus</dt>
+                <dt>{t("messages non lus")}</dt>
                 <dd className={`mono${data.newMessages ? "" : " zero"}`}>
                   {data.newMessages}
                 </dd>
@@ -291,8 +289,8 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
             </dl>
           </section>
 
-          <section className="wall-open" aria-label="Points ouverts">
-            <h2>Points ouverts</h2>
+          <section className="wall-open" aria-label={t("Points ouverts")}>
+            <h2>{t("Points ouverts")}</h2>
             {data.open.length ? (
               <ol>
                 {data.open.map((p) => (
@@ -301,18 +299,18 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
                     <span className="wall-text">{p.text}</span>
                     <span className="mono wall-due">
                       {p.due !== null ? clock(p.due) : ""}
-                      {p.late ? " · retard" : ""}
+                      {p.late ? t(" · retard") : ""}
                     </span>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="wall-empty">Aucun point ouvert</p>
+              <p className="wall-empty">{t("Aucun point ouvert")}</p>
             )}
           </section>
 
-          <section className="wall-facts" aria-label="Renseignements clés">
-            <h2>Renseignements clés</h2>
+          <section className="wall-facts" aria-label={t("Renseignements clés")}>
+            <h2>{t("Renseignements clés")}</h2>
             {data.facts.length ? (
               <dl>
                 {data.facts.map((f) => (
@@ -332,7 +330,10 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
               <ul className="wall-alerts">
                 {data.alerts.map((a) => (
                   <li key={a.id}>
-                    Alerte {a.hazard} · degré {a.level}
+                    {t("Alerte {hazard} · degré {level}", {
+                      hazard: a.hazard,
+                      level: a.level,
+                    })}
                     {a.region ? ` · ${a.region}` : ""}
                   </li>
                 ))}
@@ -340,8 +341,8 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
             )}
           </section>
 
-          <section className="wall-resources" aria-label="Moyens engagés">
-            <h2>Moyens engagés</h2>
+          <section className="wall-resources" aria-label={t("Moyens engagés")}>
+            <h2>{t("Moyens engagés")}</h2>
             {data.engaged.length ? (
               <ul>
                 {data.engaged.map((r) => (
@@ -352,17 +353,17 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
                         <small className="mono"> ×{r.count}</small>
                       )}
                     </span>
-                    <span className="wall-status">{r.status}</span>
+                    <span className="wall-status">{enumLabel(r.status)}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="wall-empty">Aucun moyen engagé</p>
+              <p className="wall-empty">{t("Aucun moyen engagé")}</p>
             )}
           </section>
 
-          <section className="wall-latest" aria-label="Dernières entrées">
-            <h2>Dernières entrées</h2>
+          <section className="wall-latest" aria-label={t("Dernières entrées")}>
+            <h2>{t("Dernières entrées")}</h2>
             {data.latest.length ? (
               <ol>
                 {data.latest.map((e) => (
@@ -377,19 +378,19 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
                 ))}
               </ol>
             ) : (
-              <p className="wall-empty">Journal vide</p>
+              <p className="wall-empty">{t("Journal vide")}</p>
             )}
           </section>
         </div>
       </div>
       <div className="wall-controls">
-        <button onClick={fullscreen} title="Plein écran (F)">
+        <button onClick={fullscreen} title={t("Plein écran (F)")}>
           <Expand size={16} />
-          Plein écran
+          {t("Plein écran")}
         </button>
-        <button onClick={close} title="Quitter (Échap)">
+        <button onClick={close} title={t("Quitter (Échap)")}>
           <X size={16} />
-          Quitter
+          {t("Quitter")}
         </button>
       </div>
     </div>,

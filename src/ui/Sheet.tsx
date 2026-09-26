@@ -2,6 +2,7 @@ import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { confirmDiscard, useLayer } from "./overlay";
+import { t } from "./i18n.ts";
 
 /**
  * Panel sliding from the right (from the bottom on phones). Échap closes only
@@ -49,7 +50,7 @@ export function Sheet({
           <button
             className="icon-button"
             onClick={requestClose}
-            aria-label="Fermer"
+            aria-label={t("Fermer")}
           >
             <X size={18} />
           </button>

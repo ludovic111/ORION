@@ -37,6 +37,8 @@ import {
   type Status,
 } from "./model";
 import { Figures } from "../../ui/Figures";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 import "./messages.css";
 
 type View = "board" | "list";
@@ -235,15 +237,15 @@ export function Messages() {
             <button
               disabled={!printable.length}
               onClick={() => actions.printSheet(printable)}
-              title="Une fiche A4 par message affiché"
+              title={t("Une fiche A4 par message affiché")}
             >
               <Printer size={14} />
-              Fiches A4
+              {t("Fiches A4")}
             </button>
             {!readOnly && (
               <button className="primary" onClick={focusCapture}>
                 <Plus size={15} />
-                Nouveau message
+                {t("Nouveau message")}
                 <kbd>N</kbd>
               </button>
             )}
@@ -252,18 +254,18 @@ export function Messages() {
       />
       <Figures
         className="msg-stats"
-        label="Messages par état"
+        label={t("Messages par état")}
         items={[
           ...MESSAGE_STATUSES.map((st) => ({
-            label: st,
+            label: enumLabel(st),
             value: counts[st],
             hint: STATUS_HINT[st],
             tone: (st === "Nouveau" && counts[st] ? "warn" : "") as "warn" | "",
           })),
           {
-            label: "Réponses en retard",
+            label: t("Réponses en retard"),
             value: late,
-            hint: "Échéance dépassée",
+            hint: t("Échéance dépassée"),
             tone: late ? "crit" : "",
           },
         ]}
@@ -272,32 +274,32 @@ export function Messages() {
         <div className="msg-side">
           <Capture boxRef={captureRef} />
         </div>
-        <section className="msg-main" aria-label="Messages reçus">
+        <section className="msg-main" aria-label={t("Messages reçus")}>
           {!messages.length ? (
             <div className="card msg-empty">
               <EmptyState
                 icon={<Inbox size={28} />}
-                title="Aucun message pour l’instant"
+                title={t("Aucun message pour l’instant")}
                 actions={
                   !readOnly && (
                     <button className="primary" onClick={focusCapture}>
                       <PenLine size={14} />
-                      Saisir le premier message
+                      {t("Saisir le premier message")}
                     </button>
                   )
                 }
               >
-                Chaque message reçu (radio, téléphone, messager…) est d’abord
-                saisi ici en quelques secondes. Une autre personne le relit et
-                l’inscrit au journal.
+                {t(
+                  "Chaque message reçu (radio, téléphone, messager…) est d’abord saisi ici en quelques secondes. Une autre personne le relit et l’inscrit au journal.",
+                )}
               </EmptyState>
-              <ol className="msg-flow" aria-label="Déroulement">
+              <ol className="msg-flow" aria-label={t("Déroulement")}>
                 <li>
                   <span className="msg-flow-icon">
                     <Inbox size={18} />
                   </span>
-                  <strong>Réception</strong>
-                  <small>Saisie rapide : de, à, canal, texte</small>
+                  <strong>{t("Réception")}</strong>
+                  <small>{t("Saisie rapide : de, à, canal, texte")}</small>
                 </li>
                 <li aria-hidden="true" className="msg-flow-arrow">
                   <ArrowRight size={18} />
@@ -306,8 +308,8 @@ export function Messages() {
                   <span className="msg-flow-icon">
                     <FileText size={18} />
                   </span>
-                  <strong>Synthèse</strong>
-                  <small>Relecture, mise en forme, priorité</small>
+                  <strong>{t("Synthèse")}</strong>
+                  <small>{t("Relecture, mise en forme, priorité")}</small>
                 </li>
                 <li aria-hidden="true" className="msg-flow-arrow">
                   <ArrowRight size={18} />
@@ -316,8 +318,8 @@ export function Messages() {
                   <span className="msg-flow-icon">
                     <BookOpen size={18} />
                   </span>
-                  <strong>Journal</strong>
-                  <small>Entrée numérotée, reliée au message</small>
+                  <strong>{t("Journal")}</strong>
+                  <small>{t("Entrée numérotée, reliée au message")}</small>
                 </li>
               </ol>
             </div>
@@ -329,13 +331,13 @@ export function Messages() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Rechercher (M012, émetteur, texte…)"
-                    aria-label="Rechercher un message"
+                    placeholder={t("Rechercher (M012, émetteur, texte…)")}
+                    aria-label={t("Rechercher un message")}
                   />
                   {query && (
                     <button
                       className="icon-button small"
-                      aria-label="Effacer la recherche"
+                      aria-label={t("Effacer la recherche")}
                       onClick={() => setQuery("")}
                     >
                       <X size={13} />
@@ -345,36 +347,38 @@ export function Messages() {
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  aria-label="Priorité"
+                  aria-label={t("Priorité")}
                 >
-                  <option value="">Toutes priorités</option>
+                  <option value="">{t("Toutes priorités")}</option>
                   {MESSAGE_PRIORITIES.map((p) => (
-                    <option key={p}>{p}</option>
+                    <option key={p} value={p}>
+                      {enumLabel(p)}
+                    </option>
                   ))}
                 </select>
                 <select
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
-                  aria-label="Destinataire"
+                  aria-label={t("Destinataire")}
                 >
-                  <option value="">Tous destinataires</option>
+                  <option value="">{t("Tous destinataires")}</option>
                   {recipients.map((r) => (
                     <option key={r}>{r}</option>
                   ))}
                 </select>
                 <Toggle
-                  label="Réponse attendue"
+                  label={t("Réponse attendue")}
                   checked={replyOnly}
                   onChange={setReplyOnly}
                 />
                 <Toggle
-                  label="Non traités"
+                  label={t("Non traités")}
                   checked={openOnly}
                   onChange={setOpenOnly}
                 />
                 <div className="msg-view">
                   <Segmented
-                    label="Affichage"
+                    label={t("Affichage")}
                     value={view}
                     onChange={setView}
                     options={[
@@ -382,7 +386,7 @@ export function Messages() {
                         value: "board",
                         label: (
                           <>
-                            <Kanban size={13} /> Tableau
+                            <Kanban size={13} /> {t("Tableau")}
                           </>
                         ),
                       },
@@ -390,7 +394,7 @@ export function Messages() {
                         value: "list",
                         label: (
                           <>
-                            <List size={13} /> Liste
+                            <List size={13} /> {t("Liste")}
                           </>
                         ),
                       },
@@ -400,8 +404,12 @@ export function Messages() {
               </div>
               {filtered && (
                 <p className="muted msg-filter-note">
-                  {visible.length} message{visible.length > 1 ? "s" : ""} sur{" "}
-                  {messages.length}{" "}
+                  {tn(
+                    visible.length,
+                    "{n} message sur {total}",
+                    "{n} messages sur {total}",
+                    { total: messages.length },
+                  )}{" "}
                   <button
                     className="link"
                     onClick={() => {
@@ -412,7 +420,7 @@ export function Messages() {
                       setOpenOnly(false);
                     }}
                   >
-                    Tout afficher
+                    {t("Tout afficher")}
                   </button>
                 </p>
               )}
@@ -454,7 +462,7 @@ export function Messages() {
                       >
                         <div className="lane-head">
                           <span className={`pill ${STATUS_TONE[status]}`}>
-                            {status}
+                            {enumLabel(status)}
                           </span>
                           <span className="count">{list.length}</span>
                         </div>
@@ -474,14 +482,16 @@ export function Messages() {
                               setExpanded((s) => new Set([...s, status]))
                             }
                           >
-                            Afficher les {list.length - shown.length} autres
+                            {t("Afficher les {n} autres", {
+                              n: list.length - shown.length,
+                            })}
                           </button>
                         )}
                         {!list.length && (
                           <p className="msg-lane-empty">
                             {readOnly
-                              ? "Aucun message"
-                              : "Glisser un message ici"}
+                              ? t("Aucun message")
+                              : t("Glisser un message ici")}
                           </p>
                         )}
                       </div>
@@ -494,14 +504,14 @@ export function Messages() {
                     <table className="grid dense">
                       <thead>
                         <tr>
-                          <th>N°</th>
-                          <th>Heure</th>
-                          <th>De → À</th>
-                          <th>Message</th>
-                          <th>État</th>
-                          <th>Suite</th>
+                          <th>{t("N°")}</th>
+                          <th>{t("Heure")}</th>
+                          <th>{t("De → À")}</th>
+                          <th>{t("Message")}</th>
+                          <th>{t("État")}</th>
+                          <th>{t("Suite")}</th>
                           <th>
-                            <span className="sr-only">Actions</span>
+                            <span className="sr-only">{t("Actions")}</span>
                           </th>
                         </tr>
                       </thead>
@@ -534,7 +544,7 @@ export function Messages() {
                                   <span
                                     className={`pill ${PRIORITY_TONE[m.priority]}`}
                                   >
-                                    {m.priority}
+                                    {enumLabel(m.priority)}
                                   </span>
                                 )}
                                 {m.category && (
@@ -555,7 +565,7 @@ export function Messages() {
                             </td>
                             <td>
                               <span className={`pill ${STATUS_TONE[m.status]}`}>
-                                {m.status}
+                                {enumLabel(m.status)}
                               </span>
                               {m.handledBy && (
                                 <div className="muted">{m.handledBy}</div>
@@ -585,15 +595,22 @@ export function Messages() {
                       className="msg-more"
                       onClick={() => setListLimit((n) => n + LIST_PAGE * 2)}
                     >
-                      Afficher{" "}
-                      {Math.min(LIST_PAGE * 2, newestFirst.length - listLimit)}{" "}
-                      de plus · {newestFirst.length - listLimit} restant
-                      {newestFirst.length - listLimit > 1 ? "s" : ""}
+                      {tn(
+                        newestFirst.length - listLimit,
+                        "Afficher {more} de plus · {n} restant",
+                        "Afficher {more} de plus · {n} restants",
+                        {
+                          more: Math.min(
+                            LIST_PAGE * 2,
+                            newestFirst.length - listLimit,
+                          ),
+                        },
+                      )}
                     </button>
                   )}
                   {!newestFirst.length && (
                     <p className="muted msg-none">
-                      Aucun message ne correspond aux filtres.
+                      {t("Aucun message ne correspond aux filtres.")}
                     </p>
                   )}
                 </div>

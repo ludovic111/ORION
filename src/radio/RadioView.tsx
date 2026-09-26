@@ -17,7 +17,6 @@ import {
 } from "../../shared/journal";
 import {
   BATTERY_HOURS,
-  CHECK_LABELS,
   CHECK_RESULTS,
   activeAssignment,
   batteryDue,
@@ -49,6 +48,14 @@ import {
 } from "./forms";
 import { GeneralCheck } from "./GeneralCheck";
 import { Scanner } from "./Scanner";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { useLang } from "../i18n";
+import {
+  accessoriesLabel,
+  checkLabel,
+  terminalStateLabel,
+} from "../print/i18n.ts";
+import { t, tn } from "./i18n.ts";
 
 type Tab = "plan" | "terminals" | "custody" | "checks";
 type Form =
@@ -74,10 +81,7 @@ const stateTone = (state: string) =>
 function Score({ result }: { result?: string }) {
   if (!result) return <span className="score none">—</span>;
   return (
-    <span
-      className={`score score-${result}`}
-      title={CHECK_LABELS[result as "3"]}
-    >
+    <span className={`score score-${result}`} title={checkLabel(result)}>
       {result === "0" ? "✕" : result}
     </span>
   );
@@ -106,18 +110,21 @@ export function RadioView({
   scan: string;
   onScanHandled: () => void;
 }) {
+  useLang();
   const radio = journal.radio;
   const [tab, setTab] = useState<Tab>("plan");
   const [form, setForm] = useState<Form | null>(null);
   const [query, setQuery] = useState("");
   const [outstanding, setOutstanding] = useState(false);
-  const batteries = radio.terminals.filter((t) => batteryDue(t, at));
+  const batteries = radio.terminals.filter((term) => batteryDue(term, at));
   // A scanned label opens the right action: return if issued, else handout.
   function act(terminal: Terminal) {
     setTab("terminals");
     if (readOnly) {
       onError(
-        "Lecture seule : rouvrez le journal ou revenez au direct pour remettre ou reprendre ce terminal.",
+        t(
+          "Lecture seule : rouvrez le journal ou revenez au direct pour remettre ou reprendre ce terminal.",
+        ),
       );
       return;
     }
@@ -133,7 +140,9 @@ export function RadioView({
     if (terminal) act(terminal);
     else
       onError(
-        `Terminal scanné introuvable dans ce journal : ${scannedLabel(scan)}.`,
+        t("Terminal scanné introuvable dans ce journal : {label}.", {
+          label: scannedLabel(scan),
+        }),
       );
     onScanHandled();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,7 +171,7 @@ export function RadioView({
   const history = useMemo(
     () =>
       radio.terminals
-        .flatMap((t) => t.assignments.map((a) => ({ t, a })))
+        .flatMap((term) => term.assignments.map((a) => ({ term, a })))
         .sort((x, y) => Date.parse(y.a.issuedAt) - Date.parse(x.a.issuedAt)),
     [radio],
   );
@@ -179,43 +188,43 @@ export function RadioView({
     <>
       <dl className="metrics">
         <div>
-          <dt>Terminaux</dt>
+          <dt>{t("Terminaux")}</dt>
           <dd>
             <Num value={summary.terminals} />
           </dd>
         </div>
         <div className={summary.issued ? "accent" : ""}>
-          <dt>En service</dt>
+          <dt>{t("En service")}</dt>
           <dd>
             <Num value={summary.issued} />
           </dd>
         </div>
         <div>
-          <dt>Disponibles</dt>
+          <dt>{t("Disponibles")}</dt>
           <dd>
             <Num value={summary.available} />
           </dd>
         </div>
         <div className={summary.unavailable ? "warn" : ""}>
-          <dt>Indisponibles</dt>
+          <dt>{t("Indisponibles")}</dt>
           <dd>
             <Num value={summary.unavailable} />
           </dd>
         </div>
         <div className={batteries.length ? "warn" : ""}>
-          <dt>Batteries &gt; {BATTERY_HOURS} h</dt>
+          <dt>{t("Batteries > {h} h", { h: BATTERY_HOURS })}</dt>
           <dd>
             <Num value={batteries.length} />
           </dd>
         </div>
         <div>
-          <dt>Noms d’appel</dt>
+          <dt>{t("Noms d’appel")}</dt>
           <dd>
             <Num value={summary.stations} />
           </dd>
         </div>
         <div>
-          <dt>Dernier contrôle</dt>
+          <dt>{t("Dernier contrôle")}</dt>
           <dd className="text">
             {lastCheck ? (
               <>
@@ -233,16 +242,16 @@ export function RadioView({
           <div
             className="segmented slider"
             role="tablist"
-            aria-label="Vues radio"
+            aria-label={t("Vues radio")}
             ref={tabs.ref}
           >
             <span className="slider-pill" ref={tabs.pill} />
             {(
               [
-                ["plan", "Plan du réseau", radio.stations.length],
-                ["terminals", "Terminaux", radio.terminals.length],
-                ["custody", "Remises", history.length],
-                ["checks", "Contrôles", radio.checks.length],
+                ["plan", t("Plan du réseau"), radio.stations.length],
+                ["terminals", t("Terminaux"), radio.terminals.length],
+                ["custody", t("Remises"), history.length],
+                ["checks", t("Contrôles"), radio.checks.length],
               ] as const
             ).map(([value, label, count]) => (
               <button
@@ -260,15 +269,15 @@ export function RadioView({
           <div className="search">
             <Search size={14} />
             <input
-              aria-label="Filtrer"
-              placeholder="Filtrer"
+              aria-label={t("Filtrer")}
+              placeholder={t("Filtrer")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             {query && (
               <button
                 className="icon-button"
-                aria-label="Effacer"
+                aria-label={t("Effacer")}
                 onClick={() => setQuery("")}
               >
                 <X size={13} />
@@ -281,14 +290,14 @@ export function RadioView({
                 <>
                   <button onClick={() => edit({ kind: "group" })}>
                     <Plus size={14} />
-                    Groupe
+                    {t("Groupe")}
                   </button>
                   <button
                     className="primary"
                     onClick={() => edit({ kind: "station" })}
                   >
                     <Plus size={14} />
-                    Nom d’appel
+                    {t("Nom d’appel")}
                   </button>
                 </>
               )}
@@ -299,30 +308,30 @@ export function RadioView({
                     className={outstanding ? "toggled" : ""}
                     onClick={() => setOutstanding(!outstanding)}
                   >
-                    Non rendues
+                    {t("Non rendues")}
                     <span className="count">{summary.issued}</span>
                   </button>
                   <button onClick={() => edit({ kind: "scan" })}>
                     <ScanLine size={14} />
-                    Scanner
+                    {t("Scanner")}
                   </button>
                   <button onClick={onLabels} disabled={!radio.terminals.length}>
                     <QrCode size={14} />
-                    Étiquettes
+                    {t("Étiquettes")}
                   </button>
                   <button onClick={() => edit({ kind: "series" })}>
-                    Série
+                    {t("Série")}
                   </button>
                   <button onClick={() => edit({ kind: "terminal" })}>
                     <Plus size={14} />
-                    Terminal
+                    {t("Terminal")}
                   </button>
                   <button
                     className="primary"
                     disabled={!summary.available}
                     onClick={() => edit({ kind: "issue" })}
                   >
-                    Remettre
+                    {t("Remettre")}
                   </button>
                 </>
               )}
@@ -332,7 +341,7 @@ export function RadioView({
                   disabled={!summary.available}
                   onClick={() => edit({ kind: "issue" })}
                 >
-                  Remettre
+                  {t("Remettre")}
                 </button>
               )}
               {tab === "checks" && (
@@ -342,14 +351,14 @@ export function RadioView({
                     onClick={() => edit({ kind: "general" })}
                   >
                     <ListChecks size={14} />
-                    Contrôle général
+                    {t("Contrôle général")}
                   </button>
                   <button
                     className="primary"
                     onClick={() => edit({ kind: "check" })}
                   >
                     <Plus size={14} />
-                    Contrôle
+                    {t("Contrôle")}
                   </button>
                 </>
               )}
@@ -360,7 +369,7 @@ export function RadioView({
         {tab === "plan" && (
           <>
             {columns.length > 0 ? (
-              <div className="topology" aria-label="Schéma de liaisons">
+              <div className="topology" aria-label={t("Schéma de liaisons")}>
                 {columns.map(({ group, id }) => {
                   const primary = radio.stations.filter(
                     (s) =>
@@ -383,11 +392,11 @@ export function RadioView({
                         <span className="net-id">
                           {group ? group.number || "—" : "—"}
                         </span>
-                        <strong>{group ? group.name : "Sans groupe"}</strong>
+                        <strong>{group ? group.name : t("Sans groupe")}</strong>
                         <small>
                           {group
-                            ? `${group.mode} · ${group.usage}`
-                            : "Non affecté"}
+                            ? `${enumLabel(group.mode)} · ${enumLabel(group.usage)}`
+                            : t("Non affecté")}
                         </small>
                       </button>
                       <ul className="net-nodes">
@@ -408,7 +417,7 @@ export function RadioView({
                                   <small>
                                     {status.terminal
                                       ? `${status.terminal.label} · ${status.assignment?.holder}`
-                                      : s.role || "Sans terminal"}
+                                      : s.role || t("Sans terminal")}
                                   </small>
                                 </span>
                                 <Score result={status.check?.result} />
@@ -422,7 +431,7 @@ export function RadioView({
                               <span className="led" />
                               <span className="node-body">
                                 <strong>{s.callsign}</strong>
-                                <small>alternative</small>
+                                <small>{t("alternative (nœud)")}</small>
                               </span>
                             </span>
                           </li>
@@ -438,8 +447,9 @@ export function RadioView({
             ) : (
               <div className="empty">
                 <p>
-                  Plan vide. Créez les groupes (TKG, direct, relais), puis les
-                  noms d’appel.
+                  {t(
+                    "Plan vide. Créez les groupes (TKG, direct, relais), puis les noms d’appel.",
+                  )}
                 </p>
                 {!readOnly && (
                   <button
@@ -447,7 +457,7 @@ export function RadioView({
                     onClick={() => edit({ kind: "group" })}
                   >
                     <Plus size={14} />
-                    Premier groupe
+                    {t("Premier groupe")}
                   </button>
                 )}
               </div>
@@ -456,13 +466,13 @@ export function RadioView({
               <table className="grid">
                 <thead>
                   <tr>
-                    <th>Nom d’appel</th>
-                    <th>Fonction · section</th>
-                    <th>Titulaire</th>
-                    <th>Terminal · RFSI</th>
-                    <th>Principal</th>
-                    <th>Alternative</th>
-                    <th>Contrôle</th>
+                    <th>{t("Nom d’appel")}</th>
+                    <th>{t("Fonction · section")}</th>
+                    <th>{t("Titulaire")}</th>
+                    <th>{t("Terminal · RFSI")}</th>
+                    <th>{t("Principal")}</th>
+                    <th>{t("Alternative")}</th>
+                    <th>{t("Contrôle")}</th>
                     <th />
                   </tr>
                 </thead>
@@ -497,7 +507,9 @@ export function RadioView({
                                 )}
                               </>
                             ) : (
-                              <span className="tag dim">Hors réseau</span>
+                              <span className="tag dim">
+                                {t("Hors réseau")}
+                              </span>
                             )}
                           </td>
                           <td className="mono">
@@ -528,11 +540,13 @@ export function RadioView({
                                     })
                                   }
                                 >
-                                  Contrôle
+                                  {t("Contrôle")}
                                 </button>
                                 <button
                                   className="icon-button"
-                                  aria-label={`Modifier ${s.callsign}`}
+                                  aria-label={t("Modifier {name}", {
+                                    name: s.callsign,
+                                  })}
                                   onClick={() =>
                                     edit({ kind: "station", station: s })
                                   }
@@ -553,11 +567,11 @@ export function RadioView({
                 <table className="grid dense">
                   <thead>
                     <tr>
-                      <th>N°</th>
-                      <th>Groupe / canal</th>
-                      <th>Mode</th>
-                      <th>Emploi</th>
-                      <th>Remarques</th>
+                      <th>{t("N°")}</th>
+                      <th>{t("Groupe / canal")}</th>
+                      <th>{t("Mode")}</th>
+                      <th>{t("Emploi")}</th>
+                      <th>{t("Remarques")}</th>
                       <th />
                     </tr>
                   </thead>
@@ -567,15 +581,19 @@ export function RadioView({
                         <td className="mono">{g.number || "—"}</td>
                         <td>{g.name}</td>
                         <td>
-                          <span className={`tag mode-${g.mode}`}>{g.mode}</span>
+                          <span className={`tag mode-${g.mode}`}>
+                            {enumLabel(g.mode)}
+                          </span>
                         </td>
-                        <td>{g.usage}</td>
+                        <td>{enumLabel(g.usage)}</td>
                         <td className="muted">{g.notes || "—"}</td>
                         <td className="row-actions">
                           {!readOnly && (
                             <button
                               className="icon-button"
-                              aria-label={`Modifier ${g.name}`}
+                              aria-label={t("Modifier {name}", {
+                                name: g.name,
+                              })}
                               onClick={() => edit({ kind: "group", group: g })}
                             >
                               <Pencil size={13} />
@@ -596,37 +614,37 @@ export function RadioView({
             <table className="grid">
               <thead>
                 <tr>
-                  <th>N°</th>
-                  <th>Modèle</th>
-                  <th>RFSI · série</th>
-                  <th>État</th>
-                  <th>Détenteur</th>
-                  <th>Nom d’appel</th>
-                  <th>Remis</th>
-                  <th>Batt.</th>
+                  <th>{t("N°")}</th>
+                  <th>{t("Modèle")}</th>
+                  <th>{t("RFSI · série")}</th>
+                  <th>{t("État")}</th>
+                  <th>{t("Détenteur")}</th>
+                  <th>{t("Nom d’appel")}</th>
+                  <th>{t("Remis")}</th>
+                  <th>{t("Batt.")}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {radio.terminals
-                  .filter((t) => !outstanding || !!activeAssignment(t))
-                  .filter((t) => {
-                    const a = activeAssignment(t);
+                  .filter((term) => !outstanding || !!activeAssignment(term))
+                  .filter((term) => {
+                    const a = activeAssignment(term);
                     return match(
-                      t.label,
-                      t.model,
-                      t.rfsi,
-                      t.serial,
+                      term.label,
+                      term.model,
+                      term.rfsi,
+                      term.serial,
                       a?.holder ?? "",
                       a?.callsign ?? "",
                     );
                   })
-                  .map((t) => {
-                    const a = activeAssignment(t);
-                    const state = terminalState(t);
+                  .map((term) => {
+                    const a = activeAssignment(term);
+                    const state = terminalState(term);
                     return (
                       <tr
-                        key={t.id}
+                        key={term.id}
                         className={
                           state === "Manquant" || state === "Défectueux"
                             ? "dim-row"
@@ -634,22 +652,26 @@ export function RadioView({
                         }
                       >
                         <td className="mono">
-                          <strong>{t.label}</strong>
+                          <strong>{term.label}</strong>
                         </td>
                         <td>
-                          {t.model || "—"}
-                          <div className="muted">{t.kind}</div>
+                          {term.model || "—"}
+                          <div className="muted">{enumLabel(term.kind)}</div>
                         </td>
                         <td className="mono">
-                          {t.rfsi || "—"}
-                          {t.serial && <div className="muted">{t.serial}</div>}
+                          {term.rfsi || "—"}
+                          {term.serial && (
+                            <div className="muted">{term.serial}</div>
+                          )}
                         </td>
                         <td>
                           <span className={`state ${stateTone(state)}`}>
-                            {state}
+                            {terminalStateLabel(state)}
                           </span>
-                          {a && t.condition !== "Opérationnel" && (
-                            <div className="muted">{t.condition}</div>
+                          {a && term.condition !== "Opérationnel" && (
+                            <div className="muted">
+                              {enumLabel(term.condition)}
+                            </div>
                           )}
                         </td>
                         <td>
@@ -673,12 +695,18 @@ export function RadioView({
                           )}
                         </td>
                         <td>
-                          {a ? a.battery : <span className="muted">—</span>}
-                          {batteryDue(t, at) && (
+                          {a ? (
+                            enumLabel(a.battery)
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                          {batteryDue(term, at) && (
                             <div>
                               <span
                                 className="tag warn"
-                                title="Remis depuis plus de 8 h"
+                                title={t("Remis depuis plus de {h} h", {
+                                  h: BATTERY_HOURS,
+                                })}
                               >
                                 &gt; {BATTERY_HOURS} h
                               </span>
@@ -692,10 +720,10 @@ export function RadioView({
                                 <button
                                   className="small"
                                   onClick={() =>
-                                    edit({ kind: "return", terminal: t })
+                                    edit({ kind: "return", terminal: term })
                                   }
                                 >
-                                  Retour
+                                  {t("Retour (terminal)")}
                                 </button>
                               ) : (
                                 <button
@@ -705,19 +733,24 @@ export function RadioView({
                                     state === "Manquant"
                                   }
                                   onClick={() =>
-                                    edit({ kind: "issue", terminal: t })
+                                    edit({ kind: "issue", terminal: term })
                                   }
                                 >
-                                  Remettre
+                                  {t("Remettre")}
                                 </button>
                               )}
-                              {t.assignments.length > 0 && (
+                              {term.assignments.length > 0 && (
                                 <button
                                   className="icon-button"
-                                  title="Quittance de remise"
-                                  aria-label={`Quittance de remise ${t.label}`}
+                                  title={t("Quittance de remise")}
+                                  aria-label={t("Quittance de remise {label}", {
+                                    label: term.label,
+                                  })}
                                   onClick={() =>
-                                    onPrint(t.id, t.assignments.at(-1)!.id)
+                                    onPrint(
+                                      term.id,
+                                      term.assignments.at(-1)!.id,
+                                    )
                                   }
                                 >
                                   <Printer size={13} />
@@ -725,9 +758,11 @@ export function RadioView({
                               )}
                               <button
                                 className="icon-button"
-                                aria-label={`Modifier ${t.label}`}
+                                aria-label={t("Modifier {name}", {
+                                  name: term.label,
+                                })}
                                 onClick={() =>
-                                  edit({ kind: "terminal", terminal: t })
+                                  edit({ kind: "terminal", terminal: term })
                                 }
                               >
                                 <Pencil size={13} />
@@ -742,14 +777,14 @@ export function RadioView({
             </table>
             {!radio.terminals.length && (
               <div className="empty">
-                <p>Aucun terminal.</p>
+                <p>{t("Aucun terminal.")}</p>
                 {!readOnly && (
                   <button
                     className="primary"
                     onClick={() => edit({ kind: "series" })}
                   >
                     <Plus size={14} />
-                    Ajouter une série
+                    {t("Ajouter une série")}
                   </button>
                 )}
               </div>
@@ -762,25 +797,25 @@ export function RadioView({
             <table className="grid">
               <thead>
                 <tr>
-                  <th>Terminal</th>
-                  <th>Détenteur</th>
-                  <th>Nom d’appel</th>
-                  <th>Remise</th>
-                  <th>Accessoires</th>
-                  <th>Retour</th>
-                  <th>État</th>
+                  <th>{t("Terminal")}</th>
+                  <th>{t("Détenteur")}</th>
+                  <th>{t("Nom d’appel")}</th>
+                  <th>{t("Remise")}</th>
+                  <th>{t("Accessoires")}</th>
+                  <th>{t("Retour (terminal)")}</th>
+                  <th>{t("État")}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {history
-                  .filter(({ t, a }) =>
-                    match(t.label, a.holder, a.callsign, a.role, a.unit),
+                  .filter(({ term, a }) =>
+                    match(term.label, a.holder, a.callsign, a.role, a.unit),
                   )
-                  .map(({ t, a }) => (
+                  .map(({ term, a }) => (
                     <tr key={a.id} className={a.returnedAt ? "" : "live-row"}>
                       <td className="mono">
-                        <strong>{t.label}</strong>
+                        <strong>{term.label}</strong>
                       </td>
                       <td>
                         {a.holder}
@@ -794,10 +829,15 @@ export function RadioView({
                       <td className="mono">
                         {dateTime(a.issuedAt)}
                         <div className="muted">
-                          {a.issuedBy} · batt. {a.battery.toLowerCase()}
+                          {a.issuedBy} ·{" "}
+                          {t("batt. {level}", {
+                            level: enumLabel(a.battery).toLowerCase(),
+                          })}
                         </div>
                       </td>
-                      <td className="muted">{a.accessories || "—"}</td>
+                      <td className="muted">
+                        {accessoriesLabel(a.accessories) || "—"}
+                      </td>
                       <td className="mono">
                         {a.returnedAt ? (
                           <>
@@ -805,7 +845,9 @@ export function RadioView({
                             <div className="muted">{a.returnedBy}</div>
                           </>
                         ) : (
-                          <span className="state accent">En cours</span>
+                          <span className="state accent">
+                            {t("En cours (remise)")}
+                          </span>
                         )}
                       </td>
                       <td>
@@ -813,7 +855,7 @@ export function RadioView({
                           <span
                             className={`state ${stateTone(a.returnCondition === "Opérationnel" ? "Disponible" : a.returnCondition)}`}
                           >
-                            {a.returnCondition}
+                            {enumLabel(a.returnCondition)}
                           </span>
                         ) : (
                           "—"
@@ -823,9 +865,15 @@ export function RadioView({
                       <td className="row-actions">
                         <button
                           className="icon-button"
-                          title="Quittance de remise"
-                          aria-label={`Quittance de remise ${t.label} · ${a.holder}`}
-                          onClick={() => onPrint(t.id, a.id)}
+                          title={t("Quittance de remise")}
+                          aria-label={t(
+                            "Quittance de remise {label} · {holder}",
+                            {
+                              label: term.label,
+                              holder: a.holder,
+                            },
+                          )}
+                          onClick={() => onPrint(term.id, a.id)}
                         >
                           <Printer size={13} />
                         </button>
@@ -836,7 +884,7 @@ export function RadioView({
             </table>
             {!history.length && (
               <div className="empty">
-                <p>Aucune remise.</p>
+                <p>{t("Aucune remise.")}</p>
               </div>
             )}
           </div>
@@ -847,12 +895,12 @@ export function RadioView({
             <table className="grid">
               <thead>
                 <tr>
-                  <th>Heure</th>
-                  <th>Nom d’appel</th>
-                  <th>Groupe / canal</th>
-                  <th>Audibilité</th>
-                  <th>Par</th>
-                  <th>Remarques</th>
+                  <th>{t("Heure")}</th>
+                  <th>{t("Nom d’appel")}</th>
+                  <th>{t("Groupe / canal")}</th>
+                  <th>{t("Audibilité")}</th>
+                  <th>{t("Par")}</th>
+                  <th>{t("Remarques")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -876,7 +924,7 @@ export function RadioView({
                       <td>
                         <span className="inline">
                           <Score result={c.result} />
-                          {CHECK_LABELS[c.result]}
+                          {checkLabel(c.result)}
                         </span>
                       </td>
                       <td>{c.by}</td>
@@ -887,16 +935,18 @@ export function RadioView({
             </table>
             {!radio.checks.length && (
               <div className="empty">
-                <p>Aucun contrôle de liaison.</p>
+                <p>{t("Aucun contrôle de liaison.")}</p>
               </div>
             )}
           </div>
         )}
         <footer className="panel-foot">
           <span>
-            Audibilité : 3 bon · 2 faible · 1 insuffisant · ✕ pas de liaison
+            {t(
+              "Audibilité : 3 bon · 2 faible · 1 insuffisant · ✕ pas de liaison",
+            )}
           </span>
-          <span>Nom d’appel = fonction</span>
+          <span>{t("Nom d’appel = fonction")}</span>
         </footer>
       </section>
 
@@ -941,7 +991,9 @@ export function RadioView({
           author={author}
           onClose={close}
           onIssue={(terminalId, value, log, print) => {
-            const terminal = radio.terminals.find((t) => t.id === terminalId)!;
+            const terminal = radio.terminals.find(
+              (term) => term.id === terminalId,
+            )!;
             const next = issueTerminal(radio, terminalId, value);
             save(
               next,
@@ -949,13 +1001,29 @@ export function RadioView({
                 ? {
                     happenedAt: value.issuedAt,
                     receivedAt: value.issuedAt,
-                    message: `Remise du terminal ${terminal.label}${terminal.rfsi ? ` (RFSI ${terminal.rfsi})` : ""} à ${value.holder}${value.callsign ? `, nom d’appel ${value.callsign}` : ""}.`,
+                    message: t(
+                      "Remise du terminal {label}{rfsi} à {holder}{callsign}.",
+                      {
+                        label: terminal.label,
+                        rfsi: terminal.rfsi ? ` (RFSI ${terminal.rfsi})` : "",
+                        holder: value.holder,
+                        callsign: value.callsign
+                          ? t(", nom d’appel {callsign}", {
+                              callsign: value.callsign,
+                            })
+                          : "",
+                      },
+                    ),
                     source: author,
                     recipient: value.holder,
                     notes: [
                       value.accessories &&
-                        `Accessoires : ${value.accessories}.`,
-                      `Batterie : ${value.battery.toLowerCase()}.`,
+                        t("Accessoires : {list}.", {
+                          list: accessoriesLabel(value.accessories),
+                        }),
+                      t("Batterie : {level}.", {
+                        level: enumLabel(value.battery).toLowerCase(),
+                      }),
                       value.notes,
                     ]
                       .filter(Boolean)
@@ -967,7 +1035,7 @@ export function RadioView({
               onPrint(
                 terminalId,
                 next.terminals
-                  .find((t) => t.id === terminalId)!
+                  .find((term) => term.id === terminalId)!
                   .assignments.at(-1)!.id,
               );
           }}
@@ -992,7 +1060,14 @@ export function RadioView({
                 ? {
                     happenedAt: at,
                     receivedAt: at,
-                    message: `Retour du terminal ${form.terminal.label} par ${open.holder}. État : ${condition.toLowerCase()}.`,
+                    message: t(
+                      "Retour du terminal {label} par {holder}. État : {condition}.",
+                      {
+                        label: form.terminal.label,
+                        holder: open.holder,
+                        condition: enumLabel(condition).toLowerCase(),
+                      },
+                    ),
                     source: open.holder,
                     recipient: author,
                     notes,
@@ -1027,7 +1102,18 @@ export function RadioView({
                       happenedAt: check.at,
                       receivedAt: check.at,
                       channel: "Radio",
-                      message: `Contrôle de liaison ${check.callsign} : ${CHECK_LABELS[check.result]}${check.talkgroupId ? ` sur ${talkgroupLabel(radio, check.talkgroupId)}` : ""}.`,
+                      message: t(
+                        "Contrôle de liaison {callsign} : {result}{group}.",
+                        {
+                          callsign: check.callsign,
+                          result: checkLabel(check.result),
+                          group: check.talkgroupId
+                            ? ` ${t("sur {group}", {
+                                group: talkgroupLabel(radio, check.talkgroupId),
+                              })}`
+                            : "",
+                        },
+                      ),
                       source: check.callsign,
                       notes: check.notes,
                     }
@@ -1060,9 +1146,18 @@ export function RadioView({
                     happenedAt: checks[0].at,
                     receivedAt: checks[0].at,
                     channel: "Radio",
-                    message: `Contrôle de liaison général : ${checks.length} station${checks.length > 1 ? "s" : ""}.`,
+                    message: tn(
+                      checks.length,
+                      "Contrôle de liaison général : {n} station.",
+                      "Contrôle de liaison général : {n} stations.",
+                    ),
                     notes: CHECK_RESULTS.filter((r) => count(r).length)
-                      .map((r) => `${CHECK_LABELS[r]} : ${count(r).join(", ")}`)
+                      .map((r) =>
+                        t("{result} : {callsigns}", {
+                          result: checkLabel(r),
+                          callsigns: count(r).join(", "),
+                        }),
+                      )
                       .join("\n"),
                     priority: checks.some(
                       (c) => c.result === "0" || c.result === "1",

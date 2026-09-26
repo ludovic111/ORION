@@ -47,6 +47,8 @@ import {
 } from "./app/context";
 import { MODULE_IDS, moduleInfo } from "./app/modules";
 import { usePrefs } from "./app/prefs";
+import { useLang } from "./i18n";
+import { t, tn } from "./app/i18n.ts";
 import { buildCommands } from "./app/commands";
 import { useShortcuts } from "./app/useShortcuts";
 import { useOverlays } from "./app/overlays";
@@ -93,7 +95,9 @@ const retry =
           if (
             sessionStorage.getItem("orion.chunk-reload") ||
             !window.confirm(
-              "Une nouvelle version d’orion aic est en ligne : recharger la page pour ouvrir ce module ? Une session temporaire non exportée serait perdue.",
+              t(
+                "Une nouvelle version d’orion aic est en ligne : recharger la page pour ouvrir ce module ? Une session temporaire non exportée serait perdue.",
+              ),
             )
           )
             throw err;
@@ -131,8 +135,8 @@ const Debrief = lazy(
   ),
 );
 
-const DISCARD_DRAFT =
-  "Une entrée n’est pas encore consignée. Abandonner cette saisie ?";
+const discardDraftText = () =>
+  t("Une entrée n’est pas encore consignée. Abandonner cette saisie ?");
 
 const moduleFromHash = (): Module => {
   const hash = location.hash.slice(1);
@@ -153,6 +157,9 @@ export default function App() {
   const store = useWorkspace();
   const { workspace, setWorkspace } = store;
   const [prefs, setPrefs] = usePrefs();
+  // Language of the post: the shell re-renders and the module is mounted
+  // again when it changes (texts computed once are computed again).
+  const lang = useLang();
   useSpotlight();
   const [module, setModule] = useState<Module>(moduleFromHash);
   const [docsTopic, setDocsTopic] = useState("start");
@@ -251,7 +258,7 @@ export default function App() {
         else store.start(value);
         setJoining(null);
         setJoinError("");
-        notify("Session rejointe. Tout est synchronisé en direct.");
+        notify(t("Session rejointe. Tout est synchronisé en direct."));
         history.replaceState(null, "", location.pathname);
       } catch (err) {
         setJoinError((err as Error).message);
@@ -359,7 +366,9 @@ export default function App() {
       edges: links,
       degree,
     };
-  }, [shown]);
+    // lang: titles of the items are in the language of the post.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, lang]);
   const follow = useMemo(
     () => journal?.entries.filter(needsFollowUp) ?? [],
     [journal?.entries],
@@ -458,7 +467,7 @@ export default function App() {
   // ---------- Drafts and entries ----------
   /** Asks before losing an entry being typed; clears it when confirmed. */
   const discardDraft = useCallback(() => {
-    if (hasDraft.current() && !window.confirm(DISCARD_DRAFT)) return false;
+    if (hasDraft.current() && !window.confirm(discardDraftText())) return false;
     const j = latestJournal.current;
     if (j) drafts.clear(j.id);
     drafts.setTyping(false);
@@ -484,7 +493,9 @@ export default function App() {
     setFormGeneration((value) => value + 1);
     const receipt = numberLabel(done.entry);
     notify(
-      `Entrée ${receipt} consignée.${prefs.autoPrint ? " Impression lancée." : ""}`,
+      prefs.autoPrint
+        ? t("Entrée {n} consignée. Impression lancée.", { n: receipt })
+        : t("Entrée {n} consignée.", { n: receipt }),
     );
     setCloseOffer(
       done.closable.length ? { receipt, ids: done.closable } : null,
@@ -591,18 +602,20 @@ export default function App() {
     } else
       store.start({
         version: 1,
-        author: author || "Opérateur",
+        author: author || t("Opérateur"),
         journals: [value],
         activeId: value.id,
       });
-    notify(merge ? "Entrées fusionnées." : "Journal importé.");
+    notify(merge ? t("Entrées fusionnées.") : t("Journal importé."));
   }
   async function closeSession() {
     if (!store.persistent && !discardDraft()) return;
     if (
       !store.persistent &&
       !window.confirm(
-        "Session temporaire : son contenu sera retiré de la mémoire. Vérifiez vos exports. Fermer la session ?",
+        t(
+          "Session temporaire : son contenu sera retiré de la mémoire. Vérifiez vos exports. Fermer la session ?",
+        ),
       )
     )
       return;
@@ -636,16 +649,27 @@ export default function App() {
     if (!workspace || !journal) return;
     if (workspace.journals.length < 2) {
       setError(
-        "Une session garde au moins un journal. Utilisez Session → Effacer la session.",
+        t(
+          "Une session garde au moins un journal. Utilisez Session → Effacer la session.",
+        ),
       );
       return;
     }
-    if (
-      window.prompt(
-        `Retirer le journal « ${journal.title} » de la session (et des postes synchronisés) ? Exportez-le d’abord. Saisissez RETIRER.`,
-      ) !== "RETIRER"
-    ) {
-      refuse("Journal conservé : saisissez RETIRER pour le retirer.");
+    // The word to type is in the language of the post (French accepted).
+    const word = t("RETIRER");
+    const typed = window
+      .prompt(
+        t(
+          "Retirer le journal « {title} » de la session (et des postes synchronisés) ? Exportez-le d’abord. Saisissez {word}.",
+          { title: journal.title, word },
+        ),
+      )
+      ?.trim()
+      .toUpperCase();
+    if (typed !== word && typed !== "RETIRER") {
+      refuse(
+        t("Journal conservé : saisissez {word} pour le retirer.", { word }),
+      );
       return;
     }
     const rest = workspace.journals.filter((j) => j.id !== journal.id);
@@ -657,7 +681,7 @@ export default function App() {
       activeId: rest[0].id,
       drafts: kept,
     });
-    notify(`Journal « ${journal.title} » retiré.`);
+    notify(t("Journal « {title} » retiré.", { title: journal.title }));
   }
 
   // ---------- Shared context (memoised: modules re-render on real changes) ----------
@@ -768,6 +792,8 @@ export default function App() {
           onForget={store.forget}
           theme={prefs.theme}
           onTheme={toggleTheme}
+          lang={prefs.lang}
+          onLang={(value) => setPrefs({ lang: value })}
           error={joinError || store.error || sync.error}
         />
         {dialog?.name === "import" && (
@@ -797,7 +823,7 @@ export default function App() {
       <ClickSparks />
       <div className="app">
         <a href="#main" className="skip-link">
-          Aller au contenu
+          {t("Aller au contenu")}
         </a>
         <Dock
           current={module}
@@ -842,20 +868,22 @@ export default function App() {
             {updateReady && (
               <div className="banner info" role="status">
                 <RefreshCw size={15} />
-                <span>Nouvelle version d’orion aic disponible.</span>
+                <span>{t("Nouvelle version d’orion aic disponible.")}</span>
                 <button
                   className="link"
                   onClick={() => {
                     if (
                       store.persistent ||
                       window.confirm(
-                        "Session temporaire : recharger efface son contenu. Exportez d’abord. Recharger ?",
+                        t(
+                          "Session temporaire : recharger efface son contenu. Exportez d’abord. Recharger ?",
+                        ),
                       )
                     )
                       location.reload();
                   }}
                 >
-                  Recharger
+                  {t("Recharger")}
                 </button>
               </div>
             )}
@@ -865,11 +893,11 @@ export default function App() {
                 <span>{error || store.error || sync.error}</span>
                 {error ? (
                   <button className="link" onClick={() => setError("")}>
-                    Fermer
+                    {t("Fermer")}
                   </button>
                 ) : (
                   <button className="link" onClick={() => exportCenter()}>
-                    Exporter une copie
+                    {t("Exporter une copie")}
                   </button>
                 )}
               </div>
@@ -877,14 +905,14 @@ export default function App() {
             <ConductLayer />
             <div
               className="module reveal"
-              key={`${module}-${journal.id}`}
+              key={`${module}-${journal.id}-${lang}`}
               data-module={info.id}
             >
               <Suspense
                 fallback={
                   <div className="empty-state">
                     <div className="orbit" />
-                    <p>Chargement…</p>
+                    <p>{t("Chargement…")}</p>
                   </div>
                 }
               >
@@ -895,8 +923,8 @@ export default function App() {
                     draftLabel={
                       draft?.message
                         ? store.persistent
-                          ? "Brouillon sauvegardé"
-                          : "Brouillon non sauvegardé"
+                          ? t("Brouillon sauvegardé")
+                          : t("Brouillon non sauvegardé")
                         : ""
                     }
                     suggestions={suggestions}
@@ -917,10 +945,12 @@ export default function App() {
                         closeOffer &&
                         actions.closeEntries(
                           closeOffer.ids,
-                          `Clos par la quittance ${closeOffer.receipt}`,
+                          t("Clos par la quittance {n}", {
+                            n: closeOffer.receipt,
+                          }),
                         )
                       )
-                        notify("Suivi terminé.");
+                        notify(t("Suivi terminé."));
                       setCloseOffer(null);
                     }}
                     onCloseEntries={actions.closeEntries}
@@ -941,7 +971,7 @@ export default function App() {
                           }
                         >
                           <FileText size={14} />
-                          Plan A4
+                          {t("Plan A4")}
                         </button>
                       }
                     />
@@ -1011,7 +1041,7 @@ export default function App() {
         <button
           className="fab"
           onClick={() => compose()}
-          aria-label="Nouvelle entrée"
+          aria-label={t("Nouvelle entrée")}
         >
           <Plus size={22} />
         </button>
@@ -1057,11 +1087,14 @@ export default function App() {
           installed={install.installed}
           status={`orion aic 2.0 · ${
             offlineReady
-              ? "hors ligne prêt"
+              ? t("hors ligne prêt")
               : online
-                ? "en ligne"
-                : "hors ligne"
-          } · ${radio.issued}/${radio.terminals} radios`}
+                ? t("en ligne")
+                : t("hors ligne")
+          } · ${t("{issued}/{terminals} radios", {
+            issued: radio.issued,
+            terminals: radio.terminals,
+          })}`}
           theme={prefs.theme}
           onClose={() => overlays.close("menu")}
           onSettings={(tab) => overlays.open({ kind: "settings", tab })}
@@ -1124,22 +1157,40 @@ export default function App() {
           );
           if (unexported.length)
             throw new Error(
-              `Exportez d’abord une archive orion aic ou JSON de chaque journal (${unexported.length} restant${unexported.length > 1 ? "s" : ""}).`,
+              tn(
+                unexported.length,
+                "Exportez d’abord une archive orion aic ou JSON de chaque journal ({n} restant).",
+                "Exportez d’abord une archive orion aic ou JSON de chaque journal ({n} restants).",
+              ),
             );
-          if (
-            window.prompt(
-              "Archives vérifiées ? Saisissez TERMINER pour effacer la session de ce poste.",
-            ) === "TERMINER"
-          ) {
+          // The word to type is in the language of the post (French accepted).
+          const word = t("TERMINER");
+          const typed = window
+            .prompt(
+              t(
+                "Archives vérifiées ? Saisissez {word} pour effacer la session de ce poste.",
+                { word },
+              ),
+            )
+            ?.trim()
+            .toUpperCase();
+          if (typed === word || typed === "TERMINER") {
             await store.finish();
             overlays.closeAll();
             setBackups({});
             setError("");
-            notify("Session effacée de ce poste.");
+            notify(t("Session effacée de ce poste."));
           } else
-            refuse("Session conservée : saisissez TERMINER pour l’effacer.");
+            refuse(
+              t("Session conservée : saisissez {word} pour l’effacer.", {
+                word,
+              }),
+            );
         }}
-        takeOverMessage={`Relève. ${follow.length} suite(s) à donner, dont ${late.length} en retard. ${radio.issued} radio(s) en service.`}
+        takeOverMessage={t(
+          "Relève. {follow} suite(s) à donner, dont {late} en retard. {radios} radio(s) en service.",
+          { follow: follow.length, late: late.length, radios: radio.issued },
+        )}
       />
       <AutoPrint
         queue={autoQueue}

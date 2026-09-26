@@ -3,6 +3,8 @@ import { BookOpen, Eye, EyeOff, Search } from "lucide-react";
 import { OVERLAYS, OVERLAY_GROUPS, legendUrl } from "./overlays";
 import type { ActiveOverlays, LiveStatus } from "./overlayLayers";
 import { normalizeSearch } from "./symbolsearch";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 
 /**
  * Layers of geo.admin.ch (hazards, cadastre, live hydrology…): on / off,
@@ -21,6 +23,7 @@ export function OverlayPanel({
   onToggle: (id: string, on: boolean) => void;
   onOpacity: (id: string, opacity: number) => void;
 }) {
+  const lang = useLang();
   const [query, setQuery] = useState("");
   const shown = useMemo(() => {
     const q = normalizeSearch(query);
@@ -29,18 +32,19 @@ export function OverlayPanel({
           normalizeSearch(`${o.label} ${o.hint} ${o.group}`).includes(q),
         )
       : OVERLAYS;
-  }, [query]);
+  }, [query, lang]);
   const count = Object.keys(active).length;
   return (
-    <section className="map-overlays" aria-label="Couches geo.admin.ch">
+    <section className="map-overlays" aria-label={t("Couches geo.admin.ch")}>
       <header className="map-overlays-head">
-        <span className="label">Couches geo.admin.ch</span>
+        <span className="label">{t("Couches geo.admin.ch")}</span>
         {count > 0 && <span className="pill plain">{count}</span>}
       </header>
       {!online && (
         <p className="map-overlays-note">
-          Hors ligne : seules les zones déjà vues (ou d’un secteur téléchargé)
-          s’affichent.
+          {t(
+            "Hors ligne : seules les zones déjà vues (ou d’un secteur téléchargé) s’affichent.",
+          )}
         </p>
       )}
       <div className="search map-overlays-search">
@@ -48,8 +52,8 @@ export function OverlayPanel({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Crue, cadastre, vent…"
-          aria-label="Chercher une couche"
+          placeholder={t("Crue, cadastre, vent…")}
+          aria-label={t("Chercher une couche")}
         />
       </div>
       {OVERLAY_GROUPS.map((group) => {
@@ -83,7 +87,7 @@ export function OverlayPanel({
                         max={1}
                         step={0.05}
                         value={active[o.id]}
-                        aria-label={`Opacité : ${o.label}`}
+                        aria-label={t("Opacité : {name}", { name: o.label })}
                         onChange={(e) =>
                           onOpacity(o.id, Number(e.target.value))
                         }
@@ -97,10 +101,10 @@ export function OverlayPanel({
                           href={legendUrl(o.id)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title="Légende officielle (geo.admin.ch)"
+                          title={t("Légende officielle (geo.admin.ch)")}
                         >
                           <BookOpen size={13} />
-                          Légende
+                          {t("Légende")}
                         </a>
                       )}
                     </div>
@@ -111,12 +115,12 @@ export function OverlayPanel({
                       role="status"
                     >
                       {s.error ??
-                        `${s.count ?? 0} élément${(s.count ?? 0) > 1 ? "s" : ""}${s.at ? ` · données du ${s.at}` : ""}`}
+                        `${tn(s.count ?? 0, "{n} élément", "{n} éléments")}${s.at ? ` · ${t("données du {at}", { at: s.at })}` : ""}`}
                     </small>
                   )}
                   {on && o.identify && (
                     <small className="map-overlay-status">
-                      Cliquez sur la carte pour interroger la couche.
+                      {t("Cliquez sur la carte pour interroger la couche.")}
                     </small>
                   )}
                 </div>
@@ -126,8 +130,9 @@ export function OverlayPanel({
         );
       })}
       <p className="map-overlays-note">
-        Données officielles de la Confédération et des cantons, gratuites. Les
-        zones d’inondation des barrages et les abris ne sont pas publics.
+        {t(
+          "Données officielles de la Confédération et des cantons, gratuites. Les zones d’inondation des barrages et les abris ne sont pas publics.",
+        )}
       </p>
     </section>
   );

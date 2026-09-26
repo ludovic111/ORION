@@ -11,6 +11,8 @@ import {
   readSymbolFile,
 } from "./image";
 import { TraceLine } from "../../timeline/TraceLine";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n-2.ts";
 
 /**
  * Add or edit a custom symbol: pick an image, make its background
@@ -27,6 +29,7 @@ export function SymbolEditor({
   onSaved?: (id: string) => void;
 }) {
   const { journal, updateOps, author, toast, readOnly } = useApp();
+  const lang = useLang();
   const [name, setName] = useState(symbol?.name ?? "");
   const [group, setGroup] = useState(symbol?.group ?? "");
   const [source, setSource] = useState<HTMLCanvasElement | null>(null);
@@ -46,11 +49,12 @@ export function SymbolEditor({
   const groups = useMemo(
     () => [
       ...new Set(journal.ops.symbols.map((s) => s.group).filter(Boolean)),
-      "Partenaires",
-      "Logos",
-      "Pictogrammes",
+      // Suggestions, in the language of the post (the family typed is data).
+      t("Partenaires"),
+      t("Logos"),
+      t("Pictogrammes"),
     ],
-    [journal.ops.symbols],
+    [journal.ops.symbols, lang],
   );
 
   // Reprocess the image when an option changes (a new file only).
@@ -101,8 +105,8 @@ export function SymbolEditor({
   }
 
   function save() {
-    if (!name.trim()) return setError("Donnez un nom au signe.");
-    if (!preview) return setError("Choisissez une image.");
+    if (!name.trim()) return setError(t("Donnez un nom au signe."));
+    if (!preview) return setError(t("Choisissez une image."));
     const id = symbol?.id ?? crypto.randomUUID();
     try {
       updateOps((ops) =>
@@ -119,7 +123,7 @@ export function SymbolEditor({
           author,
         ),
       );
-      toast(symbol ? "Signe modifié." : "Signe ajouté à la palette.");
+      toast(symbol ? t("Signe modifié.") : t("Signe ajouté à la palette."));
       onSaved?.(id);
       onClose();
     } catch (err) {
@@ -130,13 +134,13 @@ export function SymbolEditor({
   function remove() {
     if (!symbol) return;
     updateOps((ops) => removeRecords(ops, [symbol.id]));
-    toast("Signe supprimé.");
+    toast(t("Signe supprimé."));
     onClose();
   }
 
   return (
     <Modal
-      title={symbol ? "Modifier le signe" : "Ajouter un signe"}
+      title={symbol ? t("Modifier le signe") : t("Ajouter un signe")}
       onClose={onClose}
     >
       <div className="map-symbol-editor">
@@ -151,7 +155,7 @@ export function SymbolEditor({
           {busy ? (
             <Loader2 size={26} className="map-spin" />
           ) : preview ? (
-            <img src={preview} alt="Aperçu du signe" />
+            <img src={preview} alt={t("Aperçu du signe")} />
           ) : (
             <button
               type="button"
@@ -160,8 +164,8 @@ export function SymbolEditor({
               disabled={readOnly}
             >
               <ImagePlus size={28} />
-              <span>Choisir une image</span>
-              <small>PNG, SVG, JPEG ou WebP · 2 Mo au maximum</small>
+              <span>{t("Choisir une image")}</span>
+              <small>{t("PNG, SVG, JPEG ou WebP · 2 Mo au maximum")}</small>
             </button>
           )}
         </div>
@@ -179,26 +183,28 @@ export function SymbolEditor({
           <div className="map-symbol-actions">
             <button type="button" onClick={() => input.current?.click()}>
               <Upload size={14} />
-              {preview ? "Remplacer l’image" : "Choisir une image"}
+              {preview ? t("Remplacer l’image") : t("Choisir une image")}
             </button>
             {symbol && !source && (
               <button type="button" onClick={reprocessExisting}>
-                Retoucher le fond
+                {t("Retoucher le fond")}
               </button>
             )}
           </div>
           {source && (
             <div className="map-symbol-bg">
               <Toggle
-                label="Rendre le fond transparent"
-                hint="Retire la couleur unie qui touche les bords de l’image."
+                label={t("Rendre le fond transparent")}
+                hint={t(
+                  "Retire la couleur unie qui touche les bords de l’image.",
+                )}
                 checked={transparent}
                 onChange={setTransparent}
               />
               {transparent && (
                 <label className="map-range">
                   <span>
-                    Tolérance <output>{tolerance}</output>
+                    {t("Tolérance")} <output>{tolerance}</output>
                   </span>
                   <input
                     type="range"
@@ -208,34 +214,38 @@ export function SymbolEditor({
                     onChange={(e) => setTolerance(Number(e.target.value))}
                   />
                   <small>
-                    Plus haut : retire aussi les teintes proches du fond.
+                    {t("Plus haut : retire aussi les teintes proches du fond.")}
                   </small>
                 </label>
               )}
             </div>
           )}
           <TextField
-            label="Nom"
+            label={t("Nom")}
             required
             value={name}
             maxLength={120}
             onChange={setName}
-            placeholder="ex. Poste avancé Rega, logo SIS…"
+            placeholder={t("ex. Poste avancé Rega, logo SIS…")}
           />
           <ComboField
-            label="Famille"
+            label={t("Famille")}
             value={group}
             maxLength={80}
             onChange={setGroup}
             options={groups}
             quick={4}
-            placeholder="ex. Partenaires"
+            placeholder={t("ex. Partenaires")}
           />
           {symbol && (
             <p className="muted map-symbol-used">
               {used
-                ? `Utilisé par ${used} objet${used > 1 ? "s" : ""} de la carte.`
-                : "Aucun objet ne l’utilise pour le moment."}
+                ? tn(
+                    used,
+                    "Utilisé par {n} objet de la carte.",
+                    "Utilisé par {n} objets de la carte.",
+                  )
+                : t("Aucun objet ne l’utilise pour le moment.")}
             </p>
           )}
         </fieldset>
@@ -259,11 +269,15 @@ export function SymbolEditor({
                 <>
                   <span className="crit-text">
                     {used
-                      ? `Supprimer ? ${used} objet${used > 1 ? "s" : ""} perdront leur signe.`
-                      : "Supprimer ce signe ?"}
+                      ? tn(
+                          used,
+                          "Supprimer ? {n} objet perdra son signe.",
+                          "Supprimer ? {n} objets perdront leur signe.",
+                        )
+                      : t("Supprimer ce signe ?")}
                   </span>
                   <button type="button" onClick={() => setConfirming(false)}>
-                    Annuler
+                    {t("Annuler")}
                   </button>
                   <button
                     type="button"
@@ -271,7 +285,7 @@ export function SymbolEditor({
                     onClick={remove}
                   >
                     <Trash2 size={14} />
-                    Supprimer
+                    {t("Supprimer")}
                   </button>
                 </>
               ) : (
@@ -281,13 +295,13 @@ export function SymbolEditor({
                   onClick={() => setConfirming(true)}
                 >
                   <Trash2 size={14} />
-                  Supprimer
+                  {t("Supprimer")}
                 </button>
               ))}
             {!confirming && (
               <>
                 <button type="button" className="push" onClick={onClose}>
-                  Annuler
+                  {t("Annuler")}
                 </button>
                 <button
                   type="button"
@@ -295,7 +309,7 @@ export function SymbolEditor({
                   onClick={save}
                   disabled={busy}
                 >
-                  {symbol ? "Enregistrer" : "Ajouter à la palette"}
+                  {symbol ? t("Enregistrer") : t("Ajouter à la palette")}
                 </button>
               </>
             )}

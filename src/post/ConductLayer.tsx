@@ -13,6 +13,8 @@ import { landingOf, useIdentity } from "./roles";
 import { usePost } from "./store";
 import { useAlerts } from "./useAlerts";
 import { unlockAudio } from "./notify";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 import "./conduct.css";
 
 // Everything the conduct features do whatever the module shown: alerts,
@@ -101,15 +103,17 @@ export function ConductLayer() {
       {waiting.length > 0 && (
         <section
           className="conduct-inbox"
-          aria-label="Diffusions à quittancer"
+          aria-label={t("Diffusions à quittancer")}
           role="region"
         >
           <header>
             <Megaphone size={15} />
             <strong>
               {waiting.length === 1
-                ? "Une diffusion attend votre accusé"
-                : `${waiting.length} diffusions attendent votre accusé`}
+                ? t("Une diffusion attend votre accusé")
+                : t("{n} diffusions attendent votre accusé", {
+                    n: waiting.length,
+                  })}
             </strong>
           </header>
           <ul>
@@ -125,14 +129,18 @@ export function ConductLayer() {
                   <span className="mono">{time(b.sentAt)}</span>
                   <span className="conduct-inbox-title">
                     {b.priority === "Urgent" && (
-                      <span className="pill crit">Urgent</span>
+                      <span className="pill crit">{enumLabel("Urgent")}</span>
                     )}
                     {b.title}
                   </span>
                   <small>
                     {[
-                      b.sender && `de ${b.sender}`,
-                      `pour ${recipients.join(", ")}`,
+                      b.sender && t("de {who}", { who: b.sender }),
+                      t("pour {recipients}", {
+                        recipients: recipients
+                          .map((r) => enumLabel(r))
+                          .join(", "),
+                      }),
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -144,22 +152,32 @@ export function ConductLayer() {
                     onClick={() => {
                       if (!canWrite()) return;
                       updateOps((ops) => acknowledge(ops, b, me, "Lu"));
-                      toast(`« Lu » envoyé : ${b.title}.`);
+                      toast(
+                        t("« {ack} » envoyé : {title}.", {
+                          ack: enumLabel("Lu"),
+                          title: b.title,
+                        }),
+                      );
                     }}
                   >
                     <Check size={14} />
-                    Lu
+                    {enumLabel("Lu")}
                   </button>
                   <button
                     className={b.ack === "Compris" ? "primary small" : "small"}
                     onClick={() => {
                       if (!canWrite()) return;
                       updateOps((ops) => acknowledge(ops, b, me, "Compris"));
-                      toast(`« Compris » envoyé : ${b.title}.`);
+                      toast(
+                        t("« {ack} » envoyé : {title}.", {
+                          ack: enumLabel("Compris"),
+                          title: b.title,
+                        }),
+                      );
                     }}
                   >
                     <CheckCheck size={14} />
-                    Compris
+                    {enumLabel("Compris")}
                   </button>
                 </div>
               </li>
@@ -167,7 +185,7 @@ export function ConductLayer() {
           </ul>
           {waiting.length > 3 && (
             <button className="link" onClick={() => go("tasks")}>
-              Voir les {waiting.length} dans Mes tâches
+              {t("Voir les {n} dans Mes tâches", { n: waiting.length })}
             </button>
           )}
         </section>

@@ -3,6 +3,8 @@ import { pdfDocument } from "../print/pdf.ts";
 import { qrMatrix } from "../print/qr.ts";
 import { coverFacts, type Column, type Dossier, type Kpi } from "./dossier.ts";
 import { DOCUMENT_ROWS, type DocumentOptions } from "./docx.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 // PDF dossier (A4 portrait or landscape): cover with the verification QR
 // code, table of contents with page numbers, one chapter per part, tables,
@@ -104,7 +106,12 @@ export async function dossierPdf(
   doc.setFillColor(...ACCENT);
   doc.rect(0, 5, W * 0.38, 1.2, "F");
   font(doc, 7, true, ACCENT);
-  doc.text("ORION AIC  ·  DOSSIER DE L’OPÉRATION", M, 22, { charSpace: 0.4 });
+  doc.text(
+    `ORION AIC  ·  ${t("dossier de l’opération").toUpperCase()}`,
+    M,
+    22,
+    { charSpace: 0.4 },
+  );
   font(doc, 26, true);
   const title = doc.splitTextToSize(c.title, inner) as string[];
   doc.text(title, M, 34);
@@ -125,8 +132,8 @@ export async function dossierPdf(
     startY: y,
     body: [
       ...coverFacts(c),
-      ["Document n°", o.stamp.id],
-      ["Empreinte", o.stamp.fingerprint],
+      [t("Document n°"), o.stamp.id],
+      [t("Empreinte"), o.stamp.fingerprint],
     ],
     theme: "grid",
     styles: {
@@ -147,7 +154,7 @@ export async function dossierPdf(
   // Contents at a glance.
   font(doc, 7, true, MUTED);
   if (y + 20 < H - 70) {
-    doc.text("CONTENU", M, y, { charSpace: 0.4 });
+    doc.text(t("Contenu").toUpperCase(), M, y, { charSpace: 0.4 });
     y += 4;
     for (const ch of dossier.chapters) {
       if (y > H - 72) break;
@@ -183,7 +190,9 @@ export async function dossierPdf(
     y = TOP;
     toc.push({ level: 1, label: `${ch.number}. ${ch.title}`, page: page() });
     font(doc, 7, true, ACCENT);
-    doc.text(`PARTIE ${ch.number}`, M, y + 2, { charSpace: 0.4 });
+    doc.text(t("Partie {n}", { n: ch.number }).toUpperCase(), M, y + 2, {
+      charSpace: 0.4,
+    });
     font(doc, 18, true);
     doc.text(ch.title, M, y + 10);
     doc.setDrawColor(...INK);
@@ -225,9 +234,10 @@ export async function dossierPdf(
           }
         }
         room(h + 16);
-        toc.push({ level: 2, label: `Carte · ${b.title}`, page: page() });
+        const heading = t("Carte · {title}", { title: b.title });
+        toc.push({ level: 2, label: heading, page: page() });
         font(doc, 10, true);
-        doc.text(`Carte · ${b.title}`, M, y + 3);
+        doc.text(heading, M, y + 3);
         y += 6;
         if (image) {
           doc.addImage(
@@ -256,14 +266,14 @@ export async function dossierPdf(
         );
         y += 8;
       } else {
-        const t = b.table;
-        const view = t.compact ?? t;
+        const tbl = b.table;
+        const view = tbl.compact ?? tbl;
         room(22);
-        toc.push({ level: 2, label: t.title, page: page() });
+        toc.push({ level: 2, label: tbl.title, page: page() });
         font(doc, 7.5, true);
-        doc.text(t.title.toUpperCase(), M, y + 3, { charSpace: 0.3 });
+        doc.text(tbl.title.toUpperCase(), M, y + 3, { charSpace: 0.3 });
         font(doc, 7, false, MUTED);
-        doc.text(t.caption, W - M, y + 3, { align: "right" });
+        doc.text(tbl.caption, W - M, y + 3, { align: "right" });
         y += 5;
         const rows = view.rows.slice(0, DOCUMENT_ROWS);
         autoTable(doc, {
@@ -271,7 +281,14 @@ export async function dossierPdf(
           head: [view.columns.map((col) => col.label)],
           body: rows.length
             ? rows
-            : [[{ content: "Aucun élément.", colSpan: view.columns.length }]],
+            : [
+                [
+                  {
+                    content: t("Aucun élément."),
+                    colSpan: view.columns.length,
+                  },
+                ],
+              ],
           theme: "grid",
           styles: {
             font: "Plex",
@@ -297,7 +314,9 @@ export async function dossierPdf(
         if (view.rows.length > rows.length) {
           font(doc, 7, false, MUTED);
           doc.text(
-            `… ${view.rows.length - rows.length} lignes de plus dans les exports tableur.`,
+            t("… {n} lignes de plus dans les exports tableur.", {
+              n: view.rows.length - rows.length,
+            }),
             M,
             y + 2,
           );
@@ -312,14 +331,14 @@ export async function dossierPdf(
   room(64);
   y += 4;
   font(doc, 12, true);
-  doc.text("Vérification de ce document", M, y + 4);
+  doc.text(t("Vérification de ce document"), M, y + 4);
   y += 8;
   verification(doc, o, M, y, inner);
 
   // ---------- Table of contents ----------
   doc.setPage(tocStart);
   font(doc, 18, true);
-  doc.text("Sommaire", M, TOP + 8);
+  doc.text(t("Sommaire"), M, TOP + 8);
   toc.forEach((e, i) => {
     const spot = layout.at[i];
     doc.setPage(tocStart + spot.page);
@@ -353,7 +372,7 @@ export async function dossierPdf(
         charSpace: 0.3,
       });
       doc.text(
-        `${c.mode.toUpperCase()} · ${c.classification.toUpperCase()}`,
+        `${enumLabel(c.mode).toUpperCase()} · ${enumLabel(c.classification).toUpperCase()}`,
         W - M,
         14,
         { align: "right", charSpace: 0.3 },
@@ -417,13 +436,21 @@ function verification(
   doc.roundedRect(x, y, inner, 44, 2, 2);
   drawQr(doc, o.stamp.qr, x + 4, y + 4, 36);
   font(doc, 7, true, ACCENT);
-  doc.text("VÉRIFIER CE DOCUMENT", x + 46, y + 9, { charSpace: 0.4 });
+  doc.text(t("Vérifier ce document").toUpperCase(), x + 46, y + 9, {
+    charSpace: 0.4,
+  });
   font(doc, 8.5, false, INK);
   doc.text(
     doc.splitTextToSize(
       o.stamp.key
-        ? `Ce code identifie l’export n° ${o.stamp.id}, l’empreinte SHA-256 de son contenu et sa signature par la clé ${o.stamp.key} (${o.stamp.alg}). Le fichier PDF est signé lui aussi. Dans orion aic, Traçabilité → Vérifier un document : déposer le PDF ou saisir le texte de ce code.`
-        : `Ce code identifie l’export n° ${o.stamp.id} et l’empreinte de son contenu (${o.stamp.fingerprint}). L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération : dans orion aic, Traçabilité → Vérifier un document.`,
+        ? t(
+            "Ce code identifie l’export n° {id}, l’empreinte SHA-256 de son contenu et sa signature par la clé {key} ({alg}). Le fichier PDF est signé lui aussi. Dans orion aic, Traçabilité → Vérifier un document : déposer le PDF ou saisir le texte de ce code.",
+            { id: o.stamp.id, key: o.stamp.key, alg: o.stamp.alg },
+          )
+        : t(
+            "Ce code identifie l’export n° {id} et l’empreinte de son contenu ({fingerprint}). L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération : dans orion aic, Traçabilité → Vérifier un document.",
+            { id: o.stamp.id, fingerprint: o.stamp.fingerprint },
+          ),
       inner - 52,
     ) as string[],
     x + 46,

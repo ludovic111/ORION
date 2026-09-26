@@ -36,6 +36,9 @@ import type { useSync } from "../sync/useSync";
 import { ConflictPanel } from "../sync/ConflictPanel";
 import { AlertSettings, PostRoleSettings } from "../post/PostPanel";
 import { LiaisonPanel } from "../liaison/LiaisonPanel";
+import { LANGS, LANG_NAMES, formatTime, rich, type Lang } from "../i18n";
+import { listLabel } from "../../shared/i18n/lists.ts";
+import { t } from "./i18n.ts";
 
 export type SettingsTab = "post" | "lists" | "sync" | "session" | "contact";
 
@@ -68,23 +71,23 @@ export function SettingsDialog({
 }) {
   const { workspace, journal } = useApp();
   return (
-    <Modal title="Réglages" onClose={onClose} wide>
+    <Modal title={t("Réglages")} onClose={onClose} wide>
       <div style={{ marginBottom: 18 }}>
         <Segmented
-          label="Rubrique"
+          label={t("Rubrique")}
           value={tab}
           onChange={onTab}
           options={[
-            { value: "post", label: "Ce poste" },
-            { value: "lists", label: "Référentiels" },
-            { value: "sync", label: "Synchronisation" },
-            { value: "session", label: "Session et journal" },
-            { value: "contact", label: "Une idée ?" },
+            { value: "post", label: t("Ce poste") },
+            { value: "lists", label: t("Référentiels") },
+            { value: "sync", label: t("Synchronisation") },
+            { value: "session", label: t("Session et journal") },
+            { value: "contact", label: t("Une idée ?") },
           ]}
         />
       </div>
       {tab === "post" && <PostSettings />}
-      {tab === "contact" && <ContactCard topic="Réglages" />}
+      {tab === "contact" && <ContactCard topic={t("Réglages")} />}
       {tab === "lists" && <ListsSettings />}
       {tab === "sync" && (
         <SyncSettings sync={sync} onUpdateWorkspace={onUpdateWorkspace} />
@@ -167,26 +170,28 @@ function DictationSettings() {
   const [supported] = useState(() => speechSupported(window));
   return (
     <section className="settings-section">
-      <h3 className="section-label">Dictée vocale</h3>
+      <h3 className="section-label">{t("Dictée vocale")}</h3>
       {supported ? (
         <div className="stack">
           <Toggle
-            label="Dicter les messages au micro"
-            hint="Un bouton micro apparaît à côté du texte des entrées du journal et des messages. Le micro n’est ouvert que pendant la dictée."
+            label={t("Dicter les messages au micro")}
+            hint={t(
+              "Un bouton micro apparaît à côté du texte des entrées du journal et des messages. Le micro n’est ouvert que pendant la dictée.",
+            )}
             checked={prefs.dictation}
             onChange={(dictation) => setPrefs({ dictation })}
           />
           <p className="hint">
-            Dans Chrome et Edge, le son est envoyé aux serveurs de Google /
-            Microsoft pour être transcrit, et il faut une connexion internet.
-            Safari peut transcrire sur l’appareil selon le système. Ne dictez
-            pas d’informations confidentielles si ce n’est pas autorisé.
+            {t(
+              "Dans Chrome et Edge, le son est envoyé aux serveurs de Google / Microsoft pour être transcrit, et il faut une connexion internet. Safari peut transcrire sur l’appareil selon le système. Ne dictez pas d’informations confidentielles si ce n’est pas autorisé.",
+            )}
           </p>
         </div>
       ) : (
         <p className="muted">
-          Non disponible dans ce navigateur. Chrome, Edge et Safari proposent la
-          dictée vocale.
+          {t(
+            "Non disponible dans ce navigateur. Chrome, Edge et Safari proposent la dictée vocale.",
+          )}
         </p>
       )}
     </section>
@@ -197,33 +202,52 @@ function PostSettings() {
   const { prefs, setPrefs } = useApp();
   return (
     <div className="stack" style={{ gap: 22 }}>
+      <section className="settings-section">
+        <h3 className="section-label">{t("Langue")}</h3>
+        <div className="form-grid">
+          <ChoiceField
+            label={t("Langue de l’interface")}
+            value={prefs.lang}
+            onChange={(lang: Lang) => setPrefs({ lang })}
+            options={LANGS.map((l) => ({ value: l, label: LANG_NAMES[l] }))}
+          />
+        </div>
+        <p className="muted small">
+          {t(
+            "Propre à ce poste. Les textes saisis (journal, messages, référentiels) restent tels qu’ils ont été écrits, quelle que soit la langue.",
+          )}
+        </p>
+      </section>
       <PostRoleSettings />
       <AlertSettings />
       <section className="settings-section">
-        <h3 className="section-label">Apparence</h3>
+        <h3 className="section-label">{t("Apparence")}</h3>
         <div className="form-grid">
           <ChoiceField
-            label="Mode"
+            label={t("Mode")}
             value={prefs.theme}
             onChange={(theme) => setPrefs({ theme })}
             options={[
-              { value: "light", label: "Clair" },
-              { value: "dark", label: "Sombre" },
-              { value: "auto", label: "Comme le système (jour / nuit)" },
+              { value: "light", label: t("Clair") },
+              { value: "dark", label: t("Sombre") },
+              { value: "auto", label: t("Comme le système (jour / nuit)") },
             ]}
           />
           <ChoiceField
-            label="Animations"
+            label={t("Animations")}
             value={prefs.motion}
             onChange={(motion) => setPrefs({ motion })}
             options={[
-              { value: "full", label: "Toutes" },
-              { value: "reduced", label: "Réduites (poste lent, sensibilité)" },
+              { value: "full", label: t("Toutes") },
+              {
+                value: "reduced",
+                label: t("Réduites (poste lent, sensibilité)"),
+              },
             ]}
           />
         </div>
         <PalettePicker
-          title="Thème clair"
+          title={t("Thème clair")}
           palettes={LIGHT_PALETTES}
           value={prefs.lightPalette}
           onPick={(p) =>
@@ -234,7 +258,7 @@ function PostSettings() {
           }
         />
         <PalettePicker
-          title="Thème sombre"
+          title={t("Thème sombre")}
           palettes={DARK_PALETTES}
           value={prefs.darkPalette}
           onPick={(p) =>
@@ -245,44 +269,55 @@ function PostSettings() {
           }
         />
         <p className="hint">
-          Le bouton soleil / lune de la barre du haut passe du thème clair au
-          thème sombre choisis ici. Chaque poste garde son propre thème.
+          {t(
+            "Le bouton soleil / lune de la barre du haut passe du thème clair au thème sombre choisis ici. Chaque poste garde son propre thème.",
+          )}
         </p>
       </section>
       <section className="settings-section">
-        <h3 className="section-label">Impression automatique</h3>
+        <h3 className="section-label">{t("Impression automatique")}</h3>
         <div className="stack">
           <Toggle
-            label="Imprimer chaque nouvelle entrée du journal"
-            hint="Dès qu’une entrée est consignée sur ce poste, sa fiche A4 part à l’impression."
+            label={t("Imprimer chaque nouvelle entrée du journal")}
+            hint={t(
+              "Dès qu’une entrée est consignée sur ce poste, sa fiche A4 part à l’impression.",
+            )}
             checked={prefs.autoPrint}
             onChange={(autoPrint) => setPrefs({ autoPrint })}
           />
           <Toggle
-            label="Imprimer aussi les entrées des autres postes"
-            hint="Pour un poste d’impression central : chaque entrée reçue par synchronisation est imprimée ici."
+            label={t("Imprimer aussi les entrées des autres postes")}
+            hint={t(
+              "Pour un poste d’impression central : chaque entrée reçue par synchronisation est imprimée ici.",
+            )}
             checked={prefs.autoPrintRemote}
             onChange={(autoPrintRemote) => setPrefs({ autoPrintRemote })}
           />
           <Toggle
-            label="Imprimer chaque nouveau message reçu"
-            hint="Formule de message A4 pour chaque message saisi dans Messages."
+            label={t("Imprimer chaque nouveau message reçu")}
+            hint={t(
+              "Formule de message A4 pour chaque message saisi dans Messages.",
+            )}
             checked={prefs.autoPrintMessages}
             onChange={(autoPrintMessages) => setPrefs({ autoPrintMessages })}
           />
           <p className="hint">
-            Le navigateur affiche sa fenêtre d’impression à chaque fiche. Pour
-            imprimer sans aucune fenêtre, lancer Chrome ou Edge avec l’option{" "}
-            <code>--kiosk-printing</code> (voir l’aide).
+            {rich(
+              t(
+                "Le navigateur affiche sa fenêtre d’impression à chaque fiche. Pour imprimer sans aucune fenêtre, lancer Chrome ou Edge avec l’option <0>--kiosk-printing</0> (voir l’aide).",
+              ),
+              [<code />],
+            )}
           </p>
         </div>
       </section>
       <DictationSettings />
       <section className="settings-section">
-        <h3 className="section-label">Modules affichés</h3>
+        <h3 className="section-label">{t("Modules affichés")}</h3>
         <p className="muted" style={{ marginBottom: 10 }}>
-          Masquez ce que vous n’utilisez pas. Les données restent intactes et
-          les autres postes gardent leur propre choix.
+          {t(
+            "Masquez ce que vous n’utilisez pas. Les données restent intactes et les autres postes gardent leur propre choix.",
+          )}
         </p>
         <div
           className="tile-grid"
@@ -311,7 +346,7 @@ function PostSettings() {
                   <Icon size={16} style={{ color: `hsl(${m.hue} 85% 68%)` }} />
                   <strong style={{ fontSize: 13 }}>{m.short}</strong>
                   {m.core ? (
-                    <small>toujours</small>
+                    <small>{t("toujours")}</small>
                   ) : shown ? (
                     <Eye size={14} />
                   ) : (
@@ -344,18 +379,18 @@ function ListsSettings() {
   return (
     <div className="stack">
       <p className="muted">
-        Valeurs proposées en un clic dans les formulaires. On peut toujours
-        taper autre chose. Les référentiels font partie du journal : ils sont
-        partagés avec les postes synchronisés et exportés dans l’archive.
+        {t(
+          "Valeurs proposées en un clic dans les formulaires. On peut toujours taper autre chose. Les référentiels font partie du journal : ils sont partagés avec les postes synchronisés et exportés dans l’archive.",
+        )}
       </p>
       <div className="form-grid">
         <ChoiceField
-          label="Référentiel"
+          label={t("Référentiel")}
           value={name}
           onChange={setName}
           options={Object.entries(DEFAULT_LISTS).map(([k, v]) => ({
             value: k,
-            label: v.label,
+            label: listLabel(v.label),
           }))}
         />
         <form
@@ -370,8 +405,8 @@ function ListsSettings() {
           }}
         >
           <input
-            aria-label="Nouvelle valeur"
-            placeholder="Ajouter une valeur"
+            aria-label={t("Nouvelle valeur")}
+            placeholder={t("Ajouter une valeur")}
             value={value}
             maxLength={120}
             disabled={readOnly}
@@ -379,7 +414,7 @@ function ListsSettings() {
           />
           <button
             className="icon-button"
-            aria-label="Ajouter"
+            aria-label={t("Ajouter")}
             disabled={readOnly}
           >
             <Plus size={16} />
@@ -394,7 +429,7 @@ function ListsSettings() {
             style={{ height: 30, paddingRight: 4 }}
           >
             <input
-              aria-label={`Modifier ${v}`}
+              aria-label={t("Modifier {value}", { value: v })}
               defaultValue={v}
               disabled={readOnly}
               style={{
@@ -414,7 +449,7 @@ function ListsSettings() {
               <button
                 className="icon-button"
                 style={{ width: 22, height: 22 }}
-                aria-label={`Retirer ${v}`}
+                aria-label={t("Retirer {value}", { value: v })}
                 onClick={() => save(values.filter((x) => x !== v))}
               >
                 <X size={12} />
@@ -422,7 +457,7 @@ function ListsSettings() {
             )}
           </span>
         ))}
-        {!values.length && <span className="muted">Liste vide.</span>}
+        {!values.length && <span className="muted">{t("Liste vide.")}</span>}
       </div>
       {custom && !readOnly && (
         <div>
@@ -433,11 +468,11 @@ function ListsSettings() {
                 delete next[name];
                 return { ...ops, settings: { ...ops.settings, lists: next } };
               });
-              toast("Valeurs standards rétablies.");
+              toast(t("Valeurs standards rétablies."));
             }}
           >
             <RotateCcw size={14} />
-            Rétablir les valeurs standards
+            {t("Rétablir les valeurs standards")}
           </button>
         </div>
       )}
@@ -461,22 +496,23 @@ function SyncSettings({
   const secure = window.isSecureContext;
   const start = (code: string) => {
     onUpdateWorkspace({ ...workspace, room: normalizeCode(code) });
-    toast("Synchronisation activée.");
+    toast(t("Synchronisation activée."));
   };
   return (
     <div className="stack" style={{ gap: 18 }}>
       <p className="muted">
-        Plusieurs ordinateurs, tablettes ou téléphones travaillent sur la même
-        session, en direct, sans compte ni base de données : chaque poste garde
-        toute la session et les postes s’échangent les changements, chiffrés de
-        bout en bout avec le code de session. Le serveur ne fait que relayer des
-        messages illisibles et ne garde rien.
+        {t(
+          "Plusieurs ordinateurs, tablettes ou téléphones travaillent sur la même session, en direct, sans compte ni base de données : chaque poste garde toute la session et les postes s’échangent les changements, chiffrés de bout en bout avec le code de session. Le serveur ne fait que relayer des messages illisibles et ne garde rien.",
+        )}
       </p>
       {!secure && (
         <p className="hint warn">
-          Cette page n’est pas en HTTPS : le chiffrement est indisponible.
-          Ouvrez orion aic en https:// (ou via <code>npm run lan</code> sur le
-          réseau local).
+          {rich(
+            t(
+              "Cette page n’est pas en HTTPS : le chiffrement est indisponible. Ouvrez orion aic en https:// (ou via <0>npm run lan</0> sur le réseau local).",
+            ),
+            [<code />],
+          )}
         </p>
       )}
       {room ? (
@@ -489,7 +525,7 @@ function SyncSettings({
           }}
         >
           <div className="stack">
-            <span className="label">Code de session</span>
+            <span className="label">{t("Code de session")}</span>
             <strong
               className="display"
               style={{
@@ -501,9 +537,12 @@ function SyncSettings({
               {room}
             </strong>
             <p className="muted">
-              Sur l’autre poste : ouvrir orion aic → <b>Rejoindre</b> → saisir
-              ce code, ou scanner le QR code. Transmettez le code comme un mot
-              de passe : il donne accès à toute la session.
+              {rich(
+                t(
+                  "Sur l’autre poste : ouvrir orion aic → <0>Rejoindre</0> → saisir ce code, ou scanner le QR code. Transmettez le code comme un mot de passe : il donne accès à toute la session.",
+                ),
+                [<b />],
+              )}
             </p>
             <div className="action-row">
               <button
@@ -518,7 +557,7 @@ function SyncSettings({
                 }}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                Copier le lien
+                {t("Copier le lien")}
               </button>
               <button
                 className="danger"
@@ -526,30 +565,30 @@ function SyncSettings({
                   const next = { ...workspace };
                   delete next.room;
                   onUpdateWorkspace(next);
-                  toast("Synchronisation arrêtée sur ce poste.");
+                  toast(t("Synchronisation arrêtée sur ce poste."));
                 }}
               >
                 <WifiOff size={14} />
-                Arrêter sur ce poste
+                {t("Arrêter sur ce poste")}
               </button>
             </div>
             <div className="spec compact" style={{ marginTop: 6 }}>
               <div>
-                <dt>État</dt>
+                <dt>{t("État")}</dt>
                 <dd>
                   {sync.status === "live"
-                    ? "Connecté"
+                    ? t("Connecté")
                     : sync.status === "outdated"
-                      ? "Version différente : rechargez la page"
+                      ? t("Version différente : rechargez la page")
                       : sync.status === "retrying"
-                        ? "Reconnexion…"
+                        ? t("Reconnexion…")
                         : sync.status === "connecting"
-                          ? "Connexion…"
-                          : "Arrêté"}
+                          ? t("Connexion…")
+                          : t("Arrêté")}
                 </dd>
               </div>
               <div>
-                <dt>Autres postes</dt>
+                <dt>{t("Autres postes")}</dt>
                 <dd>
                   {sync.relayCount}
                   {sync.peers.length > 0 &&
@@ -557,14 +596,8 @@ function SyncSettings({
                 </dd>
               </div>
               <div>
-                <dt>Dernier échange</dt>
-                <dd>
-                  {sync.lastSync
-                    ? new Date(sync.lastSync).toLocaleTimeString("fr-CH", {
-                        timeZone: "Europe/Zurich",
-                      })
-                    : "—"}
-                </dd>
+                <dt>{t("Dernier échange")}</dt>
+                <dd>{sync.lastSync ? formatTime(sync.lastSync, true) : "—"}</dd>
               </div>
             </div>
           </div>
@@ -576,7 +609,7 @@ function SyncSettings({
               shapeRendering="crispEdges"
               style={{ background: "#fff", borderRadius: 14 }}
               role="img"
-              aria-label="QR code pour rejoindre la session"
+              aria-label={t("QR code pour rejoindre la session")}
             >
               <path d={qrPath(matrix)} fill="#0f1127" />
             </svg>
@@ -586,17 +619,18 @@ function SyncSettings({
         <div className="form-grid">
           <div className="card stack">
             <Wifi size={20} className="gradient-text" />
-            <strong>Partager cette session</strong>
+            <strong>{t("Partager cette session")}</strong>
             <p className="muted">
-              Crée un code unique. Les postes qui le saisissent reçoivent toute
-              la session et restent synchronisés.
+              {t(
+                "Crée un code unique. Les postes qui le saisissent reçoivent toute la session et restent synchronisés.",
+              )}
             </p>
             <button
               className="primary"
               disabled={!secure}
               onClick={() => start(newRoomCode())}
             >
-              Créer un code de session
+              {t("Créer un code de session")}
             </button>
           </div>
           <form
@@ -606,13 +640,14 @@ function SyncSettings({
               if (validCode(typed)) start(typed);
             }}
           >
-            <strong>Rejoindre avec un code</strong>
+            <strong>{t("Rejoindre avec un code")}</strong>
             <p className="muted">
-              Fusionne cette session avec celle des postes qui utilisent ce
-              code.
+              {t(
+                "Fusionne cette session avec celle des postes qui utilisent ce code.",
+              )}
             </p>
             <TextField
-              label="Code de session"
+              label={t("Code de session")}
               value={typed}
               onChange={(v) => setTyped(normalizeCode(v))}
               placeholder="ABCD-EFGH-JKMN-PQRS"
@@ -620,33 +655,37 @@ function SyncSettings({
             {typed && codeProblem(typed) && (
               <p className="hint warn">{codeProblem(typed)}</p>
             )}
-            <button disabled={!validCode(typed) || !secure}>Rejoindre</button>
+            <button disabled={!validCode(typed) || !secure}>
+              {t("Rejoindre")}
+            </button>
           </form>
         </div>
       )}
       {room && (
         <section className="stack" style={{ gap: 10 }}>
           <span className="label">
-            Fusions entre postes
-            {sync.conflictCount > 0 ? ` · ${sync.conflictCount} à voir` : ""}
+            {t("Fusions entre postes")}
+            {sync.conflictCount > 0
+              ? ` · ${t("{n} à voir", { n: sync.conflictCount })}`
+              : ""}
           </span>
           <ConflictPanel sync={sync} />
         </section>
       )}
       <section className="stack" style={{ gap: 10 }}>
-        <span className="label">Liaison entre PC</span>
+        <span className="label">{t("Liaison entre PC")}</span>
         <LiaisonPanel />
       </section>
       <details>
-        <summary>Sans internet : réseau local (Wi-Fi ou câble)</summary>
+        <summary>{t("Sans internet : réseau local (Wi-Fi ou câble)")}</summary>
         <div className="details-fields">
           <p className="muted">
-            Sur un ordinateur du poste de conduite (le « poste serveur »),
-            lancer <code>npm run lan</code> depuis le code source. Il affiche
-            une adresse du type <code>https://192.168.1.20:4443</code>. Les
-            autres postes du même Wi-Fi ou réseau ouvrent cette adresse,
-            acceptent le certificat local une fois, puis utilisent le code de
-            session comme ci-dessus. Tout reste dans le bâtiment.
+            {rich(
+              t(
+                "Sur un ordinateur du poste de conduite (le « poste serveur »), lancer <0>npm run lan</0> depuis le code source. Il affiche une adresse du type <1>https://192.168.1.20:4443</1>. Les autres postes du même Wi-Fi ou réseau ouvrent cette adresse, acceptent le certificat local une fois, puis utilisent le code de session comme ci-dessus. Tout reste dans le bâtiment.",
+              ),
+              [<code />, <code />],
+            )}
           </p>
         </div>
       </details>
@@ -654,13 +693,14 @@ function SyncSettings({
   );
 }
 
-const PROPERTY_LABELS: Record<string, string> = {
-  title: "Événement",
-  organization: "Organisation",
-  location: "Lieu / secteur",
-  reference: "Référence",
-  mode: "Mode",
-  classification: "Diffusion",
+// Names of the properties, in the language of the post (read when shown).
+const PROPERTY_LABELS: Record<string, () => string> = {
+  title: () => t("Événement"),
+  organization: () => t("Organisation"),
+  location: () => t("Lieu / secteur"),
+  reference: () => t("Référence"),
+  mode: () => t("Mode"),
+  classification: () => t("Diffusion"),
 };
 
 function JournalProperties() {
@@ -698,34 +738,41 @@ function JournalProperties() {
           reference: value.reference.trim(),
         };
         const found: Record<string, string> = {};
-        if (!trimmed.title) found.title = "Indiquez le nom de l’événement.";
+        if (!trimmed.title) found.title = t("Indiquez le nom de l’événement.");
         const parsed = journalSchema.safeParse({ ...live, ...trimmed });
         if (!parsed.success)
           for (const issue of parsed.error.issues) {
             const key = String(issue.path[0] ?? "");
             if (key in PROPERTY_LABELS && !found[key])
-              found[key] =
-                `${PROPERTY_LABELS[key]} : valeur refusée (trop longue ?).`;
+              found[key] = t("{field} : valeur refusée (trop longue ?).", {
+                field: PROPERTY_LABELS[key](),
+              });
           }
         if (Object.keys(found).length || !parsed.success) {
           setErrors(
             Object.keys(found).length
               ? found
-              : { title: "Ces propriétés ne peuvent pas être enregistrées." },
+              : {
+                  title: t("Ces propriétés ne peuvent pas être enregistrées."),
+                },
           );
           return;
         }
         setErrors({});
         setValue(trimmed);
-        if (updateJournal(parsed.data)) toast("Journal modifié.");
+        if (updateJournal(parsed.data)) toast(t("Journal modifié."));
       }}
     >
-      <h3 className="section-label">Journal · propriétés</h3>
+      <h3 className="section-label">{t("Journal · propriétés")}</h3>
       {readOnly && (
         <p className="muted">
           {live.closedAt
-            ? "Journal clôturé : rouvrez-le (ci-dessous) pour modifier ses propriétés."
-            : "Lecture seule : vous consultez le passé. Revenez au direct pour modifier."}
+            ? t(
+                "Journal clôturé : rouvrez-le (ci-dessous) pour modifier ses propriétés.",
+              )
+            : t(
+                "Lecture seule : vous consultez le passé. Revenez au direct pour modifier.",
+              )}
         </p>
       )}
       <fieldset
@@ -735,45 +782,45 @@ function JournalProperties() {
         <div className="form-grid">
           <TextField
             className="span-2"
-            label="Événement"
+            label={t("Événement")}
             required
             value={value.title}
             error={errors.title}
             onChange={(title) => set({ title })}
           />
           <TextField
-            label="Organisation"
+            label={t("Organisation")}
             value={value.organization}
             error={errors.organization}
             onChange={(organization) => set({ organization })}
           />
           <TextField
-            label="Lieu / secteur"
+            label={t("Lieu / secteur")}
             value={value.location}
             error={errors.location}
             onChange={(location) => set({ location })}
           />
           <TextField
-            label="Référence"
+            label={t("Référence")}
             value={value.reference}
             error={errors.reference}
             onChange={(reference) => set({ reference })}
           />
           <ChoiceField
-            label="Mode"
+            label={t("Mode")}
             value={value.mode}
             onChange={(mode) => set({ mode })}
             options={["Exercice", "Intervention"] as const}
           />
           <ChoiceField
-            label="Diffusion"
+            label={t("Diffusion")}
             value={value.classification}
             onChange={(classification) => set({ classification })}
             options={["Interne", "Confidentiel"] as const}
           />
         </div>
         <div className="action-row" style={{ marginTop: 10 }}>
-          <button className="primary">Enregistrer</button>
+          <button className="primary">{t("Enregistrer")}</button>
         </div>
       </fieldset>
     </form>

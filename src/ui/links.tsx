@@ -40,6 +40,7 @@ import {
 } from "../../shared/links";
 import { useApp } from "../app/context";
 import { Modal } from "../journal/Modal";
+import { t, tn } from "./i18n.ts";
 
 export const KIND_ICON: Record<RefKind, LucideIcon> = {
   entry: BookOpen,
@@ -113,7 +114,11 @@ export function ItemPreview({
           {around.length > limit && (
             <li>
               <span className="muted">
-                + {around.length - limit} autre(s) lien(s)
+                {tn(
+                  around.length - limit,
+                  "+ {n} autre lien",
+                  "+ {n} autres liens",
+                )}
               </span>
             </li>
           )}
@@ -197,8 +202,8 @@ export function LinkChip({
         <button
           type="button"
           className="icon-button"
-          aria-label={`Retirer le lien vers ${item.title}`}
-          title="Retirer ce lien"
+          aria-label={t("Retirer le lien vers {title}", { title: item.title })}
+          title={t("Retirer ce lien")}
           onClick={onRemove}
         >
           <X size={13} />
@@ -236,9 +241,11 @@ export function ItemSearch({
         <input
           autoFocus={autoFocus}
           value={query}
-          placeholder="Rechercher une entrée, un message, un moyen, une personne…"
+          placeholder={t(
+            "Rechercher une entrée, un message, un moyen, une personne…",
+          )}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Rechercher"
+          aria-label={t("Rechercher")}
         />
       </div>
       <div className="picker-results">
@@ -269,7 +276,7 @@ export function ItemSearch({
         })}
         {!results.length && (
           <p className="muted" style={{ padding: 14 }}>
-            Aucun élément ne correspond.
+            {t("Aucun élément ne correspond.")}
           </p>
         )}
       </div>
@@ -304,20 +311,20 @@ export function LinksPanel({
     <section className="links-panel">
       <div className="card-head" style={{ marginBottom: 0 }}>
         <Link2 size={15} />
-        <h3>Liens</h3>
+        <h3>{t("Liens")}</h3>
         <span className="pill plain">{around.length}</span>
         {!readOnly && (
           <button className="small" onClick={() => setPicking(true)}>
             <Plus size={13} />
-            Lier
+            {t("Lier")}
           </button>
         )}
       </div>
       {!around.length && !compact && (
         <p className="muted" style={{ fontSize: 12 }}>
-          Aucun lien. « Lier » relie cet élément à une entrée, un message, un
-          moyen, une personne, un objet de la carte… Les noms d’appel, émetteurs
-          et références (#012) sont reliés automatiquement.
+          {t(
+            "Aucun lien. « Lier » relie cet élément à une entrée, un message, un moyen, une personne, un objet de la carte… Les noms d’appel, émetteurs et références (#012) sont reliés automatiquement.",
+          )}
         </p>
       )}
       {grouped.map(([kind, list]) => (
@@ -340,14 +347,14 @@ export function LinksPanel({
         </div>
       ))}
       {picking && (
-        <Modal title="Lier à…" onClose={() => setPicking(false)}>
+        <Modal title={t("Lier à…")} onClose={() => setPicking(false)}>
           <div className="stack">
             <label>
-              Nature du lien (facultatif)
+              {t("Nature du lien (facultatif)")}
               <input
                 value={label}
                 maxLength={200}
-                placeholder="ex. position, demandé par, concerne"
+                placeholder={t("ex. position, demandé par, concerne")}
                 onChange={(e) => setLabel(e.target.value)}
               />
             </label>

@@ -11,6 +11,9 @@ import {
   symbolName,
 } from "./builtins";
 import { loadCatalog } from "./symbols";
+import { formatDateTime } from "../../../shared/i18n/core.ts";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n-2.ts";
 import { effectiveColor } from "./geoformats";
 import { layerKey, placesOf, sortMaps } from "./maps";
 import { project, unproject, type LatLng } from "./projection";
@@ -175,7 +178,9 @@ export async function printMap(
     head.y + 10.5,
     { maxWidth: head.w * 0.62 },
   );
-  const classification = (o.journal.classification || "").toUpperCase();
+  const classification = enumLabel(
+    o.journal.classification || "",
+  ).toUpperCase();
   font(doc, 8, true);
   if (classification) {
     const w = doc.getTextWidth(classification) + 4;
@@ -323,14 +328,23 @@ export async function printMap(
   let centre = "";
   try {
     const c = toMN95(clat, clng);
-    centre = `Centre E ${gridLabel(Math.round(c.east), 1)} · N ${gridLabel(Math.round(c.north), 1)}`;
+    centre = t("Centre E {east} · N {north}", {
+      east: gridLabel(Math.round(c.east), 1),
+      north: gridLabel(Math.round(c.north), 1),
+    });
   } catch {
-    centre = `Centre ${clat.toFixed(5)}, ${clng.toFixed(5)}`;
+    centre = t("Centre {lat}, {lng}", {
+      lat: clat.toFixed(5),
+      lng: clng.toFixed(5),
+    });
   }
   doc.text(centre, bx, by + 9);
   if (o.grid)
     doc.text(
-      `Quadrillage MN95 : ${gridSpacing(o.scale) >= 1000 ? "1 km" : `${gridSpacing(o.scale)} m`}`,
+      t("Quadrillage MN95 : {spacing}", {
+        spacing:
+          gridSpacing(o.scale) >= 1000 ? "1 km" : `${gridSpacing(o.scale)} m`,
+      }),
       bx,
       by + 12.5,
     );
@@ -360,13 +374,13 @@ export async function printMap(
     if (p.kind === "point" && p.symbol && !symbols.has(p.symbol))
       symbols.set(p.symbol, p);
     if (p.kind === "line" || p.kind === "area")
-      if (!layers.has(layerKey(p) || "Sans calque"))
-        layers.set(layerKey(p) || "Sans calque", effectiveColor(p));
+      if (!layers.has(layerKey(p) || t("Sans calque")))
+        layers.set(layerKey(p) || t("Sans calque"), effectiveColor(p));
   }
   const lx = foot.x + foot.w * 0.3;
   const lw = foot.w * 0.42;
   font(doc, 7.5, true);
-  doc.text("Légende", lx, foot.y + 3);
+  doc.text(t("Légende"), lx, foot.y + 3);
   const rowH = 5;
   const cols = 2;
   const colW = lw / cols;
@@ -376,7 +390,9 @@ export async function printMap(
     items.push({
       icon: await legendIcon(o.journal, symbol, effectiveColor(p)),
       label:
-        symbolName(symbol, o.journal.ops.symbols ?? []) || p.label || "Signe",
+        symbolName(symbol, o.journal.ops.symbols ?? []) ||
+        p.label ||
+        t("Signe"),
     });
   for (const [layer, color] of layers) items.push({ color, label: layer });
   font(doc, 6.8, false);
@@ -398,11 +414,11 @@ export async function printMap(
   });
   if (!items.length) {
     font(doc, 6.8, false, MUTED);
-    doc.text("Aucun objet dans le cadre.", lx, foot.y + 8);
+    doc.text(t("Aucun objet dans le cadre."), lx, foot.y + 8);
   } else if (items.length > capacity) {
     font(doc, 6.5, false, MUTED);
     doc.text(
-      `… et ${items.length - capacity} autre(s)`,
+      tn(items.length - capacity, "… et {n} autre", "… et {n} autres"),
       lx,
       foot.y + foot.h - 0.5,
     );
@@ -410,23 +426,19 @@ export async function printMap(
 
   /* Time stamp, sources */
   const rx = foot.x + foot.w;
-  const now = new Date();
-  const stamp = now.toLocaleString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const stamp = formatDateTime(Date.now());
   font(doc, 7, true);
-  doc.text(`Imprimé le ${stamp}`, rx, foot.y + 3, { align: "right" });
+  doc.text(t("Imprimé le {stamp}", { stamp }), rx, foot.y + 3, {
+    align: "right",
+  });
   font(doc, 6.5, false, MUTED);
   const lines = [
-    o.author ? `par ${o.author}` : "",
-    `Carte : ${o.mapName}`,
-    `${o.paper} ${o.orientation === "portrait" ? "portrait" : "paysage"} · imprimer à 100 %`,
-    `Fond ${image.attribution || "—"}`,
+    o.author ? t("par {author}", { author: o.author }) : "",
+    t("Carte : {name}", { name: o.mapName }),
+    o.orientation === "portrait"
+      ? t("{paper} portrait · imprimer à 100 %", { paper: o.paper })
+      : t("{paper} paysage · imprimer à 100 %", { paper: o.paper }),
+    t("Fond {source}", { source: image.attribution || "—" }),
     "orion aic",
   ].filter(Boolean);
   lines.forEach((l, i) =>
@@ -449,6 +461,6 @@ export async function printMap(
     .slice(0, 40);
   return {
     blob: doc.output("blob"),
-    name: `carte-${slug || "situation"}-1-${o.scale}-${o.paper.toLowerCase()}.pdf`,
+    name: `${t("carte")}-${slug || t("situation")}-1-${o.scale}-${o.paper.toLowerCase()}.pdf`,
   };
 }

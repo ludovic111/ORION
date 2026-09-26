@@ -19,6 +19,9 @@ import {
 } from "../../shared/history.ts";
 import type { SectionId } from "../export/scope.ts";
 import { cssColor } from "./text.ts";
+import { getLang, formatNumber } from "../../shared/i18n/core.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { colon, t, tn, type Key } from "./i18n.ts";
 
 // The slides of a situation briefing, built from a journal already scoped
 // to the parts and the moment chosen. Pure data: the presentation mode, the
@@ -45,87 +48,140 @@ export type SlideKind =
 /** Every kind of slide, in the default order, with the parts it shows. */
 export const SLIDE_INFO: {
   kind: SlideKind;
-  label: string;
-  detail: string;
+  /** Name of the kind, in the language of the post. */
+  readonly label: string;
+  readonly detail: string;
   /** Parts of the operation shown; empty: always available. */
   sections: SectionId[];
 }[] = [
   {
     kind: "title",
-    label: "Titre",
-    detail: "Opération, version présentée, orateur",
+    get label() {
+      return t("Titre");
+    },
+    get detail() {
+      return t("Opération, version présentée, orateur");
+    },
     sections: [],
   },
   {
     kind: "situation",
-    label: "Situation générale",
-    detail: "Tableaux de situation, idée de manœuvre",
+    get label() {
+      return t("Situation générale");
+    },
+    get detail() {
+      return t("Tableaux de situation, idée de manœuvre");
+    },
     sections: ["situation"],
   },
   {
     kind: "facts",
-    label: "Chiffres clés",
-    detail: "Renseignements clés et évolution",
+    get label() {
+      return t("Chiffres clés");
+    },
+    get detail() {
+      return t("Renseignements clés et évolution");
+    },
     sections: ["situation"],
   },
   {
     kind: "map",
-    label: "Carte",
-    detail: "Une diapositive par carte, avec légende",
+    get label() {
+      return t("Carte");
+    },
+    get detail() {
+      return t("Une diapositive par carte, avec légende");
+    },
     sections: ["map"],
   },
   {
     kind: "changes",
-    label: "Ce qui a changé",
-    detail: "Depuis le dernier point de situation",
+    get label() {
+      return t("Ce qui a changé");
+    },
+    get detail() {
+      return t("Depuis le dernier point de situation");
+    },
     sections: [],
   },
   {
     kind: "highlights",
-    label: "Faits marquants",
-    detail: "Entrées importantes, urgentes et décisions",
+    get label() {
+      return t("Faits marquants");
+    },
+    get detail() {
+      return t("Entrées importantes, urgentes et décisions");
+    },
     sections: ["journal"],
   },
   {
     kind: "missions",
-    label: "Missions en cours",
-    detail: "À traiter, en cours, en retard",
+    get label() {
+      return t("Missions en cours");
+    },
+    get detail() {
+      return t("À traiter, en cours, en retard");
+    },
     sections: ["missions", "journal"],
   },
   {
     kind: "resources",
-    label: "Moyens",
-    detail: "Engagés, disponibles, par organisation",
+    get label() {
+      return t("Moyens");
+    },
+    get detail() {
+      return t("Engagés, disponibles, par organisation");
+    },
     sections: ["resources"],
   },
   {
     kind: "team",
-    label: "Organisation",
-    detail: "Postes, cellules et fonctions clés",
+    get label() {
+      return t("Organisation");
+    },
+    get detail() {
+      return t("Postes, cellules et fonctions clés");
+    },
     sections: ["team"],
   },
   {
     kind: "radio",
-    label: "Réseau radio",
-    detail: "Terminaux, groupes, liaisons",
+    get label() {
+      return t("Réseau radio");
+    },
+    get detail() {
+      return t("Terminaux, groupes, liaisons");
+    },
     sections: ["radio"],
   },
   {
     kind: "weather",
-    label: "Météo",
-    detail: "Conditions, prochaines heures, alertes",
+    get label() {
+      return t("Météo");
+    },
+    get detail() {
+      return t("Conditions, prochaines heures, alertes");
+    },
     sections: ["weather"],
   },
   {
     kind: "agenda",
-    label: "Prochaines échéances",
-    detail: "Rythme de conduite et délais",
+    get label() {
+      return t("Prochaines échéances");
+    },
+    get detail() {
+      return t("Rythme de conduite et délais");
+    },
     sections: ["agenda", "missions"],
   },
   {
     kind: "closing",
-    label: "Questions",
-    detail: "Contact et prochain point",
+    get label() {
+      return t("Questions");
+    },
+    get detail() {
+      return t("Contact et prochain point");
+    },
     sections: [],
   },
 ];
@@ -379,21 +435,23 @@ const iso = (ms: number) => new Date(ms).toISOString();
 const clip = (s: string, n: number) =>
   s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
 const firstLine = (s: string) => s.split("\n")[0].trim();
-const plural = (n: number, one: string, many: string) =>
-  `${n} ${n > 1 ? many : one}`;
 const MIN = 60_000;
 
 /** "dans 45 min", "dans 2 h 10", "il y a 5 min", "maintenant". */
 export function relative(target: number, from: number): string {
   const minutes = Math.round((target - from) / MIN);
   const abs = Math.abs(minutes);
-  if (abs < 1) return "maintenant";
+  if (abs < 1) return t("maintenant");
   const h = Math.floor(abs / 60);
   const m = abs % 60;
   const span = h
-    ? `${h} h${m ? ` ${String(m).padStart(2, "0")}` : ""}`
-    : `${m} min`;
-  return minutes > 0 ? `dans ${span}` : `il y a ${span}`;
+    ? m
+      ? t("{h} h {m}", { h, m: String(m).padStart(2, "0") })
+      : t("{h} h", { h })
+    : t("{n} min", { n: m });
+  return minutes > 0
+    ? t("dans {span}", { span })
+    : t("il y a {span}", { span });
 }
 
 /** Number written in a key fact ("+ 45", "1’200", "12,5"); null otherwise. */
@@ -407,8 +465,8 @@ export function parseNumber(value: string): number | null {
 }
 const signed = (n: number) => {
   const r = Math.round(n * 100) / 100;
-  const s = Math.abs(r).toLocaleString("fr-CH");
-  return r > 0 ? `+${s}` : r < 0 ? `−${s}` : "inchangé";
+  const s = formatNumber(Math.abs(r));
+  return r > 0 ? `+${s}` : r < 0 ? `−${s}` : t("inchangé");
 };
 
 /** Classification mark of an operation, for every slide. */
@@ -416,15 +474,17 @@ export function watermarkFor(
   journal: Pick<Journal, "mode" | "classification">,
 ) {
   return [
-    journal.mode === "Exercice" ? "EXERCICE" : "",
-    journal.classification === "Confidentiel" ? "CONFIDENTIEL" : "",
+    journal.mode === "Exercice" ? enumLabel("Exercice").toUpperCase() : "",
+    journal.classification === "Confidentiel"
+      ? enumLabel("Confidentiel").toUpperCase()
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
 // WMO weather codes (same wording as the weather module).
-const WMO: Record<number, string> = {
+const WMO: Record<number, Key> = {
   0: "Ciel clair",
   1: "Plutôt ensoleillé",
   2: "Partiellement nuageux",
@@ -455,19 +515,31 @@ const WMO: Record<number, string> = {
   99: "Orage avec forte grêle",
 };
 export const weatherText = (code: number | null) =>
-  code === null ? "Conditions inconnues" : (WMO[code] ?? `Code ${code}`);
-const COMPASS = "N NNE NE ENE E ESE SE SSE S SSO SO OSO O ONO NO NNO".split(
-  " ",
-);
+  code === null
+    ? t("Conditions inconnues")
+    : WMO[code]
+      ? t(WMO[code])
+      : t("Code {code}", { code });
+// Points of the compass: west is O in French and Italian, W in German.
+const COMPASS = {
+  fr: "N NNE NE ENE E ESE SE SSE S SSO SO OSO O ONO NO NNO",
+  de: "N NNO NO ONO O OSO SO SSO S SSW SW WSW W WNW NW NNW",
+  it: "N NNE NE ENE E ESE SE SSE S SSO SO OSO O ONO NO NNO",
+};
 const compass = (deg: number) =>
-  COMPASS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
+  COMPASS[getLang()].split(" ")[
+    Math.round((((deg % 360) + 360) % 360) / 22.5) % 16
+  ];
 const num = (v: number | null, unit: string, digits = 0) =>
   v === null
     ? "—"
-    : `${v.toLocaleString("fr-CH", { maximumFractionDigits: digits })}${unit}`;
+    : `${formatNumber(v, { maximumFractionDigits: digits })}${unit}`;
 
-const INTENT = /intention|man(œ|oe)uvre|intent/i;
-const KEY_ROLE = /chef|responsable|officier|commandant|direct/i;
+// Titles of boards and roles are data, in the language of the journal.
+const INTENT =
+  /intention|man(œ|oe)uvre|intent|absicht|einsatzidee|intenzione|manovra/i;
+const KEY_ROLE =
+  /chef|responsable|officier|commandant|direct|leiter|kommandant|offizier|verantwortlich|capo|responsabile|ufficiale|comandante|dirett/i;
 
 // ---------- Reference moment for the evolutions ----------
 
@@ -483,7 +555,10 @@ export function referenceMoment(
   if (snapshot)
     return {
       at: Date.parse(snapshot.at),
-      label: `depuis « ${snapshot.title} » (${time(snapshot.at)})`,
+      label: t("depuis « {title} » ({time})", {
+        title: snapshot.title,
+        time: time(snapshot.at),
+      }),
     };
   const talk = [...journal.ops.presentations]
     .filter((p) => Date.parse(p.startedAt) < before)
@@ -491,14 +566,22 @@ export function referenceMoment(
   if (talk)
     return {
       at: Date.parse(talk.startedAt),
-      label: `depuis la dernière présentation (${time(talk.startedAt)})`,
+      label: t("depuis la dernière présentation ({time})", {
+        time: time(talk.startedAt),
+      }),
     };
   const start = Date.parse(firstMoment(journal));
   const threeHours = at - 3 * 60 * MIN;
   if (!(start < at)) return null;
   return threeHours > start
-    ? { at: threeHours, label: `depuis 3 heures (${time(iso(threeHours))})` }
-    : { at: start, label: `depuis le début (${time(iso(start))})` };
+    ? {
+        at: threeHours,
+        label: t("depuis 3 heures ({time})", { time: time(iso(threeHours)) }),
+      }
+    : {
+        at: start,
+        label: t("depuis le début ({time})", { time: time(iso(start)) }),
+      };
 }
 
 // Parts owning each module of the audit trail.
@@ -532,20 +615,20 @@ function titleSlide(
 ): TitleSlide {
   const badges: Badge[] = [
     {
-      label: journal.mode.toUpperCase(),
+      label: enumLabel(journal.mode).toUpperCase(),
       tone: journal.mode === "Exercice" ? "accent" : "crit",
     },
     {
-      label: journal.classification.toUpperCase(),
+      label: enumLabel(journal.classification).toUpperCase(),
       tone: journal.classification === "Confidentiel" ? "crit" : "muted",
     },
   ];
-  if (!o.live) badges.push({ label: "VERSION PASSÉE", tone: "warn" });
+  if (!o.live) badges.push({ label: t("VERSION PASSÉE"), tone: "warn" });
   const operation = o.title?.trim() || journal.title;
   return {
     id: "title",
     kind: "title",
-    kicker: "Point de situation",
+    kicker: t("Point de situation"),
     title: operation,
     operation,
     organization: journal.organization,
@@ -556,12 +639,14 @@ function titleSlide(
     presenter: o.presenter,
     audience: o.audience ?? "",
     notes: [
-      `Se présenter : ${o.presenter || "nom, fonction"}.`,
-      o.audience ? `Public : ${o.audience}.` : "",
+      t("Se présenter : {name}.", { name: o.presenter || t("nom, fonction") }),
+      o.audience ? t("Public : {audience}.", { audience: o.audience }) : "",
       `${when}.`,
       o.live
-        ? "Les chiffres sont ceux du moment : ils peuvent évoluer pendant la présentation."
-        : "Version passée : préciser que la situation a pu évoluer depuis.",
+        ? t(
+            "Les chiffres sont ceux du moment : ils peuvent évoluer pendant la présentation.",
+          )
+        : t("Version passée : préciser que la situation a pu évoluer depuis."),
     ]
       .filter(Boolean)
       .join("\n"),
@@ -578,12 +663,12 @@ function situationSlide(journal: Journal): SituationSlide | null {
   return {
     id: "situation",
     kind: "situation",
-    kicker: "Situation",
-    title: "Situation générale",
+    kicker: t("Situation"),
+    title: t("Situation générale"),
     intent,
     boards: boards.filter((b) => b !== intent),
     notes: boards
-      .map((b) => `${b.title} : ${clip(b.body.replace(/\s+/g, " "), 400)}`)
+      .map((b) => colon(b.title, clip(b.body.replace(/\s+/g, " "), 400)))
       .join("\n"),
   };
 }
@@ -602,7 +687,7 @@ function factsSlide(
     if (before) {
       const old = before.ops.facts.find((x) => x.id === f.id);
       if (!old) {
-        delta = "nouveau";
+        delta = t("nouveau");
         trend = "new";
       } else {
         const was = parseNumber(old.value);
@@ -610,7 +695,7 @@ function factsSlide(
           delta = signed(number - was);
           trend = number > was ? "up" : number < was ? "down" : "same";
         } else if (old.value !== f.value) {
-          delta = `avant : ${old.value || "—"}`;
+          delta = t("avant : {value}", { value: old.value || "—" });
           trend = "up";
         }
       }
@@ -631,16 +716,18 @@ function factsSlide(
   return {
     id: "facts",
     kind: "facts",
-    kicker: "Situation",
-    title: "Chiffres clés",
+    kicker: t("Situation"),
+    title: t("Chiffres clés"),
     since: before ? sinceLabel : "",
     facts: items,
     notes: [
       ...items.map(
         (i) =>
-          `${i.label} : ${i.value}${i.unit ? ` ${i.unit}` : ""}${i.delta && i.trend !== "same" ? ` (${i.delta})` : ""}${i.note ? ` · ${i.note}` : ""}`,
+          `${colon(i.label, i.value)}${i.unit ? ` ${i.unit}` : ""}${i.delta && i.trend !== "same" ? ` (${i.delta})` : ""}${i.note ? ` · ${i.note}` : ""}`,
       ),
-      before && !moved.length ? `Aucune évolution ${sinceLabel}.` : "",
+      before && !moved.length
+        ? t("Aucune évolution {since}.", { since: sinceLabel })
+        : "",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -660,7 +747,7 @@ function mapSlides(journal: Journal, o: DeckBuildOptions): MapSlide[] {
     : [
         {
           id: "",
-          name: "Carte de situation",
+          name: t("Carte de situation"),
           purpose: "",
           base: "",
           hidden: new Set<string>(),
@@ -676,7 +763,7 @@ function mapSlides(journal: Journal, o: DeckBuildOptions): MapSlide[] {
     if (!places.length) continue;
     const layers = new Map<string, Map<string, LegendItem>>();
     for (const p of places) {
-      const layer = p.layer || "Autre";
+      const layer = p.layer || t("Autre");
       const items = layers.get(layer) ?? new Map<string, LegendItem>();
       const key =
         p.kind === "point" && p.symbol
@@ -690,9 +777,16 @@ function mapSlides(journal: Journal, o: DeckBuildOptions): MapSlide[] {
           name:
             (p.kind === "point" && p.symbol && o.symbolName?.(p.symbol)) ||
             p.label ||
-            { point: "Point", line: "Ligne", area: "Zone", text: "Texte" }[
-              p.kind
-            ],
+            t(
+              (
+                {
+                  point: "Point",
+                  line: "Ligne",
+                  area: "Zone",
+                  text: "Texte",
+                } as const
+              )[p.kind],
+            ),
           kind: p.kind,
           color: cssColor(p.color),
           count: 1,
@@ -708,7 +802,7 @@ function mapSlides(journal: Journal, o: DeckBuildOptions): MapSlide[] {
     slides.push({
       id: m.id ? `map:${m.id}` : "map",
       kind: "map",
-      kicker: "Carte",
+      kicker: t("Carte"),
       title: m.name,
       mapId: m.id,
       purpose: m.purpose,
@@ -718,13 +812,19 @@ function mapSlides(journal: Journal, o: DeckBuildOptions): MapSlide[] {
       legend,
       notes: [
         m.purpose,
-        `${plural(places.length, "objet", "objets")} sur la carte.`,
-        ...legend.map(
-          (l) =>
-            `${l.layer} : ${l.items
+        tn(
+          places.length,
+          "{n} objet sur la carte.",
+          "{n} objets sur la carte.",
+        ),
+        ...legend.map((l) =>
+          colon(
+            l.layer,
+            l.items
               .slice(0, 6)
               .map((i) => (i.count > 1 ? `${i.name} (${i.count})` : i.name))
-              .join(", ")}`,
+              .join(", "),
+          ),
         ),
       ]
         .filter(Boolean)
@@ -759,10 +859,10 @@ function changesSlide(
   for (const i of [...items].reverse()) {
     const label = scopeInfo(i.scope).plural;
     const group = groups.get(label) ?? { label, targets: new Map() };
-    const t = group.targets.get(i.target);
-    if (t) {
-      t.last = i.action;
-      t.title = i.title;
+    const target = group.targets.get(i.target);
+    if (target) {
+      target.last = i.action;
+      target.title = i.title;
     } else
       group.targets.set(i.target, {
         first: i.action,
@@ -777,19 +877,17 @@ function changesSlide(
         updated = 0,
         removed = 0;
       const highlights: string[] = [];
-      for (const t of g.targets.values()) {
+      for (const target of g.targets.values()) {
         const state =
-          t.last === "remove"
-            ? "retiré"
-            : t.first === "create"
-              ? "nouveau"
-              : "modifié";
-        if (state === "retiré") removed++;
-        else if (state === "nouveau") created++;
+          target.last === "remove"
+            ? "Retiré"
+            : target.first === "create"
+              ? "Nouveau"
+              : "Modifié";
+        if (state === "Retiré") removed++;
+        else if (state === "Nouveau") created++;
         else updated++;
-        highlights.push(
-          `${state[0].toUpperCase()}${state.slice(1)} · ${t.title}`,
-        );
+        highlights.push(`${t(state)} · ${target.title}`);
       }
       return {
         label: g.label,
@@ -810,22 +908,29 @@ function changesSlide(
   return {
     id: "changes",
     kind: "changes",
-    kicker: "Évolution",
-    title: "Ce qui a changé",
+    kicker: t("Évolution"),
+    title: t("Ce qui a changé"),
     since: sinceLabel,
     total,
     groups: result,
     notes: [
-      `${plural(total, "élément a changé", "éléments ont changé")} ${sinceLabel}.`,
-      ...result.map(
-        (g) =>
-          `${g.label} : ${[
-            g.created && plural(g.created, "nouveau", "nouveaux"),
-            g.updated && plural(g.updated, "modifié", "modifiés"),
-            g.removed && plural(g.removed, "retiré", "retirés"),
+      tn(
+        total,
+        "{n} élément a changé {since}.",
+        "{n} éléments ont changé {since}.",
+        { since: sinceLabel },
+      ),
+      ...result.map((g) =>
+        colon(
+          g.label,
+          [
+            g.created && tn(g.created, "{n} nouveau", "{n} nouveaux"),
+            g.updated && tn(g.updated, "{n} modifié", "{n} modifiés"),
+            g.removed && tn(g.removed, "{n} retiré", "{n} retirés"),
           ]
             .filter(Boolean)
-            .join(", ")}`,
+            .join(", "),
+        ),
       ),
     ].join("\n"),
   };
@@ -862,12 +967,17 @@ function highlightsSlide(journal: Journal): HighlightsSlide | null {
   return {
     id: "highlights",
     kind: "highlights",
-    kicker: "Journal",
-    title: "Faits marquants",
+    kicker: t("Journal"),
+    title: t("Faits marquants"),
     items,
     more: marked.length - shown.length,
     notes: items
-      .map((i) => `${i.time} ${i.number} ${i.type} (${i.priority}) : ${i.text}`)
+      .map((i) =>
+        colon(
+          `${i.time} ${i.number} ${enumLabel(i.type)} (${enumLabel(i.priority)})`,
+          i.text,
+        ),
+      )
       .join("\n"),
   };
 }
@@ -906,17 +1016,22 @@ function missionsSlide(journal: Journal, at: number): MissionsSlide | null {
   return {
     id: "missions",
     kind: "missions",
-    kicker: "Conduite",
-    title: late.length ? "Missions en cours et en retard" : "Missions en cours",
+    kicker: t("Conduite"),
+    title: late.length
+      ? t("Missions en cours et en retard")
+      : t("Missions en cours"),
     open: open.length,
     late: late.length,
     items,
     more: open.length - shown.length,
     notes: [
-      `${plural(open.length, "point ouvert", "points ouverts")}, dont ${plural(late.length, "en retard", "en retard")}.`,
+      t("{open}, dont {late} en retard.", {
+        open: tn(open.length, "{n} point ouvert", "{n} points ouverts"),
+        late: late.length,
+      }),
       ...items.map(
         (i) =>
-          `${i.number} ${i.late ? "EN RETARD " : ""}${i.text} · ${i.assignee} · ${i.due}`,
+          `${i.number} ${i.late ? `${t("EN RETARD")} ` : ""}${i.text} · ${i.assignee} · ${i.due}`,
       ),
     ].join("\n"),
   };
@@ -928,22 +1043,22 @@ function resourcesSlide(journal: Journal): ResourcesSlide | null {
   const count = (...statuses: string[]) =>
     list.filter((r) => statuses.includes(r.status)).length;
   const totals: ResourcesSlide["totals"] = [
-    { label: "Engagés", value: count("Engagé"), tone: "accent" },
+    { label: t("Engagés"), value: count("Engagé"), tone: "accent" },
     {
-      label: "Alertés / en route",
+      label: t("Alertés / en route"),
       value: count("Alerté", "En route"),
       tone: "warn",
     },
     {
-      label: "Disponibles",
+      label: t("Disponibles"),
       value: count("Disponible", "De retour"),
       tone: "ok",
     },
-    { label: "Hors service", value: count("Hors service"), tone: "crit" },
+    { label: t("Hors service"), value: count("Hors service"), tone: "crit" },
   ];
   const orgs = new Map<string, number[]>();
   for (const r of list) {
-    const key = r.organization || "Sans organisation";
+    const key = r.organization || t("Sans organisation");
     const row = orgs.get(key) ?? [0, 0, 0, 0];
     const col =
       r.status === "Engagé"
@@ -960,7 +1075,7 @@ function resourcesSlide(journal: Journal): ResourcesSlide | null {
     .sort((a, b) => b[1][0] - a[1][0] || a[0].localeCompare(b[0], "fr"))
     .map(([org, v]) => [org, ...v.map(String)]);
   if (rows.length > 1)
-    rows.push(["Total", ...totals.map((t) => String(t.value))]);
+    rows.push([t("Total"), ...totals.map((x) => String(x.value))]);
   const engaged = list
     .filter((r) => r.status === "Engagé")
     .map((r) => ({
@@ -973,20 +1088,14 @@ function resourcesSlide(journal: Journal): ResourcesSlide | null {
   return {
     id: "resources",
     kind: "resources",
-    kicker: "Moyens",
-    title: "Moyens engagés et disponibles",
+    kicker: t("Moyens"),
+    title: t("Moyens engagés et disponibles"),
     totals,
-    head: [
-      "Organisation",
-      "Engagés",
-      "Alertés / en route",
-      "Disponibles",
-      "Hors service",
-    ],
+    head: [t("Organisation"), ...totals.map((x) => x.label)],
     rows,
     engaged,
     notes: [
-      totals.map((t) => `${t.label} : ${t.value}`).join(" · "),
+      totals.map((x) => colon(x.label, x.value)).join(" · "),
       ...engaged.map(
         (e) =>
           `${e.name}${e.count > 1 ? ` (${e.count})` : ""}${e.location ? ` · ${e.location}` : ""}${e.mission ? ` · ${e.mission}` : ""}`,
@@ -1025,7 +1134,7 @@ function teamSlide(journal: Journal): TeamSlide | null {
   if (loose.length)
     out.push({
       id: "loose",
-      name: "Sans poste",
+      name: t("Sans poste"),
       kind: "",
       location: "",
       radio: "",
@@ -1037,19 +1146,26 @@ function teamSlide(journal: Journal): TeamSlide | null {
   return {
     id: "team",
     kind: "team",
-    kicker: "Organisation",
-    title: "Postes et fonctions clés",
+    kicker: t("Organisation"),
+    title: t("Postes et fonctions clés"),
     present,
     total: active.length,
     cells: out,
     notes: [
-      `${present} personne${present > 1 ? "s" : ""} présente${present > 1 ? "s" : ""} sur ${active.length}.`,
-      ...out.map(
-        (c) =>
-          `${c.name}${c.location ? ` (${c.location})` : ""} : ${c.members
+      tn(
+        present,
+        "{n} personne présente sur {total}.",
+        "{n} personnes présentes sur {total}.",
+        { total: active.length },
+      ),
+      ...out.map((c) =>
+        colon(
+          `${c.name}${c.location ? ` (${c.location})` : ""}`,
+          c.members
             .filter((m) => KEY_ROLE.test(m.role))
             .map((m) => `${m.role} ${m.name}`)
-            .join(", ")}`,
+            .join(", "),
+        ),
       ),
     ].join("\n"),
   };
@@ -1076,24 +1192,24 @@ function radioSlide(journal: Journal, at: number): RadioSlide | null {
     }));
   const stats: RadioSlide["stats"] = [
     {
-      label: "Terminaux en service",
+      label: t("Terminaux en service"),
       value: `${s.issued} / ${s.terminals}`,
       tone: "accent",
     },
-    { label: "Disponibles", value: String(s.available), tone: "ok" },
+    { label: t("Disponibles"), value: String(s.available), tone: "ok" },
     {
-      label: "Hors service",
+      label: t("Hors service"),
       value: String(s.unavailable),
       tone: s.unavailable ? "crit" : "muted",
     },
-    { label: "Groupes", value: String(s.talkgroups), tone: "info" },
-    { label: "Noms d’appel", value: String(s.stations), tone: "info" },
+    { label: t("Groupes"), value: String(s.talkgroups), tone: "info" },
+    { label: t("Noms d’appel"), value: String(s.stations), tone: "info" },
   ];
   return {
     id: "radio",
     kind: "radio",
-    kicker: "Transmissions",
-    title: "Réseau radio",
+    kicker: t("Transmissions"),
+    title: t("Réseau radio"),
     stats,
     groups: r.talkgroups.map((g) => ({
       name: g.name,
@@ -1103,10 +1219,12 @@ function radioSlide(journal: Journal, at: number): RadioSlide | null {
     })),
     weak,
     notes: [
-      stats.map((x) => `${x.label} : ${x.value}`).join(" · "),
+      stats.map((x) => colon(x.label, x.value)).join(" · "),
       weak.length
-        ? `Liaisons faibles : ${weak.map((w) => `${w.callsign} (${w.result})`).join(", ")}.`
-        : "Aucune liaison faible au dernier contrôle.",
+        ? t("Liaisons faibles : {list}.", {
+            list: weak.map((w) => `${w.callsign} (${w.result})`).join(", "),
+          })
+        : t("Aucune liaison faible au dernier contrôle."),
     ].join("\n"),
   };
 }
@@ -1149,25 +1267,30 @@ function weatherSlide(journal: Journal, at: number): WeatherSlide | null {
     from && to
       ? `${dateTime(from)} → ${dateTime(to)}`
       : from
-        ? `dès ${dateTime(from)}`
+        ? t("dès {from}", { from: dateTime(from) })
         : to
-          ? `jusqu’au ${dateTime(to)}`
-          : "sans durée fixée";
+          ? t("jusqu’au {to}", { to: dateTime(to) })
+          : t("sans durée fixée");
   const slide: WeatherSlide = {
     id: "weather",
     kind: "weather",
-    kicker: "Météo",
-    title: forecast?.place ? `Météo · ${forecast.place}` : "Météo",
+    kicker: t("Météo"),
+    title: forecast?.place
+      ? t("Météo · {place}", { place: forecast.place })
+      : t("Météo"),
     place: forecast?.place ?? observation?.place ?? "",
     source: forecast
-      ? `Prévision ${d!.model || "Open-Meteo"} reçue à ${time(forecast.fetchedAt)}`
+      ? t("Prévision {model} reçue à {time}", {
+          model: d!.model || "Open-Meteo",
+          time: time(forecast.fetchedAt),
+        })
       : "",
     now: cur
       ? {
           label: weatherText(cur.code),
           code: cur.code,
           temperature: num(cur.temperature, "°", 0),
-          wind: `${cur.direction !== null ? `${compass(cur.direction)} ` : ""}${num(cur.wind, " km/h")}${cur.gusts !== null ? ` · rafales ${num(cur.gusts, " km/h")}` : ""}`,
+          wind: `${cur.direction !== null ? `${compass(cur.direction)} ` : ""}${num(cur.wind, " km/h")}${cur.gusts !== null ? ` · ${t("rafales {gusts}", { gusts: num(cur.gusts, " km/h") })}` : ""}`,
           precipitation: num(cur.precipitation, " mm", 1),
           humidity: num(cur.humidity, " %"),
         }
@@ -1187,7 +1310,7 @@ function weatherSlide(journal: Journal, at: number): WeatherSlide | null {
           text: [
             observation.conditions,
             observation.temperature,
-            observation.wind && `vent ${observation.wind}`,
+            observation.wind && t("vent {wind}", { wind: observation.wind }),
             observation.precipitation,
           ]
             .filter(Boolean)
@@ -1198,14 +1321,26 @@ function weatherSlide(journal: Journal, at: number): WeatherSlide | null {
   };
   slide.notes = [
     slide.now
-      ? `Actuellement : ${slide.now.label}, ${slide.now.temperature}, vent ${slide.now.wind}.`
+      ? t("Actuellement : {label}, {temperature}, vent {wind}.", {
+          label: slide.now.label,
+          temperature: slide.now.temperature,
+          wind: slide.now.wind,
+        })
       : "",
-    ...slide.alerts.map(
-      (a) =>
-        `Alerte ${ALERT_LABELS[a.level as "1"] ?? a.level} : ${a.hazard} ${a.region} (${a.period}).`,
+    ...slide.alerts.map((a) =>
+      t("Alerte {level} : {hazard} {region} ({period}).", {
+        level: enumLabel(ALERT_LABELS[a.level as "1"] ?? a.level),
+        hazard: a.hazard,
+        region: a.region,
+        period: a.period,
+      }),
     ),
     slide.observation
-      ? `Observation ${slide.observation.time} ${slide.observation.place} : ${slide.observation.text}.`
+      ? t("Observation {time} {place} : {text}.", {
+          time: slide.observation.time,
+          place: slide.observation.place,
+          text: slide.observation.text,
+        })
       : "",
     slide.source,
   ]
@@ -1219,7 +1354,7 @@ function agendaSlide(
   at: number,
   sections: Set<SectionId>,
 ): AgendaSlide | null {
-  const items: (AgendaItem & { ms: number })[] = [];
+  const items: (AgendaItem & { ms: number; deadline: boolean })[] = [];
   for (const a of journal.ops.agenda) {
     const ms = Date.parse(a.at);
     if (a.done || ms < at - 15 * MIN) continue;
@@ -1231,9 +1366,10 @@ function agendaSlide(
       relative: relative(ms, at),
       title: a.title,
       detail: [a.kind, a.location, a.participants].filter(Boolean).join(" · "),
-      kind: a.kind || "Rendez-vous",
+      kind: a.kind || t("Rendez-vous"),
       next: false,
       late: false,
+      deadline: false,
     });
   }
   if (sections.has("missions") || sections.has("journal"))
@@ -1249,27 +1385,28 @@ function agendaSlide(
         day: dateTime(f.dueAt).slice(0, 10),
         relative: relative(ms, at),
         title: `${numberLabel(e)} ${clip(firstLine(f.action || f.message), 90)}`,
-        detail: ["Délai", f.assignee].filter(Boolean).join(" · "),
-        kind: "Délai",
+        detail: [t("Délai"), f.assignee].filter(Boolean).join(" · "),
+        kind: t("Délai"),
         next: false,
         late: ms < at,
+        deadline: true,
       });
     }
   if (!items.length) return null;
   items.sort((a, b) => a.ms - b.ms);
   const shown = items.slice(0, 7);
-  const next = shown.find((i) => i.ms >= at && i.kind !== "Délai");
+  const next = shown.find((i) => i.ms >= at && !i.deadline);
   if (next) next.next = true;
   return {
     id: "agenda",
     kind: "agenda",
-    kicker: "Rythme de conduite",
-    title: "Prochaines échéances",
-    items: shown.map(({ ms: _ms, ...i }) => i),
+    kicker: t("Rythme de conduite"),
+    title: t("Prochaines échéances"),
+    items: shown.map(({ ms: _ms, deadline: _deadline, ...i }) => i),
     notes: shown
       .map(
         (i) =>
-          `${i.time} (${i.relative}) ${i.title}${i.late ? " · DÉPASSÉ" : ""}`,
+          `${i.time} (${i.relative}) ${i.title}${i.late ? t(" · DÉPASSÉ") : ""}`,
       )
       .join("\n"),
   };
@@ -1292,17 +1429,26 @@ function closingSlide(
   return {
     id: "closing",
     kind: "closing",
-    kicker: "Fin du point de situation",
-    title: "Questions ?",
+    kicker: t("Fin du point de situation"),
+    title: t("Questions ?"),
     presenter: o.presenter,
     organization: journal.organization,
     next: next
-      ? `Prochain point : ${next.title} à ${next.time} (${next.relative})`
+      ? t("Prochain point : {title} à {time} ({relative})", {
+          title: next.title,
+          time: next.time,
+          relative: next.relative,
+        })
       : "",
     contacts,
     notes: [
-      "Recueillir les questions et les décisions attendues.",
-      next ? `Annoncer le prochain point : ${next.title} à ${next.time}.` : "",
+      t("Recueillir les questions et les décisions attendues."),
+      next
+        ? t("Annoncer le prochain point : {title} à {time}.", {
+            title: next.title,
+            time: next.time,
+          })
+        : "",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -1312,10 +1458,10 @@ function closingSlide(
 /** Line saying which version is shown. */
 export function whenLabel(at: number, live: boolean, snapshot?: string) {
   const stamp = dateTime(iso(at));
-  if (live) return `Situation au ${stamp}`;
+  if (live) return t("Situation au {stamp}", { stamp });
   return snapshot
-    ? `Version du ${stamp} (point « ${snapshot} »)`
-    : `Version du ${stamp}`;
+    ? t("Version du {stamp} (point « {snapshot} »)", { stamp, snapshot })
+    : t("Version du {stamp}", { stamp });
 }
 
 /** Build the slides of a journal already scoped to the parts and moment. */
@@ -1343,7 +1489,7 @@ export function buildDeck(journal: Journal, options: DeckBuildOptions): Deck {
     options.since != null
       ? {
           at: options.since,
-          label: `depuis ${time(iso(options.since))}`,
+          label: t("depuis {time}", { time: time(iso(options.since)) }),
         }
       : referenceMoment(full, at);
   const hasHistory = full.history.length > 0 || full.entries.length > 0;
@@ -1408,6 +1554,6 @@ export function arrangeDeck(
 
 /** Short label of a slide, for lists and the overview. */
 export function slideLabel(slide: Slide) {
-  if (slide.kind === "map") return `Carte · ${slide.title}`;
+  if (slide.kind === "map") return t("Carte · {title}", { title: slide.title });
   return slideInfo(slide.kind).label;
 }

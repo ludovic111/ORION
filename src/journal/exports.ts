@@ -16,97 +16,167 @@ import {
   xml,
 } from "../../shared/interchange.ts";
 import { deriveKey, encrypt } from "../../shared/crypto.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { ENUM_COLUMNS, t } from "./i18n.ts";
+/** Value of a journal column for a document to read (fixed values translated). */
+const shown = (key: string, value: string) =>
+  ENUM_COLUMNS.has(key) ? enumLabel(value) : value;
+// Names and details are getters: read in the language of the post.
 export const exportFormats = [
   {
     id: "orion",
-    name: "Archive orion aic",
+    get name() {
+      return t("Archive orion aic");
+    },
     extension: ".orionaic",
-    detail: "Chiffrée. Journal, versions et plan radio. Réimportable.",
-    group: "Archive",
+    get detail() {
+      return t("Chiffrée. Journal, versions et plan radio. Réimportable.");
+    },
+    get group() {
+      return t("Archive");
+    },
   },
   {
     id: "json",
-    name: "Archive JSON",
+    get name() {
+      return t("Archive JSON");
+    },
     extension: ".json",
-    detail: "En clair. Journal, versions et plan radio. Réimportable.",
-    group: "Archive",
+    get detail() {
+      return t("En clair. Journal, versions et plan radio. Réimportable.");
+    },
+    get group() {
+      return t("Archive");
+    },
   },
   {
     id: "sheets",
-    name: "Fiches messages A4",
+    get name() {
+      return t("Fiches messages A4");
+    },
     extension: ".pdf",
-    detail: "Une fiche par entrée, ordre chronologique.",
-    group: "Impression",
+    get detail() {
+      return t("Une fiche par entrée, ordre chronologique.");
+    },
+    get group() {
+      return t("Impression");
+    },
   },
   {
     id: "pdf",
-    name: "Journal PDF",
+    get name() {
+      return t("Journal PDF");
+    },
     extension: ".pdf",
-    detail: "Tableau chronologique paginé A4.",
-    group: "Impression",
+    get detail() {
+      return t("Tableau chronologique paginé A4.");
+    },
+    get group() {
+      return t("Impression");
+    },
   },
   {
     id: "radio",
-    name: "Plan du réseau radio",
+    get name() {
+      return t("Plan du réseau radio");
+    },
     extension: ".pdf",
-    detail: "Noms d’appel, groupes, terminaux, remises, contrôles.",
-    group: "Impression",
+    get detail() {
+      return t("Noms d’appel, groupes, terminaux, remises, contrôles.");
+    },
+    get group() {
+      return t("Impression");
+    },
   },
   {
     id: "xlsx",
     name: "Excel",
     extension: ".xlsx",
-    detail: "Filtres, en-tête figé.",
-    group: "Bureautique",
+    get detail() {
+      return t("Filtres, en-tête figé.");
+    },
+    get group() {
+      return t("Bureautique");
+    },
   },
   {
     id: "docx",
     name: "Word",
     extension: ".docx",
-    detail: "Document modifiable.",
-    group: "Bureautique",
+    get detail() {
+      return t("Document modifiable.");
+    },
+    get group() {
+      return t("Bureautique");
+    },
   },
   {
     id: "ods",
     name: "OpenDocument",
     extension: ".ods",
-    detail: "Tableur LibreOffice.",
-    group: "Bureautique",
+    get detail() {
+      return t("Tableur LibreOffice.");
+    },
+    get group() {
+      return t("Bureautique");
+    },
   },
   {
     id: "csv",
     name: "CSV",
     extension: ".csv",
-    detail: "UTF-8, point-virgule.",
-    group: "Texte",
+    get detail() {
+      return t("UTF-8, point-virgule.");
+    },
+    get group() {
+      return t("Texte");
+    },
   },
   {
     id: "tsv",
     name: "TSV",
     extension: ".tsv",
-    detail: "UTF-8, tabulation.",
-    group: "Texte",
+    get detail() {
+      return t("UTF-8, tabulation.");
+    },
+    get group() {
+      return t("Texte");
+    },
   },
   {
     id: "html",
     name: "HTML",
     extension: ".html",
-    detail: "Page autonome.",
-    group: "Texte",
+    get detail() {
+      return t("Page autonome.");
+    },
+    get group() {
+      return t("Texte");
+    },
   },
   {
     id: "txt",
-    name: "Texte",
+    get name() {
+      return t("Texte");
+    },
     extension: ".txt",
-    detail: "Texte brut.",
-    group: "Texte",
+    get detail() {
+      return t("Texte brut.");
+    },
+    get group() {
+      return t("Texte");
+    },
   },
   {
     id: "md",
     name: "Markdown",
     extension: ".md",
-    detail: "Texte structuré.",
-    group: "Texte",
+    get detail() {
+      return t("Texte structuré.");
+    },
+    get group() {
+      return t("Texte");
+    },
   },
 ] as const;
 export type ExportFormat = (typeof exportFormats)[number]["id"];
@@ -136,7 +206,7 @@ export function xlsx(journal: Journal): Uint8Array {
   return zip({
     "[Content_Types].xml": `${declaration}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
     "_rels/.rels": `${declaration}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-    "xl/workbook.xml": `${declaration}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Journal" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    "xl/workbook.xml": `${declaration}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xml(t("Journal"))}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
     "xl/_rels/workbook.xml.rels": `${declaration}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
     "xl/styles.xml": `${declaration}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF172536"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
     "xl/worksheets/sheet1.xml": `${declaration}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="28" width="24" customWidth="1"/><col min="5" max="5" width="70" customWidth="1"/></cols><sheetData>${cells}</sheetData><autoFilter ref="A1:${colName(columns.length - 1)}${table.length}"/></worksheet>`,
@@ -144,7 +214,7 @@ export function xlsx(journal: Journal): Uint8Array {
 }
 export function ods(journal: Journal): Uint8Array {
   const mime = "application/vnd.oasis.opendocument.spreadsheet";
-  const content = `${declaration}<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.3"><office:body><office:spreadsheet><table:table table:name="Journal">${rows(
+  const content = `${declaration}<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.3"><office:body><office:spreadsheet><table:table table:name="${xml(t("Journal"))}">${rows(
     journal,
   )
     .map(
@@ -171,22 +241,31 @@ export function docx(journal: Journal): Uint8Array {
   const body = [
     paragraph(journal.title, true),
     paragraph(
-      `${journal.organization} · ${journal.location} · ${journal.mode} · ${journal.classification}`,
+      `${journal.organization} · ${journal.location} · ${enumLabel(journal.mode)} · ${enumLabel(journal.classification)}`,
     ),
     paragraph(
-      `Réf. ${journal.reference} · Export ${dateTime(new Date().toISOString())} · Europe/Zurich`,
+      t("Réf. {reference} · Export {date} · Europe/Zurich", {
+        reference: journal.reference,
+        date: dateTime(new Date().toISOString()),
+      }),
     ),
     paragraph(
-      "État actuel des entrées ; historique complet dans l’archive orion aic.",
+      t(
+        "État actuel des entrées ; historique complet dans l’archive orion aic.",
+      ),
     ),
     ...chronological(journal.entries).flatMap((e) => [
       paragraph(
-        `#${e.number} · ${dateTime(current(e).happenedAt)} · ${current(e).type}`,
+        `#${e.number} · ${dateTime(current(e).happenedAt)} · ${enumLabel(current(e).type)}`,
         true,
       ),
       ...columns
         .filter(([, value]) => value(e))
-        .map(([label, value]) => paragraph(`${label} : ${value(e)}`)),
+        .map(([label, value, key]) =>
+          paragraph(
+            t("{label} : {value}", { label, value: shown(key, value(e)) }),
+          ),
+        ),
     ]),
   ].join("");
   return zip({
@@ -220,7 +299,9 @@ export async function makeExport(
     );
     if (blob.size > MAX_IMPORT_BYTES)
       throw new Error(
-        "Cette archive dépasse la limite d’import de 32 Mo. Exportez les formats de lecture et répartissez le journal avant de créer une archive transférable.",
+        t(
+          "Cette archive dépasse la limite d’import de 32 Mo. Exportez les formats de lecture et répartissez le journal avant de créer une archive transférable.",
+        ),
       );
     return blob;
   }
@@ -245,7 +326,7 @@ export async function makeExport(
     doc.setFontSize(20);
     doc.text(doc.splitTextToSize(journal.title, 180), 15, 20);
     const heading = doc.splitTextToSize(
-      `${journal.organization} · ${journal.location}\n${journal.mode} · ${journal.classification} · ${journal.reference}\nExport ${dateTime(new Date().toISOString())} · Europe/Zurich\nÉtat actuel ; historique complet dans l’archive orion aic.`,
+      `${journal.organization} · ${journal.location}\n${enumLabel(journal.mode)} · ${enumLabel(journal.classification)} · ${journal.reference}\n${t("Export {date} · Europe/Zurich", { date: dateTime(new Date().toISOString()) })}\n${t("État actuel ; historique complet dans l’archive orion aic.")}`,
       180,
     );
     const startY = 22 + doc.splitTextToSize(journal.title, 180).length * 8;
@@ -253,14 +334,14 @@ export async function makeExport(
     doc.text(heading, 15, startY);
     autoTable(doc, {
       startY: startY + heading.length * 5 + 5,
-      head: [["N° / Événement", "Message et informations", "Suivi"]],
+      head: [[t("N° / Événement"), t("Message et informations"), t("Suivi")]],
       body: chronological(journal.entries).map((e) => {
         const f = current(e);
         return [
-          `#${e.number}\n${dateTime(f.happenedAt)}\n${f.type}\n${f.priority}`,
+          `#${e.number}\n${dateTime(f.happenedAt)}\n${enumLabel(f.type)}\n${enumLabel(f.priority)}`,
           `${f.message}\n\n${columns
             .filter(
-              ([label, value]) =>
+              ([, value, key]) =>
                 ![
                   "N°",
                   "Événement (ISO)",
@@ -271,11 +352,13 @@ export async function makeExport(
                   "Responsable",
                   "Échéance (ISO)",
                   "Mesure / décision",
-                ].includes(label) && value(e),
+                ].includes(key) && value(e),
             )
-            .map(([label, value]) => `${label} : ${value(e)}`)
+            .map(([label, value, key]) =>
+              t("{label} : {value}", { label, value: shown(key, value(e)) }),
+            )
             .join("\n")}`,
-          `${f.status}\n${f.assignee}\n${f.dueAt ? "Échéance : " + dateTime(f.dueAt) : ""}\n${f.action}`,
+          `${enumLabel(f.status)}\n${f.assignee}\n${f.dueAt ? t("Échéance : {date}", { date: dateTime(f.dueAt) }) : ""}\n${f.action}`,
         ];
       }),
       styles: {
@@ -297,7 +380,7 @@ export async function makeExport(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.text(
-        `orion aic · ${journal.classification} · ${i} / ${doc.getNumberOfPages()}`,
+        `orion aic · ${enumLabel(journal.classification)} · ${i} / ${doc.getNumberOfPages()}`,
         15,
         288,
       );

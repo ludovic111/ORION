@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { t } from "./i18n.ts";
 
 // « Direction d’exercice » on this post: shows the scenario and delivers the
 // injects. Kept in this browser only (localStorage), per journal, behind a
@@ -65,10 +66,11 @@ export function useDirector(journalId: string) {
   /** First time: choose the code. Then: the code opens the mode. */
   const enter = useCallback(
     async (pin: string): Promise<string | null> => {
-      if (!PIN_RULE.test(pin.trim())) return "Le code compte 4 à 8 chiffres.";
+      if (!PIN_RULE.test(pin.trim()))
+        return t("Le code compte 4 à 8 chiffres.");
       const digest = await hash(journalId, pin);
       const stored = current(journalId);
-      if (stored && stored.pin !== digest) return "Code incorrect.";
+      if (stored && stored.pin !== digest) return t("Code incorrect.");
       write(journalId, { on: true, pin: digest });
       return null;
     },
@@ -83,7 +85,7 @@ export function useDirector(journalId: string) {
     async (pin: string): Promise<string | null> => {
       const stored = current(journalId);
       if (stored && stored.pin !== (await hash(journalId, pin)))
-        return "Code incorrect.";
+        return t("Code incorrect.");
       write(journalId, null);
       return null;
     },

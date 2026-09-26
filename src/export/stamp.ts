@@ -7,6 +7,7 @@ import {
   signCode,
   type SigningKey,
 } from "../../shared/signature.ts";
+import { t } from "./i18n.ts";
 
 // Integrity of the files produced. Before writing, every export gets a
 // document id and the fingerprint of its content (SHA-256 of the canonical
@@ -70,7 +71,7 @@ export function makeStamp(
     label: [
       "orion aic",
       `export ${shortId(id)}`,
-      `empreinte ${fingerprint}`,
+      t("empreinte {fingerprint}", { fingerprint }),
       dateTime(at).replace(",", ""),
       author.trim(),
     ]
@@ -101,7 +102,7 @@ export async function signStamp(
     content,
     key: fingerprint,
     alg: key.alg,
-    label: `${stamp.label} · clé ${shortFingerprint(fingerprint)}`,
+    label: `${stamp.label} · ${t("clé {key}", { key: shortFingerprint(fingerprint) })}`,
     qr: await signCode(key, stamp.qr, stamp.id, content, at),
   };
 }
@@ -111,8 +112,8 @@ export function autoWatermark(
   journal: Pick<Journal, "mode" | "classification">,
 ) {
   return [
-    journal.mode === "Exercice" ? "EXERCICE" : "",
-    journal.classification === "Confidentiel" ? "CONFIDENTIEL" : "",
+    journal.mode === "Exercice" ? t("EXERCICE") : "",
+    journal.classification === "Confidentiel" ? t("CONFIDENTIEL") : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -122,12 +123,15 @@ export function autoWatermark(
 export function parseVerify(
   text: string,
 ): { id: string; fingerprint: string } | null {
-  const t = text.trim().toLowerCase();
-  const full = t.match(
+  const lower = text.trim().toLowerCase();
+  const full = lower.match(
     /orionaic:verify:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):([0-9a-f]{16})/,
   );
   if (full) return { id: full[1], fingerprint: full[2] };
-  const label = t.match(/export ([0-9a-f]{8}).*?empreinte ([0-9a-f]{16})/);
+  // The footer label, in any language of the posts.
+  const label = lower.match(
+    /export ([0-9a-f]{8}).*?(?:empreinte|fingerabdruck|impronta) ([0-9a-f]{16})/,
+  );
   if (label) return { id: label[1], fingerprint: label[2] };
   return null;
 }

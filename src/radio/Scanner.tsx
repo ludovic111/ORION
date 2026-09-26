@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScanLine } from "lucide-react";
 import { findTerminal, type Radio, type Terminal } from "../../shared/radio";
 import { Modal } from "../journal/Modal";
+import { t } from "./i18n.ts";
 
 type Detector = {
   detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]>;
@@ -116,7 +117,7 @@ export function CodeScanner<T>({
           <video ref={video} muted playsInline />
           <span className="scanner-frame" aria-hidden="true" />
           {camera === "starting" && (
-            <p className="muted">Ouverture de la caméra…</p>
+            <p className="muted">{t("Ouverture de la caméra…")}</p>
           )}
         </div>
       ) : (
@@ -139,7 +140,7 @@ export function CodeScanner<T>({
         />
         <button className="primary" disabled={!typed.trim()}>
           <ScanLine size={14} />
-          Valider
+          {t("Valider")}
         </button>
       </form>
       {done && !error && (
@@ -168,15 +169,17 @@ export function Scanner({
 }) {
   return (
     <CodeScanner<Terminal>
-      title="Scanner un terminal"
-      placeholder="N° du terminal, ex. R-04"
-      manualLabel="N° du terminal"
-      help="Lecture de QR indisponible dans ce navigateur. Saisir le numéro, ou scanner l’étiquette avec l’appareil photo du téléphone : le lien ouvre ce terminal dans orion aic."
+      title={t("Scanner un terminal")}
+      placeholder={t("N° du terminal, ex. R-04")}
+      manualLabel={t("N° du terminal")}
+      help={t(
+        "Lecture de QR indisponible dans ce navigateur. Saisir le numéro, ou scanner l’étiquette avec l’appareil photo du téléphone : le lien ouvre ce terminal dans orion aic.",
+      )}
       find={(value) => findTerminal(radio, value)}
       unknown={(value) =>
         value.includes("/") || value.includes("#")
-          ? `QR lu, terminal inconnu : ${value}`
-          : `Aucun terminal « ${value} ».`
+          ? t("QR lu, terminal inconnu : {value}", { value })
+          : t("Aucun terminal « {value} ».", { value })
       }
       onFound={(terminal) => {
         onFound(terminal);

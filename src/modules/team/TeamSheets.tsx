@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { MEMBER_STATUSES, type Cell, type Member } from "../../../shared/ops";
 import { useApp } from "../../app/context";
 import { RecordSheet, type FieldSpec } from "../../ui/records";
+import { t } from "./i18n.ts";
 
 export type MemberDraft = Omit<
   Member,
@@ -68,7 +69,7 @@ export function MemberSheet({
   const spec: FieldSpec[] = [
     {
       key: "name",
-      label: "Nom et prénom",
+      label: t("Nom et prénom"),
       kind: "text",
       required: true,
       wide: true,
@@ -76,7 +77,7 @@ export function MemberSheet({
     },
     {
       key: "grade",
-      label: "Grade",
+      label: t("Grade"),
       kind: "combo",
       list: "grades",
       quick: 8,
@@ -84,7 +85,7 @@ export function MemberSheet({
     },
     {
       key: "role",
-      label: "Fonction",
+      label: t("Fonction"),
       kind: "combo",
       list: "roles",
       wide: true,
@@ -94,12 +95,12 @@ export function MemberSheet({
       key: "cellId",
       render: (v, set) => (
         <label>
-          <span>Poste / cellule</span>
+          <span>{t("Poste / cellule")}</span>
           <select
             value={String(v.cellId ?? "")}
             onChange={(e) => set({ cellId: e.target.value })}
           >
-            <option value="">Sans poste</option>
+            <option value="">{t("Sans poste")}</option>
             {cells.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -111,30 +112,30 @@ export function MemberSheet({
     },
     {
       key: "status",
-      label: "Statut",
+      label: t("Statut"),
       kind: "choice",
       options: MEMBER_STATUSES,
     },
-    { key: "callsign", label: "Nom d’appel radio", kind: "combo" },
-    { key: "phone", label: "Téléphone", kind: "text", max: 80 },
-    { key: "email", label: "E-mail", kind: "text", wide: true },
-    { kind: "group", label: "Service" },
-    { key: "from", label: "Début", kind: "datetime" },
-    { key: "to", label: "Fin", kind: "datetime" },
-    { key: "notes", label: "Remarques", kind: "area", rows: 2, max: 2000 },
+    { key: "callsign", label: t("Nom d’appel radio"), kind: "combo" },
+    { key: "phone", label: t("Téléphone"), kind: "text", max: 80 },
+    { key: "email", label: t("E-mail"), kind: "text", wide: true },
+    { kind: "group", label: t("Service") },
+    { key: "from", label: t("Début"), kind: "datetime" },
+    { key: "to", label: t("Fin"), kind: "datetime" },
+    { key: "notes", label: t("Remarques"), kind: "area", rows: 2, max: 2000 },
   ];
   return (
     <RecordSheet
       collection="members"
       kind="member"
-      noun="une personne"
+      noun={t("une personne")}
       spec={spec}
       initial={initial}
       onClose={onClose}
       titleOf={(v) =>
         initial.id ? [v.grade, v.name].filter(Boolean).join(" ") : ""
       }
-      validate={(v) => (v.name.trim() ? "" : "Indiquez au moins le nom.")}
+      validate={(v) => (v.name.trim() ? "" : t("Indiquez au moins le nom."))}
       extraOptions={{ callsign: callsigns }}
     />
   );
@@ -155,7 +156,7 @@ export function CellSheet({
   const spec: FieldSpec[] = [
     {
       key: "name",
-      label: "Nom",
+      label: t("Nom"),
       kind: "text",
       required: true,
       wide: true,
@@ -163,7 +164,7 @@ export function CellSheet({
     },
     {
       key: "kind",
-      label: "Type",
+      label: t("Type"),
       kind: "combo",
       list: "cellKinds",
       quick: 6,
@@ -175,22 +176,22 @@ export function CellSheet({
       wide: true,
       render: (v, set) => (
         <fieldset className="team-swatches">
-          <legend>Couleur</legend>
+          <legend>{t("Couleur")}</legend>
           {PALETTE.map((c) => (
             <button
               type="button"
               key={c}
               className="team-swatch"
               style={{ background: c }}
-              aria-label={`Couleur ${c}`}
+              aria-label={t("Couleur {color}", { color: c })}
               aria-pressed={v.color === c}
               onClick={() => set({ color: c })}
             >
               {v.color === c && <Check size={14} />}
             </button>
           ))}
-          <label className="team-swatch-custom" title="Autre couleur">
-            <span className="sr-only">Autre couleur</span>
+          <label className="team-swatch-custom" title={t("Autre couleur")}>
+            <span className="sr-only">{t("Autre couleur")}</span>
             <input
               type="color"
               value={
@@ -207,7 +208,7 @@ export function CellSheet({
               className="small"
               onClick={() => set({ color: "" })}
             >
-              Automatique
+              {t("Automatique")}
             </button>
           )}
         </fieldset>
@@ -215,33 +216,34 @@ export function CellSheet({
     },
     {
       key: "location",
-      label: "Emplacement",
+      label: t("Emplacement"),
       kind: "text",
       wide: true,
       max: 300,
     },
-    { key: "phone", label: "Téléphone", kind: "text", max: 80 },
-    { key: "radio", label: "Radio / nom d’appel", kind: "combo" },
-    { key: "notes", label: "Remarques", kind: "area", rows: 3, max: 2000 },
+    { key: "phone", label: t("Téléphone"), kind: "text", max: 80 },
+    { key: "radio", label: t("Radio / nom d’appel"), kind: "combo" },
+    { key: "notes", label: t("Remarques"), kind: "area", rows: 3, max: 2000 },
   ];
   return (
     <RecordSheet
       collection="cells"
       kind="cell"
-      noun="un poste ou une cellule"
+      noun={t("un poste ou une cellule")}
       spec={spec}
       initial={initial}
       onClose={onClose}
       titleOf={(v) => (initial.id ? v.name : "")}
       validate={(v) =>
-        v.name.trim() ? "" : "Indiquez le nom du poste ou de la cellule."
+        v.name.trim() ? "" : t("Indiquez le nom du poste ou de la cellule.")
       }
       extraOptions={{ radio: callsigns }}
     >
       {() => (
         <p className="muted team-sheet-note">
-          Supprimer ce poste ne supprime pas les personnes : elles passent «
-          Sans poste ».
+          {t(
+            "Supprimer ce poste ne supprime pas les personnes : elles passent « Sans poste ».",
+          )}
         </p>
       )}
     </RecordSheet>

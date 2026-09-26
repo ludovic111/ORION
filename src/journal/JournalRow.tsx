@@ -10,6 +10,8 @@ import {
   type Journal,
 } from "../../shared/journal";
 import { referencedNumbers } from "../../shared/workflow";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 export const typeTone = (type: string) =>
   type === "Décision" || type === "Mission"
@@ -64,7 +66,7 @@ export function JournalRow({
           <button
             className="check"
             aria-pressed={picked}
-            aria-label={`Sélectionner l’entrée ${entry.number}`}
+            aria-label={t("Sélectionner l’entrée {n}", { n: entry.number })}
             onClick={onPick}
           >
             {picked ? <SquareCheck size={15} /> : <Square size={15} />}
@@ -74,23 +76,25 @@ export function JournalRow({
           <strong>{time(f.happenedAt)}</strong>
           <span>{numberLabel(entry)}</span>
           {entry.revisions.length > 1 && (
-            <small title={`${entry.revisions.length} versions`}>
+            <small title={t("{n} versions", { n: entry.revisions.length })}>
               v{entry.revisions.length}
             </small>
           )}
         </td>
         <td className="what">
           <div className="tags">
-            <span className={`tag ${typeTone(f.type)}`}>{f.type}</span>
+            <span className={`tag ${typeTone(f.type)}`}>
+              {enumLabel(f.type)}
+            </span>
             {f.priority !== "Normal" && (
               <span
                 className={`tag ${f.priority === "Urgent" ? "crit" : "warn"} solid`}
               >
-                {f.priority}
+                {enumLabel(f.priority)}
               </span>
             )}
             {f.reliability !== "Confirmé" && (
-              <span className="tag dim">{f.reliability}</span>
+              <span className="tag dim">{enumLabel(f.reliability)}</span>
             )}
             {referencedNumbers(f).map((n) => (
               <span className="tag dim link-tag" key={n}>
@@ -105,19 +109,20 @@ export function JournalRow({
         </td>
         <td className="who">
           <strong>{f.source || "—"}</strong>
-          <span>{f.channel}</span>
+          <span>{enumLabel(f.channel)}</span>
         </td>
         <td className="follow">
           <span
             className={`state ${f.status === "Terminé" ? "ok" : needsFollowUp(entry) ? (late ? "crit" : "warn") : ""}`}
           >
-            {f.status}
+            {enumLabel(f.status)}
           </span>
           {f.assignee && <small>{f.assignee}</small>}
           {f.dueAt && needsFollowUp(entry) && (
             <small className={late ? "crit-text" : ""}>
-              {late ? "Retard · " : "Éch. "}
-              {dateTime(f.dueAt)}
+              {late
+                ? t("Retard · {date}", { date: dateTime(f.dueAt) })
+                : t("Éch. {date}", { date: dateTime(f.dueAt) })}
             </small>
           )}
         </td>
@@ -126,16 +131,16 @@ export function JournalRow({
             <>
               <button
                 className="icon-button"
-                title="Modifier"
-                aria-label={`Modifier l’entrée ${entry.number}`}
+                title={t("Modifier")}
+                aria-label={t("Modifier l’entrée {n}", { n: entry.number })}
                 onClick={onEdit}
               >
                 <Pencil size={13} />
               </button>
               <button
                 className="icon-button danger-icon"
-                title="Supprimer"
-                aria-label={`Supprimer l’entrée ${entry.number}`}
+                title={t("Supprimer")}
+                aria-label={t("Supprimer l’entrée {n}", { n: entry.number })}
                 onClick={onDelete}
               >
                 <Trash2 size={13} />

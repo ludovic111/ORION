@@ -2,6 +2,8 @@
 // trim the transparent margins, shrink and store as PNG. Everything happens
 // in the browser; SVG files are rasterised so no markup is ever stored.
 
+import { t } from "./i18n-2.ts";
+
 export const MAX_INPUT = 2 * 1024 * 1024;
 export const MAX_SIDE = 256;
 const MAX_DATA_URL = 600_000;
@@ -20,20 +22,23 @@ function kindOf(file: File) {
 
 /** Refuse SVG with scripts, embedded HTML or external resources. */
 export function checkSvg(text: string) {
-  const t = text.toLowerCase();
-  if (!/<svg[\s>]/.test(t)) throw new Error("Ce fichier SVG est illisible.");
-  if (/<script|<foreignobject|<iframe|<object|<embed/.test(t))
+  const svg = text.toLowerCase();
+  if (!/<svg[\s>]/.test(svg))
+    throw new Error(t("Ce fichier SVG est illisible."));
+  if (/<script|<foreignobject|<iframe|<object|<embed/.test(svg))
     throw new Error(
-      "Ce SVG contient du code ou du contenu intégré : il est refusé.",
+      t("Ce SVG contient du code ou du contenu intégré : il est refusé."),
     );
-  if (/\son[a-z]+\s*=/.test(t) || /javascript:/.test(t))
-    throw new Error("Ce SVG contient des actions : il est refusé.");
+  if (/\son[a-z]+\s*=/.test(svg) || /javascript:/.test(svg))
+    throw new Error(t("Ce SVG contient des actions : il est refusé."));
   if (
-    /(?:href|src)\s*=\s*["']\s*(?:https?:|\/\/|file:)/.test(t) ||
-    /url\(\s*["']?\s*(?:https?:|\/\/)/.test(t) ||
-    /@import/.test(t)
+    /(?:href|src)\s*=\s*["']\s*(?:https?:|\/\/|file:)/.test(svg) ||
+    /url\(\s*["']?\s*(?:https?:|\/\/)/.test(svg) ||
+    /@import/.test(svg)
   )
-    throw new Error("Ce SVG charge des ressources externes : il est refusé.");
+    throw new Error(
+      t("Ce SVG charge des ressources externes : il est refusé."),
+    );
 }
 
 function loadImage(src: string) {
@@ -41,7 +46,7 @@ function loadImage(src: string) {
     const img = new Image();
     img.decoding = "async";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Image illisible."));
+    img.onerror = () => reject(new Error(t("Image illisible.")));
     img.src = src;
   });
 }
@@ -49,10 +54,10 @@ function loadImage(src: string) {
 /** Read a file into a canvas (longest side at most 1024 px). */
 export async function readSymbolFile(file: File): Promise<HTMLCanvasElement> {
   if (file.size > MAX_INPUT)
-    throw new Error("Image trop lourde : 2 Mo au maximum.");
+    throw new Error(t("Image trop lourde : 2 Mo au maximum."));
   const kind = kindOf(file);
   if (!kind)
-    throw new Error("Format non pris en charge : PNG, SVG, JPEG ou WebP.");
+    throw new Error(t("Format non pris en charge : PNG, SVG, JPEG ou WebP."));
   let img: HTMLImageElement;
   let width = 0;
   let height = 0;
@@ -92,7 +97,7 @@ export async function readSymbolFile(file: File): Promise<HTMLCanvasElement> {
     width = img.naturalWidth;
     height = img.naturalHeight;
   }
-  if (!width || !height) throw new Error("Image vide.");
+  if (!width || !height) throw new Error(t("Image vide."));
   const k = Math.min(1, WORK_SIDE / Math.max(width, height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(width * k));
@@ -285,5 +290,5 @@ export function finish(
     const url = shrink(c, side).toDataURL("image/png");
     if (url.length <= MAX_DATA_URL) return url;
   }
-  throw new Error("Image trop détaillée pour être enregistrée.");
+  throw new Error(t("Image trop détaillée pour être enregistrée."));
 }

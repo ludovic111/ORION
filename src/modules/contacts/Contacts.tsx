@@ -27,7 +27,10 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { SWISS_EMERGENCY, upsert, type Contact } from "../../../shared/ops";
+import { swissEmergency, upsert, type Contact } from "../../../shared/ops";
+import { locale } from "../../../shared/i18n/core.ts";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import { parseRef, ref } from "../../../shared/links";
 import { useApp } from "../../app/context";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
@@ -104,7 +107,8 @@ const telHref = (phone: string) => {
   return digits.replace(/\+/g, "").length >= 3 ? `tel:${digits}` : "";
 };
 
-const byName = (a: Contact, b: Contact) => a.name.localeCompare(b.name, "fr");
+const byName = (a: Contact, b: Contact) =>
+  a.name.localeCompare(b.name, locale());
 const favoritesFirst = (a: Contact, b: Contact) =>
   Number(b.favorite) - Number(a.favorite) || byName(a, b);
 
@@ -122,6 +126,7 @@ export function Contacts() {
     toast,
     print,
   } = useApp();
+  const lang = useLang();
   const contacts = journal.ops.contacts;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("");
@@ -147,7 +152,7 @@ export function Contacts() {
     }
     const found = contacts.find((c) => c.id === id);
     if (found) setEditing(found);
-    else toast("Ce contact n’existe plus.");
+    else toast(t("Ce contact n’existe plus."));
   }, [focus, contacts, readOnly, setFocus, toast]);
 
   const categoryOrder = useMemo(() => {
@@ -156,9 +161,9 @@ export function Contacts() {
       ...new Set(contacts.map((c) => c.category.trim()).filter(Boolean)),
     ]
       .filter((c) => !standard.some((s) => norm(s) === norm(c)))
-      .sort((a, b) => a.localeCompare(b, "fr"));
+      .sort((a, b) => a.localeCompare(b, locale()));
     return [...standard, ...extra];
-  }, [contacts, lists]);
+  }, [contacts, lists, lang]);
   const categoryOf = useCallback(
     (c: Contact) => {
       const key = norm(c.category);
@@ -214,13 +219,17 @@ export function Contacts() {
           .filter((c) => categoryOf(c) === key)
           .sort(favoritesFirst);
         if (list.length)
-          out.push({ key, title: key === NONE ? "Sans catégorie" : key, list });
+          out.push({
+            key,
+            title: key === NONE ? t("Sans catégorie") : key,
+            list,
+          });
       }
       return out;
     }
     const favorites = visible.filter((c) => c.favorite).sort(byName);
     if (favorites.length)
-      out.push({ key: FAVORITES, title: "Favoris", list: favorites });
+      out.push({ key: FAVORITES, title: t("Favoris"), list: favorites });
     const letters = new Map<string, Contact[]>();
     for (const c of visible.filter((x) => !x.favorite).sort(byName)) {
       const first = norm(c.name).charAt(0).toUpperCase();
@@ -230,7 +239,7 @@ export function Contacts() {
     for (const [letter, list] of letters)
       out.push({ key: letter, title: letter, list });
     return out;
-  }, [visible, grouping, categoryOrder, categoryOf]);
+  }, [visible, grouping, categoryOrder, categoryOf, lang]);
 
   function save(list: ContactDraft[], message: string) {
     try {
@@ -249,16 +258,21 @@ export function Contacts() {
         .flatMap((c) => [phoneDigits(c.phone), phoneDigits(c.phone2)])
         .filter(Boolean),
     );
-    const missing = SWISS_EMERGENCY.filter(
+    // Standard numbers, named in the language of the journal.
+    const missing = swissEmergency(journal.ops).filter(
       (e) => !known.has(phoneDigits(e.phone)),
     );
     if (!missing.length) {
-      toast("Les numéros d’urgence suisses sont déjà dans la liste.");
+      toast(t("Les numéros d’urgence suisses sont déjà dans la liste."));
       return;
     }
     save(
       missing.map((e) => ({ ...blankContact(), ...e })),
-      `${missing.length} numéro${missing.length > 1 ? "s" : ""} d’urgence ajouté${missing.length > 1 ? "s" : ""}.`,
+      tn(
+        missing.length,
+        "{n} numéro d’urgence ajouté.",
+        "{n} numéros d’urgence ajoutés.",
+      ),
     );
     setFilter("");
   }
@@ -277,7 +291,7 @@ export function Contacts() {
   async function copy(text: string, label: string) {
     try {
       await navigator.clipboard.writeText(text);
-      toast(`${label} copié.`);
+      toast(t("{label} copié.", { label }));
     } catch {
       const area = document.createElement("textarea");
       area.value = text;
@@ -293,7 +307,11 @@ export function Contacts() {
         done = false;
       }
       area.remove();
-      toast(done ? `${label} copié.` : `Copie impossible. ${label} : ${text}`);
+      toast(
+        done
+          ? t("{label} copié.", { label })
+          : t("Copie impossible. {label} : {text}", { label, text }),
+      );
     }
   }
 
@@ -302,13 +320,13 @@ export function Contacts() {
     e.target.value = "";
     if (!file) return;
     if (file.size > MAX_IMPORT_BYTES) {
-      toast("Fichier trop volumineux : 2 Mo au maximum.");
+      toast(t("Fichier trop volumineux : 2 Mo au maximum."));
       return;
     }
     try {
       const parsed = parseContacts(file.name, await readText(file));
       if (!parsed.length) {
-        toast("Aucun contact trouvé dans ce fichier.");
+        toast(t("Aucun contact trouvé dans ce fichier."));
         return;
       }
       const seen = new Set(contacts.map(contactKey));
@@ -326,7 +344,9 @@ export function Contacts() {
         room: Math.max(0, MAX_CONTACTS - contacts.length),
       });
     } catch (err) {
-      toast(`Lecture impossible : ${(err as Error).message}`);
+      toast(
+        t("Lecture impossible : {error}", { error: (err as Error).message }),
+      );
     }
   }
 
@@ -338,14 +358,12 @@ export function Contacts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `contacts-${new Date().toLocaleDateString("sv-SE")}.csv`;
+    a.download = `${t("contacts (fichier)")}-${new Date().toLocaleDateString("sv-SE")}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast(
-      `${list.length} contact${list.length > 1 ? "s" : ""} exporté${list.length > 1 ? "s" : ""}.`,
-    );
+    toast(tn(list.length, "{n} contact exporté.", "{n} contacts exportés."));
   }
 
   function printDirectory() {
@@ -356,15 +374,15 @@ export function Contacts() {
           .sort(favoritesFirst);
         return {
           id: key,
-          title: key === NONE ? "Sans catégorie" : key,
-          caption: `${list.length} contact${list.length > 1 ? "s" : ""}`,
+          title: key === NONE ? t("Sans catégorie") : key,
+          caption: tn(list.length, "{n} contact", "{n} contacts"),
           head: [
-            "Nom",
-            "Fonction · organisation",
-            "Téléphones",
-            "E-mail",
-            "Radio",
-            "Adresse · remarques",
+            t("Nom"),
+            t("Fonction · organisation"),
+            t("Téléphones"),
+            t("E-mail"),
+            t("Radio"),
+            t("Adresse · remarques"),
           ],
           widths: [34, 34, 28, 34, 16, 36],
           body: list.map((c) => [
@@ -379,42 +397,42 @@ export function Contacts() {
       })
       .filter((t) => t.body.length);
     if (!tables.length) {
-      toast("Aucun contact à imprimer.");
+      toast(t("Aucun contact à imprimer."));
       return;
     }
     print({
       kind: "tables",
       journal,
-      title: "Annuaire des contacts",
-      extra: `Établi par ${author}`,
+      title: t("Annuaire des contacts"),
+      extra: t("Établi par {author}", { author }),
       tables,
       landscape: false,
-      name: "contacts",
+      name: t("contacts (fichier)"),
     });
   }
 
   const callsigns = journal.radio.stations.map((s) => s.callsign);
   const spec: FieldSpec[] = [
-    { kind: "group", label: "Identité" },
+    { kind: "group", label: t("Identité") },
     {
       key: "name",
-      label: "Nom",
+      label: t("Nom"),
       kind: "text",
       required: true,
       max: 160,
       wide: true,
-      placeholder: "Personne ou service, ex. Commune · voirie",
+      placeholder: t("Personne ou service, ex. Commune · voirie"),
     },
-    { key: "role", label: "Fonction", kind: "text", max: 200 },
+    { key: "role", label: t("Fonction"), kind: "text", max: 200 },
     {
       key: "organization",
-      label: "Organisation",
+      label: t("Organisation"),
       kind: "combo",
       list: "organizations",
     },
     {
       key: "category",
-      label: "Catégorie",
+      label: t("Catégorie"),
       kind: "combo",
       list: "contactCategories",
       quick: 7,
@@ -422,17 +440,17 @@ export function Contacts() {
     },
     {
       key: "favorite",
-      label: "Favori",
+      label: t("Favori"),
       kind: "toggle",
-      hint: "Toujours en tête de liste",
+      hint: t("Toujours en tête de liste"),
     },
-    { kind: "group", label: "Joindre" },
+    { kind: "group", label: t("Joindre") },
     {
       kind: "custom",
       key: "phone",
       render: (v, set) => (
         <TextField
-          label="Téléphone"
+          label={t("Téléphone")}
           type="tel"
           value={String(v.phone ?? "")}
           maxLength={80}
@@ -446,7 +464,7 @@ export function Contacts() {
       key: "phone2",
       render: (v, set) => (
         <TextField
-          label="Téléphone 2"
+          label={t("Téléphone 2")}
           type="tel"
           value={String(v.phone2 ?? "")}
           maxLength={80}
@@ -459,7 +477,7 @@ export function Contacts() {
       key: "email",
       render: (v, set) => (
         <TextField
-          label="E-mail"
+          label={t("E-mail")}
           type="email"
           value={String(v.email ?? "")}
           maxLength={200}
@@ -469,13 +487,13 @@ export function Contacts() {
     },
     {
       key: "radio",
-      label: "Radio / nom d’appel",
+      label: t("Radio / nom d’appel"),
       kind: "combo",
       options: callsigns,
     },
-    { kind: "group", label: "Détails" },
-    { key: "address", label: "Adresse", kind: "text", max: 300, wide: true },
-    { key: "notes", label: "Remarques", kind: "area", max: 2000 },
+    { kind: "group", label: t("Détails") },
+    { key: "address", label: t("Adresse"), kind: "text", max: 300, wide: true },
+    { key: "notes", label: t("Remarques"), kind: "area", max: 2000 },
   ];
 
   const menuItems = (
@@ -484,7 +502,7 @@ export function Contacts() {
         <button data-close onClick={addEmergency}>
           <Siren size={15} />
           <span>
-            Ajouter les numéros d’urgence suisses
+            {t("Ajouter les numéros d’urgence suisses")}
             <small>112, 117, 118, 144, 1414, 145, 143</small>
           </span>
         </button>
@@ -493,23 +511,25 @@ export function Contacts() {
         <button data-close onClick={() => fileInput.current?.click()}>
           <FileUp size={15} />
           <span>
-            Importer un fichier
-            <small>vCard (.vcf) ou tableau (.csv), lu sur cet appareil</small>
+            {t("Importer un fichier")}
+            <small>
+              {t("vCard (.vcf) ou tableau (.csv), lu sur cet appareil")}
+            </small>
           </span>
         </button>
       )}
       <button data-close disabled={!contacts.length} onClick={exportCsv}>
         <FileDown size={15} />
         <span>
-          Exporter en CSV
-          <small>Pour Excel ou une autre application</small>
+          {t("Exporter en CSV")}
+          <small>{t("Pour Excel ou une autre application")}</small>
         </span>
       </button>
       <button data-close disabled={!contacts.length} onClick={printDirectory}>
         <Printer size={15} />
         <span>
-          Imprimer l’annuaire
-          <small>A4, classé par catégorie</small>
+          {t("Imprimer l’annuaire")}
+          <small>{t("A4, classé par catégorie")}</small>
         </span>
       </button>
     </>
@@ -540,7 +560,7 @@ export function Contacts() {
               aria-expanded={!!menu}
             >
               <Ellipsis size={15} />
-              Plus
+              {t("Plus")}
             </button>
             <button
               className="primary"
@@ -548,7 +568,7 @@ export function Contacts() {
               onClick={() => setEditing(blankContact())}
             >
               <Plus size={15} />
-              Nouveau contact
+              {t("Nouveau contact")}
             </button>
           </>
         }
@@ -569,28 +589,29 @@ export function Contacts() {
       {contacts.length === 0 ? (
         <EmptyState
           icon={<ContactIcon size={28} />}
-          title="L’annuaire est vide"
+          title={t("L’annuaire est vide")}
           actions={
             !readOnly && (
               <>
                 <button className="primary" onClick={addEmergency}>
                   <Siren size={15} />
-                  Ajouter les numéros d’urgence suisses
+                  {t("Ajouter les numéros d’urgence suisses")}
                 </button>
                 <button onClick={() => setEditing(blankContact())}>
                   <Plus size={15} />
-                  Nouveau contact
+                  {t("Nouveau contact")}
                 </button>
                 <button onClick={() => fileInput.current?.click()}>
                   <FileUp size={15} />
-                  Importer (.vcf, .csv)
+                  {t("Importer (.vcf, .csv)")}
                 </button>
               </>
             )
           }
         >
-          Gardez sous la main les numéros des partenaires, autorités et
-          fournisseurs. Un clic sur un numéro l’appelle depuis un téléphone.
+          {t(
+            "Gardez sous la main les numéros des partenaires, autorités et fournisseurs. Un clic sur un numéro l’appelle depuis un téléphone.",
+          )}
         </EmptyState>
       ) : (
         <>
@@ -601,13 +622,13 @@ export function Contacts() {
                 value={query}
                 enterKeyHint="search"
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nom, organisation, numéro…"
-                aria-label="Rechercher un contact"
+                placeholder={t("Nom, organisation, numéro…")}
+                aria-label={t("Rechercher un contact")}
               />
               {query && (
                 <button
                   className="icon-button"
-                  aria-label="Effacer la recherche"
+                  aria-label={t("Effacer la recherche")}
                   onClick={() => setQuery("")}
                 >
                   <X size={14} />
@@ -615,28 +636,28 @@ export function Contacts() {
               )}
             </div>
             <Segmented
-              label="Classement"
+              label={t("Classement")}
               value={grouping}
               onChange={setGrouping}
               options={[
-                { value: "category", label: "Par catégorie" },
-                { value: "alpha", label: "A–Z" },
+                { value: "category", label: t("Par catégorie") },
+                { value: "alpha", label: t("A–Z") },
               ]}
             />
           </div>
           <div
             className="contacts-chips"
             role="group"
-            aria-label="Filtrer par catégorie"
+            aria-label={t("Filtrer par catégorie")}
           >
-            {chip("", "Tous", contacts.length)}
-            {favoriteCount > 0 && chip(FAVORITES, "Favoris", favoriteCount)}
+            {chip("", t("Tous"), contacts.length)}
+            {favoriteCount > 0 && chip(FAVORITES, t("Favoris"), favoriteCount)}
             {[...categoryOrder, NONE]
               .filter((key) => counts.get(key))
               .map((key) =>
                 chip(
                   key,
-                  key === NONE ? "Sans catégorie" : key,
+                  key === NONE ? t("Sans catégorie") : key,
                   counts.get(key) ?? 0,
                 ),
               )}
@@ -644,7 +665,7 @@ export function Contacts() {
 
           {!visible.length && (
             <p className="muted contacts-none">
-              Aucun contact ne correspond.{" "}
+              {t("Aucun contact ne correspond.")}{" "}
               <button
                 className="link"
                 onClick={() => {
@@ -652,7 +673,7 @@ export function Contacts() {
                   setFilter("");
                 }}
               >
-                Tout afficher
+                {t("Tout afficher")}
               </button>
             </p>
           )}
@@ -692,11 +713,11 @@ export function Contacts() {
           key={editing.id ?? "new"}
           collection="contacts"
           kind="contact"
-          noun="un contact"
+          noun={t("un contact")}
           spec={spec}
           initial={editing}
           onClose={() => setEditing(null)}
-          validate={(v) => (v.name.trim() ? "" : "Le nom est nécessaire.")}
+          validate={(v) => (v.name.trim() ? "" : t("Le nom est nécessaire."))}
         >
           {(saved) =>
             (telHref(saved.phone) || telHref(saved.phone2) || saved.email) && (
@@ -710,14 +731,14 @@ export function Contacts() {
                         href={telHref(p)}
                       >
                         <Phone size={15} />
-                        Appeler {p}
+                        {t("Appeler {phone}", { phone: p })}
                       </a>
                     ),
                 )}
                 {saved.email && (
                   <a className="button" href={`mailto:${saved.email}`}>
                     <Mail size={15} />
-                    Écrire
+                    {t("Écrire")}
                   </a>
                 )}
               </div>
@@ -733,7 +754,7 @@ export function Contacts() {
           onImport={(list) => {
             save(
               list,
-              `${list.length} contact${list.length > 1 ? "s" : ""} importé${list.length > 1 ? "s" : ""}.`,
+              tn(list.length, "{n} contact importé.", "{n} contacts importés."),
             );
             setPending(null);
           }}
@@ -788,8 +809,8 @@ function ContactCard({
   const hue = hueOf(c.name);
   const sub = [c.role, c.organization].filter(Boolean).join(" · ");
   const phones = [
-    { value: c.phone, label: "Numéro" },
-    { value: c.phone2, label: "Numéro" },
+    { value: c.phone, label: t("Numéro") },
+    { value: c.phone2, label: t("Numéro") },
   ].filter((p) => p.value.trim());
   return (
     <article
@@ -814,10 +835,12 @@ function ContactCard({
           aria-pressed={c.favorite}
           aria-label={
             c.favorite
-              ? `Retirer ${c.name} des favoris`
-              : `Ajouter ${c.name} aux favoris`
+              ? t("Retirer {name} des favoris", { name: c.name })
+              : t("Ajouter {name} aux favoris", { name: c.name })
           }
-          title={c.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          title={
+            c.favorite ? t("Retirer des favoris") : t("Ajouter aux favoris")
+          }
           disabled={readOnly}
           onClick={onFavorite}
         >
@@ -838,7 +861,10 @@ function ContactCard({
                   <a
                     className="button contacts-call"
                     href={href}
-                    aria-label={`Appeler ${c.name} au ${p.value}`}
+                    aria-label={t("Appeler {name} au {phone}", {
+                      name: c.name,
+                      phone: p.value,
+                    })}
                   >
                     <Phone size={16} />
                     <span>{p.value}</span>
@@ -852,8 +878,8 @@ function ContactCard({
                 <button
                   type="button"
                   className="icon-button contacts-copy"
-                  aria-label={`Copier le numéro ${p.value}`}
-                  title="Copier"
+                  aria-label={t("Copier le numéro {phone}", { phone: p.value })}
+                  title={t("Copier")}
                   onClick={() => onCopy(p.value, p.label)}
                 >
                   <Copy size={15} />
@@ -873,9 +899,11 @@ function ContactCard({
               <button
                 type="button"
                 className="icon-button contacts-copy"
-                aria-label={`Copier l’adresse e-mail ${c.email}`}
-                title="Copier"
-                onClick={() => onCopy(c.email, "E-mail")}
+                aria-label={t("Copier l’adresse e-mail {email}", {
+                  email: c.email,
+                })}
+                title={t("Copier")}
+                onClick={() => onCopy(c.email, t("E-mail"))}
               >
                 <Copy size={14} />
               </button>
@@ -894,9 +922,11 @@ function ContactCard({
               <button
                 type="button"
                 className="icon-button contacts-copy"
-                aria-label={`Copier l’adresse ${c.address}`}
-                title="Copier"
-                onClick={() => onCopy(c.address, "Adresse")}
+                aria-label={t("Copier l’adresse {address}", {
+                  address: c.address,
+                })}
+                title={t("Copier")}
+                onClick={() => onCopy(c.address, t("Adresse"))}
               >
                 <Copy size={14} />
               </button>
@@ -912,14 +942,17 @@ function ContactCard({
           <span className="pill plain">{c.category}</span>
         )}
         {links > 0 && (
-          <span className="contacts-links" title={`${links} lien(s)`}>
+          <span
+            className="contacts-links"
+            title={tn(links, "{n} lien", "{n} liens")}
+          >
             <Link2 size={12} />
             {links}
           </span>
         )}
         <button type="button" className="small contacts-edit" onClick={onOpen}>
           <Pencil size={12} />
-          {readOnly ? "Voir" : "Modifier"}
+          {readOnly ? t("Voir") : t("Modifier")}
         </button>
       </footer>
     </article>
@@ -938,23 +971,27 @@ function ImportPreview({
   const list = pending.fresh.slice(0, pending.room);
   const cut = pending.fresh.length - list.length;
   return (
-    <Modal title="Importer des contacts" onClose={onClose}>
+    <Modal title={t("Importer des contacts")} onClose={onClose}>
       <div className="stack contacts-import">
         <p>
           <strong>{pending.file}</strong>
         </p>
         <div className="contacts-import-stats">
-          <span className="pill ok">{list.length} à importer</span>
+          <span className="pill ok">
+            {t("{n} à importer", { n: list.length })}
+          </span>
           {pending.duplicates > 0 && (
             <span className="pill muted">
-              {pending.duplicates} déjà présent
-              {pending.duplicates > 1 ? "s" : ""}, ignoré
-              {pending.duplicates > 1 ? "s" : ""}
+              {tn(
+                pending.duplicates,
+                "{n} déjà présent, ignoré",
+                "{n} déjà présents, ignorés",
+              )}
             </span>
           )}
           {cut > 0 && (
             <span className="pill warn">
-              {cut} au-delà de la limite de 5000
+              {t("{n} au-delà de la limite de 5000", { n: cut })}
             </span>
           )}
         </div>
@@ -963,10 +1000,10 @@ function ImportPreview({
             <table className="grid dense">
               <thead>
                 <tr>
-                  <th>Nom</th>
-                  <th>Organisation</th>
-                  <th>Téléphone</th>
-                  <th>Catégorie</th>
+                  <th>{t("Nom")}</th>
+                  <th>{t("Organisation")}</th>
+                  <th>{t("Téléphone")}</th>
+                  <th>{t("Catégorie")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -985,25 +1022,31 @@ function ImportPreview({
               </tbody>
             </table>
             {list.length > 6 && (
-              <p className="muted">… et {list.length - 6} autre(s).</p>
+              <p className="muted">
+                {tn(list.length - 6, "… et {n} autre.", "… et {n} autres.")}
+              </p>
             )}
           </div>
         ) : (
           <p className="muted">
-            Rien de nouveau : tous ces contacts sont déjà dans l’annuaire.
+            {t(
+              "Rien de nouveau : tous ces contacts sont déjà dans l’annuaire.",
+            )}
           </p>
         )}
         <p className="muted contacts-import-note">
-          Le fichier est lu sur cet appareil, rien n’est envoyé sur internet.
+          {t(
+            "Le fichier est lu sur cet appareil, rien n’est envoyé sur internet.",
+          )}
         </p>
         <div className="modal-actions">
           <button onClick={onClose}>
-            {list.length ? "Annuler" : "Fermer"}
+            {list.length ? t("Annuler") : t("Fermer")}
           </button>
           {list.length > 0 && (
             <button className="primary" onClick={() => onImport(list)}>
               <FileUp size={15} />
-              Importer {list.length} contact{list.length > 1 ? "s" : ""}
+              {tn(list.length, "Importer {n} contact", "Importer {n} contacts")}
             </button>
           )}
         </div>

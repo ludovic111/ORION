@@ -9,6 +9,8 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, MonitorOff, Square } from "lucide-react";
 import type { Deck } from "./deck";
 import { SlideView } from "./slides";
+import { formatTime, locale } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 // Presenter view in a second window (same origin, written by a React
 // portal): current and next slide, speaker notes, elapsed time, clock and
@@ -32,12 +34,7 @@ export function Mini({
   );
 }
 
-export const clock = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+export const clock = (ms: number) => formatTime(ms);
 export const elapsed = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600);
@@ -67,14 +64,14 @@ export function usePresenterWindow(onKey: (e: KeyboardEvent) => void) {
     );
     if (!win) return false;
     const doc = win.document;
-    doc.head.innerHTML =
-      '<meta charset="utf-8"><title>Vue orateur · orion aic</title>';
+    doc.head.innerHTML = '<meta charset="utf-8"><title></title>';
+    doc.title = t("Vue orateur · orion aic");
     doc.body.innerHTML = "";
     for (const node of document.querySelectorAll(
       'link[rel="stylesheet"], style',
     ))
       doc.head.appendChild(doc.importNode(node, true));
-    doc.documentElement.lang = "fr-CH";
+    doc.documentElement.lang = locale();
     doc.documentElement.dataset.theme =
       document.documentElement.dataset.theme ?? "dark";
     doc.documentElement.dataset.motion =
@@ -164,7 +161,7 @@ function PresenterView({
     <div className="pm-presenter">
       <header>
         <b>{deck.title}</b>
-        <span className="pm-presenter-time" title="Temps écoulé">
+        <span className="pm-presenter-time" title={t("Temps écoulé")}>
           {elapsed(now - startedAt)}
         </span>
         <span className="pm-presenter-clock">{clock(now)}</span>
@@ -188,7 +185,7 @@ function PresenterView({
           </div>
           <nav>
             <button onClick={() => onGo(index - 1)} disabled={index === 0}>
-              <ChevronLeft size={18} /> Précédente
+              <ChevronLeft size={18} /> {t("Précédente")}
             </button>
             <span>
               {index + 1} / {count}
@@ -198,18 +195,18 @@ function PresenterView({
               onClick={() => onGo(index + 1)}
               disabled={index >= count - 1}
             >
-              Suivante <ChevronRight size={18} />
+              {t("Suivante")} <ChevronRight size={18} />
             </button>
             <button onClick={onBlack} aria-pressed={black}>
-              <MonitorOff size={16} /> {black ? "Rallumer" : "Écran noir"}
+              <MonitorOff size={16} /> {black ? t("Rallumer") : t("Écran noir")}
             </button>
             <button className="danger" onClick={onEnd}>
-              <Square size={14} /> Terminer
+              <Square size={14} /> {t("Terminer")}
             </button>
           </nav>
         </section>
         <aside>
-          <h2>Ensuite</h2>
+          <h2>{t("Ensuite")}</h2>
           {next ? (
             <div className={`pm-look-${look}`}>
               <Mini width={small}>
@@ -225,13 +222,13 @@ function PresenterView({
               </Mini>
             </div>
           ) : (
-            <p className="pm-presenter-last">Dernière diapositive.</p>
+            <p className="pm-presenter-last">{t("Dernière diapositive.")}</p>
           )}
-          <h2>Notes</h2>
+          <h2>{t("Notes")}</h2>
           <div className="pm-presenter-notes">
             {slide?.notes
               ? slide.notes.split("\n").map((line, i) => <p key={i}>{line}</p>)
-              : "Pas de notes pour cette diapositive."}
+              : t("Pas de notes pour cette diapositive.")}
           </div>
         </aside>
       </main>

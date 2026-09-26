@@ -20,7 +20,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Module } from "../../shared/links";
+import { t } from "./i18n-modules.ts";
 
+// Labels are getters: they are read in the language of the post at the
+// moment they are shown (see shared/i18n/core.ts).
 export type ModuleInfo = {
   id: Module;
   label: string;
@@ -37,183 +40,306 @@ export type ModuleInfo = {
 export const MODULES: ModuleInfo[] = [
   {
     id: "situation",
-    label: "Situation",
-    short: "Situation",
+    get label() {
+      return t("Situation");
+    },
+    get short() {
+      return t("Situation");
+    },
     icon: Activity,
     hue: 250,
     group: 0,
     core: true,
-    description:
-      "Vue d’ensemble : renseignements clés, points ouverts, moyens, météo, prochains rapports.",
+    get description() {
+      return t(
+        "Vue d’ensemble : renseignements clés, points ouverts, moyens, météo, prochains rapports.",
+      );
+    },
   },
   {
     id: "journal",
-    label: "Journal d’intervention",
-    short: "Journal",
+    get label() {
+      return t("Journal d’intervention");
+    },
+    get short() {
+      return t("Journal");
+    },
     icon: BookOpen,
     hue: 212,
     group: 0,
     core: true,
-    description:
-      "Registre chronologique et numéroté de tout ce qui se passe, se décide et se transmet.",
+    get description() {
+      return t(
+        "Registre chronologique et numéroté de tout ce qui se passe, se décide et se transmet.",
+      );
+    },
   },
   {
     id: "messages",
-    label: "Messages",
-    short: "Messages",
+    get label() {
+      return t("Messages");
+    },
+    get short() {
+      return t("Messages");
+    },
     icon: Inbox,
     hue: 265,
     group: 0,
-    description:
-      "Réception et synthèse des messages avant leur inscription au journal.",
+    get description() {
+      return t(
+        "Réception et synthèse des messages avant leur inscription au journal.",
+      );
+    },
   },
   {
     id: "missions",
-    label: "Missions et suivi",
-    short: "Missions",
+    get label() {
+      return t("Missions et suivi");
+    },
+    get short() {
+      return t("Missions");
+    },
     icon: KanbanSquare,
     hue: 30,
     group: 0,
-    description: "Tableau des missions, demandes et points à suivre, par état.",
+    get description() {
+      return t("Tableau des missions, demandes et points à suivre, par état.");
+    },
   },
   {
     id: "tasks",
-    label: "Mes tâches",
-    short: "Mes tâches",
+    get label() {
+      return t("Mes tâches");
+    },
+    get short() {
+      return t("Mes tâches");
+    },
     icon: ListChecks,
     hue: 140,
     group: 0,
-    description:
-      "Ce qui est attribué à la fonction de ce poste ou à son opérateur, le plus en retard d’abord.",
+    get description() {
+      return t(
+        "Ce qui est attribué à la fonction de ce poste ou à son opérateur, le plus en retard d’abord.",
+      );
+    },
   },
   {
     id: "orders",
-    label: "Ordres et diffusions",
-    short: "Ordres",
+    get label() {
+      return t("Ordres et diffusions");
+    },
+    get short() {
+      return t("Ordres");
+    },
     icon: ScrollText,
     hue: 18,
     group: 0,
-    description:
-      "Ordres en cinq points, diffusions avec accusé de lecture, liaison avec l’autre PC.",
+    get description() {
+      return t(
+        "Ordres en cinq points, diffusions avec accusé de lecture, liaison avec l’autre PC.",
+      );
+    },
   },
   {
     id: "checklists",
-    label: "Listes de contrôle",
-    short: "Listes",
+    get label() {
+      return t("Listes de contrôle");
+    },
+    get short() {
+      return t("Listes");
+    },
     icon: ClipboardList,
     hue: 96,
     group: 0,
-    description:
-      "Ce qu’il ne faut pas oublier par type d’événement : étapes, fonction responsable, contrôles à suivre.",
+    get description() {
+      return t(
+        "Ce qu’il ne faut pas oublier par type d’événement : étapes, fonction responsable, contrôles à suivre.",
+      );
+    },
   },
   {
     id: "map",
-    label: "Carte de situation",
-    short: "Carte",
+    get label() {
+      return t("Carte de situation");
+    },
+    get short() {
+      return t("Carte");
+    },
     icon: Map,
     hue: 160,
     group: 1,
-    description:
-      "Carte swisstopo avec signes, zones, tracés et tout ce qui y est lié.",
+    get description() {
+      return t(
+        "Carte swisstopo avec signes, zones, tracés et tout ce qui y est lié.",
+      );
+    },
   },
   {
     id: "resources",
-    label: "Moyens",
-    short: "Moyens",
+    get label() {
+      return t("Moyens");
+    },
+    get short() {
+      return t("Moyens");
+    },
     icon: Truck,
     hue: 28,
     group: 1,
-    description:
-      "Véhicules, personnel et matériel engagés ou disponibles, avec leur état.",
+    get description() {
+      return t(
+        "Véhicules, personnel et matériel engagés ou disponibles, avec leur état.",
+      );
+    },
   },
   {
     id: "team",
-    label: "Équipe et postes",
-    short: "Équipe",
+    get label() {
+      return t("Équipe et postes");
+    },
+    get short() {
+      return t("Équipe");
+    },
     icon: Users,
     hue: 330,
     group: 1,
-    description:
-      "Qui fait quoi : PC front, PC arrière, cellules, fonctions, grades, présences.",
+    get description() {
+      return t(
+        "Qui fait quoi : PC front, PC arrière, cellules, fonctions, grades, présences.",
+      );
+    },
   },
   {
     id: "radio",
-    label: "Réseau radio",
-    short: "Radio",
+    get label() {
+      return t("Réseau radio");
+    },
+    get short() {
+      return t("Radio");
+    },
     icon: Radio,
     hue: 120,
     group: 1,
-    description:
-      "Plan Polycom : groupes, noms d’appel, terminaux, remises et contrôles de liaison.",
+    get description() {
+      return t(
+        "Plan Polycom : groupes, noms d’appel, terminaux, remises et contrôles de liaison.",
+      );
+    },
   },
   {
     id: "contacts",
-    label: "Contacts",
-    short: "Contacts",
+    get label() {
+      return t("Contacts");
+    },
+    get short() {
+      return t("Contacts");
+    },
     icon: Contact,
     hue: 190,
     group: 2,
-    description:
-      "Annuaire des partenaires, autorités, fournisseurs et numéros d’urgence.",
+    get description() {
+      return t(
+        "Annuaire des partenaires, autorités, fournisseurs et numéros d’urgence.",
+      );
+    },
   },
   {
     id: "weather",
-    label: "Météo",
-    short: "Météo",
+    get label() {
+      return t("Météo");
+    },
+    get short() {
+      return t("Météo");
+    },
     icon: CloudSun,
     hue: 38,
     group: 2,
-    description: "Prévisions, observations sur place et alertes de danger.",
+    get description() {
+      return t("Prévisions, observations sur place et alertes de danger.");
+    },
   },
   {
     id: "agenda",
-    label: "Rythme de conduite",
-    short: "Agenda",
+    get label() {
+      return t("Rythme de conduite");
+    },
+    get short() {
+      return t("Agenda");
+    },
     icon: CalendarClock,
     hue: 48,
     group: 2,
-    description:
-      "Rapports, orientations, relèves et rendez-vous, avec compte à rebours.",
+    get description() {
+      return t(
+        "Rapports, orientations, relèves et rendez-vous, avec compte à rebours.",
+      );
+    },
   },
   {
     id: "network",
-    label: "Réseau des liens",
-    short: "Liens",
+    get label() {
+      return t("Réseau des liens");
+    },
+    get short() {
+      return t("Liens");
+    },
     icon: Network,
     hue: 285,
     group: 3,
-    description:
-      "Toutes les informations et ce qui les relie, comme un réseau de neurones.",
+    get description() {
+      return t(
+        "Toutes les informations et ce qui les relie, comme un réseau de neurones.",
+      );
+    },
   },
   {
     id: "trace",
-    label: "Traçabilité et versions",
-    short: "Traçabilité",
+    get label() {
+      return t("Traçabilité et versions");
+    },
+    get short() {
+      return t("Traçabilité");
+    },
     icon: History,
     hue: 175,
     group: 3,
-    description:
-      "Qui a fait quoi et quand, versions de tout, comparaisons, exports et présentations.",
+    get description() {
+      return t(
+        "Qui a fait quoi et quand, versions de tout, comparaisons, exports et présentations.",
+      );
+    },
   },
   {
     id: "debrief",
-    label: "Débriefing et exercice",
-    short: "RETEX",
+    get label() {
+      return t("Débriefing et exercice");
+    },
+    get short() {
+      return t("RETEX");
+    },
     icon: ClipboardCheck,
     hue: 12,
     group: 3,
-    description:
-      "Relecture de l’opération, chiffres de la conduite, points à retenir ; scénario et injects de la direction d’exercice.",
+    get description() {
+      return t(
+        "Relecture de l’opération, chiffres de la conduite, points à retenir ; scénario et injects de la direction d’exercice.",
+      );
+    },
   },
   {
     id: "docs",
-    label: "Aide et documentation",
-    short: "Aide",
+    get label() {
+      return t("Aide et documentation");
+    },
+    get short() {
+      return t("Aide");
+    },
     icon: LifeBuoy,
     hue: 200,
     group: 3,
     core: true,
-    description: "Comment utiliser chaque fonction, en bref ou en détail.",
+    get description() {
+      return t("Comment utiliser chaque fonction, en bref ou en détail.");
+    },
   },
 ];
 export const moduleInfo = (id: string) =>

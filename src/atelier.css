@@ -447,8 +447,16 @@ input[type="range"] {
   display: none;
 }
 .card-head {
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
+}
+/* Longer labels (German, Italian): the actions go to the next line rather
+   than out of the card on a phone. */
+.card-head h2,
+.card-head h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .card-head h2,
 .card-head h3 {
@@ -1624,4 +1632,40 @@ button[aria-disabled="true"] {
   .module-head .eyebrow {
     display: none;
   }
+}
+
+/* ---------- Language switch (FR · DE · IT) ---------- */
+.lang-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-2);
+}
+.lang-switch button {
+  height: 26px;
+  min-width: 32px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.lang-switch button:hover {
+  background: none;
+  color: var(--text);
+}
+.lang-switch button.on {
+  background: var(--solid);
+  color: var(--text);
+  box-shadow: var(--shadow-xl);
+}
+:root[data-theme="dark"] .lang-switch button.on {
+  background: rgba(228, 223, 217, 0.16);
+  box-shadow: none;
 }

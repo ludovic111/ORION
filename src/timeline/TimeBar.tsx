@@ -19,14 +19,37 @@ import { localInput, fromInput } from "../ui/fields";
 import { Popover } from "../ui/Popover";
 import { SnapshotDialog } from "./SnapshotDialog";
 import { onReplay, takeReplay } from "./playback";
+import { rich } from "../i18n";
+import { t, tn } from "./i18n.ts";
 import "./timeline.css";
 
 // Change by change (a step every `ms`), or in accelerated real time (the
 // film of the operation: map, journal and resources move together).
 const SPEEDS = [
-  { id: "slow", label: "Lent", ms: 1400, factor: 0 },
-  { id: "normal", label: "Normal", ms: 650, factor: 0 },
-  { id: "fast", label: "Rapide", ms: 220, factor: 0 },
+  {
+    id: "slow",
+    get label() {
+      return t("Lent");
+    },
+    ms: 1400,
+    factor: 0,
+  },
+  {
+    id: "normal",
+    get label() {
+      return t("Normal");
+    },
+    ms: 650,
+    factor: 0,
+  },
+  {
+    id: "fast",
+    get label() {
+      return t("Rapide");
+    },
+    ms: 220,
+    factor: 0,
+  },
   { id: "x10", label: "×10", ms: 200, factor: 10 },
   { id: "x60", label: "×60", ms: 200, factor: 60 },
 ] as const;
@@ -65,8 +88,8 @@ export function TimeBar() {
   );
   const bins = useMemo(() => {
     const counts = new Array<number>(BINS).fill(0);
-    for (const t of steps)
-      counts[Math.min(BINS - 1, Math.floor(((t - start) / span) * BINS))]++;
+    for (const step of steps)
+      counts[Math.min(BINS - 1, Math.floor(((step - start) / span) * BINS))]++;
     const top = Math.max(1, ...counts);
     return counts.map((c) => c / top);
   }, [steps, start, span]);
@@ -111,10 +134,10 @@ export function TimeBar() {
     if (factor) {
       let last = performance.now();
       const timer = setInterval(() => {
-        const t = performance.now();
+        const tick = performance.now();
         const { at: shown, end: stop } = latest.current;
-        const next = Math.min(stop, shown + (t - last) * factor);
-        last = t;
+        const next = Math.min(stop, shown + (tick - last) * factor);
+        last = tick;
         setViewAt(next);
         if (next >= stop) setPlaying(false);
       }, delay);
@@ -131,7 +154,7 @@ export function TimeBar() {
     return () => clearInterval(timer);
   }, [playing, speed, setViewAt]);
 
-  const jump = (t: number) => setViewAt(Math.min(end, Math.max(start, t)));
+  const jump = (ms: number) => setViewAt(Math.min(end, Math.max(start, ms)));
   const previous = () => {
     // steps[index - 1] is the last change shown: go back to it when the
     // time shown is after it, else to the change before.
@@ -161,15 +184,15 @@ export function TimeBar() {
     <>
       <section
         className={`timebar${playing ? " playing" : ""}`}
-        aria-label="Machine à remonter le temps"
+        aria-label={t("Machine à remonter le temps")}
       >
         <div className="timebar-head">
           <span className="timebar-badge">
             <History size={13} />
-            <span className="wide">Version du</span>
+            <span className="wide">{t("Version du")}</span>
           </span>
           <label className="timebar-when">
-            <span className="sr-only">Heure affichée</span>
+            <span className="sr-only">{t("Heure affichée")}</span>
             <input
               type="datetime-local"
               step={60}
@@ -186,7 +209,7 @@ export function TimeBar() {
             {index} / {steps.length}
             <span className="wide">
               {" "}
-              · {pending} changement{pending > 1 ? "s" : ""} après
+              · {tn(pending, "{n} changement après", "{n} changements après")}
             </span>
           </span>
           <div className="timebar-controls">
@@ -194,19 +217,19 @@ export function TimeBar() {
               className="icon-button"
               onClick={previous}
               disabled={index <= 1 && at <= start}
-              aria-label="Changement précédent"
-              title="Changement précédent"
+              aria-label={t("Changement précédent")}
+              title={t("Changement précédent")}
             >
               <ChevronsLeft size={17} />
             </button>
             <button
               className="timebar-play"
               onClick={play}
-              aria-label={playing ? "Pause" : "Rejouer l’opération"}
+              aria-label={playing ? t("Pause") : t("Rejouer l’opération")}
               title={
                 playing
-                  ? "Pause"
-                  : "Rejouer l’opération changement par changement"
+                  ? t("Pause")
+                  : t("Rejouer l’opération changement par changement")
               }
             >
               {playing ? <Pause size={16} /> : <Play size={16} />}
@@ -215,15 +238,15 @@ export function TimeBar() {
               className="icon-button"
               onClick={next}
               disabled={index >= steps.length}
-              aria-label="Changement suivant"
-              title="Changement suivant"
+              aria-label={t("Changement suivant")}
+              title={t("Changement suivant")}
             >
               <ChevronsRight size={17} />
             </button>
             <div
               className="seg timebar-speed"
               role="group"
-              aria-label="Vitesse"
+              aria-label={t("Vitesse")}
             >
               {SPEEDS.map((s) => (
                 <button
@@ -240,45 +263,45 @@ export function TimeBar() {
             <button
               className="small tb-wide"
               onClick={() => setFreeze(true)}
-              title="Donner un nom à ce moment (point de situation)"
+              title={t("Donner un nom à ce moment (point de situation)")}
             >
               <Snowflake size={13} />
-              Figer
+              {t("Figer")}
             </button>
             <button
               className="small tb-wide"
               onClick={compare}
-              title="Voir ce qui a changé entre ce moment et maintenant"
+              title={t("Voir ce qui a changé entre ce moment et maintenant")}
             >
               <GitCompareArrows size={13} />
-              Comparer
+              {t("Comparer")}
             </button>
             <button
               className="small tb-wide"
               onClick={() => exportCenter({ viewAt: at })}
-              title="Exporter cette version"
+              title={t("Exporter cette version")}
             >
               <Download size={13} />
-              Exporter
+              {t("Exporter")}
             </button>
             <button
               className="small tb-wide"
               onClick={() => present("present", { viewAt: at })}
-              title="Présenter cette version"
+              title={t("Présenter cette version")}
             >
               <MonitorPlay size={13} />
-              Présenter
+              {t("Présenter")}
             </button>
             <button
               className="icon-button tb-narrow"
               onClick={(e) => setMore(e.currentTarget)}
-              aria-label="Autres actions"
+              aria-label={t("Autres actions")}
             >
               <MoreHorizontal size={17} />
             </button>
             <button className="primary small" onClick={closeMachine}>
               <X size={13} />
-              <span className="wide">Retour au</span> direct
+              {rich(t("<0>Retour au</0> direct"), [<span className="wide" />])}
             </button>
           </div>
         </div>
@@ -293,16 +316,16 @@ export function TimeBar() {
             ))}
           </div>
           {snapshots.map((s) => {
-            const t = Date.parse(s.at);
-            if (t < start || t > end) return null;
+            const flagAt = Date.parse(s.at);
+            if (flagAt < start || flagAt > end) return null;
             return (
               <button
                 key={s.id}
                 className="timebar-flag"
-                style={{ left: `${((t - start) / span) * 100}%` }}
-                onClick={() => jump(t)}
+                style={{ left: `${((flagAt - start) / span) * 100}%` }}
+                onClick={() => jump(flagAt)}
                 title={`${s.title} · ${dateTime(s.at)}`}
-                aria-label={`Point de situation ${s.title}`}
+                aria-label={t("Point de situation {title}", { title: s.title })}
               >
                 <Snowflake size={10} />
               </button>
@@ -319,12 +342,12 @@ export function TimeBar() {
               setPlaying(false);
               jump(Number(e.target.value));
             }}
-            aria-label="Moment affiché"
+            aria-label={t("Moment affiché")}
             aria-valuetext={dateTime(iso)}
           />
           <div className="timebar-scale mono" aria-hidden="true">
             <span>{dateTime(new Date(start).toISOString())}</span>
-            <span>Maintenant</span>
+            <span>{t("Maintenant")}</span>
           </div>
         </div>
       </section>
@@ -332,19 +355,19 @@ export function TimeBar() {
         <Popover anchor={more} onClose={() => setMore(null)} align="end">
           <button data-close onClick={() => setFreeze(true)}>
             <Snowflake size={15} />
-            Figer ce moment
+            {t("Figer ce moment")}
           </button>
           <button data-close onClick={compare}>
             <GitCompareArrows size={15} />
-            Comparer avec maintenant
+            {t("Comparer avec maintenant")}
           </button>
           <button data-close onClick={() => exportCenter({ viewAt: at })}>
             <Download size={15} />
-            Exporter cette version
+            {t("Exporter cette version")}
           </button>
           <button data-close onClick={() => present("present", { viewAt: at })}>
             <MonitorPlay size={15} />
-            Présenter cette version
+            {t("Présenter cette version")}
           </button>
         </Popover>
       )}

@@ -20,6 +20,7 @@ import {
   TextField,
   Toggle,
 } from "./fields";
+import { t } from "./i18n.ts";
 
 // Generic editor for every kind of record: a list of fields, a side sheet
 // with save / delete and the links of the record.
@@ -256,8 +257,10 @@ export function RecordSheet<T extends Value>({
     if (readOnly) {
       setError(
         viewAt !== null
-          ? "Lecture seule : vous consultez le passé. Revenez au direct pour écrire."
-          : "Journal clôturé — rouvrez-le pour écrire.",
+          ? t(
+              "Lecture seule : vous consultez le passé. Revenez au direct pour écrire.",
+            )
+          : t("Journal clôturé — rouvrez-le pour écrire."),
       );
       return;
     }
@@ -277,7 +280,9 @@ export function RecordSheet<T extends Value>({
       })
       .map((f) => f.label);
     if (missing.length) {
-      setError(`Champ obligatoire : ${missing.join(", ")}.`);
+      setError(
+        t("Champ obligatoire : {fields}.", { fields: missing.join(", ") }),
+      );
       return;
     }
     const problem = validate?.(value);
@@ -291,13 +296,20 @@ export function RecordSheet<T extends Value>({
         upsert(ops, collection, { ...(value as object), id } as never, author),
       );
       afterSave?.({ ...value, id });
-      toast(existing ? "Modifications enregistrées." : "Ajouté.");
+      toast(existing ? t("Modifications enregistrées.") : t("Ajouté."));
       onClose();
     } catch (err) {
       setError((err as Error).message);
     }
   }
-  const title = titleOf?.(value) || (existing ? "Modifier" : `Ajouter ${noun}`);
+  // German puts the noun first (« eine Person hinzufügen »): capital.
+  const title =
+    titleOf?.(value) ||
+    (existing
+      ? t("Modifier")
+      : t("Ajouter {noun}", { noun }).replace(/^\p{Ll}/u, (c) =>
+          c.toUpperCase(),
+        ));
   return (
     <Sheet
       onClose={onClose}
@@ -313,25 +325,25 @@ export function RecordSheet<T extends Value>({
         readOnly ? (
           <span className="muted">
             {viewAt !== null
-              ? "Version passée : lecture seule."
-              : "Journal clôturé : lecture seule."}
+              ? t("Version passée : lecture seule.")
+              : t("Journal clôturé : lecture seule.")}
           </span>
         ) : confirming ? (
           <>
-            <span className="crit-text">Supprimer définitivement ?</span>
+            <span className="crit-text">{t("Supprimer définitivement ?")}</span>
             <button className="push" onClick={() => setConfirming(false)}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button
               className="danger solid"
               onClick={() => {
                 updateOps((ops) => removeRecords(ops, [existing]));
-                toast("Supprimé.");
+                toast(t("Supprimé."));
                 onClose();
               }}
             >
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           </>
         ) : (
@@ -339,15 +351,15 @@ export function RecordSheet<T extends Value>({
             {existing && (
               <button className="danger" onClick={() => setConfirming(true)}>
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             )}
             {footer}
             <button className="push" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button className="primary" onClick={() => save()}>
-              {existing ? "Enregistrer" : "Ajouter"}
+              {existing ? t("Enregistrer") : t("Ajouter")}
               <kbd>⌘↵</kbd>
             </button>
           </>

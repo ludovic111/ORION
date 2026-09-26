@@ -16,6 +16,7 @@ import { norm } from "../../shared/diffusion";
 import { localNode } from "../../shared/hlc";
 import { messageHighWater } from "../../shared/journal";
 import { PEER_ID, PROTOCOL, Reassembler, sealFrames } from "../../shared/room";
+import { t } from "./i18n.ts";
 
 // Live liaison rooms, one per open liaison of the active journal. The
 // relay is the one of the session (same /sync endpoint, unchanged): it
@@ -146,8 +147,9 @@ function connect(liaison: Liaison, deps: Deps) {
     if (typeof wire.lv === "number" && wire.lv > LIAISON_VERSION) {
       patch(liaison.id, {
         status: "outdated",
-        error:
+        error: t(
           "L’autre PC utilise une version plus récente d’orion aic — rechargez la page.",
+        ),
       });
       return;
     }
@@ -243,7 +245,7 @@ function connect(liaison: Liaison, deps: Deps) {
     } catch {
       patch(liaison.id, {
         status: "off",
-        error: "Chiffrement indisponible : ouvrez orion aic en HTTPS.",
+        error: t("Chiffrement indisponible : ouvrez orion aic en HTTPS."),
       });
       return;
     }
@@ -278,7 +280,7 @@ function connect(liaison: Liaison, deps: Deps) {
         } else if (data.t === "error" && data.code === "version")
           patch(liaison.id, {
             status: "outdated",
-            error: "Version différente sur le relais : rechargez la page.",
+            error: t("Version différente sur le relais : rechargez la page."),
           });
         return;
       }
@@ -290,8 +292,9 @@ function connect(liaison: Liaison, deps: Deps) {
           await receive(message.value as LiaisonWire, message.from);
         } catch {
           patch(liaison.id, {
-            error:
+            error: t(
               "Message de liaison illisible : l’autre PC utilise-t-il le même code de liaison ?",
+            ),
           });
         }
       });

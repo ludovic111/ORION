@@ -3,12 +3,14 @@ import { Mic, MicOff } from "lucide-react";
 import { Ctx } from "../app/context";
 import {
   applyVoiceCommands,
+  fallbackLang,
   insertAt,
   pickLang,
   recognitionClass,
   speechSupported,
 } from "./dictation";
 import "./dictation.css";
+import { t } from "./i18n.ts";
 
 // Minimal shape of the Web Speech API (not in every TypeScript DOM lib).
 type Alternative = { transcript: string };
@@ -31,15 +33,27 @@ type Recognition = {
 };
 type RecognitionClass = new () => Recognition;
 
-const ERRORS: Record<string, string> = {
-  "not-allowed": "Micro refusé : autorisez-le pour ce site dans le navigateur.",
-  "service-not-allowed": "Dictée refusée par le navigateur ou l’organisation.",
-  network: "Pas de connexion : la dictée de ce navigateur passe par internet.",
-  "no-speech": "Rien entendu. Appuyez sur le micro, puis parlez.",
-  "audio-capture": "Aucun micro trouvé sur ce poste.",
-  "language-not-supported":
-    "Le français n’est pas disponible pour la dictée ici.",
-};
+/** Message shown for an error of the recognition, in the post language. */
+function errorText(code: string): string {
+  switch (code) {
+    case "not-allowed":
+      return t("Micro refusé : autorisez-le pour ce site dans le navigateur.");
+    case "service-not-allowed":
+      return t("Dictée refusée par le navigateur ou l’organisation.");
+    case "network":
+      return t(
+        "Pas de connexion : la dictée de ce navigateur passe par internet.",
+      );
+    case "no-speech":
+      return t("Rien entendu. Appuyez sur le micro, puis parlez.");
+    case "audio-capture":
+      return t("Aucun micro trouvé sur ce poste.");
+    case "language-not-supported":
+      return t("Le français n’est pas disponible pour la dictée ici.");
+    default:
+      return t("La dictée s’est arrêtée.");
+  }
+}
 
 /** Keeps the last words of a long interim transcript. */
 const tail = (text: string, max = 60) =>
@@ -74,13 +88,14 @@ export function insertDictation(
 export function DictationButton({
   onText,
   disabled = false,
-  label = "Dicter le texte",
+  label,
 }: {
   onText: (text: string) => void;
   disabled?: boolean;
   label?: string;
 }) {
   const app = useContext(Ctx);
+  const buttonLabel = label ?? t("Dicter le texte");
   const [supported] = useState(
     () => typeof window !== "undefined" && speechSupported(window),
   );
@@ -105,7 +120,7 @@ export function DictationButton({
     rec.continuous = !/Android/i.test(navigator.userAgent);
     rec.interimResults = true;
     rec.maxAlternatives = 1;
-    let retried = false;
+    let retry = "";
     rec.onresult = (event) => {
       let final = "";
       let pending = "";
@@ -121,17 +136,20 @@ export function DictationButton({
     };
     rec.onerror = (event) => {
       if (event.error === "aborted") return;
-      // Browsers without Swiss French: French of France instead.
-      if (event.error === "language-not-supported" && lang !== "fr-FR") {
-        retried = true;
+      // Browsers without the Swiss variant: fr-FR, de-DE or it-IT instead.
+      const fallback = fallbackLang();
+      if (event.error === "language-not-supported" && lang !== fallback) {
+        retry = fallback;
         return;
       }
       // Brave exposes the API without Google's transcription service.
       const brave = "brave" in navigator && event.error === "network";
       setError(
         brave
-          ? "Brave ne transcrit pas la voix : utilisez Chrome, Edge ou Safari."
-          : (ERRORS[event.error] ?? "La dictée s’est arrêtée."),
+          ? t(
+              "Brave ne transcrit pas la voix : utilisez Chrome, Edge ou Safari.",
+            )
+          : errorText(event.error),
       );
     };
     rec.onend = () => {
@@ -139,13 +157,13 @@ export function DictationButton({
       recognition.current = null;
       setListening(false);
       setInterim("");
-      if (retried) start("fr-FR");
+      if (retry) start(retry);
     };
     setError("");
     try {
       rec.start();
     } catch {
-      setError("La dictée n’a pas pu démarrer.");
+      setError(t("La dictée n’a pas pu démarrer."));
       return;
     }
     recognition.current = rec;
@@ -190,7 +208,7 @@ export function DictationButton({
   );
 
   if (!enabled) return null;
-  const status = listening ? tail(interim) || "Écoute…" : error;
+  const status = listening ? tail(interim) || t("Écoute…") : error;
   return (
     <span className="dictation">
       <span
@@ -205,8 +223,8 @@ export function DictationButton({
         type="button"
         className="icon-button dictation-button"
         aria-pressed={listening}
-        aria-label={listening ? "Arrêter la dictée" : label}
-        title={listening ? "Arrêter la dictée (Échap)" : label}
+        aria-label={listening ? t("Arrêter la dictée") : buttonLabel}
+        title={listening ? t("Arrêter la dictée (Échap)") : buttonLabel}
         disabled={disabled}
         // Keeps the focus (and the caret) in the text field.
         onMouseDown={(e) => e.preventDefault()}

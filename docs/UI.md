@@ -1,6 +1,6 @@
 # Interface orion aic · guide du kit
 
-Référence pour écrire un module. Tout est en français dans l’interface, en anglais dans le code et les commentaires.
+Référence pour écrire un module. L’interface est en français (langue source), en allemand et en italien (voir [Langues](#langues-français-allemand-italien)) ; le code et les commentaires sont en anglais.
 
 ## Principes
 
@@ -125,3 +125,119 @@ const {
 Design : voir [DESIGN.md](DESIGN.md), à lire avant d’écrire un écran (parti pris, motifs proscrits, jetons, thèmes). En bref : papier `--bg`, cartes `--bg-1` / `--solid` (rayon `--radius-lg` 20 px, ombre `--shadow-xl`), encre `--text` / `--text-2` / `--text-3`, filets `--line` / `--line-2`, bouton principal `--accent` / `--on-accent` (rayon `--radius-button` 8 px), champs `--radius` 12 px. Police unique IBM Plex Sans (`--sans`, `--display`, titres en 500) et IBM Plex Mono (`--mono`) pour les heures, codes et chiffres. Un seul point `--ember` pour ce qui est en direct. États `--ok`, `--warn`, `--crit`. Teinte discrète d’un type d’élément : `hsl(var(--h) calc(80% * var(--kind-s)) calc(60% * var(--kind-l)))`. Couche globale : `src/atelier.css`. Mode : `:root[data-theme="light" | "dark"]` ; thème de couleur : `:root[data-palette="papier" | "ardoise" | "signal" | "contraste" | "graphite" | "minuit" | "nuit"]` (`src/palettes.css`). Toutes les couleurs passent par les variables : un écran qui écrit une couleur en dur casse les thèmes.
 
 Un module peut avoir sa feuille `src/modules/<nom>/<nom>.css`, importée par le module, avec des classes préfixées (`.map-…`, `.net-…`).
+
+## Langues (français, allemand, italien)
+
+L’interface existe en français (langue source), en allemand (de-CH) et en italien (it-CH). La langue est propre à chaque poste (Réglages → Ce poste, ou le sélecteur FR · DE · IT de la page d’accueil), gardée avec les autres préférences du poste (`prefs.lang`) ; par défaut, celle du navigateur (`de*` → allemand, `it*` → italien, sinon français). Changer de langue redessine tout sans recharger ; `<html lang>` suit.
+
+### Écrire un texte
+
+Chaque dossier a son dictionnaire `i18n.ts` (ou `i18n-<partie>.ts`). La clé est le **texte français tel qu’il s’affiche** ; TypeScript refuse une clé absente et une entrée sans `de` ou `it`.
+
+```ts
+// src/modules/exemple/i18n.ts
+import { translator, type Dict } from "../../../shared/i18n/core.ts";
+import { common } from "../../../shared/i18n/common.ts";
+
+export const { t, tn, dict } = translator({
+  ...common, // Enregistrer, Annuler, Supprimer… (facultatif)
+  "Nouveau moyen": { de: "Neues Mittel", it: "Nuovo mezzo" },
+  "{n} en retard": { de: "{n} überfällig", it: "{n} in ritardo" },
+  "{n} moyen engagé": {
+    de: "{n} Mittel im Einsatz",
+    it: "{n} mezzo impiegato",
+  },
+  "{n} moyens engagés": {
+    de: "{n} Mittel im Einsatz",
+    it: "{n} mezzi impiegati",
+  },
+  "Cliquez sur <0>Placer</0>.": {
+    de: "Klicken Sie auf <0>Platzieren</0>.",
+    it: "Fate clic su <0>Posiziona</0>.",
+  },
+} satisfies Dict);
+```
+
+```tsx
+import { t, tn } from "./i18n.ts"; // toujours avec l’extension .ts (tests node)
+import { rich } from "../../i18n";
+
+<button aria-label={t("Nouveau moyen")}>{t("Nouveau moyen")}</button>;
+{
+  t("{n} en retard", { n: late });
+}
+{
+  tn(count, "{n} moyen engagé", "{n} moyens engagés");
+} // singulier : 0 et 1 en français, 1 en allemand et en italien
+{
+  rich(t("Cliquez sur <0>Placer</0>."), [<strong />]);
+}
+```
+
+- **Jamais de `t()` au chargement d’un module** (constante de premier niveau) : le texte serait figé dans la langue du démarrage. Pour une liste de libellés partagée, utiliser des accesseurs (`get label() { return t("…"); }`, voir `src/app/modules.ts`) ou une fonction. Un `useMemo` qui produit du texte ajoute `useLang()` (`src/i18n`) à ses dépendances.
+- **Même texte, deux sens** : clé libre et `fr` explicite, par exemple `"Poste (fonction)": { fr: "Poste", de: "Funktion", it: "Funzione" }`.
+- **Valeurs fixes des schémas** (états, priorités, types, canaux : `z.enum`) : elles restent enregistrées en français et s’affichent avec `enumLabel(valeur)` (`shared/i18n/enums.ts`). Les comparaisons dans le code gardent la valeur française (`status === "Engagé"`).
+- **Données** : tout ce qui est saisi ou enregistré dans un journal (entrées, messages, noms, valeurs des référentiels, modèles de listes de contrôle, textes des ordres) s’affiche tel quel, sans traduction : un poste allemand et un poste français voient le même texte. Les textes écrits automatiquement dans le journal (« Ordre n° 3 émis »…) le sont dans la langue du poste qui agit.
+- **Données par défaut d’un nouveau journal** (référentiels, renseignements clés standards, tableaux, numéros d’urgence, listes de contrôle intégrées) : dans la langue du poste qui le crée, notée dans `ops.settings.lang` (`shared/i18n/seeds.ts`, `journalLang`, `listValues`). Un journal sans langue est français.
+- **Dates et nombres** : `formatDate` (05.03.2026), `formatTime` (08:04, 24 h), `formatDateTime`, `formatLongDate`, `formatWith`, `formatNumber`, `locale()` de `shared/i18n/core.ts` — toujours à l’heure de Zurich, quelle que soit la langue. Ne plus écrire `"fr-CH"` en dur.
+- **Documents produits** (PDF, DOCX, ODT, XLSX, PPTX, HTML, impressions) : libellés dans la langue du poste, attribut de langue `locale()`.
+- **Palette ⌘K** : les mots-clés de recherche gardent le français et ajoutent la traduction, pour que la recherche marche dans les deux langues ; `inLang("fr", () => …)` (`shared/i18n/core.ts`) lit un libellé dans une autre langue sans changer celle du poste.
+- `npm test` (`tests/i18n.test.mjs`) vérifie chaque dictionnaire : traductions non vides, mêmes paramètres `{n}` et mêmes balises `<0>…</0>` dans les trois langues, aucune phrase laissée en français dans les deux autres langues.
+
+### Aide intégrée
+
+`src/modules/docs/content*.tsx` (français) a ses équivalents dans `src/modules/docs/de/` et `src/modules/docs/it/`, même structure (mêmes sujets, mêmes identifiants, trois niveaux « En bref », « Guide », « Tout le détail »). Modifier une page de l’aide, c’est modifier les trois versions.
+
+### Vocabulaire
+
+Protection civile suisse ; allemand de Suisse (« ss », jamais « ß ») ; guillemets « » ; nom du produit toujours « orion aic » en minuscules.
+
+| Français                     | Deutsch                     | Italiano                        |
+| ---------------------------- | --------------------------- | ------------------------------- |
+| protection civile            | Zivilschutz                 | protezione civile               |
+| protection de la population  | Bevölkerungsschutz          | protezione della popolazione    |
+| OFPP                         | BABS                        | UFPP                            |
+| aide à la conduite (AIC)     | Führungsunterstützung (FU)  | aiuto alla condotta (AC)        |
+| poste de commandement (PC)   | Kommandoposten (KP)         | posto di comando (PC)           |
+| PC front / PC arrière        | KP Front / KP Rück          | PC avanzato / PC arretrato      |
+| journal d’intervention       | Einsatzjournal (Journal)    | diario d’intervento (diario)    |
+| entrée (du journal)          | Eintrag                     | voce                            |
+| message                      | Meldung                     | messaggio                       |
+| situation                    | Lage                        | situazione                      |
+| point de situation           | Lagerapport                 | punto della situazione          |
+| rapport de conduite          | Führungsrapport             | rapporto di condotta            |
+| rythme de conduite           | Führungsrhythmus            | ritmo di condotta               |
+| ordre / mission              | Befehl / Auftrag            | ordine / missione               |
+| ordre en cinq points         | Befehl in fünf Punkten      | ordine in cinque punti          |
+| orientation, intention       | Orientierung, Absicht       | orientamento, intenzione        |
+| dispositions particulières   | besondere Anordnungen       | disposizioni particolari        |
+| emplacements et liaisons     | Standorte und Verbindungen  | ubicazioni e collegamenti       |
+| diffusion, accusé de lecture | Verteilung, Lesebestätigung | diffusione, conferma di lettura |
+| moyens                       | Mittel                      | mezzi                           |
+| demande de moyens            | Mittelanforderung           | richiesta di mezzi              |
+| renseignements clés          | Schlüsselinformationen      | informazioni chiave             |
+| cellule                      | Zelle                       | cellula                         |
+| ce poste (ordinateur)        | dieser Arbeitsplatz         | questa postazione               |
+| opérateur                    | Operateur                   | operatore                       |
+| chef d’intervention          | Einsatzleiter               | capo intervento                 |
+| relève                       | Ablösung                    | avvicendamento                  |
+| quittance                    | Quittung                    | quittanza                       |
+| nom d’appel                  | Rufname                     | nominativo                      |
+| groupe (Polycom)             | Gesprächsgruppe             | gruppo di conversazione         |
+| terminal (radio)             | Endgerät                    | terminale                       |
+| contrôle de liaison          | Verbindungskontrolle        | controllo dei collegamenti      |
+| liste de contrôle            | Checkliste                  | lista di controllo              |
+| référentiels                 | Wertelisten                 | elenchi di riferimento          |
+| session (code de session)    | Sitzung (Sitzungscode)      | sessione (codice di sessione)   |
+| journal clôturé              | abgeschlossenes Journal     | diario chiuso                   |
+| machine à remonter le temps  | Zeitreise                   | macchina del tempo              |
+| traçabilité                  | Nachvollziehbarkeit         | tracciabilità                   |
+| point figé                   | Momentaufnahme              | istantanea                      |
+| exercice / intervention      | Übung / Einsatz             | esercizio / intervento          |
+| direction d’exercice, inject | Übungsleitung, Einspielung  | direzione d’esercizio, inject   |
+| débriefing (RETEX)           | Debriefing                  | debriefing                      |
+| affichage mural              | Wandanzeige                 | schermo murale                  |
+| carte de situation           | Lagekarte                   | carta della situazione          |
+| signe (carte)                | Signatur                    | simbolo                         |
+| calque                       | Ebene                       | livello                         |
+| réglages                     | Einstellungen               | impostazioni                    |

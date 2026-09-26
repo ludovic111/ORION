@@ -2030,6 +2030,13 @@ button.row-item:hover,
 .contact-actions a.button.primary {
   text-decoration: none;
 }
+.contact-actions .button {
+  max-width: 100%;
+  height: auto;
+  min-height: 34px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .landing-foot-links {
   display: inline-flex;
   flex-wrap: wrap;

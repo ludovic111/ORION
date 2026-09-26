@@ -838,6 +838,7 @@
 }
 .docs-screen-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 8px;
@@ -867,7 +868,8 @@
 }
 .docs-screen-pill.grow {
   flex: 1;
-  min-width: 0;
+  /* Longer labels (German) wrap the bar rather than crush the search. */
+  min-width: 140px;
 }
 .docs-screen-pill kbd {
   margin-left: auto;

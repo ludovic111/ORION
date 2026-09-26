@@ -21,7 +21,7 @@ import {
   type TrailPoint,
   type Units,
 } from "../../shared/live";
-import { upsert } from "../../shared/ops";
+import { journalLang, upsert } from "../../shared/ops";
 import { addLink, ref, type Ref } from "../../shared/links";
 import { toZurichInput } from "../../shared/time";
 import { useApp } from "../app/context";
@@ -29,6 +29,8 @@ import { Modal } from "../journal/Modal";
 import { Toggle } from "../ui/fields";
 import type { EphemeralHandler, SyncStatus } from "../sync/useSync";
 import { liveActions, liveStore, type Sharing } from "./store";
+import { formatNumber, rich } from "../i18n";
+import { t, tIn } from "./i18n.ts";
 import "./live.css";
 
 // Live positions of the teams, on every post of an open session:
@@ -54,7 +56,7 @@ type Kept = {
 const km = (m: number) =>
   m < 1000
     ? `${Math.round(m)} m`
-    : `${(m / 1000).toLocaleString("fr-CH", { maximumFractionDigits: 1 })} km`;
+    : `${formatNumber(m / 1000, { maximumFractionDigits: 1 })} km`;
 
 function fixOf(p: GeolocationPosition): Fix {
   const now = Date.now();
@@ -188,7 +190,7 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
       setDialog("save");
     } else {
       setDialog(null);
-      toast("Partage de position arrêté.");
+      toast(t("Partage de position arrêté."));
     }
   }, [halt, toast]);
 
@@ -200,7 +202,7 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
       record: boolean;
     }) => {
       if (!navigator.geolocation) {
-        toast("Localisation indisponible sur cet appareil.");
+        toast(t("Localisation indisponible sur cet appareil."));
         return;
       }
       halt();
@@ -249,7 +251,9 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
             halt();
             setDialog(null);
             toast(
-              "Localisation refusée : autorisez-la pour ce site dans le navigateur, puis recommencez.",
+              t(
+                "Localisation refusée : autorisez-la pour ce site dans le navigateur, puis recommencez.",
+              ),
             );
             return;
           }
@@ -259,8 +263,8 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
                 ...prev,
                 error:
                   err.code === err.TIMEOUT
-                    ? "Pas de signal GPS pour le moment."
-                    : "Position indisponible pour le moment.",
+                    ? t("Pas de signal GPS pour le moment.")
+                    : t("Position indisponible pour le moment."),
               },
           );
         },
@@ -343,6 +347,8 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
     const id = crypto.randomUUID();
     const from = toZurichInput(k.track[0][2], "time");
     const to = toZurichInput(k.track[k.track.length - 1][2], "time");
+    // Layer of the resources, as named in the référentiel of the journal.
+    const layer = tIn(journalLang(app.live.ops), "Moyens");
     try {
       app.updateOps((ops) => {
         let next = upsert(
@@ -350,13 +356,25 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
           "places",
           {
             id,
-            label: `Trace ${k.label} ${from}–${to}`.slice(0, 200),
+            label: t("Trace {label} {from}–{to}", {
+              label: k.label,
+              from,
+              to,
+            }).slice(0, 200),
             kind: "line",
             symbol: "",
             color: "",
-            layer: "Moyens",
+            layer,
             points: trackLine(k.track),
-            notes: `Trace GPS enregistrée par ${app.author} : ${km(trackLength(k.track))}, de ${from} à ${to}.`,
+            notes: t(
+              "Trace GPS enregistrée par {author} : {distance}, de {from} à {to}.",
+              {
+                author: app.author,
+                distance: km(trackLength(k.track)),
+                from,
+                to,
+              },
+            ),
             maps: [],
           },
           app.author,
@@ -377,7 +395,7 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
     }
     setKept(null);
     setDialog(null);
-    toast("Trace enregistrée sur la carte, calque Moyens.");
+    toast(t("Trace enregistrée sur la carte, calque {layer}.", { layer }));
   }
 
   return (
@@ -423,16 +441,26 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
           />
         ))}
       {dialog === "save" && kept && (
-        <Modal title="Enregistrer la trace ?" onClose={() => setDialog(null)}>
+        <Modal
+          title={t("Enregistrer la trace ?")}
+          onClose={() => setDialog(null)}
+        >
           <div className="stack">
             <p className="modal-intro">
-              La trace de « {kept.label} » est gardée en mémoire sur ce poste
-              seulement : {kept.track.length} points,{" "}
-              {km(trackLength(kept.track))}, de{" "}
-              {toZurichInput(kept.track[0][2], "time")} à{" "}
-              {toZurichInput(kept.track[kept.track.length - 1][2], "time")}.
-              Enregistrée, elle devient une ligne de la carte (calque Moyens),
-              visible de tous les postes et gardée dans l’historique.
+              {t(
+                "La trace de « {label} » est gardée en mémoire sur ce poste seulement : {n} points, {distance}, de {from} à {to}. Enregistrée, elle devient une ligne de la carte (calque {layer}), visible de tous les postes et gardée dans l’historique.",
+                {
+                  label: kept.label,
+                  n: kept.track.length,
+                  distance: km(trackLength(kept.track)),
+                  from: toZurichInput(kept.track[0][2], "time"),
+                  to: toZurichInput(
+                    kept.track[kept.track.length - 1][2],
+                    "time",
+                  ),
+                  layer: tIn(journalLang(app.live.ops), "Moyens"),
+                },
+              )}
             </p>
             <div className="modal-actions">
               <button
@@ -441,10 +469,10 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
                 onClick={() => {
                   setKept(null);
                   setDialog(null);
-                  toast("Trace abandonnée : rien n’a été enregistré.");
+                  toast(t("Trace abandonnée : rien n’a été enregistré."));
                 }}
               >
-                Abandonner la trace
+                {t("Abandonner la trace")}
               </button>
               <button
                 type="button"
@@ -452,7 +480,7 @@ export function LiveHost({ sync }: { sync: LiveSync }) {
                 onClick={() => saveTrack(kept)}
               >
                 <Route size={14} />
-                Enregistrer sur la carte
+                {t("Enregistrer sur la carte")}
               </button>
             </div>
           </div>
@@ -478,29 +506,32 @@ function ShareIndicator({
   const state = sharing.error
     ? sharing.error
     : !sharing.fix
-      ? "en attente du GPS"
+      ? t("en attente du GPS")
       : !connected
-        ? "hors ligne : personne ne la reçoit"
+        ? t("hors ligne : personne ne la reçoit")
         : sharing.sentAt
-          ? `envoyée ${ageText(now - sharing.sentAt)}`
-          : "envoi…";
+          ? t("envoyée {age}", { age: ageText(now - sharing.sentAt) })
+          : t("envoi…");
   return (
     <div className="live-share" role="status" aria-live="polite">
       <button
         type="button"
         className="live-share-main"
         onClick={onOpen}
-        title="Détails du partage de position"
+        title={t("Détails du partage de position")}
       >
         <span
           className={`radar${sharing.fix && connected && !sharing.error ? "" : " idle"}`}
           aria-hidden="true"
         />
         <span className="live-share-text">
-          <strong>Position partagée · {sharing.label}</strong>
+          <strong>
+            {t("Position partagée · {label}", { label: sharing.label })}
+          </strong>
           <small>
             {state}
-            {sharing.recording && ` · trace ${km(trackLength(sharing.track))}`}
+            {sharing.recording &&
+              ` · ${t("trace {distance}", { distance: km(trackLength(sharing.track)) })}`}
           </small>
         </span>
       </button>
@@ -510,7 +541,7 @@ function ShareIndicator({
         onClick={onStop}
       >
         <Square size={12} />
-        Arrêter
+        {t("Arrêter")}
       </button>
     </div>
   );
@@ -544,7 +575,7 @@ function ConsentDialog({
       ? cells.find((c) => `cell:${c.id}` === r)?.name
       : resources.find((x) => `resource:${x.id}` === r)?.name;
   return (
-    <Modal title="Partager ma position" onClose={onClose}>
+    <Modal title={t("Partager ma position")} onClose={onClose}>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -554,40 +585,49 @@ function ConsentDialog({
       >
         <div className="live-consent">
           <p>
-            Ce poste envoie sa <strong>position GPS</strong> aux postes
-            connectés à la même session, environ toutes les 15 secondes (plus
-            souvent en mouvement).
+            {rich(
+              t(
+                "Ce poste envoie sa <0>position GPS</0> aux postes connectés à la même session, environ toutes les 15 secondes (plus souvent en mouvement).",
+              ),
+              [<strong />],
+            )}
           </p>
           <ul>
             <li>
-              <strong>Qui la voit :</strong> seulement les postes qui ont le
-              code de la session, sur la carte (calque « Positions en direct »).
-              Elle est chiffrée de bout en bout : le relais ne peut pas la lire
-              et ne garde rien.
+              {rich(
+                t(
+                  "<0>Qui la voit :</0> seulement les postes qui ont le code de la session, sur la carte (calque « Positions en direct »). Elle est chiffrée de bout en bout : le relais ne peut pas la lire et ne garde rien.",
+                ),
+                [<strong />],
+              )}
             </li>
             <li>
-              <strong>Ce qui est gardé :</strong> rien. Les autres postes
-              gardent en mémoire la dernière position et le trajet des 30
-              dernières minutes, puis l’oublient. Rien n’entre dans le journal,
-              l’historique ou les archives, sauf si un opérateur consigne une
-              position exprès.
+              {rich(
+                t(
+                  "<0>Ce qui est gardé :</0> rien. Les autres postes gardent en mémoire la dernière position et le trajet des 30 dernières minutes, puis l’oublient. Rien n’entre dans le journal, l’historique ou les archives, sauf si un opérateur consigne une position exprès.",
+                ),
+                [<strong />],
+              )}
             </li>
             <li>
-              <strong>Quand ça s’arrête :</strong> quand vous touchez « Arrêter
-              » (toujours visible en haut de l’écran), quand vous fermez
-              l’onglet, ou quand l’appareil se verrouille (le navigateur coupe
-              la localisation).
+              {rich(
+                t(
+                  "<0>Quand ça s’arrête :</0> quand vous touchez « Arrêter » (toujours visible en haut de l’écran), quand vous fermez l’onglet, ou quand l’appareil se verrouille (le navigateur coupe la localisation).",
+                ),
+                [<strong />],
+              )}
             </li>
           </ul>
           {!connected && (
             <p className="hint warn">
-              La synchronisation n’est pas en direct : tant qu’elle ne l’est
-              pas, seule cette page voit la position.
+              {t(
+                "La synchronisation n’est pas en direct : tant qu’elle ne l’est pas, seule cette page voit la position.",
+              )}
             </p>
           )}
         </div>
         <label>
-          <span>Équipe ou moyen représenté</span>
+          <span>{t("Équipe ou moyen représenté")}</span>
           <select
             value={link}
             onChange={(e) => {
@@ -596,9 +636,9 @@ function ConsentDialog({
               if (name && (!touched || !label.trim())) setLabel(name);
             }}
           >
-            <option value="">Aucun (libellé libre)</option>
+            <option value="">{t("Aucun (libellé libre)")}</option>
             {cells.length > 0 && (
-              <optgroup label="Postes et cellules (Équipe)">
+              <optgroup label={t("Postes et cellules (Équipe)")}>
                 {cells.map((c) => (
                   <option key={c.id} value={`cell:${c.id}`}>
                     {c.name}
@@ -607,7 +647,7 @@ function ConsentDialog({
               </optgroup>
             )}
             {resources.length > 0 && (
-              <optgroup label="Moyens">
+              <optgroup label={t("Moyens")}>
                 {resources.map((r) => (
                   <option key={r.id} value={`resource:${r.id}`}>
                     {r.name}
@@ -618,11 +658,11 @@ function ConsentDialog({
             )}
           </select>
           <small>
-            Relie la position à sa fiche : un clic sur la carte l’ouvre.
+            {t("Relie la position à sa fiche : un clic sur la carte l’ouvre.")}
           </small>
         </label>
         <label>
-          <span>Libellé sur la carte</span>
+          <span>{t("Libellé sur la carte")}</span>
           <input
             value={label}
             maxLength={80}
@@ -633,30 +673,34 @@ function ConsentDialog({
             }}
           />
           <small>
-            Nom d’appel ou nom de l’équipe, par exemple « Patrouille 2 ».
+            {t("Nom d’appel ou nom de l’équipe, par exemple « Patrouille 2 ».")}
           </small>
         </label>
         {canWake && (
           <Toggle
-            label="Garder l’écran allumé"
-            hint="Évite que le téléphone se verrouille et coupe le partage. Consomme davantage de batterie."
+            label={t("Garder l’écran allumé")}
+            hint={t(
+              "Évite que le téléphone se verrouille et coupe le partage. Consomme davantage de batterie.",
+            )}
             checked={wake}
             onChange={setWake}
           />
         )}
         <Toggle
-          label="Enregistrer la trace"
-          hint="Le trajet est gardé en mémoire sur ce poste. À l’arrêt, vous choisissez de l’enregistrer comme ligne sur la carte ou de l’abandonner."
+          label={t("Enregistrer la trace")}
+          hint={t(
+            "Le trajet est gardé en mémoire sur ce poste. À l’arrêt, vous choisissez de l’enregistrer comme ligne sur la carte ou de l’abandonner.",
+          )}
           checked={record}
           onChange={setRecord}
         />
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary" disabled={!label.trim()}>
             <Navigation size={14} />
-            Partager ma position
+            {t("Partager ma position")}
           </button>
         </div>
       </form>
@@ -681,53 +725,64 @@ function SharingDialog({
 }) {
   const fix = sharing.fix;
   return (
-    <Modal title="Position partagée" onClose={onClose}>
+    <Modal title={t("Position partagée")} onClose={onClose}>
       <div className="stack">
         <dl className="live-facts">
           <div>
-            <dt>Libellé</dt>
+            <dt>{t("Libellé")}</dt>
             <dd>{sharing.label}</dd>
           </div>
           <div>
-            <dt>Depuis</dt>
+            <dt>{t("Depuis")}</dt>
             <dd className="mono">{toZurichInput(sharing.since, "time")}</dd>
           </div>
           <div>
-            <dt>Dernière position</dt>
+            <dt>{t("Dernière position")}</dt>
             <dd>
               {fix
-                ? `${ageText(now - fix.t)}, précision ± ${Math.round(fix.acc)} m`
-                : sharing.error || "en attente du GPS"}
+                ? t("{age}, précision ± {m} m", {
+                    age: ageText(now - fix.t),
+                    m: Math.round(fix.acc),
+                  })
+                : sharing.error || t("en attente du GPS")}
             </dd>
           </div>
           <div>
-            <dt>Envoi</dt>
+            <dt>{t("Envoi")}</dt>
             <dd>
               {!connected
-                ? "hors ligne : personne ne la reçoit"
+                ? t("hors ligne : personne ne la reçoit")
                 : sharing.sentAt
                   ? ageText(now - sharing.sentAt)
-                  : "pas encore"}
+                  : t("pas encore")}
             </dd>
           </div>
         </dl>
         <Toggle
-          label="Enregistrer la trace"
+          label={t("Enregistrer la trace")}
           hint={
             sharing.recording
-              ? `${sharing.track.length} points, ${km(trackLength(sharing.track))}. À l’arrêt, vous choisissez de l’enregistrer ou de l’abandonner.`
-              : "Gardée en mémoire sur ce poste jusqu’à l’arrêt du partage. La désactiver abandonne le trajet gardé."
+              ? t(
+                  "{n} points, {distance}. À l’arrêt, vous choisissez de l’enregistrer ou de l’abandonner.",
+                  {
+                    n: sharing.track.length,
+                    distance: km(trackLength(sharing.track)),
+                  },
+                )
+              : t(
+                  "Gardée en mémoire sur ce poste jusqu’à l’arrêt du partage. La désactiver abandonne le trajet gardé.",
+                )
           }
           checked={sharing.recording}
           onChange={onRecord}
         />
         <div className="modal-actions">
           <button type="button" className="push-left" onClick={onClose}>
-            Fermer
+            {t("Fermer")}
           </button>
           <button type="button" className="danger solid" onClick={onStop}>
             <Square size={13} />
-            Arrêter le partage
+            {t("Arrêter le partage")}
           </button>
         </div>
       </div>

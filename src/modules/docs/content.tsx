@@ -47,15 +47,37 @@ import { CONDUCT_TOPICS } from "./conduct";
 import { EXERCISE_TOPICS } from "./content-exercise";
 import { VALISE_TOPIC } from "./content-valise";
 import { DICTATION_TOPIC } from "./content-dictation";
+import { t } from "./i18n-content.ts";
+import type { Lang } from "../../i18n";
 
 export type Level = "short" | "guide" | "full";
 export type TopicGroup = "start" | "modules" | "together" | "reference";
 
 export const GROUPS: { id: TopicGroup; label: string }[] = [
-  { id: "start", label: "Bien démarrer" },
-  { id: "modules", label: "Modules" },
-  { id: "together", label: "Travailler ensemble" },
-  { id: "reference", label: "Référence" },
+  {
+    id: "start",
+    get label() {
+      return t("Bien démarrer");
+    },
+  },
+  {
+    id: "modules",
+    get label() {
+      return t("Modules");
+    },
+  },
+  {
+    id: "together",
+    get label() {
+      return t("Travailler ensemble");
+    },
+  },
+  {
+    id: "reference",
+    get label() {
+      return t("Référence");
+    },
+  },
 ];
 
 export type Topic = {
@@ -77,7 +99,7 @@ export type Topic = {
   always?: boolean;
 };
 
-const mod = (id: Module, openLabel: string) => {
+export const mod = (id: Module, openLabel: string) => {
   const info = moduleInfo(id);
   return {
     module: id,
@@ -88,7 +110,7 @@ const mod = (id: Module, openLabel: string) => {
   };
 };
 
-const SITE = "https://orionaic.xyz";
+export const SITE = "https://orionaic.xyz";
 
 export const TOPICS: Topic[] = [
   // ---------------------------------------------------------------- start
@@ -3673,3 +3695,30 @@ export function resolveTopic(topic: string): string {
   if (TOPICS.some((t) => t.id === topic)) return topic;
   return "start";
 }
+
+// ---------- Languages ----------
+// The German and Italian help (de/, it/) has the same topics in the same
+// order; it is loaded when a post first shows the help in that language.
+
+const byLang: Partial<Record<Lang, Topic[]>> = { fr: TOPICS };
+
+/** Topics in a language, if already loaded. */
+export const topicsFor = (lang: Lang): Topic[] | undefined => byLang[lang];
+
+/** Loads the topics of a language (French is always there). */
+export async function loadTopics(lang: Lang): Promise<Topic[]> {
+  const known = byLang[lang];
+  if (known) return known;
+  const list =
+    lang === "de"
+      ? (await import("./de/index")).TOPICS
+      : (await import("./it/index")).TOPICS;
+  byLang[lang] = list;
+  return list;
+}
+
+/** Titles of the module topics in the language of the post. */
+export const localized = (list: Topic[]): Topic[] =>
+  list.map((tp) =>
+    tp.module ? { ...tp, title: moduleInfo(tp.module).label } : tp,
+  );

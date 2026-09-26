@@ -22,18 +22,19 @@ Locale et chiffrée, sans compte ni base de données, synchronisée en direct en
 5. [Travailler à plusieurs postes](#travailler-à-plusieurs-postes)
 6. [Impression automatique](#impression-automatique)
 7. [Référentiels et réglages](#référentiels-et-réglages)
-8. [Session et stockage](#session-et-stockage)
-9. [Journal d’intervention](#journal-dintervention)
-10. [Plan du réseau radio](#plan-du-réseau-radio)
-11. [Téléphone, tablette et QR codes](#téléphone-tablette-et-qr-codes)
-12. [Présenter, remonter le temps, exporter](#présenter-remonter-le-temps-exporter)
-13. [Exercices et débriefing](#exercices-et-débriefing)
-14. [Sécurité](#sécurité)
-15. [Limites](#limites)
-16. [Installation et hébergement](#installation-et-hébergement)
-17. [Développement](#développement)
-18. [Structure du code](#structure-du-code)
-19. [Sources métier](#sources-métier)
+8. [Langues](#langues)
+9. [Session et stockage](#session-et-stockage)
+10. [Journal d’intervention](#journal-dintervention)
+11. [Plan du réseau radio](#plan-du-réseau-radio)
+12. [Téléphone, tablette et QR codes](#téléphone-tablette-et-qr-codes)
+13. [Présenter, remonter le temps, exporter](#présenter-remonter-le-temps-exporter)
+14. [Exercices et débriefing](#exercices-et-débriefing)
+15. [Sécurité](#sécurité)
+16. [Limites](#limites)
+17. [Installation et hébergement](#installation-et-hébergement)
+18. [Développement](#développement)
+19. [Structure du code](#structure-du-code)
+20. [Sources métier](#sources-métier)
 
 ---
 
@@ -152,6 +153,19 @@ Chaque poste choisit un thème clair et un thème sombre ; le bouton soleil / lu
 
 - **Session et journal** : propriétés du journal (toutes modifiables), opérateur, sauvegarde chiffrée, clôture et réouverture, effacement de la session.
 - **Retirer un journal** de la session : menu du titre du journal.
+
+## Langues
+
+orion aic parle **français, allemand (Suisse) et italien (Suisse)**, pour la collaboration intercantonale : un PC genevois et un PC bernois ou tessinois peuvent travailler dans la même session, chacun dans sa langue.
+
+- **Une langue par poste** : Réglages → Ce poste → Langue, ou le sélecteur **FR · DE · IT** de la page d’accueil. Par défaut, la langue du navigateur (allemand si `de…`, italien si `it…`, sinon français). Le changement est immédiat, sans recharger ; le choix reste sur ce poste, comme le thème.
+- **Tout est traduit** : menus, modules, dialogues, messages d’erreur, notifications, palette ⌘K (la recherche trouve aussi les mots français), impressions A4, exports PDF, DOCX, ODT, XLSX, PPTX, HTML, affichage mural et aide intégrée (trois niveaux dans les trois langues).
+- **Les données ne sont jamais traduites** : entrées du journal, messages, noms, valeurs des référentiels, listes de contrôle et ordres restent tels qu’ils ont été écrits ; un poste allemand et un poste français voient le même texte. Seuls les états, priorités et types fixes (« Engagé », « Urgent », « Décision »…) s’affichent dans la langue du poste, puisqu’ils sont des codes.
+- **Un nouveau journal** reçoit ses valeurs par défaut (référentiels, renseignements clés et tableaux standards, numéros d’urgence, listes de contrôle intégrées, types d’ordre) dans la langue du poste qui le crée ; tous les postes proposent ensuite ces mêmes valeurs. Un journal existant garde les siennes (français).
+- L’**exercice de démonstration** se génère dans la langue du poste qui l’ouvre.
+- Dates au format **jj.mm.aaaa**, heures sur 24 h, toujours à l’heure de Zurich.
+- Vocabulaire de la protection civile suisse : Zivilschutz, Führungsunterstützung, Kommandoposten (KP), Einsatzjournal, Lage, Führungsrapport, BABS ; protezione civile, aiuto alla condotta, posto di comando (PC), diario d’intervento, rapporto di condotta, UFPP.
+- Aucune traduction automatique ni service externe : les textes sont dans l’application. Ajouter ou corriger une traduction : voir [docs/UI.md](docs/UI.md#langues-français-allemand-italien).
 
 ## Session et stockage
 

@@ -37,11 +37,16 @@ import { Popover } from "../../ui/Popover";
 import { Segmented, Toggle } from "../../ui/fields";
 import { HoverCard } from "../../ui/links";
 import { Figures } from "../../ui/Figures";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { compareText } from "../../../shared/i18n/core.ts";
+import { useLang } from "../../i18n";
+import { t } from "./i18n.ts";
 import "./missions.css";
 
 type Status = Fields["status"];
 type TypeFilter = "all" | "Mission" | "Demande" | "Décision" | "other";
 
+// Hints are getters: read in the language of the post when shown.
 const LANES: {
   status: Status;
   tone: string;
@@ -52,51 +57,61 @@ const LANES: {
     status: "Consigné",
     tone: "muted",
     icon: NotebookPen,
-    hint: "Inscrit, sans suivi",
+    get hint() {
+      return t("Inscrit, sans suivi");
+    },
   },
   {
     status: "À traiter",
     tone: "warn",
     icon: CircleDashed,
-    hint: "Pas encore commencé",
+    get hint() {
+      return t("Pas encore commencé");
+    },
   },
   {
     status: "En cours",
     tone: "accent",
     icon: PlayCircle,
-    hint: "Quelqu’un s’en occupe",
+    get hint() {
+      return t("Quelqu’un s’en occupe");
+    },
   },
   {
     status: "Terminé",
     tone: "ok",
     icon: CheckCircle2,
-    hint: "Fait et quittancé",
+    get hint() {
+      return t("Fait et quittancé");
+    },
   },
   {
     status: "Annulé",
     tone: "muted",
     icon: Ban,
-    hint: "Abandonné ou sans objet",
+    get hint() {
+      return t("Abandonné ou sans objet");
+    },
   },
 ];
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
-  { value: "all", label: "Tout" },
-  { value: "Mission", label: "Missions" },
-  { value: "Demande", label: "Demandes" },
-  { value: "Décision", label: "Décisions" },
-  { value: "other", label: "Autres" },
+const typeOptions = (): { value: TypeFilter; label: string }[] => [
+  { value: "all", label: t("Tout") },
+  { value: "Mission", label: t("Missions") },
+  { value: "Demande", label: t("Demandes") },
+  { value: "Décision", label: t("Décisions") },
+  { value: "other", label: t("Autres") },
 ];
 const PAGE = 40;
 const NO_ASSIGNEE = "__none__";
 
 function span(ms: number) {
   const minutes = Math.max(1, Math.round(ms / 60_000));
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return t("{n} min", { n: minutes });
   const hours = Math.floor(minutes / 60);
   if (hours < 24)
     return `${hours} h${minutes % 60 ? ` ${String(minutes % 60).padStart(2, "0")}` : ""}`;
   const days = Math.round(hours / 24);
-  return `${days} j`;
+  return t("{n} j", { n: days });
 }
 
 function dueInfo(entry: Entry, now: number) {
@@ -109,10 +124,10 @@ function dueInfo(entry: Entry, now: number) {
     late,
     soon: open && !late && diff < 15 * 60_000,
     text: !open
-      ? `échéance ${time(f.dueAt)}`
+      ? t("échéance {time}", { time: time(f.dueAt) })
       : late
-        ? `dépassée de ${span(-diff)}`
-        : `dans ${span(diff)} · ${time(f.dueAt)}`,
+        ? t("dépassée de {span}", { span: span(-diff) })
+        : t("dans {span} · {time}", { span: span(diff), time: time(f.dueAt) }),
   };
 }
 
@@ -164,6 +179,7 @@ export function Missions() {
     null,
   );
   const movedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lang = useLang();
 
   const lanes = LANES.filter((l) => withLogged || l.status !== "Consigné");
   const pool = useMemo(
@@ -177,8 +193,8 @@ export function Missions() {
     () =>
       [
         ...new Set(pool.map((e) => current(e).assignee.trim()).filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b, "fr")),
-    [pool],
+      ].sort(compareText),
+    [pool, lang],
   );
   const shown = useMemo(() => {
     let list = pool.filter((e) => {
@@ -226,18 +242,14 @@ export function Missions() {
     }
     return [...map.entries()]
       .sort(([a], [b]) =>
-        a === NO_ASSIGNEE
-          ? 1
-          : b === NO_ASSIGNEE
-            ? -1
-            : a.localeCompare(b, "fr"),
+        a === NO_ASSIGNEE ? 1 : b === NO_ASSIGNEE ? -1 : compareText(a, b),
       )
       .map(([key, list]) => ({
         key,
-        label: key === NO_ASSIGNEE ? "Sans responsable" : key,
+        label: key === NO_ASSIGNEE ? t("Sans responsable") : key,
         list,
       }));
-  }, [bySwimlane, shown]);
+  }, [bySwimlane, shown, lang]);
 
   function move(id: string, status: Status) {
     // Written to the live journal; the gate refuses (with a message) in the
@@ -249,14 +261,25 @@ export function Missions() {
     try {
       if (
         !updateJournal(
-          reviseEntry(live, id, { ...f, status }, author, `Suivi : ${status}`),
+          reviseEntry(
+            live,
+            id,
+            { ...f, status },
+            author,
+            t("Suivi : {status}", { status: enumLabel(status) }),
+          ),
         )
       )
         return;
       clearTimeout(movedTimer.current);
       setMoved({ id, done: status === "Terminé" });
       movedTimer.current = setTimeout(() => setMoved(null), 1600);
-      toast(`${numberLabel(entry)} : ${status}.`);
+      toast(
+        t("{entry} : {status}.", {
+          entry: numberLabel(entry),
+          status: enumLabel(status),
+        }),
+      );
     } catch (error) {
       toast(error instanceof Error ? error.message : String(error));
     }
@@ -273,12 +296,17 @@ export function Missions() {
             entry.id,
             { ...f, dueAt: snooze(f.dueAt, 15) },
             author,
-            "Échéance reportée de 15 min",
+            t("Échéance reportée de {n} min", { n: 15 }),
           ),
         )
       )
         return;
-      toast(`${numberLabel(entry)} : échéance reportée de 15 min.`);
+      toast(
+        t("{entry} : échéance reportée de {n} min.", {
+          entry: numberLabel(entry),
+          n: 15,
+        }),
+      );
     } catch (error) {
       toast(error instanceof Error ? error.message : String(error));
     }
@@ -287,7 +315,7 @@ export function Missions() {
   const follow = (entry: Entry) =>
     compose({
       type: "Quittance",
-      reference: `Suite de ${numberLabel(entry)}`,
+      reference: t("Suite de {entry}", { entry: numberLabel(entry) }),
       recipient: current(entry).source,
     });
 
@@ -311,14 +339,14 @@ export function Missions() {
         }
       >
         <Send size={15} />
-        Nouvelle demande
+        {t("Nouvelle demande")}
       </button>
       <button
         className="primary"
         onClick={() => compose({ type: "Mission", status: "À traiter" })}
       >
         <Plus size={15} />
-        Nouvelle mission
+        {t("Nouvelle mission")}
       </button>
     </>
   );
@@ -333,19 +361,19 @@ export function Missions() {
 
       <Figures
         className="missions-summary"
-        label="Suivi en chiffres"
+        label={t("Suivi en chiffres")}
         items={[
           ...LANES.filter((l) => l.status !== "Consigné").map((l) => {
             const n = summary.count.get(l.status) ?? 0;
             return {
-              label: l.status,
+              label: enumLabel(l.status),
               value: n,
               tone: (l.status === "À traiter" && n ? "warn" : "") as
                 "warn" | "",
             };
           }),
           {
-            label: "En retard",
+            label: t("En retard"),
             value: summary.late,
             tone: summary.late ? "crit" : "",
             onClick: summary.late ? () => setLateOnly(true) : undefined,
@@ -353,79 +381,80 @@ export function Missions() {
           summary.next
             ? {
                 id: "next",
-                label: `Prochaine échéance ${dueInfo(summary.next, now)?.text ?? ""}`,
+                label: t("Prochaine échéance {when}", {
+                  when: dueInfo(summary.next, now)?.text ?? "",
+                }),
                 value: numberLabel(summary.next),
                 onClick: () => summary.next && openEntry(summary.next.id),
               }
-            : { id: "next", label: "Aucune échéance à venir", value: "—" },
+            : { id: "next", label: t("Aucune échéance à venir"), value: "—" },
         ]}
       />
 
       {!anything && !withLogged ? (
         <EmptyState
           icon={<KanbanSquare size={28} />}
-          title="Aucun point à suivre"
+          title={t("Aucun point à suivre")}
           actions={
             <>
               {actions}
               <button onClick={() => setWithLogged(true)}>
                 <NotebookPen size={15} />
-                Voir les entrées sans suivi
+                {t("Voir les entrées sans suivi")}
               </button>
             </>
           }
         >
-          Chaque entrée du journal dont l’état est « À traiter », « En cours »,
-          « Terminé » ou « Annulé » apparaît ici comme une carte. Glissez une
-          carte d’une colonne à l’autre pour changer son état : le journal garde
-          la trace de chaque changement.
+          {t(
+            "Chaque entrée du journal dont l’état est « À traiter », « En cours », « Terminé » ou « Annulé » apparaît ici comme une carte. Glissez une carte d’une colonne à l’autre pour changer son état : le journal garde la trace de chaque changement.",
+          )}
         </EmptyState>
       ) : (
         <>
           <div className="missions-filters">
             <Segmented
-              label="Type"
+              label={t("Type")}
               value={type}
               onChange={setType}
-              options={TYPE_OPTIONS}
+              options={typeOptions()}
             />
             <label className="missions-select">
               <User size={14} />
-              <span className="sr-only">Responsable</span>
+              <span className="sr-only">{t("Responsable")}</span>
               <select
                 value={assignee}
                 onChange={(e) => setAssignee(e.target.value)}
               >
-                <option value="">Tous les responsables</option>
+                <option value="">{t("Tous les responsables")}</option>
                 {assignees.map((a) => (
                   <option key={a} value={a}>
                     {a}
                   </option>
                 ))}
-                <option value={NO_ASSIGNEE}>Sans responsable</option>
+                <option value={NO_ASSIGNEE}>{t("Sans responsable")}</option>
               </select>
             </label>
             <div className="search missions-search">
               <Search size={14} />
               <input
                 value={query}
-                placeholder="Chercher…"
-                aria-label="Chercher une mission"
+                placeholder={t("Chercher…")}
+                aria-label={t("Chercher une mission")}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             <Toggle
-              label="Seulement en retard"
+              label={t("Seulement en retard")}
               checked={lateOnly}
               onChange={setLateOnly}
             />
             <Toggle
-              label="Par responsable"
+              label={t("Par responsable")}
               checked={bySwimlane}
               onChange={setBySwimlane}
             />
             <Toggle
-              label="Inclure les entrées sans suivi"
+              label={t("Inclure les entrées sans suivi")}
               checked={withLogged}
               onChange={setWithLogged}
             />
@@ -455,7 +484,7 @@ export function Missions() {
                       key={lane.status}
                       className={`lane missions-lane missions-tone-${lane.tone}${over === laneKey ? " drop" : ""}`}
                       role="group"
-                      aria-label={lane.status}
+                      aria-label={enumLabel(lane.status)}
                       onDragOver={(e) => {
                         if (!dragId) return;
                         e.preventDefault();
@@ -474,7 +503,7 @@ export function Missions() {
                     >
                       <div className="lane-head">
                         <Icon size={15} />
-                        <strong>{lane.status}</strong>
+                        <strong>{enumLabel(lane.status)}</strong>
                         <span className="count">{list.length}</span>
                       </div>
                       {list.slice(0, limit).map((entry) => (
@@ -516,12 +545,14 @@ export function Missions() {
                             setExpanded((s) => new Set(s).add(laneKey))
                           }
                         >
-                          Afficher {list.length - PAGE} de plus
+                          {t("Afficher {n} de plus", {
+                            n: list.length - PAGE,
+                          })}
                         </button>
                       )}
                       {!list.length && (
                         <p className="missions-empty">
-                          {dragId ? "Déposez la carte ici" : lane.hint}
+                          {dragId ? t("Déposez la carte ici") : lane.hint}
                         </p>
                       )}
                     </div>
@@ -532,7 +563,7 @@ export function Missions() {
           ))}
           {!shown.length && (
             <p className="muted missions-none">
-              Aucune carte ne correspond aux filtres choisis.
+              {t("Aucune carte ne correspond aux filtres choisis.")}
             </p>
           )}
         </>
@@ -620,14 +651,17 @@ function MissionCard({
     >
       <div className="tile-top">
         <span className="mono missions-number">{numberLabel(entry)}</span>
-        <span className="pill plain">{f.type}</span>
+        <span className="pill plain">{enumLabel(f.type)}</span>
         {f.priority !== "Normal" && (
           <span className={`pill ${f.priority === "Urgent" ? "crit" : "warn"}`}>
-            {f.priority}
+            {enumLabel(f.priority)}
           </span>
         )}
         {links > 0 && (
-          <span className="missions-links" title={`${links} lien(s)`}>
+          <span
+            className="missions-links"
+            title={t("{n} lien(s)", { n: links })}
+          >
             <Link2 size={12} />
             {links}
           </span>
@@ -635,8 +669,10 @@ function MissionCard({
         {!readOnly && (
           <button
             className="icon-button missions-menu"
-            aria-label={`Changer l’état de ${numberLabel(entry)}`}
-            title="Changer l’état"
+            aria-label={t("Changer l’état de {entry}", {
+              entry: numberLabel(entry),
+            })}
+            title={t("Changer l’état")}
             aria-haspopup="menu"
             onClick={(e) => {
               stopHover();
@@ -651,7 +687,7 @@ function MissionCard({
         <span className="missions-message">{f.message}</span>
         {f.action.trim() && (
           <span className="missions-action">
-            <em>Mesure</em> {f.action}
+            <em>{t("Mesure")}</em> {f.action}
           </span>
         )}
       </button>
@@ -678,18 +714,18 @@ function MissionCard({
           <button
             className="small"
             onClick={onSnooze}
-            title="Reporter l’échéance de 15 minutes"
+            title={t("Reporter l’échéance de 15 minutes")}
           >
             <AlarmClockPlus size={13} />
-            +15 min
+            {t("+{n} min", { n: 15 })}
           </button>
           <button
             className="small"
             onClick={onFollow}
-            title="Consigner une suite au journal"
+            title={t("Consigner une suite au journal")}
           >
             <Reply size={13} />
-            Consigner une suite
+            {t("Consigner une suite")}
           </button>
         </div>
       )}
@@ -700,7 +736,7 @@ function MissionCard({
       )}
       {menu && (
         <Popover anchor={menu} onClose={() => setMenu(null)} align="end">
-          <span className="menu-label">Déplacer vers</span>
+          <span className="menu-label">{t("Déplacer vers")}</span>
           {lanes
             .filter((s) => s !== f.status)
             .map((s) => {
@@ -713,14 +749,14 @@ function MissionCard({
                   onClick={() => onMove(s)}
                 >
                   <Icon size={14} />
-                  {s}
+                  {enumLabel(s)}
                 </button>
               );
             })}
           <hr />
           <button role="menuitem" data-close onClick={onOpen}>
             <ExternalLink size={14} />
-            Ouvrir la fiche
+            {t("Ouvrir la fiche")}
           </button>
         </Popover>
       )}

@@ -32,10 +32,13 @@ import { dateTime, time } from "../../../shared/journal";
 import { parseRef, ref, type Ref } from "../../../shared/links";
 import {
   MEMBER_STATUSES,
+  journalLang,
   upsert,
   type Cell,
   type Member,
 } from "../../../shared/ops";
+import { getLang, type Lang } from "../../../shared/i18n/core.ts";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
 import { callsignKey } from "../../../shared/radio";
 import { useApp } from "../../app/context";
 import { Segmented } from "../../ui/fields";
@@ -55,6 +58,8 @@ import {
 } from "./TeamSheets";
 import { Figures } from "../../ui/Figures";
 import { Presence } from "./Presence";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import "./team.css";
 
 type Status = (typeof MEMBER_STATUSES)[number];
@@ -79,16 +84,40 @@ const NEXT_STATUS: Record<Status, Status> = {
   Absent: "Relevé",
   Relevé: "Présent",
 };
-const FRONT_BACK = [
-  { name: "PC front", kind: "PC front" },
-  { name: "PC arrière", kind: "PC arrière" },
-];
-const STANDARD_PC = [
-  ...FRONT_BACK,
-  { name: "Cellule situation", kind: "Cellule" },
-  { name: "Cellule logistique", kind: "Cellule" },
-  { name: "Cellule télématique", kind: "Cellule" },
-];
+// Posts created on request: data, in the language of the journal.
+type Preset = { name: string; kind: string }[];
+const FRONT_BACK: Record<Lang, Preset> = {
+  fr: [
+    { name: "PC front", kind: "PC front" },
+    { name: "PC arrière", kind: "PC arrière" },
+  ],
+  de: [
+    { name: "KP Front", kind: "KP Front" },
+    { name: "KP Rück", kind: "KP Rück" },
+  ],
+  it: [
+    { name: "PC avanzato", kind: "PC avanzato" },
+    { name: "PC arretrato", kind: "PC arretrato" },
+  ],
+};
+const CELLS: Record<Lang, Preset> = {
+  fr: [
+    { name: "Cellule situation", kind: "Cellule" },
+    { name: "Cellule logistique", kind: "Cellule" },
+    { name: "Cellule télématique", kind: "Cellule" },
+  ],
+  de: [
+    { name: "Zelle Lage", kind: "Zelle" },
+    { name: "Zelle Logistik", kind: "Zelle" },
+    { name: "Zelle Telematik", kind: "Zelle" },
+  ],
+  it: [
+    { name: "Cellula situazione", kind: "Cellula" },
+    { name: "Cellula logistica", kind: "Cellula" },
+    { name: "Cellula telematica", kind: "Cellula" },
+  ],
+};
+const standardPc = (lang: Lang) => [...FRONT_BACK[lang], ...CELLS[lang]];
 
 const norm = (s: string) =>
   s
@@ -120,8 +149,8 @@ const avatarStyle = (name: string) => {
 
 export function shift(m: Member) {
   if (m.from && m.to) return `${time(m.from)}–${time(m.to)}`;
-  if (m.from) return `dès ${time(m.from)}`;
-  if (m.to) return `jusqu’à ${time(m.to)}`;
+  if (m.from) return t("dès {time}", { time: time(m.from) });
+  if (m.to) return t("jusqu’à {time}", { time: time(m.to) });
   return "";
 }
 
@@ -261,11 +290,27 @@ export function Team() {
     const m = members.find((x) => x.id === id);
     if (!m || m.cellId === cellId) return;
     const target = cells.find((c) => c.id === cellId);
-    patchMember(m, { cellId }, `${m.name} → ${target?.name ?? "Sans poste"}`);
+    patchMember(
+      m,
+      { cellId },
+      t("{name} → {cell}", {
+        name: m.name,
+        cell: target?.name ?? t("Sans poste"),
+      }),
+    );
   }
   function cycleStatus(m: Member) {
     const status = NEXT_STATUS[m.status];
-    patchMember(m, { status }, `${m.name} : ${status.toLowerCase()}.`);
+    // German nouns keep their capital ("In Pause").
+    const label = enumLabel(status);
+    patchMember(
+      m,
+      { status },
+      t("{name} : {status}.", {
+        name: m.name,
+        status: getLang() === "de" ? label : label.toLowerCase(),
+      }),
+    );
   }
   function moveCell(index: number, delta: number) {
     const target = index + delta;
@@ -286,7 +331,7 @@ export function Team() {
     const known = new Set(rawCells.map((c) => norm(c.name)));
     const add = preset.filter((p) => !known.has(norm(p.name)));
     if (!add.length) {
-      toast("Ces postes existent déjà.");
+      toast(t("Ces postes existent déjà."));
       return;
     }
     const start = nextOrder();
@@ -309,7 +354,7 @@ export function Team() {
             ),
           ops,
         ),
-      `${add.length} poste${add.length > 1 ? "s" : ""} créé${add.length > 1 ? "s" : ""}.`,
+      tn(add.length, "{n} poste créé.", "{n} postes créés."),
     );
   }
 
@@ -317,9 +362,16 @@ export function Team() {
     const terms = norm(query).split(/\s+/).filter(Boolean);
     if (!terms.length) return true;
     const hay = norm(
-      [m.name, m.grade, m.role, m.callsign, m.phone, m.email, m.status].join(
-        " ",
-      ),
+      [
+        m.name,
+        m.grade,
+        m.role,
+        m.callsign,
+        m.phone,
+        m.email,
+        m.status,
+        enumLabel(m.status),
+      ].join(" "),
     );
     return terms.every((t) => hay.includes(t));
   };
@@ -336,6 +388,9 @@ export function Team() {
     return map;
   }, [members, cells, grades]);
   const cellName = (id: string) => cells.find((c) => c.id === id)?.name ?? "";
+  const lang = journalLang(journal.ops);
+  // The search also matches the translated status.
+  const uiLang = useLang();
 
   const presence = useMemo(() => {
     const c = Object.fromEntries(MEMBER_STATUSES.map((s) => [s, 0])) as Record<
@@ -353,17 +408,17 @@ export function Team() {
       m.role,
       m.callsign,
       m.phone,
-      m.status,
+      enumLabel(m.status),
       shift(m),
     ];
     const head = [
-      "Grade",
-      "Nom",
-      "Fonction",
-      "Nom d’appel",
-      "Téléphone",
-      "Statut",
-      "Service",
+      t("Grade"),
+      t("Nom"),
+      t("Fonction"),
+      t("Nom d’appel"),
+      t("Téléphone"),
+      t("Statut"),
+      t("Service"),
     ];
     const widths = [16, 38, 38, 24, 28, 17, 21];
     const tables: SheetTable[] = cells.map((c) => {
@@ -374,9 +429,12 @@ export function Team() {
         caption: [
           c.kind,
           c.location,
-          c.phone && `Tél. ${c.phone}`,
-          c.radio && `Radio ${c.radio}`,
-          `${list.filter((m) => m.status === "Présent").length} présent(s) sur ${list.length}`,
+          c.phone && t("Tél. {phone}", { phone: c.phone }),
+          c.radio && t("Radio {radio}", { radio: c.radio }),
+          t("{present} présent(s) sur {total}", {
+            present: list.filter((m) => m.status === "Présent").length,
+            total: list.length,
+          }),
         ]
           .filter(Boolean)
           .join(" · "),
@@ -389,8 +447,8 @@ export function Team() {
     if (loose.length)
       tables.push({
         id: "none",
-        title: "Sans poste",
-        caption: `${loose.length} personne(s)`,
+        title: t("Sans poste"),
+        caption: t("{n} personne(s)", { n: loose.length }),
         head,
         body: loose.map(row),
         widths,
@@ -398,11 +456,11 @@ export function Team() {
     print({
       kind: "tables",
       journal,
-      title: "Équipe et postes",
-      extra: `Établi par ${author}`,
+      title: t("Équipe et postes"),
+      extra: t("Établi par {author}", { author }),
       tables,
       landscape: false,
-      name: "equipe",
+      name: t("equipe"),
     });
   }
 
@@ -428,7 +486,7 @@ export function Team() {
           : String(x).localeCompare(String(y), "fr");
       return d * sort.dir || a.name.localeCompare(b.name, "fr");
     });
-  }, [members, sort, query, cells, grades]);
+  }, [members, sort, query, cells, grades, uiLang]);
 
   const empty = !cells.length && !members.length;
   const loose = (byCell.get("") ?? []).filter(matches);
@@ -447,7 +505,7 @@ export function Team() {
           <>
             <button onClick={printTeam} disabled={empty}>
               <Printer size={14} />
-              Imprimer
+              {t("Imprimer")}
             </button>
             {!readOnly && (
               <>
@@ -457,7 +515,7 @@ export function Team() {
                   }
                 >
                   <Building2 size={14} />
-                  Nouveau poste
+                  {t("Nouveau poste")}
                 </button>
                 <button
                   className="primary"
@@ -466,7 +524,7 @@ export function Team() {
                   }
                 >
                   <UserPlus size={15} />
-                  Nouvelle personne
+                  {t("Nouvelle personne")}
                 </button>
               </>
             )}
@@ -477,20 +535,20 @@ export function Team() {
         <div className="card team-empty">
           <EmptyState
             icon={<Users size={28} />}
-            title="Qui fait quoi ?"
+            title={t("Qui fait quoi ?")}
             actions={
               !readOnly && (
                 <>
                   <button
                     className="primary"
-                    onClick={() => createCells(FRONT_BACK)}
+                    onClick={() => createCells(FRONT_BACK[lang])}
                   >
                     <Building2 size={14} />
-                    Créer PC front et PC arrière
+                    {t("Créer PC front et PC arrière")}
                   </button>
-                  <button onClick={() => createCells(STANDARD_PC)}>
+                  <button onClick={() => createCells(standardPc(lang))}>
                     <LayoutGrid size={14} />
-                    Structure type d’un PC
+                    {t("Structure type d’un PC")}
                   </button>
                   <button
                     onClick={() =>
@@ -498,29 +556,29 @@ export function Team() {
                     }
                   >
                     <UserPlus size={14} />
-                    Ajouter une personne
+                    {t("Ajouter une personne")}
                   </button>
                 </>
               )
             }
           >
-            Organisez l’équipe par poste (PC front, PC arrière) et par cellule :
-            nom, grade, fonction, nom d’appel, téléphone et présence. Tout reste
-            modifiable.
+            {t(
+              "Organisez l’équipe par poste (PC front, PC arrière) et par cellule : nom, grade, fonction, nom d’appel, téléphone et présence. Tout reste modifiable.",
+            )}
           </EmptyState>
         </div>
       ) : (
         <>
           <Figures
             className="team-presence"
-            label="Présences"
+            label={t("Présences")}
             items={[
-              { label: "Personnes", value: members.length },
+              { label: t("Personnes"), value: members.length },
               ...MEMBER_STATUSES.map((st) => ({
-                label: st,
+                label: enumLabel(st),
                 value: presence[st],
               })),
-              { label: "Postes et cellules", value: cells.length },
+              { label: t("Postes et cellules"), value: cells.length },
             ]}
           />
           <div className="card team-toolbar">
@@ -529,13 +587,15 @@ export function Team() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un nom, une fonction, un nom d’appel…"
-                aria-label="Rechercher une personne"
+                placeholder={t(
+                  "Rechercher un nom, une fonction, un nom d’appel…",
+                )}
+                aria-label={t("Rechercher une personne")}
               />
               {query && (
                 <button
                   className="icon-button small"
-                  aria-label="Effacer la recherche"
+                  aria-label={t("Effacer la recherche")}
                   onClick={() => setQuery("")}
                 >
                   <X size={13} />
@@ -545,15 +605,15 @@ export function Team() {
             {!readOnly && cells.length > 0 && (
               <button
                 className="small"
-                onClick={() => createCells(STANDARD_PC)}
+                onClick={() => createCells(standardPc(lang))}
               >
                 <LayoutGrid size={13} />
-                Compléter la structure type
+                {t("Compléter la structure type")}
               </button>
             )}
             <div className="team-view">
               <Segmented
-                label="Affichage"
+                label={t("Affichage")}
                 value={view}
                 onChange={setView}
                 options={[
@@ -561,7 +621,7 @@ export function Team() {
                     value: "org",
                     label: (
                       <>
-                        <LayoutGrid size={13} /> Organigramme
+                        <LayoutGrid size={13} /> {t("Organigramme")}
                       </>
                     ),
                   },
@@ -569,7 +629,7 @@ export function Team() {
                     value: "list",
                     label: (
                       <>
-                        <List size={13} /> Liste
+                        <List size={13} /> {t("Liste")}
                       </>
                     ),
                   },
@@ -577,7 +637,7 @@ export function Team() {
                     value: "presence",
                     label: (
                       <>
-                        <Clock3 size={13} /> Présences
+                        <Clock3 size={13} /> {t("Présences")}
                       </>
                     ),
                   },
@@ -648,7 +708,7 @@ export function Team() {
           )}
           {query && !members.some(matches) && (
             <p className="muted team-none">
-              Personne ne correspond à « {query} ».
+              {t("Personne ne correspond à « {query} ».", { query })}
             </p>
           )}
         </>
@@ -720,7 +780,7 @@ function CellColumn({
     <section
       className={`team-cell${drop ? " drop" : ""}${cell ? "" : " loose"}`}
       style={{ "--cell": color } as CSSProperties}
-      aria-label={cell?.name ?? "Sans poste"}
+      aria-label={cell?.name ?? t("Sans poste")}
       onDragOver={(e) => {
         if (readOnly || !e.dataTransfer.types.includes("text/orion-member"))
           return;
@@ -745,7 +805,7 @@ function CellColumn({
               {cell.name}
             </button>
           ) : (
-            <span className="team-cell-name">Sans poste</span>
+            <span className="team-cell-name">{t("Sans poste")}</span>
           )}
           {cell?.kind && (
             <span className="pill plain team-kind">{cell.kind}</span>
@@ -754,8 +814,8 @@ function CellColumn({
             <span className="team-cell-tools">
               <button
                 className="icon-button small"
-                aria-label={`Placer ${cell.name} plus tôt`}
-                title="Déplacer avant"
+                aria-label={t("Placer {name} plus tôt", { name: cell.name })}
+                title={t("Déplacer avant")}
                 disabled={first}
                 onClick={onUp}
               >
@@ -763,8 +823,8 @@ function CellColumn({
               </button>
               <button
                 className="icon-button small"
-                aria-label={`Placer ${cell.name} plus loin`}
-                title="Déplacer après"
+                aria-label={t("Placer {name} plus loin", { name: cell.name })}
+                title={t("Déplacer après")}
                 disabled={last}
                 onClick={onDown}
               >
@@ -772,8 +832,8 @@ function CellColumn({
               </button>
               <button
                 className="icon-button small"
-                aria-label={`Modifier ${cell.name}`}
-                title="Modifier"
+                aria-label={t("Modifier {name}", { name: cell.name })}
+                title={t("Modifier")}
                 onClick={onEdit}
               >
                 <Pencil size={13} />
@@ -807,8 +867,15 @@ function CellColumn({
           <PresenceBar members={total} />
           <small>
             {total.length
-              ? `${present} présent${present > 1 ? "s" : ""} sur ${total.length}`
-              : "Personne"}
+              ? tn(
+                  present,
+                  "{n} présent sur {total}",
+                  "{n} présents sur {total}",
+                  {
+                    total: total.length,
+                  },
+                )
+              : t("Personne (aucune)")}
           </small>
         </div>
       </header>
@@ -819,17 +886,17 @@ function CellColumn({
         {!members.length && (
           <p className="team-drop-hint">
             {readOnly
-              ? "Personne"
+              ? t("Personne (aucune)")
               : total.length
-                ? "Aucun résultat"
-                : "Glisser une personne ici"}
+                ? t("Aucun résultat")
+                : t("Glisser une personne ici")}
           </p>
         )}
       </div>
       {!readOnly && (
         <button className="small team-add" onClick={onAdd}>
           <Plus size={13} />
-          Ajouter une personne
+          {t("Ajouter une personne")}
         </button>
       )}
       {hover.card}
@@ -848,7 +915,7 @@ function PresenceBar({ members }: { members: Member[] }) {
             key={s}
             className={`tone-${STATUS_TONE[s]}`}
             style={{ flexGrow: n }}
-            title={`${s} : ${n}`}
+            title={t("{status} : {n}", { status: enumLabel(s), n })}
           />
         ) : null;
       })}
@@ -865,15 +932,25 @@ function StatusPill({
 }) {
   const { readOnly } = useApp();
   if (readOnly)
-    return <span className={`pill ${STATUS_TONE[m.status]}`}>{m.status}</span>;
+    return (
+      <span className={`pill ${STATUS_TONE[m.status]}`}>
+        {enumLabel(m.status)}
+      </span>
+    );
   return (
     <button
       className={`pill ${STATUS_TONE[m.status]} team-status`}
       onClick={() => onCycle(m)}
-      title={`Statut : ${m.status}. Cliquer pour passer à « ${NEXT_STATUS[m.status]} ».`}
-      aria-label={`Statut ${m.status}, passer à ${NEXT_STATUS[m.status]}`}
+      title={t("Statut : {status}. Cliquer pour passer à « {next} ».", {
+        status: enumLabel(m.status),
+        next: enumLabel(NEXT_STATUS[m.status]),
+      })}
+      aria-label={t("Statut {status}, passer à {next}", {
+        status: enumLabel(m.status),
+        next: enumLabel(NEXT_STATUS[m.status]),
+      })}
     >
-      {m.status}
+      {enumLabel(m.status)}
     </button>
   );
 }
@@ -911,8 +988,8 @@ function MoveMenu({
     <>
       <button
         className="icon-button small"
-        aria-label={`Déplacer ${m.name} vers…`}
-        title="Déplacer vers…"
+        aria-label={t("Déplacer {name} vers…", { name: m.name })}
+        title={t("Déplacer vers…")}
         aria-haspopup="menu"
         aria-expanded={!!anchor}
         onClick={(e) => setAnchor(anchor ? null : e.currentTarget)}
@@ -921,10 +998,10 @@ function MoveMenu({
       </button>
       {anchor && (
         <Popover anchor={anchor} onClose={() => setAnchor(null)} align="end">
-          <div className="menu-label">Déplacer vers…</div>
+          <div className="menu-label">{t("Déplacer vers…")}</div>
           {[
             ...cells.map((c) => ({ id: c.id, name: c.name })),
-            { id: "", name: "Sans poste" },
+            { id: "", name: t("Sans poste") },
           ].map((c) => (
             <button
               key={c.id || "none"}
@@ -1001,7 +1078,10 @@ function MemberCard({
           {hours && (
             <span
               className="team-shift mono"
-              title={`Service : ${m.from ? dateTime(m.from) : "…"} → ${m.to ? dateTime(m.to) : "…"}`}
+              title={t("Service : {from} → {to}", {
+                from: m.from ? dateTime(m.from) : "…",
+                to: m.to ? dateTime(m.to) : "…",
+              })}
             >
               {hours}
             </span>
@@ -1029,13 +1109,13 @@ function MemberTable({
 }) {
   const { readOnly } = useApp();
   const columns: { key: SortKey; label: string }[] = [
-    { key: "name", label: "Nom" },
-    { key: "grade", label: "Grade" },
-    { key: "role", label: "Fonction" },
-    { key: "cell", label: "Poste" },
-    { key: "callsign", label: "Nom d’appel" },
-    { key: "phone", label: "Téléphone" },
-    { key: "status", label: "Statut" },
+    { key: "name", label: t("Nom") },
+    { key: "grade", label: t("Grade") },
+    { key: "role", label: t("Fonction") },
+    { key: "cell", label: t("Poste (unité)") },
+    { key: "callsign", label: t("Nom d’appel") },
+    { key: "phone", label: t("Téléphone") },
+    { key: "status", label: t("Statut") },
   ];
   return (
     <div className="card team-list">
@@ -1069,7 +1149,7 @@ function MemberTable({
                 </th>
               ))}
               <th>
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{t("Actions")}</span>
               </th>
             </tr>
           </thead>
@@ -1096,7 +1176,7 @@ function MemberTable({
                   {m.cellId && cellName(m.cellId) ? (
                     <LinkChip target={ref("cell", m.cellId)} />
                   ) : (
-                    <span className="muted">Sans poste</span>
+                    <span className="muted">{t("Sans poste")}</span>
                   )}
                 </td>
                 <td>
@@ -1129,7 +1209,9 @@ function MemberTable({
           </tbody>
         </table>
       </div>
-      {!members.length && <p className="muted team-none">Aucune personne.</p>}
+      {!members.length && (
+        <p className="muted team-none">{t("Aucune personne.")}</p>
+      )}
     </div>
   );
 }

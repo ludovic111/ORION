@@ -1,5 +1,7 @@
 import { strToU8, zipSync, zlibSync, type Zippable } from "fflate";
 import { qrMatrix, qrPath } from "../print/qr.ts";
+import { xml } from "../../shared/interchange.ts";
+import { t } from "./i18n.ts";
 
 // Small byte helpers shared by the writers: zip, base64, PNG of a QR code.
 // DOM-free so that every writer runs (and is tested) in node as well.
@@ -100,7 +102,7 @@ export const qrPng = (text: string) => matrixPng(qrMatrix(text));
 export function qrSvg(text: string, size = 120) {
   const matrix = qrMatrix(text);
   const n = matrix.length + 8;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n} ${n}" width="${size}" height="${size}" shape-rendering="crispEdges" role="img" aria-label="Code QR de vérification"><rect x="-4" y="-4" width="${n}" height="${n}" fill="#fff"/><path d="${qrPath(matrix)}" fill="#000"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n} ${n}" width="${size}" height="${size}" shape-rendering="crispEdges" role="img" aria-label="${xml(t("Code QR de vérification"))}"><rect x="-4" y="-4" width="${n}" height="${n}" fill="#fff"/><path d="${qrPath(matrix)}" fill="#000"/></svg>`;
 }
 
 /** Width and height of a PNG, read from its header. */

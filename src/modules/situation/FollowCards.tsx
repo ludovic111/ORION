@@ -14,6 +14,8 @@ import {
   formatDuration,
 } from "../../../shared/presence";
 import { useApp } from "../../app/context";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 import "../../ui/conduct.css";
 
 // Cards of the Situation page for the conduct follow-up: checklists in
@@ -53,12 +55,12 @@ function ChecklistsCard({ w }: { w: string }) {
   return (
     <section
       className={`card ${w} situation-list`}
-      aria-label="Listes de contrôle"
+      aria-label={t("Listes de contrôle")}
     >
       <div className="card-head">
         <ListChecks size={15} />
-        <h2>Listes de contrôle</h2>
-        <Go to="checklists" label="Listes" />
+        <h2>{t("Listes de contrôle")}</h2>
+        <Go to="checklists" label={t("Listes")} />
       </div>
       {lists.length ? (
         <div className="rows">
@@ -72,12 +74,14 @@ function ChecklistsCard({ w }: { w: string }) {
                 <strong>{c.title}</strong>
                 <small>
                   {p.next
-                    ? `Prochaine : ${p.next.text}`
-                    : "Toutes les étapes sont faites"}
+                    ? t("Prochaine : {text}", { text: p.next.text })
+                    : t("Toutes les étapes sont faites")}
                 </small>
               </span>
               {p.late > 0 && (
-                <span className="pill crit">{p.late} en retard</span>
+                <span className="pill crit">
+                  {t("{n} en retard", { n: p.late })}
+                </span>
               )}
               <span className="mono">
                 {p.done}/{p.total}
@@ -88,14 +92,15 @@ function ChecklistsCard({ w }: { w: string }) {
       ) : (
         <div className="situation-empty">
           <p>
-            Aucune liste en cours. Une liste par type d’événement (crue,
-            black-out…) rappelle les étapes à ne pas oublier.
+            {t(
+              "Aucune liste en cours. Une liste par type d’événement (crue, black-out…) rappelle les étapes à ne pas oublier.",
+            )}
           </p>
           {!readOnly && (
             <div className="situation-empty-actions">
               <button onClick={() => open("checklist:new" as Ref)}>
                 <ListChecks size={14} />
-                Démarrer une liste
+                {t("Démarrer une liste")}
               </button>
             </div>
           )}
@@ -112,13 +117,19 @@ function RequestsCard({ w }: { w: string }) {
   return (
     <section
       className={`card ${w} situation-list`}
-      aria-label="Demandes de moyens"
+      aria-label={t("Demandes de moyens")}
     >
       <div className="card-head">
         <Megaphone size={15} />
-        <h2>Demandes de moyens</h2>
-        {late > 0 && <span className="pill crit">{late} en retard</span>}
-        <Go to="resources" label="Demandes" focus={"request:none" as Ref} />
+        <h2>{t("Demandes de moyens")}</h2>
+        {late > 0 && (
+          <span className="pill crit">{t("{n} en retard", { n: late })}</span>
+        )}
+        <Go
+          to="resources"
+          label={t("Demandes")}
+          focus={"request:none" as Ref}
+        />
       </div>
       {list.length ? (
         <div className="rows">
@@ -133,14 +144,20 @@ function RequestsCard({ w }: { w: string }) {
                 <span className="row-main">
                   <strong>{requestLabel(r)}</strong>
                   <small>
-                    {[r.status, r.provider, r.eta && `arrivée ${time(r.eta)}`]
+                    {[
+                      enumLabel(r.status),
+                      r.provider,
+                      r.eta && t("arrivée {time}", { time: time(r.eta) }),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </small>
                 </span>
                 {minutes > 0 && (
                   <span className="pill crit">
-                    retard {formatDuration(minutes * 60_000)}
+                    {t("retard {duration}", {
+                      duration: formatDuration(minutes * 60_000),
+                    })}
                   </span>
                 )}
               </button>
@@ -148,7 +165,7 @@ function RequestsCard({ w }: { w: string }) {
           })}
         </div>
       ) : (
-        <p className="muted">Aucune demande en attente.</p>
+        <p className="muted">{t("Aucune demande en attente.")}</p>
       )}
     </section>
   );
@@ -161,33 +178,48 @@ function PresenceCard({ w }: { w: string }) {
   const warned = board.filter((d) => d.warnings.length);
   const shifts = currentShifts(journal.ops.shifts, now);
   return (
-    <section className={`card ${w} situation-list`} aria-label="Présences">
+    <section className={`card ${w} situation-list`} aria-label={t("Présences")}>
       <div className="card-head">
         <UserCheck size={15} />
-        <h2>Présences</h2>
-        <span className="pill plain">{present.length} au PC</span>
-        <Go to="team" label="Appel" focus={"shift:none" as Ref} />
+        <h2>{t("Présences")}</h2>
+        <span className="pill plain">
+          {t("{n} au PC", { n: present.length })}
+        </span>
+        <Go to="team" label={t("Appel")} focus={"shift:none" as Ref} />
       </div>
       {warned.length > 0 && (
         <ul className="cd-warnings">
           {warned.slice(0, 4).map((d) => (
             <li key={d.memberId || d.name}>
-              {d.name} : {d.warnings[0]}
+              {t("{name} : {text}", { name: d.name, text: d.warnings[0] })}
             </li>
           ))}
         </ul>
       )}
       <p className="muted">
         {shifts.now.length
-          ? `Relève en cours : ${shifts.now.map((s) => `${s.title} jusqu’à ${time(s.end)}`).join(", ")}.`
-          : "Aucune relève en cours."}
+          ? t("Relève en cours : {list}.", {
+              list: shifts.now
+                .map((s) =>
+                  t("{title} jusqu’à {time}", {
+                    title: s.title,
+                    time: time(s.end),
+                  }),
+                )
+                .join(", "),
+            })
+          : t("Aucune relève en cours.")}
         {shifts.next &&
-          ` Prochaine : ${shifts.next.title} à ${time(shifts.next.start)}.`}
+          t(" Prochaine : {title} à {time}.", {
+            title: shifts.next.title,
+            time: time(shifts.next.start),
+          })}
       </p>
       {!warned.length && present.length > 0 && (
         <p className="muted">
-          Le plus long service :{" "}
-          {formatDuration(Math.max(...present.map((d) => d.span)))}.
+          {t("Le plus long service : {duration}.", {
+            duration: formatDuration(Math.max(...present.map((d) => d.span))),
+          })}
         </p>
       )}
     </section>

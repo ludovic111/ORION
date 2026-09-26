@@ -1,5 +1,7 @@
 import type { Deck, Slide, Tone } from "./deck.ts";
 import { clipLine, fitText, hexColor, textWidth, wrap } from "./text.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { statusLabel, t, tn, type Key } from "./i18n.ts";
 
 // Every slide of a deck as positioned shapes on a 1920 × 1080 page: boxes
 // with text, pictures and tables, with their entrance animation. The file
@@ -242,11 +244,12 @@ class Builder {
     if (!this.animations) return undefined;
     return { at: 250 + Math.max(0, this.step - 140), effect, dur: 600 };
   }
-  name(kind: string) {
-    return `${kind} ${++this.count}`;
+  /** Name of a shape, in the language of the post ("Lueur 3"). */
+  name(kind: Key) {
+    return `${t(kind)} ${++this.count}`;
   }
   box(
-    kind: string,
+    kind: Key,
     x: number,
     y: number,
     w: number,
@@ -272,7 +275,7 @@ class Builder {
     h: number,
     props: Partial<BoxShape> = {},
   ) {
-    return this.box("Carte", x, y, w, h, {
+    return this.box("Carte (cadre)", x, y, w, h, {
       fill: this.p.surface,
       alpha: this.p.dark ? 0.92 : 1,
       line: this.p.line,
@@ -432,7 +435,7 @@ function titleLayout(
 ) {
   const p = b.p;
   b.text(X0, 90, 1100, 36, [
-    para("ORION AIC · POINT DE SITUATION", 24, p.accent, {
+    para(t("ORION AIC · POINT DE SITUATION"), 24, p.accent, {
       bold: true,
       spacing: 5,
     }),
@@ -459,7 +462,7 @@ function titleLayout(
   const context = [
     slide.organization,
     slide.location,
-    slide.reference && `Réf. ${slide.reference}`,
+    slide.reference && t("Réf. {ref}", { ref: slide.reference }),
   ]
     .filter(Boolean)
     .join("  ·  ");
@@ -500,8 +503,8 @@ function titleLayout(
     },
   );
   const by = [
-    slide.presenter && `Présenté par ${slide.presenter}`,
-    slide.audience && `pour ${slide.audience}`,
+    slide.presenter && t("Présenté par {name}", { name: slide.presenter }),
+    slide.audience && t("pour {audience}", { audience: slide.audience }),
   ]
     .filter(Boolean)
     .join("  ·  ");
@@ -512,7 +515,7 @@ function titleLayout(
   if (ctx.images.has("qr"))
     b.shapes.push({
       type: "image",
-      name: "Code de vérification",
+      name: t("Code de vérification"),
       key: "qr",
       x: X1 - 150,
       y: PAGE_H - 250,
@@ -566,7 +569,7 @@ function situationLayout(
       lineW: 3,
       anim: b.anim("zoom"),
       paras: [
-        para("IDÉE DE MANŒUVRE", 24, p.accent, {
+        para(t("IDÉE DE MANŒUVRE"), 24, p.accent, {
           bold: true,
           spacing: 3,
           after: 8,
@@ -593,7 +596,9 @@ function factsLayout(b: Builder, slide: Extract<Slide, { kind: "facts" }>) {
   const facts = slide.facts.slice(0, 12);
   let top = Y0;
   if (slide.since) {
-    b.text(X0, Y0 - 8, W, 40, [para(`Évolution ${slide.since}`, 26, p.text2)]);
+    b.text(X0, Y0 - 8, W, 40, [
+      para(t("Évolution {since}", { since: slide.since }), 26, p.text2),
+    ]);
     top += 44;
   }
   const n = facts.length;
@@ -654,7 +659,7 @@ function mapLayout(
   if (ctx.images.has(slide.id))
     b.shapes.push({
       type: "image",
-      name: "Carte",
+      name: t("Carte"),
       key: slide.id,
       x: 0,
       y: 0,
@@ -669,7 +674,7 @@ function mapLayout(
       radius: 22,
       valign: "m",
       paras: [
-        para("Carte non disponible (hors ligne ?)", 32, p.text3, {
+        para(t("Carte non disponible (hors ligne ?)"), 32, p.text3, {
           align: "c",
         }),
       ],
@@ -746,7 +751,7 @@ function mapLayout(
     if (it.symbol && ctx.images.has(key))
       b.shapes.push({
         type: "image",
-        name: "Signe",
+        name: t("Signe"),
         key,
         x: lx + 28,
         y: y + 3,
@@ -795,7 +800,11 @@ function changesLayout(b: Builder, slide: Extract<Slide, { kind: "changes" }>) {
       {
         runs: [
           { text: `${slide.total} `, bold: true, color: p.accent },
-          { text: `changement${slide.total > 1 ? "s" : ""} ${slide.since}` },
+          {
+            text: tn(slide.total, "changement {since}", "changements {since}", {
+              since: slide.since,
+            }),
+          },
         ],
         size: 30,
         color: p.text2,
@@ -810,9 +819,9 @@ function changesLayout(b: Builder, slide: Extract<Slide, { kind: "changes" }>) {
     const inner = r.w - 64;
     const total = g.created + g.updated + g.removed;
     const detail = [
-      g.created && `${g.created} nouveau${g.created > 1 ? "x" : ""}`,
-      g.updated && `${g.updated} modifié${g.updated > 1 ? "s" : ""}`,
-      g.removed && `${g.removed} retiré${g.removed > 1 ? "s" : ""}`,
+      g.created && tn(g.created, "{n} nouveau", "{n} nouveaux"),
+      g.updated && tn(g.updated, "{n} modifié", "{n} modifiés"),
+      g.removed && tn(g.removed, "{n} retiré", "{n} retirés"),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -894,9 +903,9 @@ function highlightsLayout(
           clipLine(
             [
               it.number,
-              it.type,
-              it.priority !== "Normal" && it.priority,
-              it.status,
+              enumLabel(it.type),
+              it.priority !== "Normal" && enumLabel(it.priority),
+              enumLabel(it.status),
             ]
               .filter(Boolean)
               .join(" · "),
@@ -917,7 +926,11 @@ function highlightsLayout(
   if (slide.more)
     b.text(lineX + 48, Y1 - 36, W - 230, 36, [
       para(
-        `… et ${slide.more} autre${slide.more > 1 ? "s" : ""} au journal`,
+        tn(
+          slide.more,
+          "… et {n} autre au journal",
+          "… et {n} autres au journal",
+        ),
         22,
         p.text3,
       ),
@@ -935,17 +948,27 @@ function missionsLayout(
       b,
       x,
       Y0 - 12,
-      `${slide.open} point${slide.open > 1 ? "s" : ""} ouvert${slide.open > 1 ? "s" : ""}`,
+      tn(slide.open, "{n} point ouvert", "{n} points ouverts"),
       p.accent,
       24,
       b.anim("fade"),
     ) + 16;
   if (slide.late)
-    pill(b, x, Y0 - 12, `${slide.late} en retard`, p.crit, 24, b.with("fade"));
+    pill(
+      b,
+      x,
+      Y0 - 12,
+      t("{n} en retard", { n: slide.late }),
+      p.crit,
+      24,
+      b.with("fade"),
+    );
   const cols = [150, 830, 290, 280, 178];
   const rows: Cell[][] = [
-    ["N°", "Mission / mesure", "Responsable", "Échéance", "État"].map((t) => ({
-      text: t,
+    (
+      ["N°", "Mission / mesure", "Responsable", "Échéance", "État"] as const
+    ).map((h) => ({
+      text: t(h),
       bold: true,
       color: p.text2,
     })),
@@ -954,14 +977,18 @@ function missionsLayout(
       { text: m.text },
       { text: m.assignee },
       { text: m.due, color: m.late ? p.crit : undefined, bold: m.late },
-      { text: m.status, color: m.late ? p.crit : p.text2, bold: m.late },
+      {
+        text: statusLabel(m.status),
+        color: m.late ? p.crit : p.text2,
+        bold: m.late,
+      },
     ]),
   ];
   if (slide.more)
     rows.push([
       { text: "" },
       {
-        text: `… et ${slide.more} autre${slide.more > 1 ? "s" : ""}`,
+        text: tn(slide.more, "… et {n} autre", "… et {n} autres"),
         color: p.text3,
       },
       { text: "" },
@@ -1076,19 +1103,22 @@ function resourcesLayout(
     210,
   );
   const rows: Cell[][] = [
-    slide.head.map((t, i) => ({
-      text: t,
+    slide.head.map((h, i) => ({
+      text: h,
       bold: true,
       color: p.text2,
       align: i ? "c" : "l",
     })),
-    ...slide.rows.map((r) =>
-      r.map((t, i) => ({
-        text: i && t === "0" ? "—" : t,
-        bold: r[0] === "Total" || (i === 1 && t !== "0"),
+    // The last row is the total when there are several organisations.
+    ...slide.rows.map((r, ri) =>
+      r.map((c, i) => ({
+        text: i && c === "0" ? "—" : c,
+        bold:
+          (slide.rows.length > 2 && ri === slide.rows.length - 1) ||
+          (i === 1 && c !== "0"),
         align: (i ? "c" : "l") as Cell["align"],
         color:
-          i === 0 || t === "0"
+          i === 0 || c === "0"
             ? undefined
             : [p.accent, p.warn, p.ok, p.crit][i - 1],
       })),
@@ -1108,7 +1138,14 @@ function teamLayout(b: Builder, slide: Extract<Slide, { kind: "team" }>) {
     40,
     [
       para(
-        `${slide.present} présent${slide.present > 1 ? "s" : ""} sur ${slide.total} personne${slide.total > 1 ? "s" : ""}`,
+        tn(
+          slide.present,
+          "{n} présent sur {total}",
+          "{n} présents sur {total}",
+          {
+            total: tn(slide.total, "{n} personne", "{n} personnes"),
+          },
+        ),
         26,
         p.text2,
       ),
@@ -1122,7 +1159,7 @@ function teamLayout(b: Builder, slide: Extract<Slide, { kind: "team" }>) {
     const detail = [
       c.kind !== c.name && c.kind,
       c.location,
-      c.radio && `radio ${c.radio}`,
+      c.radio && t("radio {radio}", { radio: c.radio }),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -1163,13 +1200,13 @@ function teamLayout(b: Builder, slide: Extract<Slide, { kind: "team" }>) {
     if (c.members.length > members.length)
       paras.push(
         para(
-          `+ ${c.members.length - members.length} autre${c.members.length - members.length > 1 ? "s" : ""}`,
+          tn(c.members.length - members.length, "+ {n} autre", "+ {n} autres"),
           22,
           p.text3,
         ),
       );
     if (!c.members.length)
-      paras.push(para("Personne n’est affecté.", 24, p.text3));
+      paras.push(para(t("Personne n’est affecté."), 24, p.text3));
     b.card(r.x, r.y, r.w, r.h, { anim: b.anim("rise"), pad: 36, paras });
     b.box("Couleur", r.x, r.y + 24, 8, r.h - 48, {
       fill: color,
@@ -1195,16 +1232,16 @@ function radioLayout(b: Builder, slide: Extract<Slide, { kind: "radio" }>) {
   const left = slide.groups.length ? 1060 : 0;
   if (slide.groups.length) {
     const rows: Cell[][] = [
-      ["Groupe", "N°", "Usage", "Mode"].map((t) => ({
-        text: t,
+      (["Groupe", "N°", "Usage", "Mode"] as const).map((h) => ({
+        text: t(h),
         bold: true,
         color: p.text2,
       })),
       ...slide.groups.map((g) => [
         { text: g.name, bold: true },
         { text: g.number || "—", color: p.cyan },
-        { text: g.usage },
-        { text: g.mode, color: p.text2 },
+        { text: enumLabel(g.usage) },
+        { text: enumLabel(g.mode), color: p.text2 },
       ]),
     ];
     table(b, X0, top, left, Y1 - top, [440, 160, 260, 200], rows, 28);
@@ -1219,7 +1256,7 @@ function radioLayout(b: Builder, slide: Extract<Slide, { kind: "radio" }>) {
     line: weak.length ? p.crit : p.ok,
     paras: [
       para(
-        weak.length ? "LIAISONS FAIBLES OU NULLES" : "LIAISONS",
+        weak.length ? t("LIAISONS FAIBLES OU NULLES") : t("LIAISONS"),
         22,
         weak.length ? p.crit : p.ok,
         {
@@ -1243,7 +1280,7 @@ function radioLayout(b: Builder, slide: Extract<Slide, { kind: "radio" }>) {
             color: p.text,
             after: 12,
           }))
-        : [para("Aucune liaison faible au dernier contrôle.", 26, p.text)]),
+        : [para(t("Aucune liaison faible au dernier contrôle."), 26, p.text)]),
     ],
   });
 }
@@ -1257,7 +1294,11 @@ function weatherLayout(b: Builder, slide: Extract<Slide, { kind: "weather" }>) {
       anim: b.anim("zoom"),
       valign: "m",
       paras: [
-        para("MAINTENANT", 22, p.accent, { bold: true, spacing: 3, after: 12 }),
+        para(t("MAINTENANT"), 22, p.accent, {
+          bold: true,
+          spacing: 3,
+          after: 12,
+        }),
         para(slide.now.temperature, 170, p.amber, {
           bold: true,
           font: "display",
@@ -1267,11 +1308,23 @@ function weatherLayout(b: Builder, slide: Extract<Slide, { kind: "weather" }>) {
           bold: true,
           after: 24,
         }),
-        para(`Vent ${slide.now.wind}`, 26, p.text2, { after: 10 }),
-        para(`Précipitations ${slide.now.precipitation}`, 26, p.text2, {
+        para(t("Vent {value}", { value: slide.now.wind }), 26, p.text2, {
           after: 10,
         }),
-        para(`Humidité ${slide.now.humidity}`, 26, p.text2, { after: 24 }),
+        para(
+          t("Précipitations {value}", { value: slide.now.precipitation }),
+          26,
+          p.text2,
+          { after: 10 },
+        ),
+        para(
+          t("Humidité {value}", { value: slide.now.humidity }),
+          26,
+          p.text2,
+          {
+            after: 24,
+          },
+        ),
         para(clipLine(slide.source, w - 64, 18), 18, p.text3),
       ],
     });
@@ -1343,7 +1396,11 @@ function weatherLayout(b: Builder, slide: Extract<Slide, { kind: "weather" }>) {
           { bold: true, after: 6 },
         ),
         para(
-          clipLine(`Degré ${a.level} · ${a.period}`, w - 150, 22),
+          clipLine(
+            t("Degré {level} · {period}", { level: a.level, period: a.period }),
+            w - 150,
+            22,
+          ),
           22,
           p.text2,
         ),
@@ -1358,7 +1415,10 @@ function weatherLayout(b: Builder, slide: Extract<Slide, { kind: "weather" }>) {
       paras: [
         para(
           clipLine(
-            `OBSERVATION ${slide.observation.time} · ${slide.observation.place}`.toUpperCase(),
+            t("Observation {time} · {place}", {
+              time: slide.observation.time,
+              place: slide.observation.place,
+            }).toUpperCase(),
             w - 64,
             20,
             true,
@@ -1432,9 +1492,9 @@ function agendaLayout(b: Builder, slide: Extract<Slide, { kind: "agenda" }>) {
       { valign: "m", anim: b.with("fade") },
     );
     const label = it.late
-      ? "dépassé"
+      ? t("dépassé")
       : it.next
-        ? `Prochain · ${it.relative}`
+        ? t("Prochain · {relative}", { relative: it.relative })
         : it.relative;
     const pw = textWidth(label, 22, true) + 40;
     b.box("Délai", X1 - 32 - pw, y + (mid - 44) / 2, pw, 44, {
@@ -1544,7 +1604,7 @@ function closingLayout(
   if (ctx.images.has("qr"))
     b.shapes.push({
       type: "image",
-      name: "Code de vérification",
+      name: t("Code de vérification"),
       key: "qr",
       x: X1 - 130,
       y: PAGE_H - 260,

@@ -6,6 +6,7 @@ import {
   type Journal,
   type Workspace,
 } from "../../shared/journal";
+import { t } from "./i18n.ts";
 export function SessionPanel({
   workspace,
   journal,
@@ -47,40 +48,43 @@ export function SessionPanel({
           if (!value) return;
           onUpdate({ ...workspace, author: value });
           setDone(
-            "Opérateur modifié. Les saisies existantes gardent leur auteur.",
+            t("Opérateur modifié. Les saisies existantes gardent leur auteur."),
           );
         }}
       >
-        <h3 className="section-label">Opérateur</h3>
+        <h3 className="section-label">{t("Opérateur")}</h3>
         <div className="inline-field">
           <input
-            aria-label="Opérateur"
+            aria-label={t("Opérateur")}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             required
             maxLength={120}
           />
-          <button>Appliquer</button>
+          <button>{t("Appliquer")}</button>
         </div>
-        <small>Déclaratif, sans authentification.</small>
+        <small>{t("Déclaratif, sans authentification.")}</small>
       </form>
       <div className="settings-section">
-        <h3 className="section-label">Sauvegarde locale</h3>
+        <h3 className="section-label">{t("Sauvegarde locale")}</h3>
         {persistent ? (
           <>
-            <p className="success">Active · chiffrée sur ce poste.</p>
+            <p className="success">{t("Active · chiffrée sur ce poste.")}</p>
             <p className="muted">
-              Ne remplace pas une archive : le nettoyage du navigateur l’efface.
+              {t(
+                "Ne remplace pas une archive : le nettoyage du navigateur l’efface.",
+              )}
             </p>
             <button onClick={onEnd}>
               <LockKeyhole size={14} />
-              Verrouiller
+              {t("Verrouiller")}
             </button>
           </>
         ) : stored ? (
           <p className="muted">
-            Un espace chiffré existe déjà sur ce poste. Exportez cette session,
-            déverrouillez l’espace existant, puis importez.
+            {t(
+              "Un espace chiffré existe déjà sur ce poste. Exportez cette session, déverrouillez l’espace existant, puis importez.",
+            )}
           </p>
         ) : (
           <form
@@ -90,11 +94,13 @@ export function SessionPanel({
               setBusy(true);
               try {
                 if (password !== repeat)
-                  throw new Error("Les phrases secrètes ne correspondent pas.");
+                  throw new Error(
+                    t("Les phrases secrètes ne correspondent pas."),
+                  );
                 await onProtect(password);
                 setPassword("");
                 setRepeat("");
-                setDone("Reprise après crash activée.");
+                setDone(t("Reprise après crash activée."));
               } catch (err) {
                 setError((err as Error).message);
               } finally {
@@ -103,10 +109,12 @@ export function SessionPanel({
             }}
           >
             <p className="hint warn">
-              Session temporaire. Activez uniquement sur un poste autorisé.
+              {t(
+                "Session temporaire. Activez uniquement sur un poste autorisé.",
+              )}
             </p>
             <label>
-              Phrase de récupération · 12 caractères min.
+              {t("Phrase de récupération · 12 caractères min.")}
               <input
                 type="password"
                 required
@@ -118,7 +126,7 @@ export function SessionPanel({
               />
             </label>
             <label>
-              Répéter la phrase
+              {t("Répéter la phrase")}
               <input
                 type="password"
                 required
@@ -129,32 +137,42 @@ export function SessionPanel({
                 onChange={(e) => setRepeat(e.target.value)}
               />
             </label>
-            <small>Irrécupérable. À conserver séparément des archives.</small>
+            <small>
+              {t("Irrécupérable. À conserver séparément des archives.")}
+            </small>
             <button className="primary" disabled={busy}>
-              {busy ? "Chiffrement…" : "Activer"}
+              {busy ? t("Chiffrement…") : t("Activer")}
             </button>
           </form>
         )}
       </div>
       <div className="settings-section">
-        <h3 className="section-label">Clôture · {journal.title}</h3>
+        <h3 className="section-label">
+          {t("Clôture · {title}", { title: journal.title })}
+        </h3>
         <p className="muted">
           {journal.closedAt
-            ? `Clôturé le ${dateTime(journal.closedAt)}.`
-            : "Bloque saisies, corrections et plan radio. Lecture et export restent possibles."}
+            ? t("Clôturé le {date}.", { date: dateTime(journal.closedAt) })
+            : t(
+                "Bloque saisies, corrections et plan radio. Lecture et export restent possibles.",
+              )}
         </p>
         <div className="action-row">
           <button onClick={onExport}>
             <Download size={14} />
-            Exporter
+            {t("Exporter")}
           </button>
           <button
             onClick={() => {
               if (
                 window.confirm(
                   journal.closedAt
-                    ? "Rouvrir ce journal et autoriser de nouvelles saisies ?"
-                    : "Clôturer ce journal ? Vous pourrez le rouvrir depuis cet écran.",
+                    ? t(
+                        "Rouvrir ce journal et autoriser de nouvelles saisies ?",
+                      )
+                    : t(
+                        "Clôturer ce journal ? Vous pourrez le rouvrir depuis cet écran.",
+                      ),
                 )
               ) {
                 onJournal({
@@ -165,15 +183,18 @@ export function SessionPanel({
               }
             }}
           >
-            {journal.closedAt ? "Rouvrir le journal" : "Clôturer le journal"}
+            {journal.closedAt
+              ? t("Rouvrir le journal")
+              : t("Clôturer le journal")}
           </button>
         </div>
       </div>
       <div className="settings-section">
-        <h3 className="section-label">Libérer le poste</h3>
+        <h3 className="section-label">{t("Libérer le poste")}</h3>
         <p className="muted">
-          Efface la session et sa sauvegarde locale. Les fichiers exportés ne
-          sont pas touchés.
+          {t(
+            "Efface la session et sa sauvegarde locale. Les fichiers exportés ne sont pas touchés.",
+          )}
         </p>
         <button
           className="danger"
@@ -186,7 +207,7 @@ export function SessionPanel({
             }
           }}
         >
-          Effacer la session
+          {t("Effacer la session")}
         </button>
       </div>
       {error && (

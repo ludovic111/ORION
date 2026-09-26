@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { getLang, onLang } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 import {
   journalSchema,
   packJournal,
@@ -115,9 +124,12 @@ const MAX_DELAY = 30_000;
 const REPLY_INTERVAL = 3_000;
 const BUFFERED = 1_000_000;
 
-const NEWER =
+// Errors are kept as their French key and translated when shown, so that
+// they follow a change of language.
+type ErrorKey = Parameters<typeof t>[0] | "";
+const NEWER: ErrorKey =
   "Un poste utilise une version plus récente d’orion aic — rechargez la page.";
-const OLDER_PAGE =
+const OLDER_PAGE: ErrorKey =
   "Cette page utilise une version plus ancienne d’orion aic — rechargez la page.";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -172,7 +184,9 @@ export function useSync(options: {
   const [relayCount, setRelayCount] = useState(0);
   const [peers, setPeers] = useState<Presence[]>([]);
   const [lastSync, setLastSync] = useState<number | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorKey>("");
+  // Re-render on a change of language (the error is translated when shown).
+  useSyncExternalStore(onLang, getLang, getLang);
   const [rejected, setRejected] = useState<Rejected[]>([]);
   const latest = useRef(options);
   latest.current = options;
@@ -332,9 +346,9 @@ export function useSync(options: {
           const title =
             raw && typeof raw === "object" && "title" in raw
               ? String((raw as { title: unknown }).title).slice(0, 80)
-              : "journal";
+              : t("journal");
           reject({
-            from: wire.name || names.get(from) || "Poste inconnu",
+            from: wire.name || names.get(from) || t("Poste inconnu"),
             journal: title,
             reason: reasonOf(parsed.error.issues),
           });
@@ -374,8 +388,8 @@ export function useSync(options: {
         merged = mergeWorkspace(local, { journals: list, gone });
       } catch (err) {
         reject({
-          from: names.get(from) || "Poste inconnu",
-          journal: list.map((j) => j.title).join(", ") || "session",
+          from: names.get(from) || t("Poste inconnu"),
+          journal: list.map((j) => j.title).join(", ") || t("session"),
           reason: (err as Error).message,
         });
         return;
@@ -531,8 +545,8 @@ export function useSync(options: {
             await receive(message.value as Wire, message.from);
           } catch (err) {
             reject({
-              from: names.get(message.from) || "Poste inconnu",
-              journal: "message",
+              from: names.get(message.from) || t("Poste inconnu"),
+              journal: t("message"),
               reason: (err as Error).message,
             });
           }
@@ -673,7 +687,7 @@ export function useSync(options: {
     relayCount,
     peers,
     lastSync,
-    error,
+    error: error ? t(error) : "",
     peerId: peerId.current,
     conflicts: found,
     rejected,

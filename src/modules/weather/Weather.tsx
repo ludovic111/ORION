@@ -42,8 +42,12 @@ import { RecordSheet, type FieldSpec } from "../../ui/records";
 import { ComboField, DateTimeField, TextField, Toggle } from "../../ui/fields";
 import { CountUp } from "../../ui/effects";
 import { Modal } from "../../journal/Modal";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { formatDayMonth, formatWith } from "../../../shared/i18n/core.ts";
+import { useLang } from "../../i18n";
+import { t } from "./i18n.ts";
 import {
-  HAZARDS,
+  hazards,
   alertActive,
   alertPeriod,
   observationText,
@@ -51,6 +55,7 @@ import {
   compass,
   fetchForecast,
   isNight,
+  modelLabel,
   readAutoRefresh,
   readCachedForecast,
   round,
@@ -76,38 +81,46 @@ type ObsDraft = Omit<Observation, "id" | "createdAt" | "updatedAt" | "by"> &
 type AlertDraft = Omit<WeatherAlert, "id" | "createdAt" | "updatedAt" | "by"> &
   Partial<Pick<WeatherAlert, "id" | "createdAt" | "updatedAt" | "by">>;
 
-const WIND = ["Calme", "Faible", "Modéré", "Fort", "Tempête"];
-const PRECIPITATION = [
-  "Aucune",
-  "Faibles",
-  "Modérées",
-  "Fortes",
-  "Neige",
-  "Grêle",
+// Values suggested in the language of the post (what is chosen is stored
+// as written: it is data).
+const wind = () => [
+  t("Calme"),
+  t("Faible"),
+  t("Modéré"),
+  t("Fort"),
+  t("Tempête"),
 ];
-const VISIBILITY = [
-  "Plus de 10 km",
-  "1 à 10 km",
-  "Moins de 1 km",
-  "Moins de 100 m",
+const precipitation = () => [
+  t("Aucune"),
+  t("Faibles"),
+  t("Modérées"),
+  t("Fortes"),
+  t("Neige"),
+  t("Grêle"),
 ];
-const CONDITIONS = [
-  "Ensoleillé",
-  "Nuageux",
-  "Couvert",
-  "Pluie",
-  "Averses",
-  "Neige",
-  "Brouillard",
-  "Orage",
+const visibility = () => [
+  t("Plus de 10 km"),
+  t("1 à 10 km"),
+  t("Moins de 1 km"),
+  t("Moins de 100 m"),
 ];
-const SOURCES = [
-  "MétéoSuisse",
-  "OFEV · crues",
-  "SLF · avalanches",
-  "Canton",
-  "Commune",
-  "Autre",
+const conditions = () => [
+  t("Ensoleillé"),
+  t("Nuageux"),
+  t("Couvert"),
+  t("Pluie"),
+  t("Averses"),
+  t("Neige"),
+  t("Brouillard"),
+  t("Orage"),
+];
+const sources = () => [
+  t("MétéoSuisse"),
+  t("OFEV · crues"),
+  t("SLF · avalanches"),
+  t("Canton"),
+  t("Commune"),
+  t("Autre"),
 ];
 
 const blankObservation = (place = ""): ObsDraft => ({
@@ -126,42 +139,42 @@ const blankAlert = (): AlertDraft => ({
   region: "",
   from: new Date().toISOString(),
   to: "",
-  source: "MétéoSuisse",
+  source: t("MétéoSuisse"),
   notes: "",
 });
 
-const OBS_SPEC: FieldSpec[] = [
-  { key: "at", label: "Heure", kind: "datetime", required: true },
-  { key: "place", label: "Lieu", kind: "text" },
+const obsSpec = (): FieldSpec[] => [
+  { key: "at", label: t("Heure"), kind: "datetime", required: true },
+  { key: "place", label: t("Lieu"), kind: "text" },
   {
     key: "conditions",
-    label: "Conditions",
+    label: t("Conditions"),
     kind: "combo",
-    options: CONDITIONS,
+    options: conditions(),
     quick: 8,
     wide: true,
   },
   {
     key: "temperature",
-    label: "Température",
+    label: t("Température"),
     kind: "text",
-    placeholder: "ex. 12 °C",
+    placeholder: t("ex. 12 °C"),
     max: 40,
   },
-  { key: "wind", label: "Vent", kind: "combo", options: WIND },
+  { key: "wind", label: t("Vent"), kind: "combo", options: wind() },
   {
     key: "precipitation",
-    label: "Précipitations",
+    label: t("Précipitations"),
     kind: "combo",
-    options: PRECIPITATION,
+    options: precipitation(),
   },
   {
     key: "visibility",
-    label: "Visibilité",
+    label: t("Visibilité"),
     kind: "combo",
-    options: VISIBILITY,
+    options: visibility(),
   },
-  { key: "notes", label: "Remarques", kind: "area", max: 2000 },
+  { key: "notes", label: t("Remarques"), kind: "area", max: 2000 },
 ];
 
 export function Weather() {
@@ -178,6 +191,7 @@ export function Weather() {
     record,
     live,
   } = useApp();
+  useLang();
   const place = journal.ops.settings.weatherPlace;
   const [fetched, setData] = useState<CachedForecast | null>(() =>
     readCachedForecast(journal.id),
@@ -282,9 +296,9 @@ export function Weather() {
       if (!mounted.current) return;
       setError(
         !navigator.onLine
-          ? "Hors ligne : la dernière prévision reste affichée."
+          ? t("Hors ligne : la dernière prévision reste affichée.")
           : err instanceof TypeError
-            ? "Impossible de joindre le service météo."
+            ? t("Impossible de joindre le service météo.")
             : (err as Error).message,
       );
     } finally {
@@ -324,7 +338,7 @@ export function Weather() {
       } else {
         const found = journal.ops.alerts.find((a) => a.id === id);
         if (found) setAlert(found);
-        else toast("Alerte introuvable.");
+        else toast(t("Alerte introuvable."));
       }
     } else {
       if (id === "new") {
@@ -332,7 +346,7 @@ export function Weather() {
       } else {
         const found = journal.ops.observations.find((o) => o.id === id);
         if (found) setObs(found);
-        else toast("Observation introuvable.");
+        else toast(t("Observation introuvable."));
       }
     }
     setFocus(null);
@@ -363,12 +377,21 @@ export function Weather() {
           type: "Observation",
           happenedAt: o.at,
           location: o.place,
-          message: `Observation météo${o.place ? ` (${o.place})` : ""} : ${text || "voir remarques"}${o.notes ? `. ${o.notes}` : ""}`,
+          message: `${
+            o.place
+              ? t("Observation météo ({place}) : {text}", {
+                  place: o.place,
+                  text: text || t("voir remarques"),
+                })
+              : t("Observation météo : {text}", {
+                  text: text || t("voir remarques"),
+                })
+          }${o.notes ? `. ${o.notes}` : ""}`,
           tags: ["météo"],
         },
         [ref("observation", o.id)],
       );
-      if (id) toast("Observation consignée au journal.");
+      if (id) toast(t("Observation consignée au journal."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -383,7 +406,10 @@ export function Weather() {
       setPicking(false);
       if (value)
         toast(
-          `Lieu météo : ${value.name}. Appuyez sur « Actualiser » pour la prévision.`,
+          t(
+            "Lieu météo : {name}. Appuyez sur « Actualiser » pour la prévision.",
+            { name: value.name },
+          ),
         );
     } catch (err) {
       toast((err as Error).message);
@@ -421,12 +447,12 @@ export function Weather() {
           <>
             <a
               className="button weather-extlink"
-              href="https://www.meteosuisse.admin.ch"
+              href={t("https://www.meteosuisse.admin.ch")}
               target="_blank"
               rel="noreferrer"
             >
               <ExternalLink size={14} />
-              Carte des dangers MétéoSuisse
+              {t("Carte des dangers MétéoSuisse")}
             </a>
             {place && viewAt === null && (
               <button
@@ -438,7 +464,7 @@ export function Weather() {
                   size={14}
                   className={loading ? "weather-spin" : ""}
                 />
-                {loading ? "Actualisation…" : "Actualiser"}
+                {loading ? t("Actualisation…") : t("Actualiser")}
               </button>
             )}
           </>
@@ -447,21 +473,21 @@ export function Weather() {
       <div className="bento stagger">
         <section
           className="card w-12 weather-place"
-          aria-label="Lieu de la prévision"
+          aria-label={t("Lieu de la prévision")}
         >
           {place ? (
             <>
               <div className="weather-place-main">
                 <MapPin size={18} />
                 <div>
-                  <strong>{place.name || "Lieu sans nom"}</strong>
+                  <strong>{place.name || t("Lieu sans nom")}</strong>
                   <small className="mono">
                     {place.lat.toFixed(4)}, {place.lng.toFixed(4)}
                   </small>
                 </div>
                 {!readOnly && (
                   <button className="small" onClick={() => setPicking(true)}>
-                    Changer de lieu
+                    {t("Changer de lieu")}
                   </button>
                 )}
               </div>
@@ -469,23 +495,33 @@ export function Weather() {
                 {data && archived ? (
                   <span className="pill accent">
                     <History size={11} />
-                    Prévision reçue le{" "}
-                    {dateTime(new Date(data.fetchedAt).toISOString())}
+                    {t("Prévision reçue le {date}", {
+                      date: dateTime(new Date(data.fetchedAt).toISOString()),
+                    })}
                   </span>
                 ) : data ? (
                   <span
                     className={`pill ${Date.now() - data.fetchedAt > 3 * HOUR ? "warn" : "ok"}`}
                   >
-                    Données du{" "}
-                    {dateTime(new Date(data.fetchedAt).toISOString())}
+                    {t("Données du {date}", {
+                      date: dateTime(new Date(data.fetchedAt).toISOString()),
+                    })}
                   </span>
                 ) : (
-                  <span className="pill muted">Pas encore de prévision</span>
+                  <span className="pill muted">
+                    {t("Pas encore de prévision")}
+                  </span>
                 )}
-                {!online && <span className="pill warn">Hors ligne</span>}
-                {data && <span className="muted">{data.forecast.model}</span>}
+                {!online && (
+                  <span className="pill warn">{t("Hors ligne")}</span>
+                )}
+                {data && (
+                  <span className="muted">
+                    {modelLabel(data.forecast.model)}
+                  </span>
+                )}
                 <Toggle
-                  label="Actualiser toutes les 30 min"
+                  label={t("Actualiser toutes les 30 min")}
                   checked={auto}
                   onChange={(value) => {
                     setAuto(value);
@@ -494,9 +530,9 @@ export function Weather() {
                 />
               </div>
               <p className="weather-privacy">
-                Pour obtenir la prévision, les coordonnées du lieu sont envoyées
-                à open-meteo.com (rien d’autre). Sans actualisation, aucune
-                donnée ne quitte ce poste.
+                {t(
+                  "Pour obtenir la prévision, les coordonnées du lieu sont envoyées à open-meteo.com (rien d’autre). Sans actualisation, aucune donnée ne quitte ce poste.",
+                )}
               </p>
               {error && (
                 <p className="error" role="alert">
@@ -505,17 +541,19 @@ export function Weather() {
               )}
             </>
           ) : readOnly ? (
-            <p className="muted">Aucun lieu météo défini pour ce journal.</p>
+            <p className="muted">
+              {t("Aucun lieu météo défini pour ce journal.")}
+            </p>
           ) : (
             <div className="weather-setup">
               <div className="weather-setup-intro">
                 <CloudSun size={26} />
                 <div>
-                  <h2>Où faut-il la météo ?</h2>
+                  <h2>{t("Où faut-il la météo ?")}</h2>
                   <p>
-                    Cherchez une localité, reprenez la vue de la carte ou votre
-                    position. La prévision MétéoSuisse (modèle ICON-CH2) est
-                    ensuite chargée sur demande.
+                    {t(
+                      "Cherchez une localité, reprenez la vue de la carte ou votre position. La prévision MétéoSuisse (modèle ICON-CH2) est ensuite chargée sur demande.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -534,15 +572,15 @@ export function Weather() {
             <Days days={forecast.days} />
             <section
               className="card w-12 weather-chart-card"
-              aria-label="Prévision sur 48 heures"
+              aria-label={t("Prévision sur 48 heures")}
             >
               <div className="card-head">
                 <Thermometer size={15} />
-                <h2>48 heures</h2>
+                <h2>{t("48 heures")}</h2>
                 <span className="weather-legend">
-                  <i className="t" /> Température
-                  <i className="p" /> Précipitations
-                  <i className="g" /> Rafales
+                  <i className="t" /> {t("Température")}
+                  <i className="p" /> {t("Précipitations")}
+                  <i className="g" /> {t("Rafales")}
                 </span>
               </div>
               <Chart key={data.fetchedAt} hours={forecast.hours} at={now} />
@@ -552,21 +590,24 @@ export function Weather() {
         {received.length > 0 && (
           <section
             className="card w-12 weather-versions"
-            aria-label="Prévisions reçues"
+            aria-label={t("Prévisions reçues")}
           >
             <div className="card-head">
               <History size={15} />
-              <h2>Prévisions reçues</h2>
+              <h2>{t("Prévisions reçues")}</h2>
               <span className="pill plain">{received.length}</span>
               {picked && (
                 <button className="small" onClick={() => setPicked(null)}>
-                  {viewAt !== null ? "Version du moment" : "Dernière prévision"}
+                  {viewAt !== null
+                    ? t("Version du moment")
+                    : t("Dernière prévision")}
                 </button>
               )}
             </div>
             <p className="muted weather-versions-intro">
-              Chaque prévision chargée est gardée : on retrouve ce qui était
-              annoncé à chaque heure.
+              {t(
+                "Chaque prévision chargée est gardée : on retrouve ce qui était annoncé à chaque heure.",
+              )}
             </p>
             <div className="weather-version-list">
               {received.slice(0, 48).map((f) => {
@@ -585,7 +626,11 @@ export function Weather() {
                     key={f.id}
                     className={`weather-version${active ? " active" : ""}`}
                     onClick={() => setPicked(f.id)}
-                    title={`${f.place} · ${d.model} · reçue par ${f.by || "—"}`}
+                    title={t("{place} · {model} · reçue par {by}", {
+                      place: f.place,
+                      model: modelLabel(d.model),
+                      by: f.by || "—",
+                    })}
                   >
                     <span className="mono">{time(f.fetchedAt)}</span>
                     <Icon size={18} />
@@ -594,11 +639,7 @@ export function Weather() {
                       {round(rain)} mm/24 h · {round(d.current.gusts)} km/h
                     </small>
                     <small className="muted">
-                      {new Date(f.fetchedAt).toLocaleDateString("fr-CH", {
-                        day: "2-digit",
-                        month: "2-digit",
-                      })}{" "}
-                      · {f.by || "—"}
+                      {formatDayMonth(f.fetchedAt)} · {f.by || "—"}
                     </small>
                   </button>
                 );
@@ -610,7 +651,7 @@ export function Weather() {
           <section className="card w-12">
             <EmptyState
               icon={<CloudSun size={28} />}
-              title="Pas encore de prévision"
+              title={t("Pas encore de prévision")}
               actions={
                 <button
                   className="primary"
@@ -621,27 +662,31 @@ export function Weather() {
                     size={14}
                     className={loading ? "weather-spin" : ""}
                   />
-                  Charger la prévision
+                  {t("Charger la prévision")}
                 </button>
               }
             >
-              La prévision pour {place.name || "ce lieu"} est chargée uniquement
-              quand vous le demandez.
+              {t(
+                "La prévision pour {place} est chargée uniquement quand vous le demandez.",
+                { place: place.name || t("ce lieu") },
+              )}
             </EmptyState>
           </section>
         )}
 
-        <section className="card w-5 weather-alerts" aria-label="Alertes">
+        <section className="card w-5 weather-alerts" aria-label={t("Alertes")}>
           <div className="card-head">
             <ShieldAlert size={15} />
-            <h2>Alertes de danger</h2>
+            <h2>{t("Alertes de danger")}</h2>
             <span className="pill plain">
-              {alerts.filter((a) => alertActive(a, now)).length} en vigueur
+              {t("{n} en vigueur", {
+                n: alerts.filter((a) => alertActive(a, now)).length,
+              })}
             </span>
             {!readOnly && (
               <button className="small" onClick={() => setAlert(blankAlert())}>
                 <Plus size={13} />
-                Alerte
+                {t("Alerte")}
               </button>
             )}
           </div>
@@ -668,7 +713,11 @@ export function Weather() {
                     <span
                       className={`pill ${active ? "crit" : soon ? "warn" : "muted"}`}
                     >
-                      {active ? "En vigueur" : soon ? "À venir" : "Terminée"}
+                      {active
+                        ? t("En vigueur")
+                        : soon
+                          ? t("À venir")
+                          : t("Terminée")}
                     </span>
                   </button>
                 );
@@ -677,13 +726,14 @@ export function Weather() {
           ) : (
             <div className="weather-empty">
               <p>
-                Aucune alerte saisie. Reportez ici les avis de MétéoSuisse
-                (degrés 1 à 5) qui concernent la région.
+                {t(
+                  "Aucune alerte saisie. Reportez ici les avis de MétéoSuisse (degrés 1 à 5) qui concernent la région.",
+                )}
               </p>
               {!readOnly && (
                 <button onClick={() => setAlert(blankAlert())}>
                   <Plus size={14} />
-                  Saisir une alerte
+                  {t("Saisir une alerte")}
                 </button>
               )}
             </div>
@@ -692,11 +742,11 @@ export function Weather() {
 
         <section
           className="card w-7 weather-obs"
-          aria-label="Observations sur place"
+          aria-label={t("Observations sur place")}
         >
           <div className="card-head">
             <Crosshair size={15} />
-            <h2>Observations sur place</h2>
+            <h2>{t("Observations sur place")}</h2>
             <span className="pill plain">{observations.length}</span>
           </div>
           {!readOnly && (
@@ -718,7 +768,7 @@ export function Weather() {
                   >
                     <span className="row-main">
                       <strong>
-                        {observationText(o) || o.notes || "Observation"}
+                        {observationText(o) || o.notes || t("Observation")}
                       </strong>
                       <small>
                         {[
@@ -734,12 +784,14 @@ export function Weather() {
                   {!readOnly && (
                     <button
                       className="small"
-                      title="Consigner au journal"
-                      aria-label="Consigner cette observation au journal"
+                      title={t("Consigner au journal")}
+                      aria-label={t("Consigner cette observation au journal")}
                       onClick={() => logObservation(o)}
                     >
                       <NotebookPen size={13} />
-                      <span className="weather-hide-narrow">Consigner</span>
+                      <span className="weather-hide-narrow">
+                        {t("Consigner")}
+                      </span>
                     </button>
                   )}
                 </div>
@@ -747,8 +799,9 @@ export function Weather() {
             </div>
           ) : (
             <p className="muted weather-obs-none">
-              Aucune observation. Notez ce que l’on voit sur place : c’est
-              souvent plus parlant que la prévision.
+              {t(
+                "Aucune observation. Notez ce que l’on voit sur place : c’est souvent plus parlant que la prévision.",
+              )}
             </p>
           )}
         </section>
@@ -756,12 +809,15 @@ export function Weather() {
       </div>
 
       {picking && (
-        <Modal title="Lieu de la prévision" onClose={() => setPicking(false)}>
+        <Modal
+          title={t("Lieu de la prévision")}
+          onClose={() => setPicking(false)}
+        >
           <PlacePicker onPick={setPlace} />
           {place && (
             <div className="weather-picker-foot">
               <button className="danger" onClick={() => setPlace(null)}>
-                Retirer le lieu
+                {t("Retirer le lieu")}
               </button>
             </div>
           )}
@@ -771,11 +827,11 @@ export function Weather() {
         <RecordSheet
           collection="observations"
           kind="observation"
-          noun="une observation"
-          spec={OBS_SPEC}
+          noun={t("une observation")}
+          spec={obsSpec()}
           initial={obs as Record<string, unknown>}
           onClose={() => setObs(null)}
-          validate={(v) => (!v.at ? "Indiquez l’heure." : "")}
+          validate={(v) => (!v.at ? t("Indiquez l’heure.") : "")}
           footer={
             obs.id && !readOnly ? (
               <button
@@ -787,7 +843,7 @@ export function Weather() {
                 }}
               >
                 <NotebookPen size={14} />
-                Consigner
+                {t("Consigner")}
               </button>
             ) : undefined
           }
@@ -797,22 +853,27 @@ export function Weather() {
         <RecordSheet
           collection="alerts"
           kind="alert"
-          noun="une alerte"
-          spec={ALERT_SPEC}
+          noun={t("une alerte")}
+          spec={alertSpec()}
           initial={alert as Record<string, unknown>}
           onClose={() => setAlert(null)}
           titleOf={(v) =>
             v.id && v.hazard
-              ? `${String(v.hazard)} · degré ${String(v.level)}`
+              ? t("{hazard} · degré {level}", {
+                  hazard: String(v.hazard),
+                  level: String(v.level),
+                })
               : ""
           }
           validate={(v) =>
             !String(v.hazard ?? "").trim()
-              ? "Indiquez le danger (un clic sur une valeur proposée suffit)."
+              ? t(
+                  "Indiquez le danger (un clic sur une valeur proposée suffit).",
+                )
               : v.from &&
                   v.to &&
                   Date.parse(String(v.to)) < Date.parse(String(v.from))
-                ? "La fin précède le début."
+                ? t("La fin précède le début.")
                 : ""
           }
         />
@@ -822,7 +883,7 @@ export function Weather() {
 }
 export default Weather;
 
-const ALERT_SPEC: FieldSpec[] = [
+const alertSpec = (): FieldSpec[] => [
   {
     kind: "custom",
     key: "level",
@@ -836,25 +897,25 @@ const ALERT_SPEC: FieldSpec[] = [
   },
   {
     key: "hazard",
-    label: "Danger",
+    label: t("Danger"),
     kind: "combo",
-    options: HAZARDS,
+    options: hazards(),
     quick: 10,
     required: true,
     wide: true,
   },
   {
     key: "region",
-    label: "Région",
+    label: t("Région"),
     kind: "text",
-    placeholder: "ex. Valais central",
+    placeholder: t("ex. Valais central"),
   },
-  { key: "source", label: "Source", kind: "combo", options: SOURCES },
-  { key: "from", label: "Début", kind: "datetime" },
-  { key: "to", label: "Fin", kind: "datetime" },
+  { key: "source", label: t("Source"), kind: "combo", options: sources() },
+  { key: "from", label: t("Début"), kind: "datetime" },
+  { key: "to", label: t("Fin"), kind: "datetime" },
   {
     key: "notes",
-    label: "Remarques / comportements recommandés",
+    label: t("Remarques / comportements recommandés"),
     kind: "area",
     max: 2000,
   },
@@ -862,8 +923,11 @@ const ALERT_SPEC: FieldSpec[] = [
 
 function LevelBadge({ level }: { level: WeatherAlert["level"] }) {
   return (
-    <span className={`weather-level lvl-${level}`} title={ALERT_LABELS[level]}>
-      <span className="sr-only">Degré </span>
+    <span
+      className={`weather-level lvl-${level}`}
+      title={enumLabel(ALERT_LABELS[level])}
+    >
+      <span className="sr-only">{t("Degré ")}</span>
       {level}
     </span>
   );
@@ -878,8 +942,8 @@ function LevelPicker({
 }) {
   return (
     <div className="weather-level-picker">
-      <span className="label">Degré de danger</span>
-      <div role="radiogroup" aria-label="Degré de danger">
+      <span className="label">{t("Degré de danger")}</span>
+      <div role="radiogroup" aria-label={t("Degré de danger")}>
         {ALERT_LEVELS.map((l) => (
           <button
             type="button"
@@ -888,13 +952,13 @@ function LevelPicker({
             aria-checked={value === l}
             className={`weather-level lvl-${l}`}
             onClick={() => onChange(l)}
-            title={ALERT_LABELS[l]}
+            title={enumLabel(ALERT_LABELS[l])}
           >
             {l}
           </button>
         ))}
       </div>
-      <small>{ALERT_LABELS[value]}</small>
+      <small>{enumLabel(ALERT_LABELS[value])}</small>
     </div>
   );
 }
@@ -927,7 +991,7 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
         if ((err as Error).name !== "AbortError")
           setError(
             err instanceof TypeError
-              ? "Recherche impossible (hors ligne ?)."
+              ? t("Recherche impossible (hors ligne ?).")
               : (err as Error).message,
           );
       } finally {
@@ -942,13 +1006,13 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
 
   function locate() {
     if (!navigator.geolocation)
-      return toast("Position indisponible sur cet appareil.");
+      return toast(t("Position indisponible sur cet appareil."));
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
         onPick({
-          name: "Ma position",
+          name: t("Ma position"),
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         });
@@ -957,8 +1021,8 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
         setLocating(false);
         toast(
           err.code === 1
-            ? "Accès à la position refusé."
-            : "Position introuvable.",
+            ? t("Accès à la position refusé.")
+            : t("Position introuvable."),
         );
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
@@ -981,8 +1045,8 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Localité, adresse, lieu-dit…"
-          aria-label="Rechercher un lieu en Suisse"
+          placeholder={t("Localité, adresse, lieu-dit…")}
+          aria-label={t("Rechercher un lieu en Suisse")}
           maxLength={120}
         />
         {searching && <RefreshCw size={13} className="weather-spin" />}
@@ -1009,52 +1073,52 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
         </div>
       )}
       <p className="weather-privacy">
-        La recherche passe par geo.admin.ch (swisstopo).
+        {t("La recherche passe par geo.admin.ch (swisstopo).")}
       </p>
       <div className="weather-picker-actions">
         <button
           disabled={!center}
           title={
             center
-              ? "Centre de la carte de situation"
-              : "Ouvrez d’abord la carte"
+              ? t("Centre de la carte de situation")
+              : t("Ouvrez d’abord la carte")
           }
           onClick={() =>
             center &&
             onPick({
-              name: "Vue de la carte",
+              name: t("Vue de la carte"),
               lat: center.lat,
               lng: center.lng,
             })
           }
         >
           <MapIcon size={14} />
-          Utiliser la vue de la carte
+          {t("Utiliser la vue de la carte")}
         </button>
         <button onClick={locate} disabled={locating}>
           <LocateFixed size={14} />
-          {locating ? "Localisation…" : "Ma position"}
+          {locating ? t("Localisation…") : t("Ma position")}
         </button>
       </div>
       <details className="weather-manual">
-        <summary>Saisir des coordonnées</summary>
+        <summary>{t("Saisir des coordonnées")}</summary>
         <div className="form-grid">
           <TextField
             className="span-2"
-            label="Nom"
+            label={t("Nom")}
             value={manual.name}
             onChange={(name) => setManual({ ...manual, name })}
             maxLength={200}
           />
           <TextField
-            label="Latitude"
+            label={t("Latitude")}
             value={manual.lat}
             onChange={(v) => setManual({ ...manual, lat: v })}
             placeholder="46.2044"
             maxLength={20}
           />
           <TextField
-            label="Longitude"
+            label={t("Longitude")}
             value={manual.lng}
             onChange={(v) => setManual({ ...manual, lng: v })}
             placeholder="6.1432"
@@ -1073,7 +1137,7 @@ function PlacePicker({ onPick }: { onPick: (place: WeatherPlace) => void }) {
             })
           }
         >
-          Utiliser ces coordonnées
+          {t("Utiliser ces coordonnées")}
         </button>
       </details>
     </div>
@@ -1110,7 +1174,7 @@ function QuickObservation({
         ),
       );
       onAdded(id, log);
-      toast("Observation ajoutée.");
+      toast(t("Observation ajoutée."));
       setDraft(blankObservation(draft.place));
       setOpen(false);
     } catch (err) {
@@ -1126,11 +1190,11 @@ function QuickObservation({
       wind:
         c.wind === null
           ? ""
-          : `${round(c.wind)} km/h${c.direction === null ? "" : ` du ${compass(c.direction)}`}${c.gusts ? `, rafales ${round(c.gusts)} km/h` : ""}`,
+          : `${round(c.wind)} km/h${c.direction === null ? "" : ` ${t("du {dir}", { dir: compass(c.direction) })}`}${c.gusts ? `, ${t("rafales {v} km/h", { v: round(c.gusts) })}` : ""}`,
       conditions: weatherLabel(c.code),
       precipitation: c.precipitation
         ? `${round(c.precipitation, 1)} mm/h`
-        : "Aucune",
+        : t("Aucune"),
     });
   }
   if (!open)
@@ -1144,63 +1208,63 @@ function QuickObservation({
           }}
         >
           <Plus size={14} />
-          Noter une observation
+          {t("Noter une observation")}
         </button>
       </div>
     );
   return (
     <div className="weather-quick reveal">
       <ComboField
-        label="Conditions"
+        label={t("Conditions")}
         value={draft.conditions}
         onChange={(conditions) => set({ conditions })}
-        options={CONDITIONS}
+        options={conditions()}
         quick={8}
         maxLength={200}
       />
       <div className="weather-quick-grid">
         <TextField
-          label="Température"
+          label={t("Température")}
           value={draft.temperature}
           onChange={(temperature) => set({ temperature })}
-          placeholder="ex. 12 °C"
+          placeholder={t("ex. 12 °C")}
           maxLength={40}
         />
         <ComboField
-          label="Vent"
+          label={t("Vent")}
           value={draft.wind}
           onChange={(wind) => set({ wind })}
-          options={WIND}
+          options={wind()}
           maxLength={80}
         />
         <ComboField
-          label="Précipitations"
+          label={t("Précipitations")}
           value={draft.precipitation}
           onChange={(precipitation) => set({ precipitation })}
-          options={PRECIPITATION}
+          options={precipitation()}
           maxLength={80}
         />
         <ComboField
-          label="Visibilité"
+          label={t("Visibilité")}
           value={draft.visibility}
           onChange={(visibility) => set({ visibility })}
-          options={VISIBILITY}
+          options={visibility()}
           maxLength={80}
         />
         <TextField
-          label="Lieu"
+          label={t("Lieu")}
           value={draft.place}
           onChange={(p) => set({ place: p })}
           maxLength={200}
         />
         <DateTimeField
-          label="Heure"
+          label={t("Heure")}
           value={draft.at}
           onChange={(at) => set({ at })}
         />
       </div>
       <TextField
-        label="Remarques"
+        label={t("Remarques")}
         value={draft.notes}
         onChange={(notes) => set({ notes })}
         rows={2}
@@ -1210,21 +1274,21 @@ function QuickObservation({
         {forecast && (
           <button
             onClick={fromForecast}
-            title="Reprendre les valeurs de la prévision actuelle"
+            title={t("Reprendre les valeurs de la prévision actuelle")}
           >
             <CloudSun size={14} />
-            Reprendre la prévision
+            {t("Reprendre la prévision")}
           </button>
         )}
         <Toggle
-          label="Consigner aussi au journal"
+          label={t("Consigner aussi au journal")}
           checked={log}
           onChange={setLog}
         />
         <span className="weather-push" />
-        <button onClick={() => setOpen(false)}>Annuler</button>
+        <button onClick={() => setOpen(false)}>{t("Annuler")}</button>
         <button className="primary" disabled={empty} onClick={add}>
-          Ajouter
+          {t("Ajouter")}
         </button>
       </div>
     </div>
@@ -1245,11 +1309,13 @@ function Current({
   return (
     <section
       className="card spot w-5 weather-now"
-      aria-label="Conditions actuelles"
+      aria-label={t("Conditions actuelles")}
     >
       <div className="weather-now-top">
-        <span className="label">Maintenant · {name}</span>
-        {other && <span className="pill warn">Ancien lieu</span>}
+        <span className="label">
+          {t("Maintenant")} · {name}
+        </span>
+        {other && <span className="pill warn">{t("Ancien lieu")}</span>}
       </div>
       <div className="weather-now-main">
         <span
@@ -1272,7 +1338,7 @@ function Current({
       </div>
       <dl className="weather-now-facts">
         <div>
-          <dt>Vent</dt>
+          <dt>{t("Vent")}</dt>
           <dd>
             {c.direction !== null && (
               <ArrowUp
@@ -1283,25 +1349,27 @@ function Current({
               />
             )}
             {round(c.wind)} km/h
-            {c.direction !== null && <small> du {compass(c.direction)}</small>}
+            {c.direction !== null && (
+              <small> {t("du {dir}", { dir: compass(c.direction) })}</small>
+            )}
           </dd>
         </div>
         <div>
-          <dt>Rafales</dt>
+          <dt>{t("Rafales")}</dt>
           <dd className={c.gusts !== null && c.gusts >= 60 ? "warn" : ""}>
             <Wind size={15} />
             {round(c.gusts)} km/h
           </dd>
         </div>
         <div>
-          <dt>Humidité</dt>
+          <dt>{t("Humidité")}</dt>
           <dd>
             <Droplets size={15} />
             {round(c.humidity)} %
           </dd>
         </div>
         <div>
-          <dt>Précipitations</dt>
+          <dt>{t("Précipitations")}</dt>
           <dd>
             <Umbrella size={15} />
             {round(c.precipitation, 1)} mm
@@ -1314,17 +1382,17 @@ function Current({
 
 const dayName = (d: Day, index: number) =>
   index === 0
-    ? "Aujourd’hui"
+    ? t("Aujourd’hui")
     : index === 1
-      ? "Demain"
-      : new Date(d.at).toLocaleDateString("fr-CH", {
-          timeZone: "Europe/Zurich",
-          weekday: "long",
-        });
+      ? t("Demain")
+      : formatWith(d.at, { weekday: "long" });
 
 function Days({ days }: { days: Day[] }) {
   return (
-    <section className="w-7 weather-days" aria-label="Prévision sur 3 jours">
+    <section
+      className="w-7 weather-days"
+      aria-label={t("Prévision sur 3 jours")}
+    >
       {days.slice(0, 3).map((d, i) => {
         const Icon = weatherIcon(d.code);
         return (
@@ -1332,11 +1400,7 @@ function Days({ days }: { days: Day[] }) {
             <header>
               <strong>{dayName(d, i)}</strong>
               <small>
-                {new Date(d.at).toLocaleDateString("fr-CH", {
-                  timeZone: "Europe/Zurich",
-                  day: "numeric",
-                  month: "short",
-                })}
+                {formatWith(d.at, { day: "numeric", month: "short" })}
               </small>
             </header>
             <span
@@ -1358,7 +1422,7 @@ function Days({ days }: { days: Day[] }) {
               </li>
               <li className={d.gusts !== null && d.gusts >= 60 ? "warn" : ""}>
                 <Wind size={13} />
-                rafales {round(d.gusts)} km/h
+                {t("rafales {v} km/h", { v: round(d.gusts) })}
               </li>
               <li>
                 <Sunrise size={13} />
@@ -1394,8 +1458,9 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
   if (list.length < 2)
     return (
       <p className="muted">
-        La prévision est trop ancienne : actualisez pour voir les 48 prochaines
-        heures.
+        {t(
+          "La prévision est trop ancienne : actualisez pour voir les 48 prochaines heures.",
+        )}
       </p>
     );
 
@@ -1468,10 +1533,18 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
     );
     setIndex(next);
   }
-  const summary = `Température de ${round(tMin + 1)} à ${round(tMax - 1)} °C, précipitations cumulées ${round(
-    list.reduce((s, h) => s + (h.precipitation ?? 0), 0),
-    1,
-  )} mm, rafales jusqu’à ${round(Math.max(0, ...list.map((h) => h.gusts ?? 0)))} km/h.`;
+  const summary = t(
+    "Température de {min} à {max} °C, précipitations cumulées {rain} mm, rafales jusqu’à {gusts} km/h.",
+    {
+      min: round(tMin + 1),
+      max: round(tMax - 1),
+      rain: round(
+        list.reduce((s, h) => s + (h.precipitation ?? 0), 0),
+        1,
+      ),
+      gusts: round(Math.max(0, ...list.map((h) => h.gusts ?? 0))),
+    },
+  );
 
   return (
     <div className="weather-chart">
@@ -1479,7 +1552,10 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
         ref={box}
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Prévision sur 48 heures. ${summary} Flèches gauche et droite pour lire heure par heure.`}
+        aria-label={t(
+          "Prévision sur 48 heures. {summary} Flèches gauche et droite pour lire heure par heure.",
+          { summary },
+        )}
         tabIndex={0}
         onPointerMove={(e) => pick(e.clientX)}
         onPointerDown={(e) => pick(e.clientX)}
@@ -1543,10 +1619,7 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
                 textAnchor="middle"
               >
                 {hour === 0
-                  ? new Date(h.at).toLocaleDateString("fr-CH", {
-                      timeZone: "Europe/Zurich",
-                      weekday: "short",
-                    })
+                  ? formatWith(h.at, { weekday: "short" })
                   : `${hour} h`}
               </text>
             </g>
@@ -1581,7 +1654,7 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
           <g className="weather-now-marker">
             <line x1={nowX} x2={nowX} y1={top - 4} y2={bottom} />
             <text x={nowX} y={H - 8} textAnchor="middle">
-              maintenant
+              {t("maintenant (graphique)")}
             </text>
           </g>
         )}
@@ -1611,11 +1684,11 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
           role="status"
         >
           <strong>
-            {new Date(picked.at).toLocaleString("fr-CH", {
-              timeZone: "Europe/Zurich",
+            {formatWith(picked.at, {
               weekday: "short",
               hour: "2-digit",
               minute: "2-digit",
+              hourCycle: "h23",
             })}
           </strong>
           <span>{weatherLabel(picked.code)}</span>
@@ -1627,8 +1700,8 @@ function Chart({ hours, at }: { hours: Hour[]; at: number }) {
             {picked.probability !== null && ` · ${round(picked.probability)} %`}
           </span>
           <span>
-            <Wind size={12} /> {round(picked.wind)} km/h · rafales{" "}
-            {round(picked.gusts)}
+            <Wind size={12} /> {round(picked.wind)} km/h ·{" "}
+            {t("rafales {v}", { v: round(picked.gusts) })}
           </span>
         </div>
       )}

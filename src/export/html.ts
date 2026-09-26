@@ -2,6 +2,8 @@ import { xml } from "../../shared/interchange.ts";
 import { base64, qrSvg } from "./bytes.ts";
 import { coverFacts, type Dossier } from "./dossier.ts";
 import { DOCUMENT_ROWS, mapBytes, type DocumentOptions } from "./docx.ts";
+import { locale } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 // Standalone HTML dossier: one file, no external resource (strict CSP),
 // table of contents, map images as data URLs, watermark, stamp and QR code
@@ -81,16 +83,16 @@ export function dossierHtml(dossier: Dossier, o: DocumentOptions): string {
           return `<h3>${esc(b.title)}</h3><p class="text">${esc(b.body)}</p>${b.meta ? `<p class="caption">${esc(b.meta)}</p>` : ""}`;
         if (b.kind === "map") {
           const image = o.maps[b.mapId];
-          return `<h3 id="part-${ch.number}-${i + 1}">Carte · ${esc(b.title)}</h3><figure>${
+          return `<h3 id="part-${ch.number}-${i + 1}">${esc(t("Carte · {title}", { title: b.title }))}</h3><figure>${
             image
-              ? `<img src="data:${mapBytes(image).mime};base64,${base64(mapBytes(image).data)}" alt="Carte ${xml(b.title)}" width="${image.width}" height="${image.height}">`
+              ? `<img src="data:${mapBytes(image).mime};base64,${base64(mapBytes(image).data)}" alt="${xml(t("Carte {title}", { title: b.title }))}" width="${image.width}" height="${image.height}">`
               : ""
           }<figcaption>${esc([b.caption, image?.attribution].filter(Boolean).join(" · "))}</figcaption></figure>`;
         }
-        const t = b.table;
-        const view = t.compact ?? t;
+        const table = b.table;
+        const view = table.compact ?? table;
         const rows = view.rows.slice(0, DOCUMENT_ROWS);
-        return `<h3 id="part-${ch.number}-${i + 1}">${esc(t.title)}</h3><p class="caption">${esc(t.caption)}</p>${
+        return `<h3 id="part-${ch.number}-${i + 1}">${esc(table.title)}</h3><p class="caption">${esc(table.caption)}</p>${
           rows.length
             ? `<div class="scroll"><table><thead><tr>${view.columns.map((col) => `<th>${esc(col.label)}</th>`).join("")}</tr></thead><tbody>${rows
                 .map(
@@ -98,12 +100,12 @@ export function dossierHtml(dossier: Dossier, o: DocumentOptions): string {
                     `<tr>${view.columns.map((_, k) => `<td>${esc(r[k] ?? "")}</td>`).join("")}</tr>`,
                 )
                 .join("")}</tbody></table></div>`
-            : `<p class="empty">Aucun élément.</p>`
-        }${view.rows.length > rows.length ? `<p class="caption">… ${view.rows.length - rows.length} lignes de plus dans les exports tableur.</p>` : ""}`;
+            : `<p class="empty">${esc(t("Aucun élément."))}</p>`
+        }${view.rows.length > rows.length ? `<p class="caption">${esc(t("… {n} lignes de plus dans les exports tableur.", { n: view.rows.length - rows.length }))}</p>` : ""}`;
       })
       .join("");
     parts.push(
-      `<section class="chapter" id="part-${ch.number}"><header><div class="kicker">Partie ${ch.number}</div><h2>${esc(ch.title)}</h2></header><div class="kpis">${ch.kpis
+      `<section class="chapter" id="part-${ch.number}"><header><div class="kicker">${esc(t("Partie {n}", { n: ch.number }))}</div><h2>${esc(ch.title)}</h2></header><div class="kpis">${ch.kpis
         .map(
           (k) =>
             `<div class="kpi ${k.value !== "0" ? (k.tone ?? "") : ""}"><b>${esc(k.value)}</b><span>${esc(k.label)}</span></div>`,
@@ -112,19 +114,19 @@ export function dossierHtml(dossier: Dossier, o: DocumentOptions): string {
     );
   }
   return `<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><meta name="generator" content="orion aic"><meta name="description" content="${xml(o.stamp.label)}"><title>${xml(c.title)} · dossier orion aic</title><style>${CSS.replace("__ORIENTATION__", o.orientation).replace("__STAMP__", cssString(o.stamp.label))}</style></head>
+<html lang="${locale()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><meta name="generator" content="orion aic"><meta name="description" content="${xml(o.stamp.label)}"><title>${xml(t("{title} · dossier orion aic", { title: c.title }))}</title><style>${CSS.replace("__ORIENTATION__", o.orientation).replace("__STAMP__", cssString(o.stamp.label))}</style></head>
 <body>${o.watermark ? `<div class="wm" aria-hidden="true"><span>${xml(o.watermark)}</span></div>` : ""}
 <div class="band"></div>
-<header class="cover"><div><div class="kicker">orion aic · dossier de l’opération</div><h1>${esc(c.title)}</h1><p class="sub">${esc([c.organization, c.location].filter(Boolean).join(" · ") || c.shown)}</p>${o.watermark ? `<div class="mention">${xml(o.watermark)}</div>` : ""}<dl class="facts">${[
+<header class="cover"><div><div class="kicker">orion aic · ${esc(t("dossier de l’opération"))}</div><h1>${esc(c.title)}</h1><p class="sub">${esc([c.organization, c.location].filter(Boolean).join(" · ") || c.shown)}</p>${o.watermark ? `<div class="mention">${xml(o.watermark)}</div>` : ""}<dl class="facts">${[
     ...coverFacts(c),
-    ["Document n°", o.stamp.id],
-    ["Empreinte", o.stamp.fingerprint],
+    [t("Document n°"), o.stamp.id],
+    [t("Empreinte"), o.stamp.fingerprint],
   ]
     .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
     .join(
       "",
-    )}</dl></div><aside class="verify">${qrSvg(o.stamp.qr, 200)}<p>Vérifier ce document : orion aic → Traçabilité → Vérifier un document.</p></aside></header>
-<nav class="toc" aria-label="Sommaire"><h2>Sommaire</h2><ol>${toc}</ol></nav>
+    )}</dl></div><aside class="verify">${qrSvg(o.stamp.qr, 200)}<p>${esc(t("Vérifier ce document : orion aic → Traçabilité → Vérifier un document."))}</p></aside></header>
+<nav class="toc" aria-label="${xml(t("Sommaire"))}"><h2>${esc(t("Sommaire"))}</h2><ol>${toc}</ol></nav>
 ${parts.join("\n")}
 <footer class="stamp"><span>${xml(o.stamp.label)}</span><span>${xml(o.stamp.qr)}</span></footer>
 </body></html>`;

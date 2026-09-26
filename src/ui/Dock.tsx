@@ -11,6 +11,7 @@ import type { Module } from "../../shared/links";
 import { MODULES, type ModuleInfo } from "../app/modules";
 import { Mark } from "./Mark";
 import { Sheet } from "./Sheet";
+import { t } from "./i18n.ts";
 
 const PHONE = "(max-width: 900px)";
 /** Modules kept in the bottom bar of a phone; the others are under « Plus ». */
@@ -111,11 +112,11 @@ export function Dock({
   }
   let group = -1;
   return (
-    <nav className="dock" aria-label="Modules">
+    <nav className="dock" aria-label={t("Modules")}>
       <button
         className="dock-logo"
         onClick={onLogo}
-        aria-label="Situation"
+        aria-label={t("Situation")}
         title="orion aic"
       >
         <Mark size={34} />
@@ -169,7 +170,7 @@ export function Dock({
           <button
             className="dock-item dock-more"
             aria-current={restCurrent ? "page" : undefined}
-            aria-label="Plus de modules"
+            aria-label={t("Plus de modules")}
             aria-haspopup="dialog"
             aria-expanded={more}
             onClick={() => setMore(true)}
@@ -191,7 +192,7 @@ export function Dock({
         </div>
       )}
       {more && (
-        <Sheet title="Modules" onClose={() => setMore(false)}>
+        <Sheet title={t("Modules")} onClose={() => setMore(false)}>
           <div className="dock-more-grid">
             {rest.map((m) => {
               const Icon = m.icon;

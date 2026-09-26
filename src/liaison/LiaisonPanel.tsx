@@ -12,7 +12,7 @@ import {
 import { useApp } from "../app/context";
 import { ComboField, TextField } from "../ui/fields";
 import { dateTime, time } from "../../shared/journal";
-import { upsert } from "../../shared/ops";
+import { journalLang, upsert } from "../../shared/ops";
 import {
   codeProblem,
   newRoomCode,
@@ -28,16 +28,24 @@ import {
   useLiaisonStates,
   type LiaisonState,
 } from "./useLiaisons";
+import { t, tIn } from "./i18n.ts";
 import "../post/conduct.css";
 
-const STATUS: Record<LiaisonState["status"], string> = {
+const STATUS = {
   off: "Arrêtée",
   connecting: "Connexion…",
   waiting: "Connectée · l’autre PC n’est pas en ligne",
   live: "En liaison",
   retrying: "Reconnexion…",
   outdated: "Version différente : rechargez la page",
-};
+} as const satisfies Record<LiaisonState["status"], string>;
+
+// The problems of a session code, said of a liaison code.
+const liaisonProblem = (code: string) =>
+  codeProblem(code)
+    .replace(/de session/g, "de liaison")
+    .replace(/Sitzungscode/g, "Verbindungscode")
+    .replace(/codice di sessione/g, "codice di collegamento");
 
 /**
  * Liaison between two command posts, each with its own session: open one
@@ -48,8 +56,13 @@ export function LiaisonPanel() {
     useApp();
   const [post] = usePost();
   const states = useLiaisonStates();
-  const [name, setName] = useState("PC arrière");
-  const [self, setSelf] = useState(post.cell || "PC front");
+  // Default names in the language of the journal (its référentiels).
+  const [name, setName] = useState(() =>
+    tIn(journalLang(live.ops), "PC arrière"),
+  );
+  const [self, setSelf] = useState(
+    () => post.cell || tIn(journalLang(live.ops), "PC front"),
+  );
   const [typed, setTyped] = useState("");
   const secure = window.isSecureContext;
   const liaisons = [...live.ops.liaisons].sort(
@@ -78,7 +91,7 @@ export function LiaisonPanel() {
         ),
       );
       setTyped("");
-      toast(`Liaison avec ${name.trim()} ouverte.`);
+      toast(t("Liaison avec {name} ouverte.", { name: name.trim() }));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -87,7 +100,10 @@ export function LiaisonPanel() {
     if (!canWrite()) return;
     if (
       !window.confirm(
-        `Fermer la liaison avec ${l.name} ? Le code est effacé ; ce qui a été échangé reste au journal.`,
+        t(
+          "Fermer la liaison avec {name} ? Le code est effacé ; ce qui a été échangé reste au journal.",
+          { name: l.name },
+        ),
       )
     )
       return;
@@ -99,17 +115,15 @@ export function LiaisonPanel() {
         author,
       ),
     );
-    toast(`Liaison avec ${l.name} fermée.`);
+    toast(t("Liaison avec {name} fermée.", { name: l.name }));
   }
 
   return (
     <div className="stack" style={{ gap: 16 }}>
       <p className="muted">
-        Un PC front et un PC arrière travaillent chacun dans leur propre
-        session. Une liaison les relie sans rien mélanger : seuls les messages,
-        les diffusions (avec leur ordre) et les accusés de lecture envoyés
-        exprès passent de l’un à l’autre, chiffrés avec le code de liaison, par
-        le même relais qui ne garde rien.
+        {t(
+          "Un PC front et un PC arrière travaillent chacun dans leur propre session. Une liaison les relie sans rien mélanger : seuls les messages, les diffusions (avec leur ordre) et les accusés de lecture envoyés exprès passent de l’un à l’autre, chiffrés avec le code de liaison, par le même relais qui ne garde rien.",
+        )}
       </p>
       {liaisons.map((l) => (
         <LiaisonCard
@@ -123,36 +137,39 @@ export function LiaisonPanel() {
       {!readOnly && (
         <div className="card stack">
           <strong>
-            <Cable size={16} /> Ouvrir une liaison avec un autre PC
+            <Cable size={16} /> {t("Ouvrir une liaison avec un autre PC")}
           </strong>
           <div className="form-grid">
             <ComboField
-              label="L’autre PC"
+              label={t("L’autre PC")}
               value={name}
               onChange={setName}
               options={pcs}
-              hint="Nom sous lequel il apparaît ici (destinataire des diffusions)."
+              hint={t(
+                "Nom sous lequel il apparaît ici (destinataire des diffusions).",
+              )}
             />
             <ComboField
-              label="Ce PC"
+              label={t("Ce PC")}
               value={self}
               onChange={setSelf}
               options={pcs}
-              hint="Nom sous lequel l’autre PC vous voit (émetteur)."
+              hint={t("Nom sous lequel l’autre PC vous voit (émetteur).")}
             />
           </div>
           <div className="form-grid">
             <div className="stack">
               <p className="muted">
-                Premier des deux PC : créez le code et transmettez-le à l’autre
-                comme un mot de passe (téléphone, radio chiffrée, papier).
+                {t(
+                  "Premier des deux PC : créez le code et transmettez-le à l’autre comme un mot de passe (téléphone, radio chiffrée, papier).",
+                )}
               </p>
               <button
                 className="primary"
                 disabled={!secure || !name.trim() || !self.trim()}
                 onClick={() => create(newRoomCode())}
               >
-                Créer un code de liaison
+                {t("Créer un code de liaison")}
               </button>
             </div>
             <form
@@ -163,24 +180,24 @@ export function LiaisonPanel() {
               }}
             >
               <TextField
-                label="Code de liaison reçu"
+                label={t("Code de liaison reçu")}
                 value={typed}
                 onChange={(v) => setTyped(normalizeCode(v))}
                 placeholder="ABCD-EFGH-JKMN-PQRS"
               />
               {typed && codeProblem(typed) && (
-                <p className="hint warn">
-                  {codeProblem(typed).replace(/de session/g, "de liaison")}
-                </p>
+                <p className="hint warn">{liaisonProblem(typed)}</p>
               )}
               <button disabled={!secure || !validCode(typed) || !name.trim()}>
-                Rejoindre la liaison
+                {t("Rejoindre la liaison")}
               </button>
             </form>
           </div>
           {!secure && (
             <p className="hint warn">
-              Cette page n’est pas en HTTPS : le chiffrement est indisponible.
+              {t(
+                "Cette page n’est pas en HTTPS : le chiffrement est indisponible.",
+              )}
             </p>
           )}
         </div>
@@ -218,26 +235,28 @@ function LiaisonCard({
         <span
           className={`pill ${closed ? "muted" : state.status === "live" ? "ok" : "plain"}`}
         >
-          {closed ? `Fermée ${dateTime(l.closedAt)}` : STATUS[state.status]}
+          {closed
+            ? t("Fermée {date}", { date: dateTime(l.closedAt) })
+            : t(STATUS[state.status])}
         </span>
       </div>
       {!closed && (
         <div className="stack" style={{ gap: 4 }}>
-          <span className="label">Code de liaison</span>
+          <span className="label">{t("Code de liaison")}</span>
           <span className="liaison-code">{l.code}</span>
         </div>
       )}
       <dl className="spec compact">
         <div>
-          <dt>Dernier échange</dt>
+          <dt>{t("Dernier échange")}</dt>
           <dd>{last ? dateTime(last) : "—"}</dd>
         </div>
         <div>
-          <dt>En attente de l’autre PC</dt>
+          <dt>{t("En attente de l’autre PC")}</dt>
           <dd>{pending.length}</dd>
         </div>
         <div>
-          <dt>En ligne de l’autre côté</dt>
+          <dt>{t("En ligne de l’autre côté")}</dt>
           <dd>
             {state.peers.length ? state.peers.map((p) => p.pc).join(", ") : "—"}
           </dd>
@@ -245,30 +264,30 @@ function LiaisonCard({
       </dl>
       {state.error && <p className="hint warn">{state.error}</p>}
       {log.length > 0 && (
-        <ul className="receipts" aria-label="Derniers échanges">
+        <ul className="receipts" aria-label={t("Derniers échanges")}>
           {log.map((x) => (
             <li key={x.id}>
               <span>
                 {x.direction === "out" ? (
-                  <ArrowUpRight size={13} aria-label="Envoyé" />
+                  <ArrowUpRight size={13} aria-label={t("Envoyé")} />
                 ) : (
-                  <ArrowDownLeft size={13} aria-label="Reçu" />
+                  <ArrowDownLeft size={13} aria-label={t("Reçu")} />
                 )}{" "}
                 {x.kind === "ack"
-                  ? "Accusé"
+                  ? t("Accusé")
                   : x.kind === "broadcast"
-                    ? "Diffusion"
-                    : "Message"}{" "}
+                    ? t("Diffusion")
+                    : t("Message")}{" "}
                 · {x.title || "—"}
               </span>
               <span
                 className={`state ${x.direction === "out" && !x.deliveredAt ? "late" : "ok"}`}
               >
                 {x.direction === "in"
-                  ? `reçu ${time(x.createdAt)}`
+                  ? t("reçu {time}", { time: time(x.createdAt) })
                   : x.deliveredAt
-                    ? `remis ${time(x.deliveredAt)}`
-                    : "en attente"}
+                    ? t("remis {time}", { time: time(x.deliveredAt) })
+                    : t("en attente")}
               </span>
             </li>
           ))}
@@ -278,7 +297,7 @@ function LiaisonCard({
         <div className="action-row">
           <button onClick={() => openLiaisonMessage(l.id)}>
             <Send size={14} />
-            Message à {l.name}
+            {t("Message à {name}", { name: l.name })}
           </button>
           <button
             onClick={() =>
@@ -286,7 +305,7 @@ function LiaisonCard({
             }
           >
             <Megaphone size={14} />
-            Diffuser à {l.name}
+            {t("Diffuser à {name}", { name: l.name })}
           </button>
           <button
             onClick={async () => {
@@ -300,11 +319,11 @@ function LiaisonCard({
             }}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
-            Copier le code
+            {t("Copier le code")}
           </button>
           <button className="danger" onClick={onClose}>
             <Unplug size={14} />
-            Fermer la liaison
+            {t("Fermer la liaison")}
           </button>
         </div>
       )}

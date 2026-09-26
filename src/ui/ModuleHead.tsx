@@ -3,6 +3,7 @@ import { CircleHelp } from "lucide-react";
 import { useApp } from "../app/context";
 import { moduleInfo } from "../app/modules";
 import { DecryptText } from "./effects";
+import { t } from "./i18n.ts";
 
 /** Title of a module with its help button and actions. */
 export function ModuleHead({
@@ -40,8 +41,8 @@ export function ModuleHead({
         <button
           className="help-button"
           onClick={() => help(topic ?? info.id)}
-          title="Aide sur cette page"
-          aria-label="Aide sur cette page"
+          title={t("Aide sur cette page")}
+          aria-label={t("Aide sur cette page")}
         >
           <CircleHelp size={16} />
         </button>

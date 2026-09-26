@@ -3,8 +3,11 @@ import { ArrowRight, CornerDownLeft, Search } from "lucide-react";
 import { KIND_INFO, searchItems, type Ref } from "../../shared/links";
 import { useApp } from "../app/context";
 import { MODULES } from "../app/modules";
+import { inLang } from "../../shared/i18n/core.ts";
 import { KIND_ICON } from "./links";
 import { useLayer } from "./overlay";
+import { t } from "./i18n.ts";
+import { useLang } from "../i18n";
 
 export type Command = {
   id: string;
@@ -30,6 +33,7 @@ export function Palette({
   onClose: () => void;
 }) {
   const { graph, go, open } = useApp();
+  const lang = useLang();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const list = useRef<HTMLDivElement>(null);
@@ -44,12 +48,16 @@ export function Palette({
         norm(`${c.label} ${c.hint ?? ""} ${c.keywords ?? ""}`).includes(q),
     );
     const modules = MODULES.filter(
-      (m) => !q || norm(`${m.label} ${m.description}`).includes(q),
+      (m) =>
+        !q ||
+        norm(
+          `${m.label} ${m.description} ${inLang("fr", () => `${m.label} ${m.short}`)}`,
+        ).includes(q),
     ).map<Command>((m) => {
       const Icon = m.icon;
       return {
         id: `go-${m.id}`,
-        label: `Aller à ${m.label}`,
+        label: t("Aller à {module}", { module: m.label }),
         hint: m.description,
         icon: <Icon size={16} />,
         run: () => go(m.id),
@@ -75,11 +83,12 @@ export function Palette({
           })
       : [];
     return [
-      { title: "Actions", list: actions.slice(0, q ? 8 : 10) },
-      { title: "Éléments", list: items },
-      { title: "Modules", list: modules.slice(0, q ? 5 : 13) },
+      { title: t("Actions"), list: actions.slice(0, q ? 8 : 10) },
+      { title: t("Éléments"), list: items },
+      { title: t("Modules"), list: modules.slice(0, q ? 5 : 13) },
     ].filter((g) => g.list.length);
-  }, [commands, graph.items, query, go, open]);
+    // lang: labels of the modules and of the groups.
+  }, [commands, graph.items, query, go, open, lang]);
   const flat = results.flatMap((g) => g.list);
   useEffect(() => {
     setActive(0);
@@ -105,14 +114,14 @@ export function Palette({
         className="palette"
         role="dialog"
         aria-modal="true"
-        aria-label="Rechercher et agir"
+        aria-label={t("Rechercher et agir")}
       >
         <div className="palette-input">
           <Search size={18} />
           <input
             autoFocus
             value={query}
-            placeholder="Rechercher partout, ou taper une action…"
+            placeholder={t("Rechercher partout, ou taper une action…")}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
@@ -127,7 +136,7 @@ export function Palette({
               }
             }}
           />
-          <kbd>Échap</kbd>
+          <kbd>{t("Échap")}</kbd>
         </div>
         <div className="palette-list" ref={list}>
           {results.map((group) => (
@@ -157,16 +166,16 @@ export function Palette({
           ))}
           {!flat.length && (
             <p className="muted" style={{ padding: 16 }}>
-              Rien trouvé pour « {query} ».
+              {t("Rien trouvé pour « {query} ».", { query })}
             </p>
           )}
         </div>
         <div className="palette-foot">
-          <span>↑↓ naviguer</span>
+          <span>{t("↑↓ naviguer")}</span>
           <span>
-            <CornerDownLeft size={11} /> ouvrir
+            <CornerDownLeft size={11} /> {t("ouvrir")}
           </span>
-          <span>Recherche dans tout le journal actif</span>
+          <span>{t("Recherche dans tout le journal actif")}</span>
         </div>
       </div>
     </div>

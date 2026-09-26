@@ -12,6 +12,9 @@ import {
 } from "./journal.ts";
 import { upsert, type Ops, type Resource } from "./ops.ts";
 import type { RequestStatus, ResourceRequest } from "./conduct-schemas.ts";
+import { formatWith, getLang } from "./i18n/core.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t } from "./i18n/requests.ts";
 
 export { REQUEST_STATUSES } from "./conduct-schemas.ts";
 
@@ -29,15 +32,34 @@ export const TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
   Refusé: ["Demandé"],
   Annulé: ["Demandé"],
 };
-/** Words of the buttons that move a request. */
+/** Words of the buttons that move a request (language of the post). */
 export const MOVE_LABEL: Record<RequestStatus, string> = {
-  Demandé: "Redemander",
-  Accordé: "Accordée",
-  Refusé: "Refusée",
-  "En route": "En route",
-  Arrivé: "Arrivée",
-  Libéré: "Libérer",
-  Annulé: "Annuler",
+  get Demandé() {
+    return t("Redemander");
+  },
+  get Accordé() {
+    return t("Accordée");
+  },
+  get Refusé() {
+    return t("Refusée");
+  },
+  get "En route"() {
+    return t("En route");
+  },
+  get Arrivé() {
+    return t("Arrivée");
+  },
+  get Libéré() {
+    return t("Libérer");
+  },
+  get Annulé() {
+    return t("Annuler");
+  },
+};
+/** A fixed value inside a sentence: lower case, except German nouns. */
+const lower = (value: string) => {
+  const label = enumLabel(value);
+  return getLang() === "de" ? label : label.toLowerCase();
 };
 /** Still waited for. */
 export const WAITING: RequestStatus[] = ["Demandé", "Accordé", "En route"];
@@ -129,10 +151,12 @@ export function createRequest(
         status: "À traiter",
         channel: "Téléphone",
         message: [
-          `Demande de moyens : ${requestLabel(draft)}`,
-          draft.provider && `Demandé à : ${draft.provider}`,
-          draft.destination && `Lieu : ${draft.destination}`,
-          draft.reason && `Motif : ${draft.reason}`,
+          t("Demande de moyens : {label}", { label: requestLabel(draft) }),
+          draft.provider &&
+            t("Demandé à : {provider}", { provider: draft.provider }),
+          draft.destination &&
+            t("Lieu : {place}", { place: draft.destination }),
+          draft.reason && t("Motif : {reason}", { reason: draft.reason }),
         ]
           .filter(Boolean)
           .join("\n"),
@@ -198,10 +222,13 @@ export function moveRequest(
   } = {},
 ): Journal {
   const r = journal.ops.requests.find((x) => x.id === id);
-  if (!r) throw new Error("Demande introuvable.");
+  if (!r) throw new Error(t("Demande introuvable."));
   if (!canMove(r.status, to))
     throw new Error(
-      `Une demande « ${r.status} » ne peut pas passer à « ${to} ».`,
+      t("Une demande « {from} » ne peut pas passer à « {to} ».", {
+        from: enumLabel(r.status),
+        to: enumLabel(to),
+      }),
     );
   const nextEta = eta !== undefined ? eta : r.eta;
   let next = journal;
@@ -223,16 +250,22 @@ export function moveRequest(
             : "Renseignement",
         reliability: "Confirmé",
         channel: "Téléphone",
-        message: `Demande de moyens ${label} : ${to.toLowerCase()}${
+        message: `${
           (to === "Accordé" || to === "En route") && nextEta
-            ? `, arrivée prévue à ${time(nextEta)}`
-            : ""
-        }.${note ? `\n${note}` : ""}`,
+            ? t(
+                "Demande de moyens {label} : {status}, arrivée prévue à {time}.",
+                { label, status: lower(to), time: time(nextEta) },
+              )
+            : t("Demande de moyens {label} : {status}.", {
+                label,
+                status: lower(to),
+              })
+        }${note ? `\n${note}` : ""}`,
         source: r.provider,
         recipient: r.requester,
         location: r.destination,
         resources: label,
-        reference: first ? `Suite de ${numberLabel(first)}` : "",
+        reference: first ? t("Suite de {n}", { n: numberLabel(first) }) : "",
         tags: ["demande de moyens"],
       },
       author,
@@ -253,8 +286,8 @@ export function moveRequest(
         { ...f, ...change },
         author,
         change.status
-          ? `Demande de moyens : ${to.toLowerCase()}`
-          : "Arrivée prévue modifiée",
+          ? t("Demande de moyens : {status}", { status: lower(to) })
+          : t("Arrivée prévue modifiée"),
       );
   }
   // The resource.
@@ -290,7 +323,9 @@ export function moveRequest(
         mission: r.reason.slice(0, 2000),
         eta: "",
         contact: r.contact,
-        notes: `Arrivé le ${new Date(at).toLocaleString("fr-CH", { timeZone: "Europe/Zurich", dateStyle: "short", timeStyle: "short" })} sur demande de moyens.`,
+        notes: t("Arrivé le {date} sur demande de moyens.", {
+          date: formatWith(at, { dateStyle: "short", timeStyle: "short" }),
+        }),
       },
       author,
     );
@@ -320,8 +355,8 @@ export function attachResource(
   author: string,
 ): Ops {
   const r = ops.requests.find((x) => x.id === id);
-  if (!r) throw new Error("Demande introuvable.");
+  if (!r) throw new Error(t("Demande introuvable."));
   if (resourceId && !ops.resources.some((x) => x.id === resourceId))
-    throw new Error("Moyen introuvable.");
+    throw new Error(t("Moyen introuvable."));
   return upsert(ops, "requests", { ...r, resourceId }, author);
 }

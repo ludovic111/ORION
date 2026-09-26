@@ -3,6 +3,7 @@ import type { Deck } from "./deck";
 import type { DeckImages } from "./layout";
 import { builtin, symbolUrl } from "../modules/map/symbols";
 import { qrPng } from "./png";
+import { symbolLabel } from "../modules/map/i18n-2.ts";
 
 // Pictures of a deck, drawn in the browser: one image per map slide (map
 // renderer of the map module), the official symbols of the legends, and
@@ -27,7 +28,10 @@ export async function symbolNames(): Promise<
       names = new Map();
     }
   const known = names;
-  return (id) => builtin(id)?.name ?? known.get(id);
+  return (id) => {
+    const name = builtin(id)?.name ?? known.get(id);
+    return name && symbolLabel(name);
+  };
 }
 
 async function toBytes(blob: Blob) {

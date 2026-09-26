@@ -12,14 +12,31 @@ import {
   applyThresholds,
   crossings,
   latestForecast,
-  thresholdLabel,
 } from "../../../shared/thresholds";
 import { useApp } from "../../app/context";
 import { type FieldSpec } from "../../ui/records";
 import { SettingSheet } from "../../ui/SettingSheet";
 import { ChoiceField, Toggle } from "../../ui/fields";
 import { ALERT_LABELS, ALERT_LEVELS } from "../../../shared/ops";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { useLang } from "../../i18n";
+import { t, tn } from "./i18n.ts";
 import "../../ui/conduct.css";
+
+/** Name of a measured quantity in the language of the post. */
+const metricLabel = (m: ThresholdMetric) =>
+  ({
+    gusts: () => t("Rafales"),
+    wind: () => t("Vent moyen"),
+    rain1h: () => t("Pluie en 1 h"),
+    rain24h: () => t("Pluie en 24 h"),
+    tmax: () => t("Température maximale"),
+    tmin: () => t("Température minimale"),
+  })[m]?.() ?? METRICS[m].label;
+
+/** "Rafales ≥ 60 km/h", in the language of the post. */
+const thresholdLabel = (th: Pick<Threshold, "metric" | "value">) =>
+  `${metricLabel(th.metric)} ${METRICS[th.metric].above ? "≥" : "≤"} ${th.value} ${METRICS[th.metric].unit}`;
 
 type Draft = Omit<Threshold, "id" | "createdAt" | "updatedAt" | "by"> &
   Partial<Pick<Threshold, "id" | "createdAt" | "updatedAt" | "by">>;
@@ -81,19 +98,27 @@ const STANDARD: Draft[] = [
   },
 ];
 
-const SPEC: FieldSpec[] = [
+const spec = (): FieldSpec[] => [
   {
     kind: "custom",
     key: "metric",
     wide: true,
     render: (value, set) => (
       <ChoiceField<ThresholdMetric>
-        label="Grandeur"
+        label={t("Grandeur")}
         value={(value.metric as ThresholdMetric) ?? "gusts"}
         onChange={(metric) => set({ metric })}
         options={THRESHOLD_METRICS.map((m) => ({
           value: m,
-          label: `${METRICS[m].label} (${METRICS[m].unit}, ${METRICS[m].above ? "au-dessus" : "au-dessous"})`,
+          label: METRICS[m].above
+            ? t("{label} ({unit}, au-dessus)", {
+                label: metricLabel(m),
+                unit: METRICS[m].unit,
+              })
+            : t("{label} ({unit}, au-dessous)", {
+                label: metricLabel(m),
+                unit: METRICS[m].unit,
+              }),
         }))}
       />
     ),
@@ -103,7 +128,7 @@ const SPEC: FieldSpec[] = [
     key: "value",
     render: (value, set) => (
       <label>
-        <span>Seuil</span>
+        <span>{t("Seuil")}</span>
         <input
           type="number"
           inputMode="decimal"
@@ -124,29 +149,29 @@ const SPEC: FieldSpec[] = [
     key: "level",
     render: (value, set) => (
       <ChoiceField
-        label="Degré de l’alerte créée"
+        label={t("Degré de l’alerte créée")}
         value={String(value.level ?? "3")}
         onChange={(level) => set({ level })}
         options={ALERT_LEVELS.map((l) => ({
           value: l,
-          label: ALERT_LABELS[l],
+          label: enumLabel(ALERT_LABELS[l]),
         }))}
       />
     ),
   },
   {
     key: "label",
-    label: "Nom de l’alerte (facultatif)",
+    label: t("Nom de l’alerte (facultatif)"),
     kind: "text",
     wide: true,
     max: 120,
-    placeholder: "ex. Vent fort sur les chantiers",
+    placeholder: t("ex. Vent fort sur les chantiers"),
   },
-  { key: "region", label: "Région", kind: "text", wide: true, max: 200 },
-  { key: "active", label: "Actif", kind: "toggle" },
+  { key: "region", label: t("Région"), kind: "text", wide: true, max: 200 },
+  { key: "active", label: t("Actif"), kind: "toggle" },
   {
     key: "followUp",
-    label: "Créer aussi une entrée « à traiter » au journal",
+    label: t("Créer aussi une entrée « à traiter » au journal"),
     kind: "toggle",
     wide: true,
   },
@@ -164,6 +189,7 @@ export function ThresholdsCard() {
     author,
     toast,
   } = useApp();
+  useLang();
   const [editing, setEditing] = useState<Draft | null>(null);
   const list = journal.ops.thresholds;
   const forecast = latestForecast(journal.ops);
@@ -178,10 +204,10 @@ export function ThresholdsCard() {
     [list, forecast, now],
   );
   return (
-    <section className="card w-12" aria-label="Seuils météo">
+    <section className="card w-12" aria-label={t("Seuils météo")}>
       <div className="card-head">
         <Gauge size={15} />
-        <h2>Seuils météo</h2>
+        <h2>{t("Seuils météo")}</h2>
         {!readOnly && (
           <span className="cd-toolbar" style={{ margin: 0 }}>
             {forecast && list.some((t) => t.active) && (
@@ -195,7 +221,7 @@ export function ThresholdsCard() {
                       author,
                     );
                     if (!created.length) {
-                      toast("Aucun nouveau seuil franchi.");
+                      toast(t("Aucun nouveau seuil franchi."));
                       return;
                     }
                     if (
@@ -203,13 +229,19 @@ export function ThresholdsCard() {
                         (j) => applyThresholds(j, forecast, author).journal,
                       )
                     )
-                      toast(`${created.length} alerte(s) créée(s).`);
+                      toast(
+                        tn(
+                          created.length,
+                          "{n} alerte créée.",
+                          "{n} alertes créées.",
+                        ),
+                      );
                   } catch (err) {
                     toast((err as Error).message);
                   }
                 }}
               >
-                Évaluer maintenant
+                {t("Évaluer maintenant")}
               </button>
             )}
             <button
@@ -227,21 +259,20 @@ export function ThresholdsCard() {
               }
             >
               <Plus size={13} />
-              Seuil
+              {t("Seuil")}
             </button>
           </span>
         )}
       </div>
       <p className="muted" style={{ fontSize: 13, margin: "0 0 8px" }}>
-        À chaque prévision reçue, un seuil franchi crée une alerte (une par jour
-        et par seuil, même si plusieurs postes la voient) et, si demandé, une
-        entrée à traiter. Le niveau des cours d’eau n’est pas dans la prévision
-        : saisissez les alertes crue à la main.
+        {t(
+          "À chaque prévision reçue, un seuil franchi crée une alerte (une par jour et par seuil, même si plusieurs postes la voient) et, si demandé, une entrée à traiter. Le niveau des cours d’eau n’est pas dans la prévision : saisissez les alertes crue à la main.",
+        )}
       </p>
-      {list.map((t) => {
-        const c = next.get(t.id);
+      {list.map((th) => {
+        const c = next.get(th.id);
         return (
-          <div key={t.id} className={`th-row ${t.active ? "" : "off"}`}>
+          <div key={th.id} className={`th-row ${th.active ? "" : "off"}`}>
             <button
               className="row-main"
               style={{
@@ -251,33 +282,40 @@ export function ThresholdsCard() {
                 padding: 0,
                 height: "auto",
               }}
-              onClick={() => setEditing(t)}
+              onClick={() => setEditing(th)}
             >
-              <strong>{t.label || thresholdLabel(t)}</strong>
+              <strong>{th.label || thresholdLabel(th)}</strong>
               <small>
                 {[
-                  t.label && thresholdLabel(t),
-                  `degré ${t.level}`,
-                  t.followUp && "entrée à traiter",
+                  th.label && thresholdLabel(th),
+                  t("degré {level}", { level: th.level }),
+                  th.followUp && t("entrée à traiter"),
                   !forecast
-                    ? "pas encore de prévision"
+                    ? t("pas encore de prévision")
                     : c
-                      ? `franchi le ${c.day.split("-").reverse().join(".")} dès ${time(new Date(c.first).toISOString())} (pic ${Math.round(c.peak * 10) / 10} ${METRICS[t.metric].unit})`
-                      : "pas franchi dans la prévision",
+                      ? t("franchi le {day} dès {time} (pic {peak} {unit})", {
+                          day: c.day.split("-").reverse().join("."),
+                          time: time(new Date(c.first).toISOString()),
+                          peak: Math.round(c.peak * 10) / 10,
+                          unit: METRICS[th.metric].unit,
+                        })
+                      : t("pas franchi dans la prévision"),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               </small>
             </button>
-            {c && t.active && <span className="pill warn">Franchi</span>}
+            {c && th.active && (
+              <span className="pill warn">{t("Franchi")}</span>
+            )}
             {!readOnly && (
               <Toggle
-                label={<span className="sr-only">Actif</span>}
-                checked={t.active}
+                label={<span className="sr-only">{t("Actif")}</span>}
+                checked={th.active}
                 onChange={(active) => {
                   if (!canWrite()) return;
                   updateOps((o) =>
-                    upsert(o, "thresholds", { ...t, active }, author),
+                    upsert(o, "thresholds", { ...th, active }, author),
                   );
                 }}
               />
@@ -296,14 +334,14 @@ export function ThresholdsCard() {
                   o,
                 ),
               );
-              toast("Seuils standards ajoutés : ajustez-les à la région.");
+              toast(t("Seuils standards ajoutés : ajustez-les à la région."));
             } catch (err) {
               toast((err as Error).message);
             }
           }}
         >
           <Gauge size={14} />
-          Ajouter des seuils standards
+          {t("Ajouter des seuils standards")}
         </button>
       )}
       {editing && (
@@ -312,11 +350,11 @@ export function ThresholdsCard() {
           eyebrow={
             <>
               <Gauge size={12} />
-              Seuil météo
+              {t("Seuil météo")}
             </>
           }
-          title={editing.id ? thresholdLabel(editing) : "Nouveau seuil"}
-          spec={SPEC}
+          title={editing.id ? thresholdLabel(editing) : t("Nouveau seuil")}
+          spec={spec()}
           initial={editing as Record<string, unknown>}
           onClose={() => setEditing(null)}
         />

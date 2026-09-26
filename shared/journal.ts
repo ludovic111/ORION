@@ -5,7 +5,7 @@ import {
   radioSchema,
   type Radio,
 } from "./radio.ts";
-import { emptyOps, opsSchema } from "./ops.ts";
+import { emptyOps, newSettings, opsSchema } from "./ops.ts";
 import {
   COMPACT_FROM,
   MAX_HISTORY,
@@ -25,6 +25,8 @@ import {
   internState,
   resolveState,
 } from "./blobs.ts";
+import { formatDateTime, formatLongDate, formatTime } from "./i18n/core.ts";
+import { t } from "./i18n/journal.ts";
 
 export const TYPES = [
   "Renseignement",
@@ -178,15 +180,15 @@ const journalObject = z
   .superRefine((journal, ctx) => {
     const gone = new Set(journal.deleted.map((d) => d.id));
     if (gone.size !== journal.deleted.length)
-      ctx.addIssue({ code: "custom", message: "Suppressions dupliquées." });
+      ctx.addIssue({ code: "custom", message: t("Suppressions dupliquées.") });
     if (journal.entries.some((e) => gone.has(e.id)))
       ctx.addIssue({
         code: "custom",
-        message: "Une entrée supprimée figure encore au journal.",
+        message: t("Une entrée supprimée figure encore au journal."),
       });
     const ids = journal.entries.map((entry) => entry.id);
     if (new Set(ids).size !== ids.length)
-      ctx.addIssue({ code: "custom", message: "Entrées avec id dupliqué." });
+      ctx.addIssue({ code: "custom", message: t("Entrées avec id dupliqué.") });
     // Numbers may repeat (two posts at the same time): normalizeJournal()
     // gives each such entry its own label.
     for (const entry of journal.entries) {
@@ -194,11 +196,11 @@ const journalObject = z
         new Set(entry.revisions.map((r) => r.id)).size !==
         entry.revisions.length
       )
-        ctx.addIssue({ code: "custom", message: "Révisions dupliquées." });
+        ctx.addIssue({ code: "custom", message: t("Révisions dupliquées.") });
     }
     for (const value of Object.values(journal.blobs))
       if (!DATA_IMAGE.test(value))
-        ctx.addIssue({ code: "custom", message: "Image invalide." });
+        ctx.addIssue({ code: "custom", message: t("Image invalide.") });
   });
 type JournalData = z.infer<typeof journalObject>;
 // Parsing also brings older data up to date (see normalizeJournal()).
@@ -235,11 +237,11 @@ export const workspaceSchema = z
         (id) => !value.journals.some((j) => j.id === id),
       )
     )
-      ctx.addIssue({ code: "custom", message: "Brouillon sans journal." });
+      ctx.addIssue({ code: "custom", message: t("Brouillon sans journal.") });
     if (!value.journals.some((j) => j.id === value.activeId))
-      ctx.addIssue({ code: "custom", message: "Journal actif absent." });
+      ctx.addIssue({ code: "custom", message: t("Journal actif absent.") });
     if (new Set(value.journals.map((j) => j.id)).size !== value.journals.length)
-      ctx.addIssue({ code: "custom", message: "Journaux dupliqués." });
+      ctx.addIssue({ code: "custom", message: t("Journaux dupliqués.") });
   });
 export const archiveSchema = z
   .object({
@@ -296,7 +298,7 @@ export function newJournal(
 ): Journal {
   return journalSchema.parse({
     id: crypto.randomUUID(),
-    title: title.trim() || "Nouveau journal",
+    title: title.trim() || t("Nouveau journal"),
     organization: "",
     location: "",
     reference: "",
@@ -305,6 +307,8 @@ export function newJournal(
     createdAt: now(),
     closedAt: "",
     entries: [],
+    // Default référentiels in the language of the post creating it.
+    ops: { ...emptyOps(), settings: newSettings() },
     ...metadata,
   });
 }
@@ -326,7 +330,7 @@ export function makeEntry(
         id: crypto.randomUUID(),
         at,
         author,
-        reason: "Saisie initiale",
+        reason: t("Saisie initiale"),
         fields,
       },
     ],
@@ -339,7 +343,7 @@ export function addEntry(
 ): Journal {
   if (journal.closedAt)
     throw new Error(
-      "Ce journal est clôturé. Rouvrez-le avant de saisir une entrée.",
+      t("Ce journal est clôturé. Rouvrez-le avant de saisir une entrée."),
     );
   const entry = makeEntry(
     lastNumber(journal) + 1,
@@ -359,10 +363,11 @@ export function reviseEntry(
   author: string,
   reason: string,
 ): Journal {
-  if (journal.closedAt) throw new Error("Ce journal est clôturé.");
+  if (journal.closedAt) throw new Error(t("Ce journal est clôturé."));
   if (!journal.entries.some((e) => e.id === id))
-    throw new Error("Entrée introuvable.");
-  if (!reason.trim()) throw new Error("Indiquez le motif de la modification.");
+    throw new Error(t("Entrée introuvable."));
+  if (!reason.trim())
+    throw new Error(t("Indiquez le motif de la modification."));
   return journalSchema.parse({
     ...journal,
     entries: journal.entries.map((e) =>
@@ -390,10 +395,11 @@ export function deleteEntry(
   author: string,
   reason: string,
 ): Journal {
-  if (journal.closedAt) throw new Error("Ce journal est clôturé.");
+  if (journal.closedAt) throw new Error(t("Ce journal est clôturé."));
   const entry = journal.entries.find((e) => e.id === id);
-  if (!entry) throw new Error("Entrée introuvable.");
-  if (!reason.trim()) throw new Error("Indiquez le motif de la suppression.");
+  if (!entry) throw new Error(t("Entrée introuvable."));
+  if (!reason.trim())
+    throw new Error(t("Indiquez le motif de la suppression."));
   return journalSchema.parse({
     ...journal,
     entries: journal.entries.filter((e) => e.id !== id),
@@ -410,7 +416,7 @@ export function deleteEntry(
   });
 }
 export function updateRadio(journal: Journal, radio: Radio): Journal {
-  if (journal.closedAt) throw new Error("Ce journal est clôturé.");
+  if (journal.closedAt) throw new Error(t("Ce journal est clôturé."));
   return journalSchema.parse({ ...journal, radio });
 }
 export const archive = (journal: Journal): Archive => ({
@@ -423,7 +429,9 @@ export function parseArchive(input: unknown): Archive {
   const parsed = archiveSchema.safeParse(input);
   if (!parsed.success)
     throw new Error(
-      "Fichier orion aic invalide ou version non prise en charge. Le journal actuel est intact.",
+      t(
+        "Fichier orion aic invalide ou version non prise en charge. Le journal actuel est intact.",
+      ),
     );
   return parsed.data;
 }
@@ -471,11 +479,13 @@ export function planMerge(target: Journal, incoming: Journal) {
 }
 export function mergeJournals(target: Journal, incoming: Journal): Journal {
   if (target.closedAt)
-    throw new Error("Rouvrez le journal avant de fusionner.");
+    throw new Error(t("Rouvrez le journal avant de fusionner."));
   const plan = planMerge(target, incoming);
   if (plan.conflicts.length || plan.radio.conflicts)
     throw new Error(
-      "Des versions divergent. Importez ce fichier dans un journal séparé pour les comparer.",
+      t(
+        "Des versions divergent. Importez ce fichier dans un journal séparé pour les comparer.",
+      ),
     );
   let number = lastNumber(target);
   const removed = new Set(plan.removed.map((e) => e.id));
@@ -542,30 +552,12 @@ export const chronological = (entries: Entry[]) =>
       Date.parse(current(a).happenedAt) - Date.parse(current(b).happenedAt) ||
       a.number - b.number,
   );
+// Zurich time, in the language of the post ("05.03.2026 08:04", "08:04",
+// "5 mars 2026").
 export const dateTime = (value: string) =>
-  value
-    ? new Date(value).toLocaleString("fr-CH", {
-        timeZone: "Europe/Zurich",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
-export const time = (value: string) =>
-  new Date(value).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-export const day = (value: string) =>
-  new Date(value).toLocaleDateString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  value ? formatDateTime(value) : "—";
+export const time = (value: string) => formatTime(value);
+export const day = (value: string) => formatLongDate(value);
 export const numberLabel = (entry: Pick<Entry, "number" | "suffix">) =>
   `#${String(entry.number).padStart(3, "0")}${entry.suffix ? `·${entry.suffix}` : ""}`;
 

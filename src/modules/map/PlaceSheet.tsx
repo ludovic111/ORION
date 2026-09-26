@@ -31,18 +31,27 @@ import {
 } from "./geo";
 import { Glyph, SymbolPalette, describeSymbol, useCatalog } from "./symbols";
 import { hexColor } from "./maps";
+import { formatNumber, formatWith } from "../../../shared/i18n/core.ts";
+import { t, type Key } from "./i18n-2.ts";
 
-export const SWATCHES: { value: string; name: string }[] = [
-  { value: "", name: "Selon le calque" },
-  { value: "#e5243b", name: "Rouge" },
-  { value: "#ff8a00", name: "Orange" },
-  { value: "#f5c400", name: "Jaune" },
-  { value: "#1faa59", name: "Vert" },
-  { value: "#1f6fe0", name: "Bleu" },
-  { value: "#7b5cff", name: "Violet" },
-  { value: "#ff4fb3", name: "Rose" },
-  { value: "#1a1a1a", name: "Noir" },
-  { value: "#ffffff", name: "Blanc" },
+const swatch = (value: string, name: Key) => ({
+  value,
+  get name() {
+    return t(name);
+  },
+});
+/** Colours offered for an object; names in the language of the post. */
+export const SWATCHES: { value: string; readonly name: string }[] = [
+  swatch("", "Selon le calque"),
+  swatch("#e5243b", "Rouge"),
+  swatch("#ff8a00", "Orange"),
+  swatch("#f5c400", "Jaune"),
+  swatch("#1faa59", "Vert"),
+  swatch("#1f6fe0", "Bleu"),
+  swatch("#7b5cff", "Violet"),
+  swatch("#ff4fb3", "Rose"),
+  swatch("#1a1a1a", "Noir"),
+  swatch("#ffffff", "Blanc"),
 ];
 
 export const SIZE_PRESETS = [
@@ -56,8 +65,8 @@ const WEIGHT_PRESETS = [
   { value: 3, label: "Normal" },
   { value: 6, label: "Épais" },
   { value: 10, label: "Très épais" },
-] as const;
-const DASH_LABELS: Record<Place["dash"], string> = {
+] as const satisfies readonly { value: number; label: Key }[];
+const DASH_LABELS: Record<Place["dash"], Key> = {
   solid: "Continu",
   dash: "Tirets",
   dot: "Pointillés",
@@ -71,7 +80,7 @@ export const normalizeAngle = (deg: number) => {
   return d === -180 ? 180 : d;
 };
 const times = (n: number) =>
-  `×${n.toLocaleString("fr-CH", { maximumFractionDigits: 2 })}`;
+  `×${formatNumber(n, { maximumFractionDigits: 2 })}`;
 
 export function SymbolField({
   value,
@@ -85,7 +94,7 @@ export function SymbolField({
   const info = describeSymbol(value, list);
   return (
     <div className="map-field">
-      <span className="map-field-label">Signe</span>
+      <span className="map-field-label">{t("Signe")}</span>
       <div className="map-symbol-field">
         <Glyph symbol={value} size={44} />
         <span className="row-main">
@@ -97,11 +106,15 @@ export function SymbolField({
           className="small"
           onClick={() => setPicking(true)}
         >
-          Changer
+          {t("Changer")}
         </button>
       </div>
       {picking && (
-        <Modal title="Choisir un signe" onClose={() => setPicking(false)} wide>
+        <Modal
+          title={t("Choisir un signe")}
+          onClose={() => setPicking(false)}
+          wide
+        >
           <SymbolPalette
             value={value}
             onPick={(id) => {
@@ -129,11 +142,11 @@ function MapsField({
   const all = known.length === 0;
   return (
     <div className="map-field">
-      <span className="map-field-label">Cartes</span>
+      <span className="map-field-label">{t("Cartes")}</span>
       <div
         className="map-chips"
         role="group"
-        aria-label="Cartes montrant l’objet"
+        aria-label={t("Cartes montrant l’objet")}
       >
         <button
           type="button"
@@ -142,7 +155,7 @@ function MapsField({
           onClick={() => onChange([])}
         >
           <Layers2 size={13} />
-          Toutes les cartes
+          {t("Toutes les cartes")}
         </button>
         {maps.map((m) => {
           const on = known.includes(m.id);
@@ -166,8 +179,8 @@ function MapsField({
       </div>
       <small className="muted">
         {all
-          ? "Visible sur chaque carte de l’opération."
-          : "Visible seulement sur les cartes choisies."}
+          ? t("Visible sur chaque carte de l’opération.")
+          : t("Visible seulement sur les cartes choisies.")}
       </small>
     </div>
   );
@@ -187,8 +200,8 @@ export function ColorField({
   useEffect(() => setText(value), [value]);
   return (
     <div className="map-field">
-      <span className="map-field-label">Couleur</span>
-      <div className="map-swatches" role="group" aria-label="Couleur">
+      <span className="map-field-label">{t("Couleur")}</span>
+      <div className="map-swatches" role="group" aria-label={t("Couleur")}>
         {SWATCHES.map((s) => (
           <button
             key={s.name}
@@ -201,11 +214,11 @@ export function ColorField({
             onClick={() => onChange(s.value)}
           />
         ))}
-        <label className="map-swatch custom" title="Autre couleur">
+        <label className="map-swatch custom" title={t("Autre couleur")}>
           <input
             type="color"
             value={hex}
-            aria-label="Autre couleur"
+            aria-label={t("Autre couleur")}
             onChange={(e) => onChange(hexColor(e.target.value))}
           />
         </label>
@@ -214,13 +227,13 @@ export function ColorField({
           value={text}
           maxLength={20}
           placeholder="auto"
-          aria-label="Couleur : #rrggbb ou un nom (rouge, bleu…)"
-          title="#rrggbb ou un nom : rouge, bleu, vert…"
+          aria-label={t("Couleur : #rrggbb ou un nom (rouge, bleu…)")}
+          title={t("#rrggbb ou un nom : rouge, bleu, vert…")}
           onChange={(e) => {
-            const t = e.target.value;
-            setText(t);
-            const c = hexColor(t);
-            if (c || !t.trim()) onChange(c);
+            const typed = e.target.value;
+            setText(typed);
+            const c = hexColor(typed);
+            if (c || !typed.trim()) onChange(c);
           }}
           onBlur={() => setText(value)}
         />
@@ -310,15 +323,22 @@ function Appearance({ place }: { place: Place }) {
   const symbolic = place.kind === "point" || place.kind === "text";
   const sizeRange = (
     <div className="map-style-row">
-      <span className="map-field-label">Taille</span>
+      <span className="map-field-label">{t("Taille")}</span>
       <div className="map-style-controls">
-        <div className="seg map-seg" role="group" aria-label="Taille standard">
+        <div
+          className="seg map-seg"
+          role="group"
+          aria-label={t("Taille standard")}
+        >
           {SIZE_PRESETS.map((s) => (
             <button
               key={s.label}
               type="button"
               aria-pressed={Math.abs(v.size - s.value) < 0.01}
-              title={`Taille ${s.label} (${times(s.value)})`}
+              title={t("Taille {size} ({factor})", {
+                size: s.label,
+                factor: times(s.value),
+              })}
               onClick={() => set({ size: s.value })}
             >
               {s.label}
@@ -331,7 +351,7 @@ function Appearance({ place }: { place: Place }) {
           max={6}
           step={0.05}
           value={v.size}
-          aria-label="Taille"
+          aria-label={t("Taille")}
           onChange={(e) =>
             set({ size: clampSize(Number(e.target.value)) }, false)
           }
@@ -343,13 +363,13 @@ function Appearance({ place }: { place: Place }) {
   );
   const rotation = (
     <div className="map-style-row">
-      <span className="map-field-label">Rotation</span>
+      <span className="map-field-label">{t("Rotation")}</span>
       <div className="map-style-controls">
         <button
           type="button"
           className="icon-button"
-          aria-label="Tourner de 15° à gauche"
-          title="15° à gauche"
+          aria-label={t("Tourner de 15° à gauche")}
+          title={t("15° à gauche")}
           onClick={() => set({ rotation: normalizeAngle(v.rotation - 15) })}
         >
           <RotateCcw size={15} />
@@ -360,7 +380,7 @@ function Appearance({ place }: { place: Place }) {
           max={180}
           step={1}
           value={v.rotation}
-          aria-label="Rotation en degrés"
+          aria-label={t("Rotation en degrés")}
           onChange={(e) =>
             set({ rotation: normalizeAngle(Number(e.target.value)) }, false)
           }
@@ -369,8 +389,8 @@ function Appearance({ place }: { place: Place }) {
         <button
           type="button"
           className="icon-button"
-          aria-label="Tourner de 15° à droite"
-          title="15° à droite"
+          aria-label={t("Tourner de 15° à droite")}
+          title={t("15° à droite")}
           onClick={() => set({ rotation: normalizeAngle(v.rotation + 15) })}
         >
           <RotateCw size={15} />
@@ -378,8 +398,10 @@ function Appearance({ place }: { place: Place }) {
         <button
           type="button"
           className="map-angle mono"
-          title="Remettre droit"
-          aria-label={`Rotation ${v.rotation}° : remettre droit`}
+          title={t("Remettre droit")}
+          aria-label={t("Rotation {deg}° : remettre droit", {
+            deg: v.rotation,
+          })}
           onClick={() => set({ rotation: 0 })}
         >
           {v.rotation}°
@@ -389,10 +411,10 @@ function Appearance({ place }: { place: Place }) {
   );
 
   return (
-    <section className="map-sheet-style" aria-label="Apparence">
+    <section className="map-sheet-style" aria-label={t("Apparence")}>
       <header>
-        <span className="label">Apparence</span>
-        <small className="muted">appliquée tout de suite</small>
+        <span className="label">{t("Apparence")}</span>
+        <small className="muted">{t("appliquée tout de suite")}</small>
       </header>
       <fieldset disabled={readOnly}>
         <ColorField
@@ -403,16 +425,16 @@ function Appearance({ place }: { place: Place }) {
         {symbolic && rotation}
         {place.kind === "point" && (
           <Toggle
-            label="Signe dans une pastille"
-            hint="Sinon, le signe seul sur fond transparent."
+            label={t("Signe dans une pastille")}
+            hint={t("Sinon, le signe seul sur fond transparent.")}
             checked={v.frame}
             onChange={(frame) => set({ frame })}
           />
         )}
         {place.kind === "text" && (
           <Toggle
-            label="Étiquette avec fond"
-            hint="Sinon, le texte seul avec un halo."
+            label={t("Étiquette avec fond")}
+            hint={t("Sinon, le texte seul avec un halo.")}
             checked={v.boxed}
             onChange={(boxed) => set({ boxed })}
           />
@@ -420,12 +442,12 @@ function Appearance({ place }: { place: Place }) {
         {!symbolic && (
           <>
             <div className="map-style-row">
-              <span className="map-field-label">Épaisseur</span>
+              <span className="map-field-label">{t("Épaisseur")}</span>
               <div className="map-style-controls">
                 <div
                   className="seg map-seg"
                   role="group"
-                  aria-label="Épaisseur standard"
+                  aria-label={t("Épaisseur standard")}
                 >
                   {WEIGHT_PRESETS.map((w) => (
                     <button
@@ -434,7 +456,7 @@ function Appearance({ place }: { place: Place }) {
                       aria-pressed={v.weight === w.value}
                       onClick={() => set({ weight: w.value })}
                     >
-                      {w.label}
+                      {t(w.label)}
                     </button>
                   ))}
                 </div>
@@ -444,7 +466,7 @@ function Appearance({ place }: { place: Place }) {
                   max={24}
                   step={1}
                   value={v.weight}
-                  aria-label="Épaisseur du trait"
+                  aria-label={t("Épaisseur du trait")}
                   onChange={(e) =>
                     set({ weight: Number(e.target.value) }, false)
                   }
@@ -454,9 +476,9 @@ function Appearance({ place }: { place: Place }) {
               </div>
             </div>
             <div className="map-style-row">
-              <span className="map-field-label">Trait</span>
+              <span className="map-field-label">{t("Trait")}</span>
               <Segmented
-                label="Style du trait"
+                label={t("Style du trait")}
                 value={v.dash}
                 onChange={(dash) => set({ dash })}
                 options={LINE_STYLES.map((d) => ({
@@ -486,7 +508,7 @@ function Appearance({ place }: { place: Place }) {
                           }
                         />
                       </svg>
-                      {DASH_LABELS[d]}
+                      {t(DASH_LABELS[d])}
                     </>
                   ),
                 }))}
@@ -511,8 +533,7 @@ function RestorePast({ place, viewAt }: { place: Place; viewAt: number }) {
     !!now &&
     JSON.stringify({ ...now, updatedAt: "" }) ===
       JSON.stringify({ ...place, updatedAt: "" });
-  const when = new Date(viewAt).toLocaleString("fr-CH", {
-    timeZone: "Europe/Zurich",
+  const when = formatWith(viewAt, {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -522,8 +543,14 @@ function RestorePast({ place, viewAt }: { place: Place; viewAt: number }) {
     if (
       !window.confirm(
         now
-          ? `Remettre cet objet dans son état du ${when} ? L’état actuel reste dans l’historique.`
-          : `Cet objet a été supprimé depuis. Le remettre sur la carte tel qu’il était le ${when} ?`,
+          ? t(
+              "Remettre cet objet dans son état du {when} ? L’état actuel reste dans l’historique.",
+              { when },
+            )
+          : t(
+              "Cet objet a été supprimé depuis. Le remettre sur la carte tel qu’il était le {when} ?",
+              { when },
+            ),
       )
     )
       return;
@@ -540,35 +567,35 @@ function RestorePast({ place, viewAt }: { place: Place; viewAt: number }) {
           author,
         ),
       );
-      toast("Objet restauré dans le journal actuel.");
+      toast(t("Objet restauré dans le journal actuel."));
     } catch (err) {
       toast((err as Error).message);
     }
   }
   return (
-    <section className="map-sheet-restore" aria-label="Restaurer">
-      <span className="label">Machine à remonter le temps</span>
+    <section className="map-sheet-restore" aria-label={t("Restaurer")}>
+      <span className="label">{t("Machine à remonter le temps")}</span>
       <p className="muted">
         {same
-          ? "L’objet est aujourd’hui dans le même état."
+          ? t("L’objet est aujourd’hui dans le même état.")
           : now
-            ? "L’objet a changé depuis ce moment."
-            : "L’objet n’existe plus aujourd’hui."}
+            ? t("L’objet a changé depuis ce moment.")
+            : t("L’objet n’existe plus aujourd’hui.")}
       </p>
       <button
         type="button"
         disabled={same || !!live.closedAt}
-        title={live.closedAt ? "Journal clôturé" : undefined}
+        title={live.closedAt ? t("Journal clôturé") : undefined}
         onClick={restore}
       >
         <History size={14} />
-        Restaurer cet objet
+        {t("Restaurer cet objet")}
       </button>
     </section>
   );
 }
 
-const KIND_NOUN: Record<Place["kind"], string> = {
+const KIND_NOUN: Record<Place["kind"], Key> = {
   point: "Signe",
   line: "Tracé",
   area: "Zone",
@@ -594,19 +621,19 @@ export function PlaceSheet({
   const spec: FieldSpec[] = [
     {
       key: "label",
-      label: place.kind === "text" ? "Texte affiché" : "Nom",
+      label: place.kind === "text" ? t("Texte affiché") : t("Nom"),
       kind: place.kind === "text" ? "area" : "text",
       rows: 2,
       max: 200,
       placeholder:
         place.kind === "text"
-          ? "ex. Secteur nord"
-          : "ex. Incendie rue du Lac, PC front…",
+          ? t("ex. Secteur nord")
+          : t("ex. Incendie rue du Lac, PC front…"),
       wide: true,
     } as FieldSpec,
     {
       key: "layer",
-      label: "Calque",
+      label: t("Calque"),
       kind: "combo",
       list: "layers",
       quick: 6,
@@ -643,7 +670,7 @@ export function PlaceSheet({
           } satisfies FieldSpec,
         ]
       : []),
-    { key: "notes", label: "Remarques", kind: "area", rows: 3 },
+    { key: "notes", label: t("Remarques"), kind: "area", rows: 3 },
     {
       kind: "custom",
       key: "live",
@@ -655,19 +682,19 @@ export function PlaceSheet({
   const mn95 = mn95Text(lat, lng);
   const copy = (text: string) => {
     navigator.clipboard?.writeText(text).then(
-      () => toast("Coordonnées copiées."),
-      () => toast("Copie impossible."),
+      () => toast(t("Coordonnées copiées.")),
+      () => toast(t("Copie impossible.")),
     );
   };
   return (
     <RecordSheet
       collection="places"
       kind="place"
-      noun="un objet"
+      noun={t("un objet")}
       spec={spec}
       initial={place}
       onClose={onClose}
-      titleOf={(v) => String(v.label || "") || KIND_NOUN[place.kind]}
+      titleOf={(v) => String(v.label || "") || t(KIND_NOUN[place.kind])}
     >
       {() => (
         <>
@@ -675,21 +702,21 @@ export function PlaceSheet({
           <section className="map-sheet-geo">
             <span className="label">
               {place.kind === "line" || place.kind === "area"
-                ? "Géométrie"
-                : "Position"}
+                ? t("Géométrie")
+                : t("Position")}
             </span>
             {place.kind === "point" || place.kind === "text" ? (
               <dl>
                 {mn95 && (
                   <>
-                    <dt>MN95</dt>
+                    <dt>{t("MN95")}</dt>
                     <dd className="mono">
                       {mn95Label(lat, lng)}
                       <button
                         type="button"
                         className="icon-button"
-                        aria-label="Copier les coordonnées MN95"
-                        title="Copier"
+                        aria-label={t("Copier les coordonnées MN95")}
+                        title={t("Copier")}
                         onClick={() => copy(mn95)}
                       >
                         <Copy size={13} />
@@ -703,8 +730,8 @@ export function PlaceSheet({
                   <button
                     type="button"
                     className="icon-button"
-                    aria-label="Copier latitude et longitude"
-                    title="Copier"
+                    aria-label={t("Copier latitude et longitude")}
+                    title={t("Copier")}
                     onClick={() => copy(formatWgs(lat, lng))}
                   >
                     <Copy size={13} />
@@ -713,7 +740,9 @@ export function PlaceSheet({
               </dl>
             ) : (
               <dl>
-                <dt>{place.kind === "area" ? "Périmètre" : "Longueur"}</dt>
+                <dt>
+                  {place.kind === "area" ? t("Périmètre") : t("Longueur")}
+                </dt>
                 <dd className="mono">
                   {formatDistance(
                     lengthOf(
@@ -725,7 +754,7 @@ export function PlaceSheet({
                 </dd>
                 {place.kind === "area" && (
                   <>
-                    <dt>Surface</dt>
+                    <dt>{t("Surface")}</dt>
                     <dd className="mono">
                       {formatArea(areaOf(place.points, place.holes))}
                     </dd>
@@ -733,24 +762,24 @@ export function PlaceSheet({
                 )}
                 {!!place.holes?.length && (
                   <>
-                    <dt>Trous</dt>
+                    <dt>{t("Trous")}</dt>
                     <dd className="mono">{place.holes.length}</dd>
                   </>
                 )}
-                <dt>Sommets</dt>
+                <dt>{t("Sommets")}</dt>
                 <dd className="mono">{place.points.length}</dd>
               </dl>
             )}
             <div className="map-sheet-actions">
               <button type="button" onClick={() => onCenter(place)}>
                 <Crosshair size={14} />
-                Centrer
+                {t("Centrer")}
               </button>
               {(place.kind === "line" || place.kind === "area") &&
                 !readOnly && (
                   <button type="button" onClick={() => onEditShape(place)}>
                     <Spline size={14} />
-                    Modifier la forme
+                    {t("Modifier la forme")}
                   </button>
                 )}
             </div>

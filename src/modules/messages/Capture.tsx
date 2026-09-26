@@ -12,6 +12,7 @@ import { localNode } from "../../../shared/hlc";
 import {
   MESSAGE_PRIORITIES,
   emptyMessage,
+  journalLang,
   nowIso,
   upsert,
   type Message,
@@ -27,12 +28,14 @@ import {
   TextField,
   Toggle,
 } from "../../ui/fields";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 import {
-  SKELETONS,
   mLabel,
   nextMessageNumber,
   numbering,
   partyOptions,
+  skeletons,
   type Draft,
   type Skeleton,
 } from "./model";
@@ -73,6 +76,7 @@ export function Capture({
   const [more, setMore] = useState(false);
   const [error, setError] = useState("");
   const body = useRef<HTMLTextAreaElement>(null);
+  const templates = skeletons(journalLang(journal.ops));
   const recipients = lists("recipients");
   const fromOptions = useMemo(
     () => partyOptions(journal, recipients, "from"),
@@ -95,7 +99,7 @@ export function Capture({
   };
 
   function applySkeleton(s: Skeleton) {
-    const known = SKELETONS.some((k) => k.body === draft.body);
+    const known = templates.some((k) => k.body === draft.body);
     const text =
       !draft.body.trim() || known
         ? s.body
@@ -119,7 +123,7 @@ export function Capture({
   function save() {
     if (!canWrite()) return;
     if (!draft.subject.trim() && !draft.body.trim()) {
-      setError("Écrivez au moins l’objet ou le texte du message.");
+      setError(t("Écrivez au moins l’objet ou le texte du message."));
       body.current?.focus();
       return;
     }
@@ -148,15 +152,19 @@ export function Capture({
     const number =
       numbering([...journal.ops.messages, message]).get(message.id) ?? 0;
     toast(
-      `Message ${mLabel(number)} reçu${prefs.autoPrintMessages ? " · impression lancée" : ""}.`,
+      prefs.autoPrintMessages
+        ? t("Message {label} reçu · impression lancée.", {
+            label: mLabel(number),
+          })
+        : t("Message {label} reçu.", { label: mLabel(number) }),
     );
     if (prefs.autoPrintMessages)
       queuePrint({
         kind: "forms",
         journal,
         sheets: [intakeSheet(message, number)],
-        title: "Formule de message",
-        name: "message",
+        title: t("Formule de message"),
+        name: t("message (fichier)"),
       });
     setDraft(blank({ from: draft.from, via: draft.via }));
     setMore(false);
@@ -177,15 +185,17 @@ export function Capture({
         <span className="msg-capture-icon" aria-hidden="true">
           <Inbox size={15} />
         </span>
-        <h2>Nouveau message</h2>
+        <h2>{t("Nouveau message")}</h2>
         <span
           className={`pill ${draft.receivedAt ? "accent" : "plain"}`}
-          title="Heure de réception : fixée au début de la saisie, modifiable dans « Plus de détails »"
+          title={t(
+            "Heure de réception : fixée au début de la saisie, modifiable dans « Plus de détails »",
+          )}
         >
           <Clock3 size={11} />
           {draft.receivedAt
-            ? `Reçu ${time(draft.receivedAt)}`
-            : "Heure automatique"}
+            ? t("Reçu {time}", { time: time(draft.receivedAt) })
+            : t("Heure automatique")}
         </span>
       </div>
       <form
@@ -204,10 +214,10 @@ export function Capture({
           <div
             className="msg-skeletons"
             role="group"
-            aria-label="Modèles de message"
+            aria-label={t("Modèles de message")}
           >
-            <span className="label">Modèle</span>
-            {SKELETONS.map((s) => (
+            <span className="label">{t("Modèle")}</span>
+            {templates.map((s) => (
               <button
                 type="button"
                 key={s.id}
@@ -226,45 +236,49 @@ export function Capture({
           <div className="form-grid">
             <ComboField
               className="span-2"
-              label="De"
+              label={t("De")}
               value={draft.from}
               onChange={(from) => update({ from })}
               options={fromOptions}
               quick={5}
-              placeholder="Émetteur, nom d’appel…"
+              placeholder={t("Émetteur, nom d’appel…")}
             />
             <ComboField
               className="span-2"
-              label="À"
+              label={t("À")}
               value={draft.to}
               onChange={(to) => update({ to })}
               options={toOptions}
               quick={5}
-              placeholder="Destinataire"
+              placeholder={t("Destinataire")}
             />
             <ComboField
               className="span-2"
-              label="Canal"
+              label={t("Canal")}
               value={draft.via}
               onChange={(via) => update({ via })}
               options={lists("channels")}
               quick={7}
             />
             <div className="span-2 msg-priority">
-              <span className="label">Priorité</span>
+              <span className="label">{t("Priorité")}</span>
               <Segmented
-                label="Priorité"
+                label={t("Priorité")}
                 value={draft.priority}
                 onChange={(priority) => update({ priority })}
                 options={MESSAGE_PRIORITIES.map((p) => ({
                   value: p,
-                  label: <span className={`msg-prio-label ${p}`}>{p}</span>,
+                  label: (
+                    <span className={`msg-prio-label ${p}`}>
+                      {enumLabel(p)}
+                    </span>
+                  ),
                 }))}
               />
             </div>
             <ComboField
               className="span-2"
-              label="Catégorie"
+              label={t("Catégorie")}
               value={draft.category}
               onChange={(category) => update({ category })}
               options={lists("categories")}
@@ -272,26 +286,26 @@ export function Capture({
             />
             <TextField
               className="span-2"
-              label="Objet"
+              label={t("Objet")}
               value={draft.subject}
               onChange={(subject) => update({ subject })}
               maxLength={300}
-              placeholder="En quelques mots"
+              placeholder={t("En quelques mots")}
             />
             <div className="span-2 dictation-field">
               <label>
-                <span>Message</span>
+                <span>{t("Message")}</span>
                 <textarea
                   ref={body}
                   rows={5}
                   value={draft.body}
                   maxLength={12000}
-                  placeholder="Texte tel que reçu"
+                  placeholder={t("Texte tel que reçu")}
                   onChange={(e) => update({ body: e.target.value })}
                 />
               </label>
               <DictationButton
-                label="Dicter le message"
+                label={t("Dicter le message")}
                 disabled={readOnly}
                 onText={(text) =>
                   insertDictation(body.current, text, (value) =>
@@ -302,15 +316,15 @@ export function Capture({
             </div>
             <TextField
               className="span-2"
-              label="Lieu"
+              label={t("Lieu")}
               value={draft.location}
               onChange={(location) => update({ location })}
               maxLength={300}
-              placeholder="Adresse, secteur, lieu-dit"
+              placeholder={t("Adresse, secteur, lieu-dit")}
             />
             <div className="span-2 msg-reply">
               <Toggle
-                label="Réponse attendue"
+                label={t("Réponse attendue")}
                 checked={draft.replyNeeded}
                 onChange={(replyNeeded) => update({ replyNeeded })}
               />
@@ -319,7 +333,7 @@ export function Capture({
                   <div
                     className="quick-values"
                     role="group"
-                    aria-label="Délai de réponse"
+                    aria-label={t("Délai de réponse")}
                   >
                     {DELAYS.map((d) => (
                       <button
@@ -332,7 +346,7 @@ export function Capture({
                     ))}
                   </div>
                   <DateTimeField
-                    label="Échéance"
+                    label={t("Échéance")}
                     value={draft.replyBy}
                     onChange={(replyBy) => update({ replyBy })}
                   />
@@ -347,28 +361,28 @@ export function Capture({
             onClick={() => setMore((v) => !v)}
           >
             <ChevronDown size={14} />
-            Plus de détails
+            {t("Plus de détails")}
           </button>
           {more && (
             <div className="form-grid reveal">
               <DateTimeField
                 className="span-2"
-                label="Reçu le"
-                hint="Vide : heure du début de la saisie."
+                label={t("Reçu le")}
+                hint={t("Vide : heure du début de la saisie.")}
                 value={draft.receivedAt}
                 onChange={(receivedAt) => update({ receivedAt })}
               />
               <TextField
                 className="span-2"
-                label="Coordonnées"
+                label={t("Coordonnées")}
                 value={draft.coordinates}
                 onChange={(coordinates) => update({ coordinates })}
                 maxLength={150}
-                placeholder="ex. 2 600 000 / 1 200 000"
+                placeholder={t("ex. 2 600 000 / 1 200 000")}
               />
               <TextField
                 className="span-2"
-                label="Remarques"
+                label={t("Remarques")}
                 rows={2}
                 value={draft.notes}
                 onChange={(notes) => update({ notes })}
@@ -376,7 +390,7 @@ export function Capture({
               />
               <TagsField
                 className="span-2"
-                label="Mots-clés"
+                label={t("Mots-clés")}
                 value={draft.tags}
                 onChange={(tags) => update({ tags })}
               />
@@ -392,7 +406,7 @@ export function Capture({
           <Toggle
             label={
               <>
-                <Printer size={13} /> Impression automatique
+                <Printer size={13} /> {t("Impression automatique")}
               </>
             }
             checked={prefs.autoPrintMessages}
@@ -404,14 +418,16 @@ export function Capture({
             disabled={readOnly}
             onClick={save}
           >
-            Enregistrer le message
+            {t("Enregistrer le message")}
             <kbd>
               ⌘<CornerDownLeft size={11} />
             </kbd>
           </button>
         </div>
         {readOnly && (
-          <p className="muted msg-readonly">Journal clôturé : lecture seule.</p>
+          <p className="muted msg-readonly">
+            {t("Journal clôturé : lecture seule.")}
+          </p>
         )}
       </form>
     </div>

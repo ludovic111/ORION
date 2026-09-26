@@ -12,6 +12,8 @@ import {
 import { terminalUrl } from "../../shared/radio.ts";
 import { qrMatrix } from "./qr.ts";
 import { situationReport, type ReportRange } from "./report.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 type Doc = jsPDF;
 type RGB = [number, number, number];
@@ -92,14 +94,14 @@ export function drawBand(
   let x = W - PAGE.m;
   x = chip(
     doc,
-    header.classification.toUpperCase(),
+    enumLabel(header.classification).toUpperCase(),
     x,
     top + 2.4,
     header.classification === "Confidentiel",
   );
   chip(
     doc,
-    header.mode.toUpperCase(),
+    enumLabel(header.mode).toUpperCase(),
     x,
     top + 2.4,
     header.mode === "Intervention",
@@ -109,9 +111,14 @@ export function drawBand(
   doc.text(title, PAGE.m, top + 9.5);
   font(doc, 8, false, MUTED);
   if (header.reference)
-    doc.text(`Réf. ${header.reference}`, W - PAGE.m, top + 9.5, {
-      align: "right",
-    });
+    doc.text(
+      t("Réf. {reference}", { reference: header.reference }),
+      W - PAGE.m,
+      top + 9.5,
+      {
+        align: "right",
+      },
+    );
   const context = [header.organization, header.location, extra]
     .filter(Boolean)
     .join("  ·  ");
@@ -139,7 +146,7 @@ export function drawFooters(doc: Doc, label: string) {
     doc.line(PAGE.m, H - 11, W - PAGE.m, H - 11);
     font(doc, 6.5, false, MUTED);
     doc.text(label, PAGE.m, H - 7.5);
-    doc.text(`Édité le ${stamp} · Europe/Zurich`, W / 2, H - 7.5, {
+    doc.text(t("Édité le {stamp} · Europe/Zurich", { stamp }), W / 2, H - 7.5, {
       align: "center",
     });
     doc.text(`${i} / ${count}`, W - PAGE.m, H - 7.5, { align: "right" });
@@ -227,7 +234,9 @@ function drawRow(doc: Doc, layout: Layout, row: SheetField[]) {
       }
       const part = lines.slice(0, room);
       const h = need(part.length, field.tall && !started);
-      const label = started ? `${field.label} (suite)` : field.label;
+      const label = started
+        ? t("{label} (suite)", { label: field.label })
+        : field.label;
       drawField(doc, { ...field, label }, PAGE.m, layout.y, WIDTH, h, part);
       layout.y += h;
       lines = lines.slice(room);
@@ -247,7 +256,10 @@ function drawForm(doc: Doc, header: SheetHeader, sheet: FormSheet) {
     const top = drawBand(doc, header, sheet.kind);
     font(doc, 8, true);
     doc.text(
-      `${sheet.idLabel.toUpperCase()} ${sheet.number} · suite`,
+      t("{label} {number} · suite", {
+        label: sheet.idLabel.toUpperCase(),
+        number: sheet.number,
+      }),
       PAGE.m,
       top + 6,
     );
@@ -310,7 +322,7 @@ export async function formsPdf(
   sheets: FormSheet[],
   label: string,
 ) {
-  if (!sheets.length) throw new Error("Aucun document à produire.");
+  if (!sheets.length) throw new Error(t("Aucun document à produire."));
   const doc = await pdfDocument();
   const header = sheetHeader(journal);
   sheets.forEach((sheet, i) => {
@@ -325,11 +337,11 @@ export async function formsPdf(
 }
 
 export async function messagesPdf(journal: Journal, entries: Entry[]) {
-  if (!entries.length) throw new Error("Aucune entrée sélectionnée.");
+  if (!entries.length) throw new Error(t("Aucune entrée sélectionnée."));
   return formsPdf(
     journal,
     entries.map(messageSheet),
-    `${entries.length} messages`,
+    t("{n} messages", { n: entries.length }),
   );
 }
 
@@ -410,7 +422,7 @@ export async function tablesPdf(
     doc.rect(PAGE.m, y, W, size + 4);
     drawQr(doc, options.verify.qr, PAGE.m + 2, y + 2, size);
     font(doc, 7, true);
-    doc.text("VÉRIFIER CE DOCUMENT", PAGE.m + size + 6, y + 6, {
+    doc.text(t("VÉRIFIER CE DOCUMENT"), PAGE.m + size + 6, y + 6, {
       charSpace: 0.35,
     });
     font(doc, 7.5, false);
@@ -447,11 +459,11 @@ function drawQr(doc: Doc, text: string, x: number, y: number, size: number) {
 
 export const radioPdf = (journal: Journal, author: string) =>
   tablesPdf(journal, {
-    kind: "Plan du réseau radio",
-    extra: `Établi par ${author}`,
+    kind: t("Plan du réseau radio"),
+    extra: t("Établi par {author}", { author }),
     tables: radioTables(journal.radio),
     orientation: "landscape",
-    footer: "plan du réseau radio",
+    footer: t("plan du réseau radio"),
   });
 
 export const reportPdf = (
@@ -460,16 +472,16 @@ export const reportPdf = (
   range: ReportRange,
 ) =>
   tablesPdf(journal, {
-    kind: "Rapport de situation",
-    extra: `Établi par ${author}`,
+    kind: t("Rapport de situation"),
+    extra: t("Établi par {author}", { author }),
     tables: situationReport(journal, range),
     orientation: "portrait",
-    footer: "rapport de situation",
+    footer: t("rapport de situation"),
   });
 
 /** A4 sheet of 3 × 7 QR labels, one per terminal. */
 export async function labelsPdf(journal: Journal, origin: string) {
-  if (!journal.radio.terminals.length) throw new Error("Aucun terminal.");
+  if (!journal.radio.terminals.length) throw new Error(t("Aucun terminal."));
   const doc = await pdfDocument();
   const cols = 3,
     rows = 7,
@@ -497,7 +509,7 @@ export async function labelsPdf(journal: Journal, origin: string) {
       }),
     );
     font(doc, 6, true, MUTED);
-    doc.text("orion aic · RADIO", x + 35, y + 8, { charSpace: 0.3 });
+    doc.text(t("orion aic · RADIO"), x + 35, y + 8, { charSpace: 0.3 });
     font(doc, 16, true);
     doc.text(terminal.label, x + 35, y + 16);
     font(doc, 7, false, MUTED);
@@ -512,7 +524,7 @@ export async function labelsPdf(journal: Journal, origin: string) {
       y + 21,
     );
   });
-  drawFooters(doc, `${journal.title} · étiquettes radio`);
+  drawFooters(doc, `${journal.title} · ${t("étiquettes radio")}`);
   return doc.output("blob");
 }
 
@@ -521,7 +533,7 @@ export async function badgesPdf(
   journal: Journal,
   badges: { name: string; line: string; sub: string; code: string }[],
 ) {
-  if (!badges.length) throw new Error("Aucun badge.");
+  if (!badges.length) throw new Error(t("Aucun badge."));
   const doc = await pdfDocument();
   const cols = 3,
     rows = 7,
@@ -549,7 +561,7 @@ export async function badgesPdf(
       }),
     );
     font(doc, 6, true, MUTED);
-    doc.text("orion aic · PRÉSENCE", x + 35, y + 8, { charSpace: 0.3 });
+    doc.text(t("orion aic · PRÉSENCE"), x + 35, y + 8, { charSpace: 0.3 });
     font(doc, 10, true);
     doc.text(doc.splitTextToSize(badge.name, 23).slice(0, 2), x + 35, y + 14);
     font(doc, 7, false, MUTED);
@@ -561,6 +573,6 @@ export async function badgesPdf(
       y + 24,
     );
   });
-  drawFooters(doc, `${journal.title} · badges de présence`);
+  drawFooters(doc, `${journal.title} · ${t("badges de présence")}`);
   return doc.output("blob");
 }

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { now } from "../../shared/journal";
 import {
-  CHECK_LABELS,
   CHECK_RESULTS,
   stationStatus,
   type Radio,
@@ -9,6 +8,8 @@ import {
 } from "../../shared/radio";
 import { Modal } from "../journal/Modal";
 import { talkgroupLabel } from "../print/radio-sheet";
+import { checkLabel } from "../print/i18n.ts";
+import { t, tn } from "./i18n.ts";
 
 type Result = (typeof CHECK_RESULTS)[number];
 
@@ -29,12 +30,12 @@ export function GeneralCheck({
   const [log, setLog] = useState(true);
   const done = Object.keys(results).length;
   return (
-    <Modal title="Contrôle de liaison général" onClose={onClose} wide>
+    <Modal title={t("Contrôle de liaison général")} onClose={onClose} wide>
       <div className="form-pair">
         <label>
-          Groupe / canal
+          {t("Groupe / canal")}
           <select value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="">Groupe principal de chaque station</option>
+            <option value="">{t("Groupe principal de chaque station")}</option>
             {radio.talkgroups.map((g) => (
               <option key={g.id} value={g.id}>
                 {talkgroupLabel(radio, g.id)}
@@ -43,18 +44,18 @@ export function GeneralCheck({
           </select>
         </label>
         <p className="hint">
-          « À … de …, contrôle de liaison, répondez. » Noter l’audibilité de
-          chaque réponse. Les stations sans réponse notée ne sont pas
-          enregistrées.
+          {t(
+            "« À … de …, contrôle de liaison, répondez. » Noter l’audibilité de chaque réponse. Les stations sans réponse notée ne sont pas enregistrées.",
+          )}
         </p>
       </div>
       <table className="grid dense roll-call">
         <thead>
           <tr>
-            <th>Nom d’appel</th>
-            <th>Titulaire · terminal</th>
-            <th>Groupe</th>
-            <th>Audibilité</th>
+            <th>{t("Nom d’appel")}</th>
+            <th>{t("Titulaire · terminal")}</th>
+            <th>{t("Groupe")}</th>
+            <th>{t("Audibilité")}</th>
           </tr>
         </thead>
         <tbody>
@@ -70,7 +71,7 @@ export function GeneralCheck({
                   {status.terminal ? (
                     `${status.assignment?.holder} · ${status.terminal.label}`
                   ) : (
-                    <span className="tag dim">Hors réseau</span>
+                    <span className="tag dim">{t("Hors réseau")}</span>
                   )}
                 </td>
                 <td className="mono muted">
@@ -84,7 +85,7 @@ export function GeneralCheck({
                         key={r}
                         className={`score-button score-${r}`}
                         aria-pressed={results[s.id] === r}
-                        title={CHECK_LABELS[r]}
+                        title={checkLabel(r)}
                         onClick={() =>
                           setResults((previous) => {
                             const next = { ...previous };
@@ -105,7 +106,7 @@ export function GeneralCheck({
         </tbody>
       </table>
       {!radio.stations.length && (
-        <p className="muted">Aucun nom d’appel au plan du réseau.</p>
+        <p className="muted">{t("Aucun nom d’appel au plan du réseau.")}</p>
       )}
       <label className="check-label">
         <input
@@ -113,14 +114,19 @@ export function GeneralCheck({
           checked={log}
           onChange={(e) => setLog(e.target.checked)}
         />
-        <span>Consigner le résultat au journal (une entrée de synthèse)</span>
+        <span>
+          {t("Consigner le résultat au journal (une entrée de synthèse)")}
+        </span>
       </label>
       <div className="modal-actions">
         <span className="mono muted push-left">
-          {done} / {radio.stations.length} notés
+          {t("{done} / {total} notés", {
+            done,
+            total: radio.stations.length,
+          })}
         </span>
         <button type="button" onClick={onClose}>
-          Annuler
+          {t("Annuler")}
         </button>
         <button
           className="primary"
@@ -137,14 +143,14 @@ export function GeneralCheck({
                   callsign: s.callsign,
                   talkgroupId: group || s.primary,
                   result: results[s.id],
-                  notes: "Contrôle général",
+                  notes: t("Contrôle général"),
                 })),
               log,
             );
             onClose();
           }}
         >
-          Enregistrer {done} contrôle{done > 1 ? "s" : ""}
+          {tn(done, "Enregistrer {n} contrôle", "Enregistrer {n} contrôles")}
         </button>
       </div>
     </Modal>

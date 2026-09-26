@@ -18,6 +18,8 @@ import {
 import type { Journal, Workspace } from "../../shared/journal";
 import { Popover } from "../ui/Popover";
 import type { SettingsTab } from "./Settings";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 
 /** Menu of the journals of the session (top bar). */
 export function JournalMenu({
@@ -47,7 +49,7 @@ export function JournalMenu({
 }) {
   return (
     <Popover anchor={anchor} onClose={onClose}>
-      <div className="menu-label">Journaux de la session</div>
+      <div className="menu-label">{t("Journaux de la session")}</div>
       {workspace.journals.map((j) => (
         <button
           key={j.id}
@@ -58,8 +60,9 @@ export function JournalMenu({
           <span>
             {j.title}
             <small>
-              {j.closedAt ? "Clôturé" : j.mode} · {j.entries.length} entrées ·{" "}
-              {j.ops.messages.length} messages
+              {j.closedAt ? t("Clôturé") : enumLabel(j.mode)} ·{" "}
+              {tn(j.entries.length, "{n} entrées (1)", "{n} entrées")} ·{" "}
+              {tn(j.ops.messages.length, "{n} messages (1)", "{n} messages")}
             </small>
           </span>
         </button>
@@ -67,24 +70,24 @@ export function JournalMenu({
       <hr />
       <button data-close onClick={onNew}>
         <Plus size={15} />
-        Nouveau journal
+        {t("Nouveau journal")}
       </button>
       <button data-close onClick={onImport}>
         <FileUp size={15} />
-        Importer un fichier
+        {t("Importer un fichier")}
       </button>
       <button data-close onClick={onExport}>
         <Download size={15} />
-        Exporter (tous formats)
-        {dirty && <span className="pill warn">à faire</span>}
+        {t("Exporter (tous formats)")}
+        {dirty && <span className="pill warn">{t("à faire")}</span>}
       </button>
       <button data-close onClick={() => onSettings("session")}>
         <Settings2 size={15} />
-        Propriétés, clôture
+        {t("Propriétés, clôture")}
       </button>
       <button data-close onClick={onRemove}>
         <Trash2 size={15} />
-        Retirer ce journal de la session
+        {t("Retirer ce journal de la session")}
       </button>
     </Popover>
   );
@@ -127,70 +130,74 @@ export function OperatorMenu({
       <button data-close onClick={() => onSettings("post")}>
         <Settings2 size={15} />
         <span>
-          Réglages du poste
-          <small>Thème, modules, impression automatique</small>
+          {t("Réglages du poste")}
+          <small>{t("Thème, modules, impression automatique")}</small>
         </span>
       </button>
       <button data-close className="show-phone" onClick={onTheme}>
         {theme === "light" ? <Moon size={15} /> : <Sun size={15} />}
-        {theme === "light" ? "Thème sombre" : "Thème clair"}
+        {theme === "light" ? t("Thème sombre") : t("Thème clair")}
       </button>
       <button data-close onClick={() => onSettings("lists")}>
         <BookOpen size={15} />
         <span>
-          Référentiels
-          <small>Destinataires, catégories, grades… standards</small>
+          {t("Référentiels")}
+          <small>{t("Destinataires, catégories, grades… standards")}</small>
         </span>
       </button>
       <button data-close onClick={() => onSettings("sync")}>
         <Wifi size={15} />
         <span>
-          Synchronisation
-          <small>Travailler à plusieurs postes sur la même session</small>
+          {t("Synchronisation")}
+          <small>
+            {t("Travailler à plusieurs postes sur la même session")}
+          </small>
         </span>
       </button>
       <button data-close onClick={() => onSettings("session")}>
         <LockKeyhole size={15} />
         <span>
-          Session et sauvegarde
-          <small>Opérateur, phrase de récupération, fin de session</small>
+          {t("Session et sauvegarde")}
+          <small>
+            {t("Opérateur, phrase de récupération, fin de session")}
+          </small>
         </span>
       </button>
       {onWall && (
         <button data-close onClick={onWall}>
           <Tv size={15} />
           <span>
-            Écran mural
-            <small>Grand écran de la salle, lecture seule</small>
+            {t("Écran mural")}
+            <small>{t("Grand écran de la salle, lecture seule")}</small>
           </span>
         </button>
       )}
       <hr />
       <button data-close onClick={onPrivacy}>
         <Shield size={15} />
-        Sécurité et données
+        {t("Sécurité et données")}
       </button>
       <button data-close onClick={() => onSettings("contact")}>
         <Lightbulb size={15} />
         <span>
-          Une idée, un besoin ?
-          <small>Proposer une amélioration à l’auteur</small>
+          {t("Une idée, un besoin ?")}
+          <small>{t("Proposer une amélioration à l’auteur")}</small>
         </span>
       </button>
       {!installed && (
         <button data-close onClick={onInstall}>
           <MonitorSmartphone size={15} />
-          Installer l’application
+          {t("Installer l’application")}
         </button>
       )}
       <a className="menu-link" href="/source/orion-aic-source.tar.gz" download>
         <Download size={15} />
-        Code source · AGPL-3.0
+        {t("Code source · AGPL-3.0")}
       </a>
       <hr />
       <button data-close onClick={onEnd}>
         {persistent ? <LockKeyhole size={15} /> : <LogOut size={15} />}
-        {persistent ? "Verrouiller" : "Fermer la session"}
+        {persistent ? t("Verrouiller") : t("Fermer la session")}
       </button>
       <div className="menu-label">{status}</div>
     </Popover>

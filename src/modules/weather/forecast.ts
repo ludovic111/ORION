@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { dateTime } from "../../../shared/journal";
 import type { Observation, WeatherAlert } from "../../../shared/ops";
+import { formatNumber, getLang } from "../../../shared/i18n/core.ts";
+import { t, type WeatherKey } from "./i18n.ts";
 
 // Forecast from Open-Meteo (MétéoSuisse ICON-CH2 when available), fetched
 // only on explicit request and cached per journal in this browser.
@@ -161,7 +163,11 @@ async function request(place: WeatherPlace, model: boolean): Promise<Response> {
       credentials: "omit",
     });
     if (!res.ok)
-      throw new Error(`Service météo indisponible (HTTP ${res.status}).`);
+      throw new Error(
+        t("Service météo indisponible (HTTP {status}).", {
+          status: res.status,
+        }),
+      );
     return responseSchema.parse(await res.json());
   } finally {
     clearTimeout(timer);
@@ -220,7 +226,7 @@ export async function fetchForecast(journalId: string, place: WeatherPlace) {
     forecast = normalize(r, "MétéoSuisse ICON-CH2");
   } catch (err) {
     if ((err as Error).name === "AbortError")
-      throw new Error("Le service météo ne répond pas.");
+      throw new Error(t("Le service météo ne répond pas."));
     forecast = normalize(
       await request(place, false),
       "Open-Meteo (meilleur modèle)",
@@ -231,8 +237,18 @@ export async function fetchForecast(journalId: string, place: WeatherPlace) {
   return value;
 }
 
+/**
+ * Name of the forecast model in the language of the post. The model is
+ * stored in French with each forecast ("MétéoSuisse ICON-CH2").
+ */
+export const modelLabel = (model: string) =>
+  model
+    .replace("MétéoSuisse", t("MétéoSuisse"))
+    .replace("(meilleur modèle)", `(${t("meilleur modèle")})`)
+    .replace("(exemple fictif)", `(${t("exemple fictif")})`);
+
 // WMO weather codes.
-const WMO: Record<number, [string, LucideIcon]> = {
+const WMO: Record<number, [WeatherKey, LucideIcon]> = {
   0: ["Ciel clair", Sun],
   1: ["Plutôt ensoleillé", CloudSun],
   2: ["Partiellement nuageux", CloudSun],
@@ -263,9 +279,9 @@ const WMO: Record<number, [string, LucideIcon]> = {
   99: ["Orage avec forte grêle", CloudHail],
 };
 export function weatherLabel(code: number | null) {
-  return code === null
-    ? "Conditions inconnues"
-    : (WMO[code]?.[0] ?? `Code ${code}`);
+  if (code === null) return t("Conditions inconnues");
+  const known = WMO[code];
+  return known ? t(known[0]) : t("Code {code}", { code });
 }
 export function weatherIcon(code: number | null, night = false): LucideIcon {
   if (night && code === 0) return Moon;
@@ -301,14 +317,21 @@ const COMPASS = [
   "NO",
   "NNO",
 ];
-/** Direction the wind comes from, in French compass points. */
+// Italian uses the French points (E = est, O = ovest); German writes east
+// "O" and west "W".
+const COMPASS_DE = "N NNO NO ONO O OSO SO SSO S SSW SW WSW W WNW NW NNW".split(
+  " ",
+);
+/** Direction the wind comes from, in compass points of the language. */
 export const compass = (degrees: number) =>
-  COMPASS[Math.round((((degrees % 360) + 360) % 360) / 22.5) % 16];
+  (getLang() === "de" ? COMPASS_DE : COMPASS)[
+    Math.round((((degrees % 360) + 360) % 360) / 22.5) % 16
+  ];
 
 export const round = (v: number | null, digits = 0) =>
   v === null
     ? "—"
-    : v.toLocaleString("fr-CH", {
+    : formatNumber(v, {
         maximumFractionDigits: digits,
         minimumFractionDigits: digits,
       });
@@ -333,17 +356,18 @@ export function activeAlerts(alerts: WeatherAlert[], at: number) {
     .sort((a, b) => Number(b.level) - Number(a.level));
 }
 
-export const HAZARDS = [
-  "Orages",
-  "Fortes pluies",
-  "Vent",
-  "Neige",
-  "Verglas",
-  "Canicule",
-  "Crues",
-  "Avalanches",
-  "Incendies de forêt",
-  "Brouillard",
+/** Usual hazards, suggested in the language of the post. */
+export const hazards = () => [
+  t("Orages"),
+  t("Fortes pluies"),
+  t("Vent"),
+  t("Neige"),
+  t("Verglas"),
+  t("Canicule"),
+  t("Crues"),
+  t("Avalanches"),
+  t("Incendies de forêt"),
+  t("Brouillard"),
 ];
 
 /** Search a Swiss place (swisstopo). Labels come as HTML: reduced to text. */
@@ -357,7 +381,10 @@ export async function searchPlaces(
     referrerPolicy: "no-referrer",
     credentials: "omit",
   });
-  if (!res.ok) throw new Error(`Recherche indisponible (HTTP ${res.status}).`);
+  if (!res.ok)
+    throw new Error(
+      t("Recherche indisponible (HTTP {status}).", { status: res.status }),
+    );
   const data = z
     .object({
       results: z.array(
@@ -392,18 +419,22 @@ export function observationText(
 ) {
   return [
     o.conditions,
-    o.temperature && `température ${o.temperature}`,
-    o.wind && `vent ${o.wind}`,
-    o.precipitation && `précipitations ${o.precipitation}`,
-    o.visibility && `visibilité ${o.visibility}`,
+    o.temperature && t("température {v}", { v: o.temperature }),
+    o.wind && t("vent {v}", { v: o.wind }),
+    o.precipitation && t("précipitations {v}", { v: o.precipitation }),
+    o.visibility && t("visibilité {v}", { v: o.visibility }),
   ]
     .filter(Boolean)
     .join(", ");
 }
 
 export function alertPeriod(a: WeatherAlert) {
-  if (a.from && a.to) return `du ${dateTime(a.from)} au ${dateTime(a.to)}`;
-  if (a.from) return `dès le ${dateTime(a.from)}`;
-  if (a.to) return `jusqu’au ${dateTime(a.to)}`;
-  return "sans durée fixée";
+  if (a.from && a.to)
+    return t("du {from} au {to}", {
+      from: dateTime(a.from),
+      to: dateTime(a.to),
+    });
+  if (a.from) return t("dès le {from}", { from: dateTime(a.from) });
+  if (a.to) return t("jusqu’au {to}", { to: dateTime(a.to) });
+  return t("sans durée fixée");
 }

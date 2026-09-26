@@ -4,7 +4,6 @@ import { now } from "../../shared/journal";
 import {
   ACCESSORIES,
   BATTERY_LEVELS,
-  CHECK_LABELS,
   CHECK_RESULTS,
   TALKGROUP_MODES,
   TALKGROUP_USAGES,
@@ -24,6 +23,9 @@ import {
 import { fromInput, localInput } from "../ui/fields";
 import { Modal } from "../journal/Modal";
 import { talkgroupLabel } from "../print/radio-sheet";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { accessoriesLabel, checkLabel } from "../print/i18n.ts";
+import { t } from "./i18n.ts";
 
 function Shell({
   title,
@@ -78,11 +80,11 @@ function Shell({
               }}
             >
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           )}
           <button type="button" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary">{submit}</button>
         </div>
@@ -110,7 +112,7 @@ function Select<T extends string>({
       <select value={value} onChange={(e) => onChange(e.target.value as T)}>
         {values.map((v) => (
           <option key={v} value={v}>
-            {labels?.[v] ?? v}
+            {labels?.[v] ?? enumLabel(v)}
           </option>
         ))}
       </select>
@@ -194,14 +196,14 @@ export function TalkgroupForm({
     <Shell
       title={
         group
-          ? `Groupe ${group.number || group.name}`
-          : "Nouveau groupe ou canal"
+          ? t("Groupe {name}", { name: group.number || group.name })
+          : t("Nouveau groupe ou canal")
       }
-      submit={group ? "Enregistrer" : "Ajouter"}
+      submit={group ? t("Enregistrer") : t("Ajouter")}
       onClose={onClose}
       onDelete={group ? () => onDelete(group.id) : undefined}
       onSubmit={() => {
-        if (!value.name.trim()) throw new Error("Désignation requise.");
+        if (!value.name.trim()) throw new Error(t("Désignation requise."));
         const clean = {
           ...value,
           name: value.name.trim(),
@@ -217,7 +219,7 @@ export function TalkgroupForm({
     >
       <div className="form-pair">
         <label>
-          N°
+          {t("N°")}
           <input
             value={value.number}
             maxLength={40}
@@ -228,20 +230,20 @@ export function TalkgroupForm({
           />
         </label>
         <Select
-          label="Mode"
+          label={t("Mode")}
           value={value.mode}
           values={TALKGROUP_MODES}
           onChange={(v) => set("mode", v)}
           labels={{
-            Groupe: "Groupe (TKG)",
-            Direct: "Direct (DMO)",
-            Relais: "Relais (IDR)",
+            Groupe: t("Groupe (TKG)"),
+            Direct: t("Direct (DMO)"),
+            Relais: t("Relais (IDR)"),
           }}
         />
       </div>
       <label>
         <span>
-          Désignation <span className="required">*</span>
+          {t("Désignation")} <span className="required">*</span>
         </span>
         <input
           required
@@ -251,13 +253,13 @@ export function TalkgroupForm({
         />
       </label>
       <Select
-        label="Emploi"
+        label={t("Emploi")}
         value={value.usage}
         values={TALKGROUP_USAGES}
         onChange={(v) => set("usage", v)}
       />
       <label>
-        Remarques
+        {t("Remarques")}
         <textarea
           rows={2}
           maxLength={1000}
@@ -295,8 +297,8 @@ export function StationForm({
     setValue({ ...value, [key]: v });
   return (
     <Shell
-      title={station ? station.callsign : "Nouveau nom d’appel"}
-      submit={station ? "Enregistrer" : "Ajouter"}
+      title={station ? station.callsign : t("Nouveau nom d’appel")}
+      submit={station ? t("Enregistrer") : t("Ajouter")}
       onClose={onClose}
       onDelete={
         station
@@ -319,9 +321,11 @@ export function StationForm({
               callsignKey(s.callsign) === callsignKey(clean.callsign),
           )
         )
-          throw new Error("Ce nom d’appel existe déjà.");
+          throw new Error(t("Ce nom d’appel existe déjà."));
         if (clean.primary && clean.primary === clean.fallback)
-          throw new Error("L’alternative doit différer du groupe principal.");
+          throw new Error(
+            t("L’alternative doit différer du groupe principal."),
+          );
         onSave({
           ...radio,
           stations: station
@@ -332,22 +336,22 @@ export function StationForm({
     >
       <label>
         <span>
-          Nom d’appel <span className="required">*</span>
+          {t("Nom d’appel")} <span className="required">*</span>
         </span>
         <input
           required
           maxLength={60}
           value={value.callsign}
           onChange={(e) => set("callsign", e.target.value)}
-          placeholder="PC front, Chef sct appui"
+          placeholder={t("PC front, Chef sct appui")}
           autoFocus
           data-autofocus
         />
-        <small>Désigne la fonction, jamais la personne.</small>
+        <small>{t("Désigne la fonction, jamais la personne.")}</small>
       </label>
       <div className="form-pair">
         <label>
-          Fonction
+          {t("Fonction")}
           <input
             maxLength={200}
             value={value.role}
@@ -355,7 +359,7 @@ export function StationForm({
           />
         </label>
         <label>
-          Section / élément
+          {t("Section / élément")}
           <input
             maxLength={200}
             value={value.unit}
@@ -366,24 +370,24 @@ export function StationForm({
       <div className="form-pair">
         <GroupSelect
           radio={radio}
-          label="Groupe principal"
+          label={t("Groupe principal")}
           value={value.primary}
           onChange={(v) => set("primary", v)}
         />
         <GroupSelect
           radio={radio}
-          label="Alternative"
+          label={t("Alternative")}
           value={value.fallback}
           onChange={(v) => set("fallback", v)}
         />
       </div>
       <label>
-        Remarques
+        {t("Remarques")}
         <input
           maxLength={1000}
           value={value.notes}
           onChange={(e) => set("notes", e.target.value)}
-          placeholder="Station de transit, horaires"
+          placeholder={t("Station de transit, horaires")}
         />
       </label>
     </Shell>
@@ -421,25 +425,31 @@ export function TerminalForm({
   const issued = terminal && activeAssignment(terminal);
   return (
     <Shell
-      title={terminal ? `Terminal ${terminal.label}` : "Nouveau terminal"}
-      submit={terminal ? "Enregistrer" : "Ajouter"}
+      title={
+        terminal
+          ? t("Terminal {label}", { label: terminal.label })
+          : t("Nouveau terminal")
+      }
+      submit={terminal ? t("Enregistrer") : t("Ajouter")}
       onClose={onClose}
       onDelete={terminal ? () => onDelete(terminal.id) : undefined}
       onSubmit={() => {
         const clean = { ...value, label: value.label.trim() };
         if (
           radio.terminals.some(
-            (t) =>
-              t.id !== clean.id &&
-              t.label.toLocaleUpperCase("fr") ===
+            (term) =>
+              term.id !== clean.id &&
+              term.label.toLocaleUpperCase("fr") ===
                 clean.label.toLocaleUpperCase("fr"),
           )
         )
-          throw new Error("Ce numéro de terminal existe déjà.");
+          throw new Error(t("Ce numéro de terminal existe déjà."));
         onSave({
           ...radio,
           terminals: terminal
-            ? radio.terminals.map((t) => (t.id === terminal.id ? clean : t))
+            ? radio.terminals.map((term) =>
+                term.id === terminal.id ? clean : term,
+              )
             : [...radio.terminals, clean],
         });
       }}
@@ -447,7 +457,7 @@ export function TerminalForm({
       <div className="form-pair">
         <label>
           <span>
-            N° interne <span className="required">*</span>
+            {t("N° interne")} <span className="required">*</span>
           </span>
           <input
             required
@@ -471,7 +481,7 @@ export function TerminalForm({
       </div>
       <div className="form-pair">
         <label>
-          Modèle
+          {t("Modèle")}
           <input
             list="terminal-models"
             maxLength={80}
@@ -485,7 +495,7 @@ export function TerminalForm({
           </datalist>
         </label>
         <Select
-          label="Type"
+          label={t("Type")}
           value={value.kind}
           values={TERMINAL_KINDS}
           onChange={(v) => set("kind", v)}
@@ -493,7 +503,7 @@ export function TerminalForm({
       </div>
       <div className="form-pair">
         <label>
-          N° de série
+          {t("N° de série")}
           <input
             className="mono"
             maxLength={80}
@@ -502,7 +512,7 @@ export function TerminalForm({
           />
         </label>
         <Select
-          label="État"
+          label={t("État")}
           value={value.condition}
           values={TERMINAL_CONDITIONS}
           onChange={(v) => set("condition", v)}
@@ -510,17 +520,20 @@ export function TerminalForm({
       </div>
       {issued && value.condition !== "Opérationnel" && (
         <p className="hint warn">
-          Remis à {issued.holder}. Enregistrez le retour pour clore la remise.
+          {t("Remis à {holder}. Enregistrez le retour pour clore la remise.", {
+            holder: issued.holder,
+          })}
         </p>
       )}
       {value.condition === "Manquant" && (
         <p className="hint crit">
-          Terminal perdu : annoncez-le pour blocage selon la procédure
-          cantonale.
+          {t(
+            "Terminal perdu : annoncez-le pour blocage selon la procédure cantonale.",
+          )}
         </p>
       )}
       <label>
-        Remarques
+        {t("Remarques")}
         <textarea
           rows={2}
           maxLength={1000}
@@ -557,8 +570,8 @@ export function SeriesForm({
   const width = Math.max(2, String(from + count - 1).length);
   return (
     <Shell
-      title="Série de terminaux"
-      submit={`Ajouter ${count}`}
+      title={t("Série de terminaux")}
+      submit={t("Ajouter {n}", { n: count })}
       onClose={onClose}
       onSubmit={() =>
         onSave(series(radio, prefix, from, count, { kind, model }))
@@ -566,7 +579,7 @@ export function SeriesForm({
     >
       <div className="form-trio">
         <label>
-          Préfixe
+          {t("Préfixe")}
           <input
             maxLength={20}
             value={prefix}
@@ -574,7 +587,7 @@ export function SeriesForm({
           />
         </label>
         <label>
-          Premier n°
+          {t("Premier n°")}
           <input
             type="number"
             min={0}
@@ -584,7 +597,7 @@ export function SeriesForm({
           />
         </label>
         <label>
-          Nombre
+          {t("Nombre")}
           <input
             type="number"
             min={1}
@@ -596,7 +609,7 @@ export function SeriesForm({
       </div>
       <div className="form-pair">
         <label>
-          Modèle
+          {t("Modèle")}
           <input
             list="terminal-models"
             maxLength={80}
@@ -610,7 +623,7 @@ export function SeriesForm({
           </datalist>
         </label>
         <Select
-          label="Type"
+          label={t("Type")}
           value={kind}
           values={TERMINAL_KINDS}
           onChange={setKind}
@@ -619,8 +632,8 @@ export function SeriesForm({
       <p className="hint mono">
         {prefix}
         {String(from).padStart(width, "0")} → {prefix}
-        {String(from + count - 1).padStart(width, "0")} · numéros existants
-        ignorés
+        {String(from + count - 1).padStart(width, "0")} ·{" "}
+        {t("numéros existants ignorés")}
       </p>
     </Shell>
   );
@@ -650,9 +663,9 @@ export function IssueForm({
   ) => void;
 }) {
   const available = radio.terminals.filter(
-    (t) =>
-      !activeAssignment(t) &&
-      (t.condition === "Opérationnel" || t.condition === "À recharger"),
+    (term) =>
+      !activeAssignment(term) &&
+      (term.condition === "Opérationnel" || term.condition === "À recharger"),
   );
   const [terminalId, setTerminalId] = useState(
     terminal?.id ?? available[0]?.id ?? "",
@@ -679,15 +692,19 @@ export function IssueForm({
   const held = value.callsign.trim()
     ? stationStatus(radio, value.callsign)
     : undefined;
-  const selected = radio.terminals.find((t) => t.id === terminalId);
+  const selected = radio.terminals.find((term) => term.id === terminalId);
   return (
     <Shell
-      title={terminal ? `Remettre ${terminal.label}` : "Remettre un terminal"}
-      submit="Remettre"
+      title={
+        terminal
+          ? t("Remettre {label}", { label: terminal.label })
+          : t("Remettre un terminal")
+      }
+      submit={t("Remettre")}
       onClose={onClose}
       onSubmit={() => {
-        if (!terminalId) throw new Error("Aucun terminal disponible.");
-        if (!value.holder.trim()) throw new Error("Détenteur requis.");
+        if (!terminalId) throw new Error(t("Aucun terminal disponible."));
+        if (!value.holder.trim()) throw new Error(t("Détenteur requis."));
         onIssue(
           terminalId,
           {
@@ -702,21 +719,22 @@ export function IssueForm({
     >
       <div className="form-pair">
         <label>
-          Terminal
+          {t("Terminal")}
           <select
             value={terminalId}
             onChange={(e) => setTerminalId(e.target.value)}
             disabled={!!terminal}
           >
-            {(terminal ? [terminal] : available).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label} {t.model && `· ${t.model}`} {t.rfsi && `· ${t.rfsi}`}
+            {(terminal ? [terminal] : available).map((term) => (
+              <option key={term.id} value={term.id}>
+                {term.label} {term.model && `· ${term.model}`}{" "}
+                {term.rfsi && `· ${term.rfsi}`}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Heure de remise
+          {t("Heure de remise")}
           <input
             type="datetime-local"
             required
@@ -728,10 +746,12 @@ export function IssueForm({
         </label>
       </div>
       {selected?.condition === "À recharger" && (
-        <p className="hint warn">{selected.label} signalé à recharger.</p>
+        <p className="hint warn">
+          {t("{label} signalé à recharger.", { label: selected.label })}
+        </p>
       )}
       <label>
-        Nom d’appel
+        {t("Nom d’appel")}
         <input
           list="station-callsigns"
           maxLength={60}
@@ -760,29 +780,34 @@ export function IssueForm({
       </label>
       {held?.terminal && (
         <p className="hint warn">
-          {value.callsign} détient déjà {held.terminal.label} (
-          {held.assignment?.holder}).
+          {t("{callsign} détient déjà {terminal} ({holder}).", {
+            callsign: value.callsign,
+            terminal: held.terminal.label,
+            holder: held.assignment?.holder,
+          })}
         </p>
       )}
       {value.callsign.trim() &&
         !radio.stations.some(
           (s) => callsignKey(s.callsign) === callsignKey(value.callsign),
-        ) && <p className="hint">Nom d’appel absent du plan du réseau.</p>}
+        ) && (
+          <p className="hint">{t("Nom d’appel absent du plan du réseau.")}</p>
+        )}
       <div className="form-trio">
         <label>
           <span>
-            Détenteur <span className="required">*</span>
+            {t("Détenteur")} <span className="required">*</span>
           </span>
           <input
             required
             maxLength={200}
             value={value.holder}
             onChange={(e) => set("holder", e.target.value)}
-            placeholder="Grade, nom"
+            placeholder={t("Grade, nom")}
           />
         </label>
         <label>
-          Fonction
+          {t("Fonction")}
           <input
             maxLength={200}
             value={value.role}
@@ -790,7 +815,7 @@ export function IssueForm({
           />
         </label>
         <label>
-          Section
+          {t("Section")}
           <input
             maxLength={200}
             value={value.unit}
@@ -799,7 +824,7 @@ export function IssueForm({
         </label>
       </div>
       <fieldset className="chips-field">
-        <legend>Accessoires remis</legend>
+        <legend>{t("Accessoires remis")}</legend>
         {ACCESSORIES.map((a) => (
           <button
             type="button"
@@ -816,19 +841,19 @@ export function IssueForm({
               )
             }
           >
-            {a}
+            {enumLabel(a)}
           </button>
         ))}
       </fieldset>
       <div className="form-pair">
         <Select
-          label="Batterie"
+          label={t("Batterie")}
           value={value.battery}
           values={BATTERY_LEVELS}
           onChange={(v) => set("battery", v)}
         />
         <label>
-          Remarques
+          {t("Remarques")}
           <input
             maxLength={1000}
             value={value.notes}
@@ -837,10 +862,10 @@ export function IssueForm({
         </label>
       </div>
       <Toggle checked={log} onChange={setLog}>
-        Consigner la remise au journal
+        {t("Consigner la remise au journal")}
       </Toggle>
       <Toggle checked={print} onChange={setPrint}>
-        Imprimer la quittance de remise à signer
+        {t("Imprimer la quittance de remise à signer")}
       </Toggle>
     </Shell>
   );
@@ -869,8 +894,8 @@ export function ReturnForm({
   const [log, setLog] = useState(true);
   return (
     <Shell
-      title={`Retour ${terminal.label}`}
-      submit="Enregistrer le retour"
+      title={t("Retour {label}", { label: terminal.label })}
+      submit={t("Enregistrer le retour")}
       onClose={onClose}
       onSubmit={() =>
         onReturn(
@@ -879,7 +904,10 @@ export function ReturnForm({
           [
             complete
               ? ""
-              : `Retour incomplet. Remis : ${open.accessories || "aucun accessoire"}.`,
+              : t("Retour incomplet. Remis : {list}.", {
+                  list:
+                    accessoriesLabel(open.accessories) || t("aucun accessoire"),
+                }),
             notes,
           ]
             .filter(Boolean)
@@ -890,21 +918,21 @@ export function ReturnForm({
     >
       <dl className="spec compact">
         <div>
-          <dt>Détenteur</dt>
+          <dt>{t("Détenteur")}</dt>
           <dd>{open.holder}</dd>
         </div>
         <div>
-          <dt>Nom d’appel</dt>
+          <dt>{t("Nom d’appel")}</dt>
           <dd>{open.callsign || "—"}</dd>
         </div>
         <div>
-          <dt>Accessoires</dt>
-          <dd>{open.accessories || "—"}</dd>
+          <dt>{t("Accessoires")}</dt>
+          <dd>{accessoriesLabel(open.accessories) || "—"}</dd>
         </div>
       </dl>
       <div className="form-pair">
         <label>
-          Heure de retour
+          {t("Heure de retour")}
           <input
             type="datetime-local"
             required
@@ -913,17 +941,17 @@ export function ReturnForm({
           />
         </label>
         <Select
-          label="État au retour"
+          label={t("État au retour")}
           value={condition}
           values={TERMINAL_CONDITIONS}
           onChange={setCondition}
         />
       </div>
       <Toggle checked={complete} onChange={setComplete}>
-        Retour complet (terminal et accessoires)
+        {t("Retour complet (terminal et accessoires)")}
       </Toggle>
       <label>
-        Remarques
+        {t("Remarques")}
         <input
           maxLength={500}
           value={notes}
@@ -932,12 +960,13 @@ export function ReturnForm({
       </label>
       {condition === "Manquant" && (
         <p className="hint crit">
-          Annoncez la perte pour blocage du terminal selon la procédure
-          cantonale.
+          {t(
+            "Annoncez la perte pour blocage du terminal selon la procédure cantonale.",
+          )}
         </p>
       )}
       <Toggle checked={log} onChange={setLog}>
-        Consigner le retour au journal
+        {t("Consigner le retour au journal")}
       </Toggle>
     </Shell>
   );
@@ -973,18 +1002,18 @@ export function CheckForm({
     setValue({ ...value, [key]: v });
   return (
     <Shell
-      title="Contrôle de liaison"
-      submit="Enregistrer"
+      title={t("Contrôle de liaison")}
+      submit={t("Enregistrer")}
       onClose={onClose}
       onSubmit={() => {
-        if (!value.callsign.trim()) throw new Error("Nom d’appel requis.");
+        if (!value.callsign.trim()) throw new Error(t("Nom d’appel requis."));
         onCheck({ ...value, callsign: value.callsign.trim() }, log);
       }}
     >
       <div className="form-pair">
         <label>
           <span>
-            Nom d’appel <span className="required">*</span>
+            {t("Nom d’appel")} <span className="required">*</span>
           </span>
           <input
             list="station-callsigns"
@@ -1012,13 +1041,13 @@ export function CheckForm({
         </label>
         <GroupSelect
           radio={radio}
-          label="Groupe / canal"
+          label={t("Groupe / canal")}
           value={value.talkgroupId}
           onChange={(v) => set("talkgroupId", v)}
         />
       </div>
       <fieldset className="chips-field">
-        <legend>Audibilité</legend>
+        <legend>{t("Audibilité")}</legend>
         {CHECK_RESULTS.map((r) => (
           <button
             type="button"
@@ -1027,13 +1056,13 @@ export function CheckForm({
             aria-pressed={value.result === r}
             onClick={() => set("result", r)}
           >
-            {CHECK_LABELS[r]}
+            {checkLabel(r)}
           </button>
         ))}
       </fieldset>
       <div className="form-pair">
         <label>
-          Heure
+          {t("Heure")}
           <input
             type="datetime-local"
             required
@@ -1044,17 +1073,17 @@ export function CheckForm({
           />
         </label>
         <label>
-          Remarques
+          {t("Remarques")}
           <input
             maxLength={500}
             value={value.notes}
             onChange={(e) => set("notes", e.target.value)}
-            placeholder="Emplacement, antenne"
+            placeholder={t("Emplacement, antenne")}
           />
         </label>
       </div>
       <Toggle checked={log} onChange={setLog}>
-        Consigner au journal
+        {t("Consigner au journal")}
       </Toggle>
     </Shell>
   );

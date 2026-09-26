@@ -1,3 +1,6 @@
+import { formatNumber } from "./i18n/core.ts";
+import { t } from "./i18n/coordinates.ts";
+
 // swisstopo, December 2016, approximate navigation formulas (not cadastral surveying).
 // https://www.swisstopo.admin.ch/dam/fr/sd-web/KLRCX9XIdXDu/ch1903wgs84-FR.pdf
 export function toMN95(lat: number, lng: number) {
@@ -9,7 +12,7 @@ export function toMN95(lat: number, lng: number) {
     lng < 5 ||
     lng > 11
   )
-    throw new RangeError("Coordonnées hors du périmètre suisse.");
+    throw new RangeError(t("Coordonnées hors du périmètre suisse."));
   const p = (lat * 3600 - 169028.66) / 10000;
   const l = (lng * 3600 - 26782.5) / 10000;
   return {
@@ -37,7 +40,7 @@ export function fromMN95(east: number, north: number) {
     north < 1000000 ||
     north > 1400000
   )
-    throw new RangeError("Coordonnées MN95 hors du périmètre suisse.");
+    throw new RangeError(t("Coordonnées MN95 hors du périmètre suisse."));
   const y = (east - 2600000) / 1000000,
     x = (north - 1200000) / 1000000;
   return {
@@ -62,7 +65,7 @@ export function fromMN95(east: number, north: number) {
 }
 export function formatMN95(lat: number, lng: number) {
   const { east, north } = toMN95(lat, lng);
-  const f = (n: number) => Math.round(n).toLocaleString("fr-CH");
+  const f = (n: number) => formatNumber(Math.round(n));
   return `E ${f(east)} · N ${f(north)}`;
 }
 

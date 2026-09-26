@@ -18,6 +18,7 @@ import {
   writeVault,
   type StoredVault,
 } from "./storage";
+import { t } from "./i18n.ts";
 /** The session keeps the id of this post in its stamps across reloads. */
 function withNode(value: Workspace): Workspace {
   if (value.node) {
@@ -32,7 +33,9 @@ const sealVault = (value: Workspace, key: VaultKey) =>
 async function acquireWriter(): Promise<() => void> {
   if (!navigator.locks)
     throw new Error(
-      "Ce navigateur ne permet pas de sécuriser les écritures entre onglets. Utilisez le mode temporaire.",
+      t(
+        "Ce navigateur ne permet pas de sécuriser les écritures entre onglets. Utilisez le mode temporaire.",
+      ),
     );
   return new Promise((resolve, reject) => {
     navigator.locks
@@ -40,7 +43,9 @@ async function acquireWriter(): Promise<() => void> {
         if (!lock) {
           reject(
             new Error(
-              "L’espace local est déjà ouvert dans un autre onglet. Verrouillez cet onglet avant de reprendre ici.",
+              t(
+                "L’espace local est déjà ouvert dans un autre onglet. Verrouillez cet onglet avant de reprendre ici.",
+              ),
             ),
           );
           return;
@@ -155,7 +160,9 @@ export function useWorkspace() {
     try {
       if (await readVault())
         throw new Error(
-          "Une session de reprise existe déjà. Reprenez-la ou exportez-la avant de créer une autre session protégée.",
+          t(
+            "Une session de reprise existe déjà. Reprenez-la ou exportez-la avant de créer une autre session protégée.",
+          ),
         );
       const key = await deriveKey(password);
       const ciphertext = await sealVault(parsed, key);
@@ -178,11 +185,13 @@ export function useWorkspace() {
     try {
       if (await readVault())
         throw new Error(
-          "Un espace chiffré existe déjà sur ce poste. Exportez cette session puis déverrouillez l’espace existant pour y importer le journal.",
+          t(
+            "Un espace chiffré existe déjà sur ce poste. Exportez cette session puis déverrouillez l’espace existant pour y importer le journal.",
+          ),
         );
       const key = await deriveKey(password);
       const value = latest.current;
-      if (!value) throw new Error("Aucun espace à sauvegarder.");
+      if (!value) throw new Error(t("Aucun espace à sauvegarder."));
       const ciphertext = await sealVault(value, key);
       await writeVault(ciphertext);
       writer.current = release;
@@ -200,7 +209,7 @@ export function useWorkspace() {
     const release = await acquireWriter();
     try {
       const data = await readVault();
-      if (!data) throw new Error("Aucun espace local enregistré.");
+      if (!data) throw new Error(t("Aucun espace local enregistré."));
       const { value, vault } = await decrypt(data, password);
       // Older sessions are brought up to date by the schema (stamps, images
       // kept once, message numbers).
@@ -254,7 +263,8 @@ export function useWorkspace() {
     setSaveState("temporary");
   }
   async function forget() {
-    if (workspace) throw new Error("Verrouillez l’espace avant de l’effacer.");
+    if (workspace)
+      throw new Error(t("Verrouillez l’espace avant de l’effacer."));
     const release = await acquireWriter();
     try {
       await deleteVault();

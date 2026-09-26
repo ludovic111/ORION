@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { confirmDiscard, escapedJustNow, useLayer } from "../ui/overlay";
+import { t } from "./i18n.ts";
 
 const outside = (el: HTMLElement, x: number, y: number) => {
   const r = el.getBoundingClientRect();
@@ -76,7 +77,7 @@ export function Modal({
           type="button"
           className="icon-button"
           onClick={requestClose}
-          aria-label="Fermer"
+          aria-label={t("Fermer")}
         >
           <X size={20} />
         </button>

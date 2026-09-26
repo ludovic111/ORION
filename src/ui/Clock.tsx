@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { formatTime } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 export function Clock() {
   const [now, setNow] = useState(() => new Date());
@@ -7,13 +9,12 @@ export function Clock() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <time className="clock" dateTime={now.toISOString()} title="Heure suisse">
-      {now.toLocaleTimeString("fr-CH", {
-        timeZone: "Europe/Zurich",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })}
+    <time
+      className="clock"
+      dateTime={now.toISOString()}
+      title={t("Heure suisse")}
+    >
+      {formatTime(now, true)}
       <small>CH</small>
     </time>
   );

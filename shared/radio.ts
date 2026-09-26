@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { enumLabel } from "./i18n/enums.ts";
+import { t as tr } from "./i18n/radio.ts";
 
 export const TALKGROUP_USAGES = [
   "Conduite",
@@ -35,10 +37,18 @@ export const BATTERY_LEVELS = ["Pleine", "Partielle", "Faible"] as const;
 // OFPP radio procedure: audibility THREE (bon), TWO (faible mais compréhensible), ONE (insuffisant).
 export const CHECK_RESULTS = ["3", "2", "1", "0"] as const;
 export const CHECK_LABELS: Record<(typeof CHECK_RESULTS)[number], string> = {
-  "3": "THREE · bon",
-  "2": "TWO · faible",
-  "1": "ONE · insuffisant",
-  "0": "Pas de liaison",
+  get "3"() {
+    return tr("THREE · bon");
+  },
+  get "2"() {
+    return tr("TWO · faible");
+  },
+  get "1"() {
+    return tr("ONE · insuffisant");
+  },
+  get "0"() {
+    return tr("Pas de liaison");
+  },
 };
 
 const text = (max = 500) => z.string().max(max);
@@ -119,30 +129,33 @@ export const radioSchema = z
     const groups = new Set(radio.talkgroups.map((g) => g.id));
     const unique = (label: string, values: string[]) => {
       if (new Set(values).size !== values.length)
-        ctx.addIssue({ code: "custom", message: `${label} dupliqués.` });
+        ctx.addIssue({
+          code: "custom",
+          message: tr("{label} dupliqués.", { label }),
+        });
     };
     unique(
-      "Groupes",
+      tr("Groupes"),
       radio.talkgroups.map((g) => g.id),
     );
     unique(
-      "Noms d’appel",
+      tr("Noms d’appel"),
       radio.stations.map((s) => s.id),
     );
     unique(
-      "Noms d’appel",
+      tr("Noms d’appel"),
       radio.stations.map((s) => callsignKey(s.callsign)),
     );
     unique(
-      "Terminaux",
+      tr("Terminaux"),
       radio.terminals.map((t) => t.id),
     );
     unique(
-      "Contrôles",
+      tr("Contrôles"),
       radio.checks.map((c) => c.id),
     );
     unique(
-      "N° de terminaux",
+      tr("N° de terminaux"),
       radio.terminals.map((t) => t.label.trim().toLocaleUpperCase("fr")),
     );
     const linked = [
@@ -150,16 +163,21 @@ export const radioSchema = z
       ...radio.checks.map((c) => c.talkgroupId),
     ].filter(Boolean);
     if (linked.some((id) => !groups.has(id)))
-      ctx.addIssue({ code: "custom", message: "Groupe radio introuvable." });
+      ctx.addIssue({
+        code: "custom",
+        message: tr("Groupe radio introuvable."),
+      });
     for (const terminal of radio.terminals) {
       unique(
-        "Remises",
+        tr("Remises"),
         terminal.assignments.map((a) => a.id),
       );
       if (terminal.assignments.slice(0, -1).some((a) => !a.returnedAt))
         ctx.addIssue({
           code: "custom",
-          message: `Terminal ${terminal.label} remis deux fois sans retour.`,
+          message: tr("Terminal {label} remis deux fois sans retour.", {
+            label: terminal.label,
+          }),
         });
     }
   });
@@ -232,14 +250,19 @@ export function issueTerminal(
   >,
 ): Radio {
   const terminal = radio.terminals.find((t) => t.id === terminalId);
-  if (!terminal) throw new Error("Terminal introuvable.");
+  if (!terminal) throw new Error(tr("Terminal introuvable."));
   if (activeAssignment(terminal))
     throw new Error(
-      `${terminal.label} est déjà remis. Enregistrez son retour.`,
+      tr("{label} est déjà remis. Enregistrez son retour.", {
+        label: terminal.label,
+      }),
     );
   if (terminal.condition === "Défectueux" || terminal.condition === "Manquant")
     throw new Error(
-      `${terminal.label} est signalé ${terminal.condition.toLowerCase()}.`,
+      tr("{label} est signalé {condition}.", {
+        label: terminal.label,
+        condition: enumLabel(terminal.condition).toLowerCase(),
+      }),
     );
   return radioSchema.parse({
     ...radio,
@@ -273,9 +296,9 @@ export function returnTerminal(
 ): Radio {
   const terminal = radio.terminals.find((t) => t.id === terminalId);
   const open = terminal && activeAssignment(terminal);
-  if (!terminal || !open) throw new Error("Aucune remise en cours.");
+  if (!terminal || !open) throw new Error(tr("Aucune remise en cours."));
   if (Date.parse(at) < Date.parse(open.issuedAt))
-    throw new Error("Le retour précède la remise.");
+    throw new Error(tr("Le retour précède la remise."));
   return radioSchema.parse({
     ...radio,
     terminals: radio.terminals.map((t) =>
@@ -303,7 +326,7 @@ export function returnTerminal(
 export function removeTalkgroup(radio: Radio, id: string): Radio {
   if (radio.checks.some((c) => c.talkgroupId === id))
     throw new Error(
-      "Ce groupe figure dans des contrôles de liaison. Il reste au plan.",
+      tr("Ce groupe figure dans des contrôles de liaison. Il reste au plan."),
     );
   return radioSchema.parse({
     ...radio,
@@ -320,7 +343,9 @@ export function removeTerminal(radio: Radio, id: string): Radio {
   const terminal = radio.terminals.find((t) => t.id === id);
   if (terminal?.assignments.length)
     throw new Error(
-      "Ce terminal a un historique de remise. Marquez-le hors service plutôt que de le supprimer.",
+      tr(
+        "Ce terminal a un historique de remise. Marquez-le hors service plutôt que de le supprimer.",
+      ),
     );
   return radioSchema.parse({
     ...radio,
@@ -336,7 +361,7 @@ export function terminalSeries(
   count: number,
   template: Pick<Terminal, "kind" | "model">,
 ): Radio {
-  if (count < 1 || count > 200) throw new Error("De 1 à 200 terminaux.");
+  if (count < 1 || count > 200) throw new Error(tr("De 1 à 200 terminaux."));
   const taken = new Set(
     radio.terminals.map((t) => t.label.toLocaleUpperCase("fr")),
   );

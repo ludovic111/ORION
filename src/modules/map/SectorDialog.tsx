@@ -16,9 +16,18 @@ import {
   type SectorLayer,
 } from "./sectors";
 import { TILE_BYTES, tileBucket, type Bounds } from "./tilecache";
+import { overlayById } from "./overlays";
+import { formatDayMonth, formatNumber } from "../../../shared/i18n/core.ts";
+import { t, tn } from "./i18n-2.ts";
 
 const BASE_CHOICES: BaseId[] = ["color", "gray", "aerial", "osm"];
 const ZOOMS = Array.from({ length: 12 }, (_, i) => i + 8);
+
+/** Name of a background or overlay of a sector, in the language of the post. */
+const layerName = (l: SectorLayer) =>
+  l.key in BASES
+    ? BASES[l.key as BaseId].label
+    : (overlayById(l.key)?.label ?? l.label);
 
 /**
  * « Télécharger un secteur pour hors ligne »: an area, a zoom range and
@@ -49,9 +58,8 @@ export function SectorDialog({
 }) {
   const [area, setArea] = useState<"view" | "box">(box ? "box" : "view");
   const bounds = area === "box" && box ? box : view;
-  const [name, setName] = useState(
-    () =>
-      `Secteur du ${new Date().toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit" })}`,
+  const [name, setName] = useState(() =>
+    t("Secteur du {date}", { date: formatDayMonth(Date.now()) }),
   );
   const [zMin, setZMin] = useState(
     Math.max(8, Math.min(15, Math.round(zoom) - 3)),
@@ -108,23 +116,29 @@ export function SectorDialog({
 
   async function start() {
     setError("");
-    if (!layers.length) return setError("Choisissez au moins un fond.");
+    if (!layers.length) return setError(t("Choisissez au moins un fond."));
     const controller = new AbortController();
     abort.current = controller;
     setProgress({ done: 0, total, failed: 0, bytes: 0 });
     try {
       const saved = await downloadSector(
-        { name: name.trim() || "Secteur", bounds, zMin, zMax, layers },
+        { name: name.trim() || t("Secteur"), bounds, zMin, zMax, layers },
         setProgress,
         controller.signal,
       );
       if (controller.signal.aborted)
         setError(
-          "Téléchargement interrompu : les tuiles déjà reçues restent disponibles.",
+          t(
+            "Téléchargement interrompu : les tuiles déjà reçues restent disponibles.",
+          ),
         );
       else if (saved.failed)
         setError(
-          `${saved.failed} tuile${saved.failed > 1 ? "s" : ""} n’ont pas pu être téléchargées (hors couverture ou réseau).`,
+          tn(
+            saved.failed,
+            "{n} tuile n’a pas pu être téléchargée (hors couverture ou réseau).",
+            "{n} tuiles n’ont pas pu être téléchargées (hors couverture ou réseau).",
+          ),
         );
     } catch (err) {
       setError((err as Error).message);
@@ -150,13 +164,14 @@ export function SectorDialog({
         {ZOOMS.map((z) => (
           <option key={z} value={z}>
             {z}
+            {" · "}
             {z <= 10
-              ? " · région"
+              ? t("région")
               : z <= 13
-                ? " · commune"
+                ? t("commune")
                 : z <= 16
-                  ? " · quartier"
-                  : " · rue"}
+                  ? t("quartier")
+                  : t("rue")}
           </option>
         ))}
       </select>
@@ -164,13 +179,14 @@ export function SectorDialog({
   );
 
   return (
-    <Modal title="Carte hors ligne" onClose={onClose}>
+    <Modal title={t("Carte hors ligne")} onClose={onClose}>
       <div className="map-dialog map-sector-dialog">
         <p className="muted map-dialog-note">
-          Les tuiles d’un secteur restent sur ce poste, même sans réseau, et ne
-          sont jamais effacées automatiquement.
+          {t(
+            "Les tuiles d’un secteur restent sur ce poste, même sans réseau, et ne sont jamais effacées automatiquement.",
+          )}
         </p>
-        <div className="seg" role="group" aria-label="Zone à télécharger">
+        <div className="seg" role="group" aria-label={t("Zone à télécharger")}>
           <button
             type="button"
             aria-pressed={area === "view"}
@@ -178,7 +194,7 @@ export function SectorDialog({
             onClick={() => setArea("view")}
           >
             <Crosshair size={13} />
-            Zone affichée
+            {t("Zone affichée")}
           </button>
           <button
             type="button"
@@ -187,7 +203,7 @@ export function SectorDialog({
             onClick={() => (box ? setArea("box") : onDrawBox())}
           >
             <Square size={13} />
-            {box ? "Cadre tracé" : "Tracer un cadre…"}
+            {box ? t("Cadre tracé") : t("Tracer un cadre…")}
           </button>
         </div>
         {box && area === "box" && (
@@ -197,11 +213,11 @@ export function SectorDialog({
             disabled={busy}
             onClick={onDrawBox}
           >
-            Tracer un autre cadre
+            {t("Tracer un autre cadre")}
           </button>
         )}
         <TextField
-          label="Nom du secteur"
+          label={t("Nom du secteur")}
           value={name}
           maxLength={80}
           onChange={setName}
@@ -210,16 +226,16 @@ export function SectorDialog({
           {zoomSelect(
             zMin,
             (v) => (setZMin(v), setZMax((m) => Math.max(m, v))),
-            "Zoom de",
+            t("Zoom de"),
           )}
           {zoomSelect(
             zMax,
             (v) => (setZMax(v), setZMin((m) => Math.min(m, v))),
-            "à",
+            t("à (zoom)"),
           )}
         </div>
         <fieldset className="map-sector-bases" disabled={busy}>
-          <legend className="map-field-label">Fonds</legend>
+          <legend className="map-field-label">{t("Fonds")}</legend>
           {BASE_CHOICES.map((b) => (
             <label key={b} className="check">
               <input
@@ -238,7 +254,9 @@ export function SectorDialog({
           ))}
           {overlays.length > 0 && (
             <Toggle
-              label={`Couches geo.admin affichées (${overlays.length})`}
+              label={t("Couches geo.admin affichées ({n})", {
+                n: overlays.length,
+              })}
               checked={withOverlays}
               onChange={setWithOverlays}
             />
@@ -248,19 +266,23 @@ export function SectorDialog({
           className={`map-sector-estimate mono${tooMany ? " crit-text" : ""}`}
           role="status"
         >
-          {total.toLocaleString("fr-CH")} tuiles · environ{" "}
-          {formatBytes(estimate)}
+          {t("{n} tuiles · environ {size}", {
+            n: formatNumber(total),
+            size: formatBytes(estimate),
+          })}
           {tooMany &&
-            ` · au plus ${MAX_SECTOR_TILES.toLocaleString("fr-CH")} : réduisez la zone ou le zoom`}
+            ` · ${t("au plus {max} : réduisez la zone ou le zoom", {
+              max: formatNumber(MAX_SECTOR_TILES),
+            })}`}
         </p>
         {progress && (
           <div className="map-sector-progress" role="status">
             <progress max={progress.total} value={progress.done} />
             <span className="mono">
-              {progress.done.toLocaleString("fr-CH")} /{" "}
-              {progress.total.toLocaleString("fr-CH")} ·{" "}
+              {formatNumber(progress.done)} / {formatNumber(progress.total)} ·{" "}
               {formatBytes(progress.bytes)}
-              {progress.failed > 0 && ` · ${progress.failed} échec(s)`}
+              {progress.failed > 0 &&
+                ` · ${tn(progress.failed, "{n} échec", "{n} échecs")}`}
             </span>
           </div>
         )}
@@ -277,12 +299,12 @@ export function SectorDialog({
               onClick={() => abort.current?.abort()}
             >
               <X size={14} />
-              Annuler le téléchargement
+              {t("Annuler le téléchargement")}
             </button>
           ) : (
             <>
               <button type="button" className="push" onClick={onClose}>
-                Fermer
+                {t("Fermer")}
               </button>
               <button
                 type="button"
@@ -291,34 +313,36 @@ export function SectorDialog({
                 title={
                   navigator.onLine
                     ? undefined
-                    : "Hors ligne : téléchargement impossible"
+                    : t("Hors ligne : téléchargement impossible")
                 }
                 onClick={() => void start()}
               >
                 <Download size={14} />
-                Télécharger
+                {t("Télécharger")}
               </button>
             </>
           )}
         </footer>
         <section
           className="map-sector-list"
-          aria-label="Secteurs gardés sur ce poste"
+          aria-label={t("Secteurs gardés sur ce poste")}
         >
-          <h4 className="label">Secteurs sur ce poste</h4>
+          <h4 className="label">{t("Secteurs sur ce poste")}</h4>
           {!sectors.length && (
-            <p className="muted">Aucun secteur téléchargé.</p>
+            <p className="muted">{t("Aucun secteur téléchargé.")}</p>
           )}
           {sectors.map((s) => (
             <div key={s.id} className="map-sector-row">
               <span className="row-main">
                 <strong>{s.name}</strong>
                 <small className="mono">
-                  zoom {s.zMin}–{s.zMax} ·{" "}
-                  {s.layers.map((l) => l.label).join(", ")} ·{" "}
-                  {s.tiles.toLocaleString("fr-CH")} tuiles ·{" "}
-                  {formatBytes(s.bytes)}
-                  {!s.complete && " · incomplet"}
+                  {t("zoom {min}–{max}", { min: s.zMin, max: s.zMax })} ·{" "}
+                  {s.layers.map(layerName).join(", ")} ·{" "}
+                  {tn(s.tiles, "{n} tuile", "{n} tuiles", {
+                    n: formatNumber(s.tiles),
+                  })}{" "}
+                  · {formatBytes(s.bytes)}
+                  {!s.complete && ` · ${t("incomplet")}`}
                 </small>
               </span>
               <button
@@ -326,15 +350,21 @@ export function SectorDialog({
                 className="small"
                 onClick={() => onShow(s.bounds)}
               >
-                Voir
+                {t("Voir")}
               </button>
               <button
                 type="button"
                 className="icon-button"
-                aria-label={`Supprimer le secteur « ${s.name} »`}
+                aria-label={t("Supprimer le secteur « {name} »", {
+                  name: s.name,
+                })}
                 disabled={busy}
                 onClick={() => {
-                  if (!window.confirm(`Supprimer « ${s.name} » de ce poste ?`))
+                  if (
+                    !window.confirm(
+                      t("Supprimer « {name} » de ce poste ?", { name: s.name }),
+                    )
+                  )
                     return;
                   void deleteSector(s.id).then(refresh);
                 }}
@@ -345,11 +375,16 @@ export function SectorDialog({
           ))}
           {storage && storage.quota > 0 && (
             <p className="muted mono map-sector-storage">
-              Stockage du site : {formatBytes(storage.usage)} sur{" "}
-              {formatBytes(storage.quota)}
+              {t("Stockage du site : {used} sur {quota}", {
+                used: formatBytes(storage.usage),
+                quota: formatBytes(storage.quota),
+              })}
+              {" · "}
               {storage.persisted
-                ? " · protégé contre l’effacement"
-                : " · peut être effacé par le navigateur si l’appareil manque de place"}
+                ? t("protégé contre l’effacement")
+                : t(
+                    "peut être effacé par le navigateur si l’appareil manque de place",
+                  )}
             </p>
           )}
         </section>

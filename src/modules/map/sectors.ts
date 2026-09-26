@@ -10,6 +10,8 @@ import {
   tileUrl,
   type Bounds,
 } from "./tilecache";
+import { formatNumber } from "../../../shared/i18n/core.ts";
+import { t } from "./i18n-2.ts";
 
 export type SectorLayer = { key: string; label: string; url: string };
 export type Sector = {
@@ -94,7 +96,7 @@ export async function storageInfo() {
 /**
  * Download every tile of a sector into its cache. Six requests at a time;
  * a tile that fails is counted and skipped; a full storage stops with a
- * French message. Resolves with the sector as saved.
+ * message in the language of the post. Resolves with the sector as saved.
  */
 export async function downloadSector(
   draft: Omit<Sector, "id" | "tiles" | "bytes" | "failed" | "at" | "complete">,
@@ -103,7 +105,7 @@ export async function downloadSector(
 ): Promise<Sector> {
   if (typeof caches === "undefined")
     throw new Error(
-      "Ce navigateur ne permet pas de garder des cartes hors ligne.",
+      t("Ce navigateur ne permet pas de garder des cartes hors ligne."),
     );
   const id = crypto.randomUUID();
   const total = sectorTiles(
@@ -114,7 +116,9 @@ export async function downloadSector(
   );
   if (total > MAX_SECTOR_TILES)
     throw new Error(
-      `Trop de tuiles (${total.toLocaleString("fr-CH")}) : réduisez la zone ou le zoom maximal.`,
+      t("Trop de tuiles ({n}) : réduisez la zone ou le zoom maximal.", {
+        n: formatNumber(total),
+      }),
     );
   void persistStorage();
   const cache = await caches.open(SECTOR_PREFIX + id);
@@ -175,7 +179,9 @@ export async function downloadSector(
         const e = err as Error;
         if (e.name === "QuotaExceededError" || /quota/i.test(e.message)) {
           full = new Error(
-            "Espace de stockage plein : supprimez un secteur ou réduisez la zone.",
+            t(
+              "Espace de stockage plein : supprimez un secteur ou réduisez la zone.",
+            ),
           );
           return;
         }
@@ -210,9 +216,15 @@ export async function deleteSector(id: string) {
   tellWorker();
 }
 
+/** "12 ko", "3,4 Mo", "1,2 Go" (kB, MB, GB in German and Italian). */
 export function formatBytes(n: number) {
-  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} ko`;
+  if (n < 1024 * 1024)
+    return t("{n} ko", { n: Math.max(1, Math.round(n / 1024)) });
   if (n < 1024 ** 3)
-    return `${(n / 1024 / 1024).toLocaleString("fr-CH", { maximumFractionDigits: 1 })} Mo`;
-  return `${(n / 1024 ** 3).toLocaleString("fr-CH", { maximumFractionDigits: 2 })} Go`;
+    return t("{n} Mo", {
+      n: formatNumber(n / 1024 / 1024, { maximumFractionDigits: 1 }),
+    });
+  return t("{n} Go", {
+    n: formatNumber(n / 1024 ** 3, { maximumFractionDigits: 2 }),
+  });
 }

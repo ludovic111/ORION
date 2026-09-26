@@ -8,7 +8,6 @@ import {
   type ResourceRequest,
 } from "../../../shared/conduct-schemas";
 import {
-  MOVE_LABEL,
   TRANSITIONS,
   WAITING,
   blankRequest,
@@ -29,6 +28,9 @@ import { LinkChip, LinksPanel, KIND_ICON } from "../../ui/links";
 import { DateTimeField, TextField, Toggle } from "../../ui/fields";
 import { Modal } from "../../journal/Modal";
 import { TraceLine } from "../../timeline/TraceLine";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { rich } from "../../i18n";
+import { lowerLabel, t } from "./i18n.ts";
 import "../../ui/conduct.css";
 
 const TONE: Record<RequestStatus, string> = {
@@ -41,57 +43,92 @@ const TONE: Record<RequestStatus, string> = {
   Annulé: "muted",
 };
 
-const SPEC: FieldSpec[] = [
+/** Button moving a request to a state (shared/requests.ts MOVE_LABEL). */
+function moveLabel(to: RequestStatus): string {
+  switch (to) {
+    case "Demandé":
+      return t("Redemander");
+    case "Accordé":
+      return t("Accordée");
+    case "Refusé":
+      return t("Refusée");
+    case "En route":
+      return t("En route (bouton)");
+    case "Arrivé":
+      return t("Arrivée (bouton)");
+    case "Libéré":
+      return t("Libérer");
+    case "Annulé":
+      return t("Annuler (demande)");
+  }
+}
+
+const spec = (): FieldSpec[] => [
   {
     key: "title",
-    label: "Moyen demandé",
+    label: t("Moyen demandé"),
     kind: "text",
     required: true,
     wide: true,
     max: 200,
-    placeholder: "ex. Groupe électrogène 20 kVA, section PCi, sacs de sable",
+    placeholder: t("ex. Groupe électrogène 20 kVA, section PCi, sacs de sable"),
   },
   {
     key: "kind",
-    label: "Type de moyen",
+    label: t("Type de moyen"),
     kind: "combo",
     list: "resourceKinds",
     quick: 6,
   },
-  { key: "quantity", label: "Quantité", kind: "number" },
-  { key: "unit", label: "Unité", kind: "combo", list: "requestUnits" },
+  { key: "quantity", label: t("Quantité"), kind: "number" },
+  { key: "unit", label: t("Unité"), kind: "combo", list: "requestUnits" },
   {
     key: "priority",
-    label: "Priorité",
+    label: t("Priorité"),
     kind: "choice",
     options: ["Normal", "Important", "Urgent"],
   },
-  { kind: "group", label: "Qui" },
-  { key: "requester", label: "Demandeur", kind: "combo", list: "recipients" },
+  { kind: "group", label: t("Qui") },
+  {
+    key: "requester",
+    label: t("Demandeur"),
+    kind: "combo",
+    list: "recipients",
+  },
   {
     key: "provider",
-    label: "Demandé à (organisation)",
+    label: t("Demandé à (organisation)"),
     kind: "combo",
     list: "organizations",
   },
   {
     key: "contact",
-    label: "Contact",
+    label: t("Contact"),
     kind: "combo",
-    placeholder: "Nom, téléphone",
+    placeholder: t("Nom, téléphone"),
   },
-  { key: "destination", label: "Lieu de livraison", kind: "text", max: 300 },
-  { kind: "group", label: "Quand" },
-  { key: "requestedAt", label: "Demandé le", kind: "datetime", required: true },
+  {
+    key: "destination",
+    label: t("Lieu de livraison"),
+    kind: "text",
+    max: 300,
+  },
+  { kind: "group", label: t("Quand") },
+  {
+    key: "requestedAt",
+    label: t("Demandé le"),
+    kind: "datetime",
+    required: true,
+  },
   {
     key: "eta",
-    label: "Arrivée prévue",
+    label: t("Arrivée prévue"),
     kind: "datetime",
-    hint: "Un avertissement s’affiche quand l’heure est dépassée.",
+    hint: t("Un avertissement s’affiche quand l’heure est dépassée."),
   },
-  { kind: "group", label: "Détails" },
-  { key: "reason", label: "Motif", kind: "area", rows: 2, max: 2000 },
-  { key: "notes", label: "Remarques", kind: "area", rows: 2, max: 2000 },
+  { kind: "group", label: t("Détails") },
+  { key: "reason", label: t("Motif"), kind: "area", rows: 2, max: 2000 },
+  { key: "notes", label: t("Remarques"), kind: "area", rows: 2, max: 2000 },
 ];
 
 type Editing = { draft: RequestDraft; existing: ResourceRequest | null };
@@ -130,7 +167,7 @@ export function Requests({
     }
     const found = requests.find((r) => r.id === id);
     if (found) setEditing({ draft: found, existing: found });
-    else toast("Cette demande n’existe plus.");
+    else toast(t("Cette demande n’existe plus."));
   }, [focus, requests, readOnly, setFocus, toast]);
 
   const waiting = useMemo(
@@ -158,23 +195,26 @@ export function Requests({
     print({
       kind: "tables",
       journal,
-      title: "Demandes de moyens",
-      extra: `${waiting.length} en attente, ${late} en retard`,
+      title: t("Demandes de moyens"),
+      extra: t("{waiting} en attente, {late} en retard", {
+        waiting: waiting.length,
+        late,
+      }),
       landscape: true,
-      name: "demandes-de-moyens",
+      name: t("demandes-de-moyens"),
       tables: [
         {
           id: "requests",
-          title: "Demandes de moyens",
-          caption: `${requests.length} demande(s)`,
+          title: t("Demandes de moyens"),
+          caption: t("{n} demande(s)", { n: requests.length }),
           head: [
-            "Moyen",
-            "Demandeur",
-            "Demandé à",
-            "Lieu",
-            "Demandé",
-            "Arrivée prévue",
-            "État",
+            t("Moyen"),
+            t("Demandeur"),
+            t("Demandé à"),
+            t("Lieu"),
+            t("Demandé (colonne)"),
+            t("Arrivée prévue"),
+            t("État"),
           ],
           body: [...waiting, ...done].map((r) => [
             requestLabel(r),
@@ -183,9 +223,9 @@ export function Requests({
             r.destination,
             dateTime(r.requestedAt),
             r.eta
-              ? `${dateTime(r.eta)}${requestLate(r, now) ? " (retard)" : ""}`
+              ? `${dateTime(r.eta)}${requestLate(r, now) ? ` ${t("(retard)")}` : ""}`
               : "",
-            r.status,
+            enumLabel(r.status),
           ]),
           widths: [60, 32, 44, 36, 30, 36, 31],
         },
@@ -196,18 +236,18 @@ export function Requests({
   return (
     <>
       <Figures
-        label="Demandes de moyens"
+        label={t("Demandes de moyens")}
         items={[
-          { label: "En attente", value: waiting.length },
-          { label: "En retard", value: late, tone: late ? "crit" : "" },
+          { label: t("En attente"), value: waiting.length },
+          { label: t("En retard"), value: late, tone: late ? "crit" : "" },
           {
-            label: "Arrivées",
+            label: t("Arrivées"),
             value: requests.filter(
               (r) => r.status === "Arrivé" || r.status === "Libéré",
             ).length,
           },
           {
-            label: "Refusées ou annulées",
+            label: t("Refusées ou annulées"),
             value: requests.filter(
               (r) => r.status === "Refusé" || r.status === "Annulé",
             ).length,
@@ -223,18 +263,18 @@ export function Requests({
             }
           >
             <Plus size={14} />
-            Nouvelle demande
+            {t("Nouvelle demande")}
           </button>
         )}
         <button onClick={printRequests} disabled={!requests.length}>
-          Imprimer
+          {t("Imprimer")}
         </button>
       </div>
       {!requests.length && (
         <div className="card">
           <EmptyState
             icon={<Megaphone size={28} />}
-            title="Aucune demande de moyens"
+            title={t("Aucune demande de moyens")}
             actions={
               !readOnly && (
                 <button
@@ -244,14 +284,14 @@ export function Requests({
                   }
                 >
                   <Plus size={14} />
-                  Nouvelle demande
+                  {t("Nouvelle demande")}
                 </button>
               )
             }
           >
-            Suivez chaque demande : demandée, accordée ou refusée, en route,
-            arrivée. Chaque étape est notée au journal ; à l’arrivée, le moyen
-            apparaît dans la liste des moyens.
+            {t(
+              "Suivez chaque demande : demandée, accordée ou refusée, en route, arrivée. Chaque étape est notée au journal ; à l’arrivée, le moyen apparaît dans la liste des moyens.",
+            )}
           </EmptyState>
         </div>
       )}
@@ -273,7 +313,7 @@ export function Requests({
             onClick={() => setShowDone(!showDone)}
           >
             <ChevronDown size={15} />
-            Terminées
+            {t("Terminées")}
             <span className="pill plain">{done.length}</span>
           </button>
           {showDone && (
@@ -329,8 +369,8 @@ function RequestCard({
         <small>
           {[
             r.kind,
-            r.requester && `pour ${r.requester}`,
-            r.provider && `demandé à ${r.provider}`,
+            r.requester && t("pour {name}", { name: r.requester }),
+            r.provider && t("demandé à {name}", { name: r.provider }),
             r.destination,
           ]
             .filter(Boolean)
@@ -339,19 +379,20 @@ function RequestCard({
       </button>
       <div className="rq-side">
         <span className={`pill ${late ? "crit" : TONE[r.status]}`}>
-          {r.status}
+          {enumLabel(r.status)}
         </span>
         {r.eta && WAITING.includes(r.status) && (
           <span className={`rq-eta ${late ? "cd-late" : ""}`}>
-            arrivée {time(r.eta)}
-            {late > 0 && ` · retard ${formatDuration(late * 60_000)}`}
+            {t("arrivée {time}", { time: time(r.eta) })}
+            {late > 0 &&
+              ` · ${t("retard {duration}", { duration: formatDuration(late * 60_000) })}`}
           </span>
         )}
       </div>
       <div className="rq-steps">
         {r.steps.map((s, i) => (
           <span key={i}>
-            <span className="mono">{time(s.at)}</span> {s.status.toLowerCase()}
+            <span className="mono">{time(s.at)}</span> {lowerLabel(s.status)}
           </span>
         ))}
       </div>
@@ -363,7 +404,7 @@ function RequestCard({
               className={`small ${to === "Arrivé" || (to === "Accordé" && r.status === "Demandé") ? "primary" : ""}`}
               onClick={() => onMove(to)}
             >
-              {MOVE_LABEL[to]}
+              {moveLabel(to)}
             </button>
           ))}
         {resource && <LinkChip target={ref("resource", resource.id)} />}
@@ -407,7 +448,7 @@ function RequestSheet({
     if (!canWrite()) return;
     const draft = value as unknown as RequestDraft;
     if (!String(draft.title ?? "").trim()) {
-      setError("Indiquez le moyen demandé.");
+      setError(t("Indiquez le moyen demandé."));
       return;
     }
     try {
@@ -430,7 +471,7 @@ function RequestSheet({
             author,
           );
         });
-        toast("Demande enregistrée.");
+        toast(t("Demande enregistrée."));
       } else {
         if (
           !changeJournal(
@@ -438,7 +479,7 @@ function RequestSheet({
           )
         )
           return;
-        toast(log ? "Demande notée au journal." : "Demande enregistrée.");
+        toast(log ? t("Demande notée au journal.") : t("Demande enregistrée."));
       }
       onClose();
     } catch (err) {
@@ -455,27 +496,29 @@ function RequestSheet({
           {KIND_INFO.request.label}
         </>
       }
-      title={existing ? requestLabel(existing) : "Nouvelle demande de moyens"}
+      title={
+        existing ? requestLabel(existing) : t("Nouvelle demande de moyens")
+      }
       footer={
         readOnly ? (
-          <span className="muted">Lecture seule.</span>
+          <span className="muted">{t("Lecture seule.")}</span>
         ) : confirming ? (
           <>
-            <span className="crit-text">Supprimer la demande ?</span>
+            <span className="crit-text">{t("Supprimer la demande ?")}</span>
             <button className="push" onClick={() => setConfirming(false)}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button
               className="danger solid"
               onClick={() => {
                 if (!canWrite() || !existing) return;
                 updateOps((o) => removeRecords(o, [existing.id]));
-                toast("Demande supprimée. Les entrées du journal restent.");
+                toast(t("Demande supprimée. Les entrées du journal restent."));
                 onClose();
               }}
             >
               <Trash2 size={14} />
-              Supprimer
+              {t("Supprimer")}
             </button>
           </>
         ) : (
@@ -483,14 +526,14 @@ function RequestSheet({
             {existing && (
               <button className="danger" onClick={() => setConfirming(true)}>
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             )}
             <button className="push" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button className="primary" onClick={save}>
-              {existing ? "Enregistrer" : "Demander"}
+              {existing ? t("Enregistrer") : t("Demander")}
             </button>
           </>
         )
@@ -502,12 +545,17 @@ function RequestSheet({
       >
         {existing && (
           <p className="sp-meta">
-            État : <strong>{existing.status}</strong> · les changements d’état
-            se font avec les boutons de la demande.
+            {rich(
+              t(
+                "État : <0>{status}</0> · les changements d’état se font avec les boutons de la demande.",
+                { status: enumLabel(existing.status) },
+              ),
+              [<strong />],
+            )}
           </p>
         )}
         <RecordFields
-          spec={SPEC}
+          spec={spec()}
           value={value}
           onChange={(patch) => setValue((v) => ({ ...v, ...patch }))}
           extraOptions={{
@@ -519,8 +567,10 @@ function RequestSheet({
         {!existing && (
           <div style={{ marginTop: 12 }}>
             <Toggle
-              label="Consigner la demande au journal"
-              hint="Une entrée « Demande » à traiter, close à l’arrivée ou au refus."
+              label={t("Consigner la demande au journal")}
+              hint={t(
+                "Une entrée « Demande » à traiter, close à l’arrivée ou au refus.",
+              )}
               checked={log}
               onChange={setLog}
             />
@@ -578,8 +628,13 @@ function MoveDialog({
       if (!ok) return;
       toast(
         to === "Arrivé" && !attach
-          ? `${requestLabel(r)} : arrivé, ajouté aux moyens.`
-          : `${requestLabel(r)} : ${to.toLowerCase()}.`,
+          ? t("{label} : arrivé, ajouté aux moyens.", {
+              label: requestLabel(r),
+            })
+          : t("{label} : {status}.", {
+              label: requestLabel(r),
+              status: lowerLabel(to),
+            }),
       );
       onClose();
     } catch (err) {
@@ -587,24 +642,32 @@ function MoveDialog({
     }
   }
   return (
-    <Modal title={`${requestLabel(r)} : ${to.toLowerCase()}`} onClose={onClose}>
+    <Modal
+      title={t("{label} : {status}", {
+        label: requestLabel(r),
+        status: lowerLabel(to),
+      })}
+      onClose={onClose}
+    >
       <div className="form-grid">
         {asksEta && (
           <DateTimeField
             className="span-2"
-            label="Arrivée prévue"
+            label={t("Arrivée prévue")}
             value={eta}
             onChange={setEta}
           />
         )}
         {to === "Arrivé" && (
           <label className="span-2">
-            <span>Moyen</span>
+            <span>{t("Moyen")}</span>
             <select value={attach} onChange={(e) => setAttach(e.target.value)}>
-              <option value="">Créer le moyen « {r.title} »</option>
+              <option value="">
+                {t("Créer le moyen « {title} »", { title: r.title })}
+              </option>
               {journal.ops.resources.map((x) => (
                 <option key={x.id} value={x.id}>
-                  Rattacher à : {x.name}
+                  {t("Rattacher à : {name}", { name: x.name })}
                 </option>
               ))}
             </select>
@@ -612,7 +675,7 @@ function MoveDialog({
         )}
         <TextField
           className="span-2"
-          label="Remarque"
+          label={t("Remarque")}
           rows={2}
           value={note}
           maxLength={500}
@@ -620,7 +683,7 @@ function MoveDialog({
         />
         <div className="span-2">
           <Toggle
-            label="Consigner au journal"
+            label={t("Consigner au journal")}
             checked={log}
             onChange={setLog}
           />
@@ -632,9 +695,9 @@ function MoveDialog({
         </p>
       )}
       <div className="modal-actions">
-        <button onClick={onClose}>Annuler</button>
+        <button onClick={onClose}>{t("Annuler")}</button>
         <button className="primary" onClick={confirm}>
-          {MOVE_LABEL[to]}
+          {moveLabel(to)}
         </button>
       </div>
     </Modal>

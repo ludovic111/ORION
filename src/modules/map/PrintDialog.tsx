@@ -14,6 +14,7 @@ import {
   type Paper,
 } from "./printscale";
 import type { LatLng } from "./projection";
+import { t } from "./i18n-2.ts";
 
 async function sha256(blob: Blob) {
   const hash = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
@@ -90,8 +91,8 @@ export function PrintDialog({
       try {
         record("exports", {
           at: new Date().toISOString(),
-          format: "Carte à l’échelle (PDF)",
-          scope: `${mapName} · ${scaleLabel(scale)} · ${paper} ${orientation === "portrait" ? "portrait" : "paysage"}`,
+          format: t("Carte à l’échelle (PDF)"),
+          scope: `${mapName} · ${scaleLabel(scale)} · ${paper} ${orientation === "portrait" ? t("portrait") : t("paysage")}`,
           viewAt: viewAt === null ? "" : new Date(viewAt).toISOString(),
           name,
           sha256: await sha256(blob),
@@ -101,11 +102,15 @@ export function PrintDialog({
       } catch {
         // The file is saved; the register is a convenience here.
       }
-      toast(`PDF à l’échelle ${scaleLabel(scale)} enregistré.`);
+      toast(
+        t("PDF à l’échelle {scale} enregistré.", { scale: scaleLabel(scale) }),
+      );
       onClose();
     } catch (err) {
       setError(
-        `Impression impossible : ${(err as Error).message || "erreur inconnue"}`,
+        t("Impression impossible : {error}", {
+          error: (err as Error).message || t("erreur inconnue"),
+        }),
       );
     } finally {
       setBusy(false);
@@ -113,12 +118,12 @@ export function PrintDialog({
   }
 
   return (
-    <Modal title="Imprimer à l’échelle" onClose={onClose}>
+    <Modal title={t("Imprimer à l’échelle")} onClose={onClose}>
       <div className="map-dialog map-print-dialog">
         <div className="map-dialog-row">
-          <span className="map-field-label">Papier</span>
+          <span className="map-field-label">{t("Papier")}</span>
           <Segmented
-            label="Format du papier"
+            label={t("Format du papier")}
             value={paper}
             onChange={setPaper}
             options={[
@@ -127,19 +132,19 @@ export function PrintDialog({
             ]}
           />
           <Segmented
-            label="Orientation"
+            label={t("Orientation")}
             value={orientation}
             onChange={setOrientation}
             options={[
-              { value: "landscape", label: "Paysage" },
-              { value: "portrait", label: "Portrait" },
+              { value: "landscape", label: t("Paysage") },
+              { value: "portrait", label: t("Portrait") },
             ]}
           />
         </div>
         <div className="map-dialog-row">
-          <span className="map-field-label">Échelle</span>
+          <span className="map-field-label">{t("Échelle")}</span>
           <Segmented
-            label="Échelle"
+            label={t("Échelle")}
             value={String(scale)}
             onChange={(v) => setScale(Number(v))}
             options={SCALES.map((s) => ({
@@ -149,17 +154,20 @@ export function PrintDialog({
           />
         </div>
         <p className="mono map-print-extent" role="status">
-          Emprise {formatDistance(ground.w)} × {formatDistance(ground.h)} ·
-          centre {formatPosition(center[0], center[1])}
+          {t("Emprise {width} × {height} · centre {centre}", {
+            width: formatDistance(ground.w),
+            height: formatDistance(ground.h),
+            centre: formatPosition(center[0], center[1]),
+          })}
         </p>
         <TextField
-          label="Titre"
+          label={t("Titre")}
           value={title}
           maxLength={120}
           onChange={setTitle}
         />
         <label>
-          <span>Fond</span>
+          <span>{t("Fond")}</span>
           <select
             value={background}
             onChange={(e) =>
@@ -171,25 +179,30 @@ export function PrintDialog({
                 {BASES[b].label}
               </option>
             ))}
-            <option value="none">Sans fond</option>
+            <option value="none">{t("Sans fond")}</option>
           </select>
         </label>
         <Toggle
-          label="Quadrillage suisse (MN95)"
-          hint="Lignes kilométriques numérotées (100 ou 250 m aux grandes échelles)."
+          label={t("Quadrillage suisse (MN95)")}
+          hint={t(
+            "Lignes kilométriques numérotées (100 ou 250 m aux grandes échelles).",
+          )}
           checked={grid}
           onChange={setGrid}
         />
         {overlays.length > 0 && (
           <Toggle
-            label={`Couches geo.admin affichées (${overlays.map((o) => o.label).join(", ")})`}
+            label={t("Couches geo.admin affichées ({n})", {
+              n: overlays.map((o) => o.label).join(", "),
+            })}
             checked={withOverlays}
             onChange={setWithOverlays}
           />
         )}
         <p className="muted map-dialog-note">
-          Centré sur la carte affichée. Imprimez le PDF à 100 % (sans « ajuster
-          à la page ») pour garder l’échelle.
+          {t(
+            "Centré sur la carte affichée. Imprimez le PDF à 100 % (sans « ajuster à la page ») pour garder l’échelle.",
+          )}
         </p>
         {error && (
           <p className="error" role="alert">
@@ -198,7 +211,7 @@ export function PrintDialog({
         )}
         <footer className="map-dialog-foot">
           <button type="button" className="push" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button
             type="button"
@@ -211,7 +224,7 @@ export function PrintDialog({
             ) : (
               <Printer size={14} />
             )}
-            {busy ? "Préparation…" : "Créer le PDF"}
+            {busy ? t("Préparation…") : t("Créer le PDF")}
           </button>
         </footer>
       </div>

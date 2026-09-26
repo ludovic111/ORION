@@ -1,4 +1,5 @@
 import { deflateSync, inflateSync } from "fflate";
+import { t } from "./i18n/room.ts";
 
 // A session code joins posts together. It never leaves the posts. From it,
 // PBKDF2-SHA-256 (200 000 iterations) then HKDF derive two independent
@@ -44,14 +45,19 @@ export function normalizeCode(value: string): string {
 export function codeProblem(value: string): string {
   const clean = normalizeCode(value).replace(/-/g, "");
   if (!clean)
-    return "Saisissez le code de session : 4 groupes de 4 caractères.";
+    return t("Saisissez le code de session : 4 groupes de 4 caractères.");
   const foreign = [...new Set(clean.replace(/[23456789A-HJKMNP-Z]/g, ""))];
   if (foreign.length)
-    return `Un code de session ne contient jamais ${foreign.join(", ")} (les caractères 0, 1, I, L et O sont exclus pour éviter les confusions). Vérifiez la saisie.`;
+    return t(
+      "Un code de session ne contient jamais {chars} (les caractères 0, 1, I, L et O sont exclus pour éviter les confusions). Vérifiez la saisie.",
+      { chars: foreign.join(", ") },
+    );
   if (clean.length < 16)
-    return `Code incomplet : ${clean.length} caractères sur 16 (4 groupes de 4).`;
+    return t("Code incomplet : {n} caractères sur 16 (4 groupes de 4).", {
+      n: clean.length,
+    });
   if (clean.length > 16)
-    return "Code trop long : 16 caractères (4 groupes de 4).";
+    return t("Code trop long : 16 caractères (4 groupes de 4).");
   // A code drawn at random (≈ 79 bits) practically never looks like these.
   let run = 1;
   let longest = 1;
@@ -61,7 +67,9 @@ export function codeProblem(value: string): string {
     longest = Math.max(longest, run);
   }
   if (new Set(clean).size < 6 || longest >= 6)
-    return "Ce code semble choisi à la main (trop régulier) : il serait facile à deviner. Utilisez un code créé par orion aic (Réglages → Synchronisation → Créer un code).";
+    return t(
+      "Ce code semble choisi à la main (trop régulier) : il serait facile à deviner. Utilisez un code créé par orion aic (Réglages → Synchronisation → Créer un code).",
+    );
   return "";
 }
 export const validCode = (value: string) => !codeProblem(value);
@@ -162,7 +170,9 @@ export async function sealFrames(
   const count = Math.max(1, Math.ceil(packed.length / PART_BYTES));
   if (count > MAX_PARTS)
     throw new Error(
-      "Message de synchronisation trop volumineux (plus de 96 Mo compressés).",
+      t(
+        "Message de synchronisation trop volumineux (plus de 96 Mo compressés).",
+      ),
     );
   const id = crypto.getRandomValues(new Uint8Array(8));
   const target = peerBytes(to);

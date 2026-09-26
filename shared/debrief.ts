@@ -1,6 +1,7 @@
 import { current, type Journal } from "./journal.ts";
 import { reactions, treatedAt, type Reaction } from "./exercise.ts";
 import { toZurichInput } from "./time.ts";
+import { t as tr } from "./i18n/debrief.ts";
 
 // Debriefing (RETEX) of a journal: what the timeline says about the
 // conduct, measured the same way on every post. Reaction to the injects
@@ -59,12 +60,23 @@ export function median(values: number[]): number | null {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
 }
 
+const bucket = (
+  label: Parameters<typeof tr>[0],
+  min: number,
+  max: number,
+): Omit<Bucket, "count"> => ({
+  get label() {
+    return tr(label);
+  },
+  min,
+  max,
+});
 const BUCKETS: Omit<Bucket, "count">[] = [
-  { label: "moins de 5 min", min: 0, max: 5 },
-  { label: "5 à 15 min", min: 5, max: 15 },
-  { label: "15 à 30 min", min: 15, max: 30 },
-  { label: "30 à 60 min", min: 30, max: 60 },
-  { label: "plus d’une heure", min: 60, max: Infinity },
+  bucket("moins de 5 min", 0, 5),
+  bucket("5 à 15 min", 5, 15),
+  bucket("15 à 30 min", 15, 30),
+  bucket("30 à 60 min", 30, 60),
+  bucket("plus d’une heure", 60, Infinity),
 ];
 
 /** Entries with a due date: kept, late, or still open past due. */
@@ -185,7 +197,7 @@ export function debriefMetrics(
     count: times.filter((t) => t >= b.min && t < b.max).length,
   }));
   treatment.push({
-    label: "pas encore traités",
+    label: tr("pas encore traités"),
     min: Infinity,
     max: Infinity,
     count: untreated,

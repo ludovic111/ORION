@@ -19,6 +19,10 @@ import {
   shiftSchema,
   thresholdSchema,
 } from "./conduct-schemas.ts";
+import { getLang, isLang, type Lang } from "./i18n/core.ts";
+import { BOARDS, EMERGENCY, FACTS, LIST_VALUES } from "./i18n/seeds.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t } from "./i18n/ops.ts";
 
 // Everything an AIC cell keeps next to the journal: message intake, team,
 // resources, contacts, map, rhythm, key facts, weather and the links between
@@ -59,12 +63,23 @@ export const RESOURCE_STATUSES = [
 ] as const;
 export const PLACE_KINDS = ["point", "line", "area", "text"] as const;
 export const ALERT_LEVELS = ["1", "2", "3", "4", "5"] as const;
+// Labels in the language of the post (getters: read when shown).
 export const ALERT_LABELS: Record<(typeof ALERT_LEVELS)[number], string> = {
-  "1": "Degré 1 · danger faible ou nul",
-  "2": "Degré 2 · danger limité",
-  "3": "Degré 3 · danger marqué",
-  "4": "Degré 4 · fort danger",
-  "5": "Degré 5 · très fort danger",
+  get "1"() {
+    return enumLabel("Degré 1 · danger faible ou nul");
+  },
+  get "2"() {
+    return enumLabel("Degré 2 · danger limité");
+  },
+  get "3"() {
+    return enumLabel("Degré 3 · danger marqué");
+  },
+  get "4"() {
+    return enumLabel("Degré 4 · fort danger");
+  },
+  get "5"() {
+    return enumLabel("Degré 5 · très fort danger");
+  },
 };
 
 export const messageSchema = z
@@ -225,7 +240,11 @@ export const symbolSchema = z
     image: z
       .string()
       .max(600_000)
-      .refine((v) => DATA_IMAGE.test(v) || BLOB_REF.test(v), "Image invalide."),
+      .refine((v) => DATA_IMAGE.test(v) || BLOB_REF.test(v), {
+        // A function: the message is written when the check fails, in the
+        // language of the post at that moment.
+        error: () => t("Image invalide."),
+      }),
   })
   .strict();
 
@@ -558,6 +577,9 @@ export const retexSchema = z
 export const settingsSchema = z
   .object({
     lists: z.record(text(40), z.array(text(120)).max(200)).default({}),
+    // Language of the default data (référentiels, standard facts…): the
+    // language of the post that created the journal. Absent: French.
+    lang: z.enum(["fr", "de", "it"]).optional(),
     weatherPlace: z
       .object({
         name: text(200),
@@ -936,8 +958,27 @@ export const DEFAULT_LISTS: Record<
   ...CONDUCT_LISTS,
 };
 export type ListName = keyof typeof DEFAULT_LISTS;
+
+/** Language of the default data of a journal (see settings.lang). */
+export const journalLang = (ops: Pick<Ops, "settings">): Lang =>
+  isLang(ops.settings.lang) ? ops.settings.lang : "fr";
+
+/** Default values of a référentiel in a language. */
+export const defaultListValues = (name: string, lang: Lang): string[] =>
+  (lang === "fr" ? undefined : LIST_VALUES[lang][name]) ??
+  DEFAULT_LISTS[name]?.values ??
+  [];
+
 export const listValues = (ops: Ops, name: string) =>
-  ops.settings.lists[name] ?? DEFAULT_LISTS[name]?.values ?? [];
+  ops.settings.lists[name] ?? defaultListValues(name, journalLang(ops));
+
+/** Settings of a new journal: its default data in the language of the post. */
+export const newSettings = (lang: Lang = getLang()): OpsSettings => ({
+  lists: {},
+  weatherPlace: null,
+  mapCenter: null,
+  ...(lang === "fr" ? {} : { lang }),
+});
 
 export const nowIso = () => new Date().toISOString();
 
@@ -1119,3 +1160,17 @@ export const STANDARD_BOARDS = [
   "Intention / idée de manœuvre",
   "Points ouverts pour le prochain rapport",
 ];
+
+// Seeds in the language of the journal (data written into it on request).
+export const standardFacts = (ops: Pick<Ops, "settings">) => {
+  const lang = journalLang(ops);
+  return lang === "fr" ? STANDARD_FACTS : FACTS[lang];
+};
+export const standardBoards = (ops: Pick<Ops, "settings">) => {
+  const lang = journalLang(ops);
+  return lang === "fr" ? STANDARD_BOARDS : BOARDS[lang];
+};
+export const swissEmergency = (ops: Pick<Ops, "settings">) => {
+  const lang = journalLang(ops);
+  return lang === "fr" ? SWISS_EMERGENCY : EMERGENCY[lang];
+};

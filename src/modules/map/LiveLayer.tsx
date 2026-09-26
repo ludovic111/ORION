@@ -20,6 +20,7 @@ import { formatMN95 } from "../../../shared/coordinates";
 import type { Ref } from "../../../shared/links";
 import { useApp } from "../../app/context";
 import { liveActions, useLive } from "../../live/store";
+import { t } from "./i18n.ts";
 
 // Layer « Positions en direct »: the teams sharing their position (kept in
 // memory by src/live/LiveHost.tsx), each with its label, accuracy circle,
@@ -54,7 +55,7 @@ function iconHtml(u: Unit, now: number) {
     u.hdg !== null && state === "live"
       ? `<i class="map-team-heading" style="transform:rotate(${u.hdg}deg)"></i>`
       : "";
-  return `<div class="map-team${state === "stale" ? " stale" : ""}${u.self ? " self" : ""}">${heading}<span class="map-team-dot"></span><span class="map-team-label"><b>${escape(u.label || u.name || "Équipe")}</b><small>${ageText(now - u.t)}</small></span></div>`;
+  return `<div class="map-team${state === "stale" ? " stale" : ""}${u.self ? " self" : ""}">${heading}<span class="map-team-dot"></span><span class="map-team-label"><b>${escape(u.label || u.name || t("Équipe"))}</b><small>${ageText(now - u.t)}</small></span></div>`;
 }
 
 /** Leaflet drawing of the live units; the card of the one clicked. */
@@ -156,7 +157,10 @@ export function LiveLayer({
       marker.on("add", () =>
         marker
           .getElement()
-          ?.setAttribute("aria-label", `Position en direct : ${u.label}`),
+          ?.setAttribute(
+            "aria-label",
+            t("Position en direct : {label}", { label: u.label }),
+          ),
       );
       marker.on("click", (e: L.LeafletMouseEvent) =>
         onClick.current(peer, e.originalEvent),
@@ -203,16 +207,18 @@ export function LiveLayer({
         top: Math.max(8, Math.min(menu.y + 12, window.innerHeight - 360)),
       }}
       role="dialog"
-      aria-label={`Position en direct : ${unit.label}`}
+      aria-label={t("Position en direct : {label}", { label: unit.label })}
     >
       <header>
         <span className="label">
-          {unit.self ? "Ce poste · position partagée" : "Position en direct"}
+          {unit.self
+            ? t("Ce poste · position partagée")
+            : t("Position en direct")}
         </span>
         <button
           type="button"
           className="icon-button"
-          aria-label="Fermer"
+          aria-label={t("Fermer")}
           onClick={() => setMenu(null)}
         >
           <X size={14} />
@@ -221,30 +227,31 @@ export function LiveLayer({
       <strong>{unit.label || unit.name}</strong>
       <dl>
         <div>
-          <dt>Relevée</dt>
+          <dt>{t("Relevée")}</dt>
           <dd className={stale ? "crit-text" : undefined}>
             {ageText(now - unit.t)}
-            {stale && " (ancienne)"}
+            {stale && ` ${t("(ancienne)")}`}
           </dd>
         </div>
         <div>
-          <dt>Poste</dt>
-          <dd>{unit.name || "Poste inconnu"}</dd>
+          <dt>{t("Poste")}</dt>
+          <dd>{unit.name || t("Poste inconnu")}</dd>
         </div>
         <div>
-          <dt>MN95</dt>
+          <dt>{t("MN95")}</dt>
           <dd className="mono">{grid}</dd>
         </div>
         <div>
-          <dt>Précision</dt>
+          <dt>{t("Précision")}</dt>
           <dd>± {Math.round(unit.acc)} m</dd>
         </div>
         {unit.spd !== null && (
           <div>
-            <dt>Vitesse</dt>
+            <dt>{t("Vitesse")}</dt>
             <dd>
               {Math.round(unit.spd * 3.6)} km/h
-              {unit.hdg !== null && ` · cap ${Math.round(unit.hdg)}°`}
+              {unit.hdg !== null &&
+                ` · ${t("cap {deg}°", { deg: Math.round(unit.hdg) })}`}
             </dd>
           </div>
         )}
@@ -262,26 +269,30 @@ export function LiveLayer({
           }
         >
           <Crosshair size={13} />
-          Centrer
+          {t("Centrer")}
         </button>
         {!readOnly && (
           <button
             type="button"
             className="small"
-            title={mn95 ? `Entrée avec les coordonnées ${mn95}` : undefined}
+            title={
+              mn95
+                ? t("Entrée avec les coordonnées {mn95}", { mn95 })
+                : undefined
+            }
             onClick={() => {
               const id = addEntry(
                 positionEntry(unit),
                 unit.ref ? [unit.ref as Ref] : [],
               );
               if (id) {
-                toast("Position consignée au journal.");
+                toast(t("Position consignée au journal."));
                 setMenu(null);
               }
             }}
           >
             <BookPlus size={13} />
-            Consigner au journal
+            {t("Consigner au journal")}
           </button>
         )}
         {!readOnly && (
@@ -294,7 +305,7 @@ export function LiveLayer({
             }}
           >
             <MapPin size={13} />
-            Créer un point ici
+            {t("Créer un point ici")}
           </button>
         )}
         {unit.ref && (
@@ -307,7 +318,7 @@ export function LiveLayer({
             }}
           >
             <ExternalLink size={13} />
-            Fiche
+            {t("Fiche")}
           </button>
         )}
       </div>
@@ -333,12 +344,12 @@ export function LiveShareButton() {
       className="icon-button"
       aria-pressed={!!sharing}
       aria-label={
-        sharing ? "Position partagée : détails" : "Partager ma position"
+        sharing ? t("Position partagée : détails") : t("Partager ma position")
       }
       title={
         sharing
-          ? "Position partagée en direct : détails et arrêt"
-          : "Partager ma position en direct avec les autres postes"
+          ? t("Position partagée en direct : détails et arrêt")
+          : t("Partager ma position en direct avec les autres postes")
       }
       onClick={() => liveActions.openShare()}
     >

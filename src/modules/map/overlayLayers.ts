@@ -13,6 +13,13 @@ import {
   type OverlayDef,
 } from "./overlays";
 import { compass } from "./geo";
+import {
+  formatDayMonth,
+  formatNumber,
+  formatTime,
+  getLang,
+} from "../../../shared/i18n/core.ts";
+import { t } from "./i18n-2.ts";
 
 // Leaflet side of the geo.admin.ch overlays: tile layers (WMTS, WMS) and
 // live data drawn on a canvas in their own pane. The module keeps the list
@@ -24,8 +31,8 @@ export type LiveStatus = { at?: string; error?: string; count?: number };
 export type InfoRow = [string, string];
 export type Picked = { title: string; source: string; rows: InfoRow[] };
 
-const ATTRIBUTION =
-  '© <a href="https://www.geo.admin.ch/fr/" target="_blank" rel="noopener noreferrer">geo.admin.ch</a>';
+const attribution = () =>
+  `© <a href="https://www.geo.admin.ch/${getLang()}/" target="_blank" rel="noopener noreferrer">geo.admin.ch</a>`;
 export const LIVE_PANE = "orion-live";
 
 type Entry = {
@@ -41,13 +48,7 @@ const time = (iso?: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleString("fr-CH", {
-        timeZone: "Europe/Zurich",
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    : `${formatDayMonth(d)} ${formatTime(d)}`;
 };
 
 /** Text rows of a live feature for the info card. */
@@ -57,18 +58,18 @@ export function liveRows(def: OverlayDef, f: LiveFeature): InfoRow[] {
     f.level !== undefined &&
     (def.live?.style === "hydro" || def.live?.style === "warn")
   )
-    rows.push(["Danger", LEVEL_TEXT[f.level] ?? String(f.level)]);
+    rows.push([t("Danger"), LEVEL_TEXT[f.level] ?? String(f.level)]);
   if (f.value !== undefined)
     rows.push([
-      def.live?.style === "wind" ? "Vent moyen" : "Mesure",
-      `${f.value.toLocaleString("fr-CH")} ${f.unit ?? ""}`.trim(),
+      def.live?.style === "wind" ? t("Vent moyen") : t("Mesure"),
+      `${formatNumber(f.value)} ${f.unit ?? ""}`.trim(),
     ]);
   if (f.direction !== undefined)
     rows.push([
-      "Vient du",
+      t("Vient du"),
       `${compass(f.direction)} (${Math.round(f.direction)}°)`,
     ]);
-  if (f.time) rows.push(["Mesuré", time(f.time)]);
+  if (f.time) rows.push([t("Mesuré"), time(f.time)]);
   return rows;
 }
 
@@ -152,7 +153,7 @@ export class OverlayManager {
       crossOrigin: true as const,
       maxZoom: 20,
       zIndex: 10 + index,
-      attribution: ATTRIBUTION,
+      attribution: attribution(),
       bounds: L.latLngBounds(SWISS_BOUNDS),
       className: "map-overlay",
     };
@@ -203,8 +204,8 @@ export class OverlayManager {
       if ((err as Error).name === "AbortError") return;
       this.onStatus(def.id, {
         error: navigator.onLine
-          ? "Données en direct indisponibles pour le moment."
-          : "Hors ligne : données en direct indisponibles.",
+          ? t("Données en direct indisponibles pour le moment.")
+          : t("Hors ligne : données en direct indisponibles."),
       });
     }
   }

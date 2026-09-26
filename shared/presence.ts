@@ -1,6 +1,8 @@
 import { upsert, type Member, type Ops } from "./ops.ts";
-import { addZurichWall, zurichWall } from "./time.ts";
+import { addZurichWall } from "./time.ts";
 import type { Presence, Shift } from "./conduct-schemas.ts";
+import { formatTime } from "./i18n/core.ts";
+import { t } from "./i18n/presence.ts";
 
 // Roll-call and plan de relève. Durations are real elapsed time (ms between
 // two instants), so a night across the change of hour counts 13 or 11 hours
@@ -23,10 +25,7 @@ export function formatDuration(ms: number) {
   const h = Math.floor(m / 60);
   return h ? `${h} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
 }
-const hhmm = (at: number) => {
-  const w = zurichWall(at);
-  return `${String(w.hour).padStart(2, "0")}:${String(w.minute).padStart(2, "0")}`;
-};
+const hhmm = (at: number) => formatTime(at);
 
 /** The stay not closed yet of a person (the latest one if several). */
 export const openPresence = (
@@ -179,11 +178,27 @@ export function dutyOf(
   const warnings: string[] = [];
   if (over)
     warnings.push(
-      `${present ? "En service" : "A servi"} ${formatDuration(span)} d’affilée depuis ${hhmm(since)} (maximum ${rules.dutyHours} h)`,
+      t(
+        present
+          ? "En service {duration} d’affilée depuis {since} (maximum {max} h)"
+          : "A servi {duration} d’affilée depuis {since} (maximum {max} h)",
+        {
+          duration: formatDuration(span),
+          since: hhmm(since),
+          max: rules.dutyHours,
+        },
+      ),
     );
   if (shortRest)
     warnings.push(
-      `Repos de ${formatDuration(shortRest.gap)} seulement avant la reprise à ${hhmm(shortRest.back)} (minimum ${rules.restHours} h)`,
+      t(
+        "Repos de {duration} seulement avant la reprise à {back} (minimum {min} h)",
+        {
+          duration: formatDuration(shortRest.gap),
+          back: hhmm(shortRest.back),
+          min: rules.restHours,
+        },
+      ),
     );
   return {
     ...who,
@@ -222,7 +237,7 @@ export function dutyBoard(
       out.push(
         dutyOf(stays, at, rules, {
           memberId: key.startsWith("name:") ? "" : key,
-          name: stays[0].name || "Personne retirée",
+          name: stays[0].name || t("Personne retirée"),
         }),
       );
   return out;
@@ -241,7 +256,7 @@ export function planShifts(
   first: number,
   hours: number,
   count: number,
-  title = "Relève",
+  title = t("Relève"),
 ): { title: string; start: string; end: string }[] {
   const out: { title: string; start: string; end: string }[] = [];
   let start = first;
@@ -286,7 +301,14 @@ export function shiftWarnings(
         out.push({
           memberId: id,
           shiftId,
-          text: `${name(id)} : ${formatDuration(chainEnd - chainStart)} de service d’affilée (maximum ${rules.dutyHours} h)`,
+          text: t(
+            "{name} : {duration} de service d’affilée (maximum {max} h)",
+            {
+              name: name(id),
+              duration: formatDuration(chainEnd - chainStart),
+              max: rules.dutyHours,
+            },
+          ),
         });
         reported = true;
       }
@@ -305,7 +327,15 @@ export function shiftWarnings(
           out.push({
             memberId: id,
             shiftId: sorted[i].id,
-            text: `${name(id)} : repos de ${formatDuration(gap)} seulement avant « ${sorted[i].title} » (minimum ${rules.restHours} h)`,
+            text: t(
+              "{name} : repos de {duration} seulement avant « {title} » (minimum {min} h)",
+              {
+                name: name(id),
+                duration: formatDuration(gap),
+                title: sorted[i].title,
+                min: rules.restHours,
+              },
+            ),
           });
         chainEnd = Math.max(chainEnd, b);
       }

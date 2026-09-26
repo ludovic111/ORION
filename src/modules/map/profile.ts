@@ -4,6 +4,7 @@
 
 import { toMN95 } from "../../../shared/coordinates.ts";
 import { simplifyTo } from "./maps.ts";
+import { t } from "./i18n-2.ts";
 
 type LatLng = [number, number];
 export type ProfilePoint = { dist: number; alt: number };
@@ -142,11 +143,13 @@ export async function fetchProfile(
     );
   } catch {
     throw new Error(
-      "Profil disponible en Suisse seulement (modèle swissALTI3D).",
+      t("Profil disponible en Suisse seulement (modèle swissALTI3D)."),
     );
   }
   if (typeof navigator !== "undefined" && navigator.onLine === false)
-    throw new Error("Hors ligne : le profil sera calculé au retour du réseau.");
+    throw new Error(
+      t("Hors ligne : le profil sera calculé au retour du réseau."),
+    );
   // The service only accepts the geometry as a JSON body.
   const body = JSON.stringify({ type: "LineString", coordinates: path });
   let response: Response;
@@ -162,11 +165,13 @@ export async function fetchProfile(
     );
   } catch (err) {
     if ((err as Error).name === "AbortError") throw err;
-    throw new Error("Le service de profil de swisstopo ne répond pas.");
+    throw new Error(t("Le service de profil de swisstopo ne répond pas."));
   }
   if (!response.ok)
     throw new Error(
-      `Le service de profil a refusé la ligne (${response.status}).`,
+      t("Le service de profil a refusé la ligne ({status}).", {
+        status: response.status,
+      }),
     );
   const data = (await response.json()) as {
     dist?: number;
@@ -179,7 +184,8 @@ export async function fetchProfile(
     if (Number.isFinite(alt) && Number.isFinite(dist))
       points.push({ dist, alt });
   }
-  if (points.length < 2) throw new Error("Profil vide : ligne trop courte ?");
+  if (points.length < 2)
+    throw new Error(t("Profil vide : ligne trop courte ?"));
   const profile = { points, at: Date.now() };
   remember(line, profile);
   return profile;

@@ -5,6 +5,7 @@ import { newStepId } from "../../../shared/checklists";
 import { useApp } from "../../app/context";
 import { Sheet } from "../../ui/Sheet";
 import { ComboField, NumberField, TextField, Toggle } from "../../ui/fields";
+import { t } from "./i18n.ts";
 
 export type TemplateDraft = {
   name: string;
@@ -58,7 +59,7 @@ export function StepsSheet({
   const roles = lists("roles");
   function save() {
     if (!value.name.trim()) {
-      setError("Donnez un nom à la liste.");
+      setError(t("Donnez un nom à la liste."));
       return;
     }
     const problem = onSave({
@@ -75,15 +76,15 @@ export function StepsSheet({
       dirty={dirty}
       footer={
         readOnly ? (
-          <span className="muted">Lecture seule.</span>
+          <span className="muted">{t("Lecture seule.")}</span>
         ) : (
           <>
             {footer}
             <button className="push" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button className="primary" onClick={save}>
-              Enregistrer
+              {t("Enregistrer")}
             </button>
           </>
         )
@@ -96,7 +97,7 @@ export function StepsSheet({
         <div className="form-grid">
           <TextField
             className="span-2"
-            label="Nom"
+            label={t("Nom")}
             required
             value={value.name}
             maxLength={160}
@@ -106,7 +107,7 @@ export function StepsSheet({
             <>
               <ComboField
                 className="span-2"
-                label="Type d’événement"
+                label={t("Type d’événement")}
                 value={value.event}
                 options={lists("eventKinds")}
                 quick={5}
@@ -115,7 +116,7 @@ export function StepsSheet({
               />
               <TextField
                 className="span-2"
-                label="Description"
+                label={t("Description")}
                 rows={2}
                 maxLength={1000}
                 value={value.description}
@@ -127,7 +128,7 @@ export function StepsSheet({
           )}
         </div>
         <h3 className="section-label ck-steps-title">
-          Étapes <span className="pill plain">{value.steps.length}</span>
+          {t("Étapes")} <span className="pill plain">{value.steps.length}</span>
         </h3>
         <ol className="ck-edit-steps">
           {value.steps.map((s, i) => (
@@ -135,7 +136,7 @@ export function StepsSheet({
               <span className="mono ck-edit-num">{i + 1}</span>
               <div className="ck-edit-fields">
                 <TextField
-                  label="Étape"
+                  label={t("Étape")}
                   rows={2}
                   maxLength={500}
                   value={s.text}
@@ -143,21 +144,21 @@ export function StepsSheet({
                 />
                 <div className="ck-edit-row">
                   <ComboField
-                    label="Fonction responsable"
+                    label={t("Fonction responsable")}
                     value={s.role}
                     options={roles}
                     maxLength={120}
                     onChange={(role) => setStep(i, { role })}
                   />
                   <NumberField
-                    label="Contrôle dans (min, 0 = aucun)"
+                    label={t("Contrôle dans (min, 0 = aucun)")}
                     value={s.minutes}
                     max={1440}
                     onChange={(minutes) => setStep(i, { minutes })}
                   />
                 </div>
                 <Toggle
-                  label="Consigner au journal quand elle est cochée"
+                  label={t("Consigner au journal quand elle est cochée")}
                   checked={s.log}
                   onChange={(log) => setStep(i, { log })}
                 />
@@ -166,7 +167,7 @@ export function StepsSheet({
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label="Monter"
+                  aria-label={t("Monter")}
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
                 >
@@ -175,7 +176,7 @@ export function StepsSheet({
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label="Descendre"
+                  aria-label={t("Descendre")}
                   disabled={i === value.steps.length - 1}
                   onClick={() => move(i, 1)}
                 >
@@ -184,7 +185,7 @@ export function StepsSheet({
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label="Retirer l’étape"
+                  aria-label={t("Retirer l’étape")}
                   onClick={() =>
                     setValue((v) => ({
                       ...v,
@@ -212,7 +213,7 @@ export function StepsSheet({
           disabled={value.steps.length >= 80}
         >
           <Plus size={14} />
-          Ajouter une étape
+          {t("Ajouter une étape")}
         </button>
       </fieldset>
       {error && (

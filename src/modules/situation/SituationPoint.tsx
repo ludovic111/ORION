@@ -17,6 +17,7 @@ import {
   type PointSection,
 } from "../../../shared/situation-point";
 import { useApp } from "../../app/context";
+import { t } from "./i18n.ts";
 import { Modal } from "../../journal/Modal";
 import { TextField, DateTimeField } from "../../ui/fields";
 import "../../ui/conduct.css";
@@ -49,8 +50,13 @@ export function SituationPointDialog({
   const report = journal.ops.agenda.find((a) => a.id === agendaId);
   const at = viewAt ?? Date.now();
   const title = report
-    ? `Point de situation · ${report.title} de ${time(report.at)}`
-    : `Point de situation de ${time(new Date(at).toISOString())}`;
+    ? t("Point de situation · {report} de {time}", {
+        report: report.title,
+        time: time(report.at),
+      })
+    : t("Point de situation de {time}", {
+        time: time(new Date(at).toISOString()),
+      });
   const [since, setSince] = useState(() =>
     new Date(lastReportTime(journal, at, agendaId)).toISOString(),
   );
@@ -79,9 +85,13 @@ export function SituationPointDialog({
       kind: "tables",
       journal,
       title,
-      extra: `Établi par ${author} · état au ${dateTime(new Date(at).toISOString())} · depuis ${time(since)}`,
+      extra: t("Établi par {author} · état au {date} · depuis {since}", {
+        author,
+        date: dateTime(new Date(at).toISOString()),
+        since: time(since),
+      }),
       landscape: false,
-      name: "point-de-situation",
+      name: t("point-de-situation"),
       tables: sections.map((s) => ({
         id: s.id,
         title: s.title,
@@ -104,7 +114,7 @@ export function SituationPointDialog({
         },
         links,
       );
-      if (id) toast("Point de situation consigné au journal.");
+      if (id) toast(t("Point de situation consigné au journal."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -124,7 +134,7 @@ export function SituationPointDialog({
           author,
         ),
       );
-      toast("Enregistré comme tableau de situation.");
+      toast(t("Enregistré comme tableau de situation."));
     } catch (err) {
       toast((err as Error).message);
     }
@@ -135,24 +145,27 @@ export function SituationPointDialog({
       at: new Date(at).toISOString(),
       notes: text.slice(0, 4000),
     });
-    toast("Moment figé : retrouvez-le dans Traçabilité.");
+    toast(t("Moment figé : retrouvez-le dans Traçabilité."));
   }
   return (
     <Modal title={title} onClose={onClose} wide dirty={dirty}>
       <p className="sp-meta">
-        Brouillon préparé à partir du journal. Relisez, corrigez et complétez
-        chaque rubrique avant le rapport.
+        {t(
+          "Brouillon préparé à partir du journal. Relisez, corrigez et complétez chaque rubrique avant le rapport.",
+        )}
       </p>
       <div className="hs-since">
         <DateTimeField
-          label="Depuis (dernier rapport)"
+          label={t("Depuis (dernier rapport)")}
           value={since}
           onChange={(v) => {
             if (
               !v ||
               (dirty &&
                 !window.confirm(
-                  "Refaire le brouillon depuis cette heure ? Vos corrections seront perdues.",
+                  t(
+                    "Refaire le brouillon depuis cette heure ? Vos corrections seront perdues.",
+                  ),
                 ))
             )
               return;
@@ -166,7 +179,7 @@ export function SituationPointDialog({
             if (
               dirty &&
               !window.confirm(
-                "Refaire le brouillon ? Vos corrections seront perdues.",
+                t("Refaire le brouillon ? Vos corrections seront perdues."),
               )
             )
               return;
@@ -174,7 +187,7 @@ export function SituationPointDialog({
           }}
         >
           <RefreshCw size={13} />
-          Refaire le brouillon
+          {t("Refaire le brouillon")}
         </button>
       </div>
       <div className="sp-sections">
@@ -198,32 +211,32 @@ export function SituationPointDialog({
           onClick={() =>
             void navigator.clipboard
               ?.writeText(text)
-              .then(() => toast("Copié."))
-              .catch(() => toast("Copie impossible dans ce navigateur."))
+              .then(() => toast(t("Copié.")))
+              .catch(() => toast(t("Copie impossible dans ce navigateur.")))
           }
         >
           <ClipboardCopy size={14} />
-          Copier
+          {t("Copier")}
         </button>
         <button onClick={freeze}>
           <Snowflake size={14} />
-          Figer ce moment
+          {t("Figer ce moment")}
         </button>
         {!readOnly && (
           <>
             <button onClick={saveBoard}>
               <LayoutList size={14} />
-              Enregistrer comme tableau
+              {t("Enregistrer comme tableau")}
             </button>
             <button onClick={consign}>
               <NotebookPen size={14} />
-              Consigner au journal
+              {t("Consigner au journal")}
             </button>
           </>
         )}
         <button className="primary" onClick={doPrint}>
           <Printer size={14} />
-          Imprimer
+          {t("Imprimer")}
         </button>
       </div>
     </Modal>

@@ -12,6 +12,8 @@ import {
   type Radio,
   type Terminal,
 } from "../../shared/radio.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 export type SheetField = {
   label: string;
@@ -59,121 +61,142 @@ export function messageSheet(entry: Entry): FormSheet {
   const revised = entry.revisions.length > 1;
   const cancelled = f.status === "Annulé";
   return {
-    kind: "Fiche message",
-    idLabel: "Message",
+    kind: t("Fiche message"),
+    idLabel: t("Message"),
     number: numberLabel(entry),
     boxes: [
-      { label: "Nature", value: f.type },
-      { label: "Priorité", value: f.priority, alert: f.priority === "Urgent" },
-      { label: "Suivi", value: f.status },
+      { label: t("Nature"), value: enumLabel(f.type) },
+      {
+        label: t("Priorité"),
+        value: enumLabel(f.priority),
+        alert: f.priority === "Urgent",
+      },
+      { label: t("Suivi"), value: enumLabel(f.status) },
     ],
     note: cancelled
-      ? { text: "ENTRÉE ANNULÉE · conservée pour la traçabilité", alert: true }
+      ? {
+          text: t("ENTRÉE ANNULÉE · conservée pour la traçabilité"),
+          alert: true,
+        }
       : revised
         ? {
-            text: `VERSION ${entry.revisions.length} · état actuel ; versions antérieures dans l’archive orion aic`,
+            text: t(
+              "VERSION {n} · état actuel ; versions antérieures dans l’archive orion aic",
+              { n: entry.revisions.length },
+            ),
           }
         : undefined,
     visa: [
-      { title: "Visa", labels: ["Traité par", "Date / heure", "Signature"] },
+      {
+        title: t("Visa"),
+        labels: [t("Traité par"), t("Date / heure"), t("Signature")],
+      },
     ],
-    footer: `message ${numberLabel(entry)}`,
+    footer: t("message {n}", { n: numberLabel(entry) }),
     sections: [
       {
-        title: "Transmission",
+        title: t("Transmission"),
         rows: [
           [
-            { label: "Événement", value: dateTime(f.happenedAt), mono: true },
-            { label: "Réception", value: dateTime(f.receivedAt), mono: true },
             {
-              label: "Enregistrement",
+              label: t("Événement"),
+              value: dateTime(f.happenedAt),
+              mono: true,
+            },
+            {
+              label: t("Réception"),
+              value: dateTime(f.receivedAt),
+              mono: true,
+            },
+            {
+              label: t("Enregistrement"),
               value: dateTime(entry.createdAt),
               mono: true,
             },
-            { label: "Canal", value: f.channel },
+            { label: t("Canal"), value: enumLabel(f.channel) },
           ],
           [
-            { label: "Émetteur", value: or(f.source), span: 2 },
-            { label: "Destinataire", value: or(f.recipient), span: 2 },
+            { label: t("Émetteur"), value: or(f.source), span: 2 },
+            { label: t("Destinataire"), value: or(f.recipient), span: 2 },
           ],
         ],
       },
       {
-        title: "Message",
+        title: t("Message"),
         rows: [
-          [{ label: "Texte", value: f.message, tall: true, strong: true }],
+          [{ label: t("Texte"), value: f.message, tall: true, strong: true }],
         ],
       },
       {
-        title: "Localisation",
+        title: t("Localisation"),
         rows: [
           [
-            { label: "Lieu / secteur", value: or(f.location), span: 2 },
-            { label: "Coordonnées", value: or(f.coordinates), mono: true },
-            { label: "Confirmation", value: f.reliability },
+            { label: t("Lieu / secteur"), value: or(f.location), span: 2 },
+            { label: t("Coordonnées"), value: or(f.coordinates), mono: true },
+            { label: t("Confirmation"), value: enumLabel(f.reliability) },
           ],
         ],
       },
       {
-        title: "Conduite",
+        title: t("Conduite"),
         rows: [
           [
             {
-              label: "Mesure / décision / mission",
+              label: t("Mesure / décision / mission"),
               value: or(f.action),
               tall: true,
             },
           ],
           [
-            { label: "Responsable", value: or(f.assignee), span: 2 },
+            { label: t("Responsable"), value: or(f.assignee), span: 2 },
             {
-              label: "Échéance",
+              label: t("Échéance"),
               value: f.dueAt ? dateTime(f.dueAt) : "—",
               mono: true,
             },
-            { label: "Suivi", value: f.status },
+            { label: t("Suivi"), value: enumLabel(f.status) },
           ],
-          [{ label: "Moyens engagés / besoins", value: or(f.resources) }],
+          [{ label: t("Moyens engagés / besoins"), value: or(f.resources) }],
         ],
       },
       {
-        title: "Compléments",
+        title: t("Compléments"),
         rows: [
           [
             {
-              label: "Référence / entrée liée",
+              label: t("Référence / entrée liée"),
               value: or(f.reference),
               span: 2,
             },
             {
-              label: "Mots-clés",
+              label: t("Mots-clés"),
               value: f.tags.length ? f.tags.join(", ") : "—",
               span: 2,
             },
           ],
-          [{ label: "Observations", value: or(f.notes) }],
+          [{ label: t("Observations"), value: or(f.notes) }],
         ],
       },
       {
-        title: "Traçabilité",
+        title: t("Traçabilité"),
         rows: [
           [
-            { label: "Saisi par", value: entry.createdBy },
+            { label: t("Saisi par"), value: entry.createdBy },
             {
-              label: "Version",
+              label: t("Version"),
               value: `${entry.revisions.length}`,
               mono: true,
             },
             {
-              label: "Dernière modification",
+              label: t("Dernière modification"),
               value: revised ? `${dateTime(last.at)} · ${last.author}` : "—",
               span: 2,
             },
           ],
-          ...(revised ? [[{ label: "Motif", value: last.reason }]] : []),
+          ...(revised ? [[{ label: t("Motif"), value: last.reason }]] : []),
           [
-            { label: "Origine", value: or(entry.origin), span: 2 },
-            { label: "Identifiant", value: entry.id, mono: true, span: 2 },
+            { label: t("Origine"), value: or(entry.origin), span: 2 },
+            { label: t("Identifiant"), value: entry.id, mono: true, span: 2 },
           ],
         ],
       },
@@ -195,99 +218,119 @@ export function handoutSheet(
     .map((a) => a.trim())
     .filter(Boolean);
   return {
-    kind: "Quittance de remise radio",
-    idLabel: "Terminal",
+    kind: t("Quittance de remise radio"),
+    idLabel: t("Terminal"),
     number: terminal.label,
     boxes: [
-      { label: "Modèle", value: terminal.model || "—" },
+      { label: t("Modèle"), value: terminal.model || "—" },
       { label: "RFSI", value: terminal.rfsi || "—" },
       {
-        label: "Statut",
-        value: returned ? "Rendu" : "Remis",
+        label: t("Statut"),
+        value: returned ? t("Rendu") : t("Remis"),
         alert: assignment.returnCondition === "Manquant",
       },
     ],
     sections: [
       {
-        title: "Terminal",
+        title: t("Terminal"),
         rows: [
           [
-            { label: "N° interne", value: terminal.label, mono: true },
-            { label: "Type", value: terminal.kind },
-            { label: "N° de série", value: or(terminal.serial), mono: true },
+            { label: t("N° interne"), value: terminal.label, mono: true },
+            { label: t("Type"), value: enumLabel(terminal.kind) },
+            { label: t("N° de série"), value: or(terminal.serial), mono: true },
             { label: "RFSI", value: or(terminal.rfsi), mono: true },
           ],
         ],
       },
       {
-        title: "Détenteur",
+        title: t("Détenteur"),
         rows: [
           [
             {
-              label: "Grade, nom",
+              label: t("Grade, nom"),
               value: assignment.holder,
               span: 2,
               strong: true,
             },
-            { label: "Nom d’appel", value: or(assignment.callsign), span: 2 },
+            {
+              label: t("Nom d’appel"),
+              value: or(assignment.callsign),
+              span: 2,
+            },
           ],
           [
-            { label: "Fonction", value: or(assignment.role), span: 2 },
-            { label: "Section", value: or(assignment.unit) },
+            { label: t("Fonction"), value: or(assignment.role), span: 2 },
+            { label: t("Section"), value: or(assignment.unit) },
             {
-              label: "Groupe principal",
+              label: t("Groupe principal"),
               value: station ? talkgroupName(radio, station.primary) : "—",
             },
           ],
         ],
       },
       {
-        title: "Remise",
+        title: t("Remise"),
         rows: [
           [
             {
-              label: "Heure",
+              label: t("Heure"),
               value: dateTime(assignment.issuedAt),
               mono: true,
             },
-            { label: "Remis par", value: assignment.issuedBy },
-            { label: "Batterie", value: assignment.battery },
-            { label: "État", value: terminal.condition },
+            { label: t("Remis par"), value: assignment.issuedBy },
+            { label: t("Batterie"), value: enumLabel(assignment.battery) },
+            { label: t("État"), value: enumLabel(terminal.condition) },
           ],
           [
             {
-              label: "Accessoires remis",
+              label: t("Accessoires remis"),
               value: listed.length
-                ? listed.map((a) => `[  ] ${a}`).join("   ")
-                : "Aucun",
+                ? listed.map((a) => `[  ] ${enumLabel(a)}`).join("   ")
+                : t("Aucun"),
             },
           ],
-          [{ label: "Remarques", value: or(assignment.notes) }],
+          [{ label: t("Remarques"), value: or(assignment.notes) }],
         ],
       },
       {
-        title: "Retour",
+        title: t("Retour (terminal)"),
         rows: [
           [
             {
-              label: "Heure",
+              label: t("Heure"),
               value: returned ? dateTime(assignment.returnedAt) : "",
               mono: true,
             },
-            { label: "Reçu par", value: returned ? assignment.returnedBy : "" },
-            { label: "État au retour", value: assignment.returnCondition },
-            { label: "Complet", value: returned ? "" : "[  ] oui    [  ] non" },
+            {
+              label: t("Reçu par"),
+              value: returned ? assignment.returnedBy : "",
+            },
+            {
+              label: t("État au retour"),
+              value: enumLabel(assignment.returnCondition),
+            },
+            {
+              label: t("Complet"),
+              value: returned ? "" : t("[  ] oui    [  ] non"),
+            },
           ],
         ],
       },
     ],
     visa: [
       {
-        title: "Signatures",
-        labels: ["Détenteur (remise)", "Remettant", "Détenteur (retour)"],
+        title: t("Signatures"),
+        labels: [
+          t("Détenteur (remise)"),
+          t("Remettant"),
+          t("Détenteur (retour)"),
+        ],
       },
     ],
-    footer: `quittance ${terminal.label} · ${assignment.holder}`,
+    footer: t("quittance {label} · {holder}", {
+      label: terminal.label,
+      holder: assignment.holder,
+    }),
   };
 }
 
@@ -305,57 +348,69 @@ export function intakeSheet(
 ): FormSheet {
   const urgent = message.priority === "Urgent";
   return {
-    kind: "Formule de message",
-    idLabel: "Message",
+    kind: t("Formule de message"),
+    idLabel: t("Message"),
     // A label ("013·B") when two posts gave the same number.
     number:
       typeof number === "string"
         ? `M${number}`
         : `M${String(number).padStart(3, "0")}`,
     boxes: [
-      { label: "Priorité", value: message.priority, alert: urgent },
-      { label: "Catégorie", value: or(message.category) },
-      { label: "État", value: message.status },
+      {
+        label: t("Priorité"),
+        value: enumLabel(message.priority),
+        alert: urgent,
+      },
+      { label: t("Catégorie"), value: or(message.category) },
+      { label: t("État"), value: enumLabel(message.status) },
     ],
     note: message.replyNeeded
       ? {
-          text: `RÉPONSE ATTENDUE${message.replyBy ? ` AVANT ${dateTime(message.replyBy)}` : ""}`,
+          text: message.replyBy
+            ? t("RÉPONSE ATTENDUE AVANT {at}", {
+                at: dateTime(message.replyBy),
+              })
+            : t("RÉPONSE ATTENDUE"),
           alert: true,
         }
       : undefined,
     sections: [
       {
-        title: "Transmission",
+        title: t("Transmission"),
         rows: [
           [
-            { label: "De", value: or(message.from), strong: true, span: 2 },
-            { label: "À", value: or(message.to), strong: true, span: 2 },
+            { label: t("De"), value: or(message.from), strong: true, span: 2 },
+            { label: t("À"), value: or(message.to), strong: true, span: 2 },
           ],
           [
             {
-              label: "Reçu le",
+              label: t("Reçu le"),
               value: dateTime(message.receivedAt),
               mono: true,
             },
-            { label: "Canal", value: or(message.via) },
-            { label: "Reçu par", value: or(message.by) },
+            { label: t("Canal"), value: enumLabel(or(message.via)) },
+            { label: t("Reçu par"), value: or(message.by) },
           ],
         ],
       },
       {
-        title: "Message",
+        title: t("Message"),
         rows: [
-          [{ label: "Objet", value: or(message.subject), strong: true }],
-          [{ label: "Texte", value: or(message.body), tall: true }],
+          [{ label: t("Objet"), value: or(message.subject), strong: true }],
+          [{ label: t("Texte"), value: or(message.body), tall: true }],
         ],
       },
       {
-        title: "Lieu",
+        title: t("Lieu"),
         rows: [
           [
-            { label: "Lieu / secteur", value: or(message.location), span: 2 },
             {
-              label: "Coordonnées",
+              label: t("Lieu / secteur"),
+              value: or(message.location),
+              span: 2,
+            },
+            {
+              label: t("Coordonnées"),
               value: or(message.coordinates),
               mono: true,
             },
@@ -363,22 +418,27 @@ export function intakeSheet(
         ],
       },
       {
-        title: "Traitement",
+        title: t("Traitement"),
         rows: [
           [
-            { label: "Traité par", value: or(message.handledBy) },
-            { label: "Mots-clés", value: or(message.tags.join(", ")) },
+            { label: t("Traité par"), value: or(message.handledBy) },
+            { label: t("Mots-clés"), value: or(message.tags.join(", ")) },
           ],
-          [{ label: "Remarques", value: or(message.notes) }],
+          [{ label: t("Remarques"), value: or(message.notes) }],
         ],
       },
     ],
     visa: [
       {
-        title: "Visa",
-        labels: ["Reçu par", "Synthèse / journal", "Transmis à", "Heure"],
+        title: t("Visa"),
+        labels: [
+          t("Reçu par"),
+          t("Synthèse / journal"),
+          t("Transmis à"),
+          t("Heure"),
+        ],
       },
     ],
-    footer: `message M${String(number).padStart(3, "0")}`,
+    footer: t("message {n}", { n: `M${String(number).padStart(3, "0")}` }),
   };
 }

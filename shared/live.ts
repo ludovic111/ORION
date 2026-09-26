@@ -1,5 +1,6 @@
 import { toMN95 } from "./coordinates.ts";
 import { toZurichInput } from "./time.ts";
+import { t } from "./i18n/live.ts";
 
 // Live positions of the teams (« Positions en direct »). A phone or tablet
 // that chose to share its position sends it as an ephemeral message
@@ -192,11 +193,14 @@ export function freshness(at: number, now: number): Freshness {
 /** « à l’instant », « il y a 40 s », « il y a 3 min », « il y a 1 h 05 ». */
 export function ageText(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 10) return "à l’instant";
-  if (s < 60) return `il y a ${s} s`;
+  if (s < 10) return t("à l’instant");
+  if (s < 60) return t("il y a {n} s", { n: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `il y a ${m} min`;
-  return `il y a ${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
+  if (m < 60) return t("il y a {n} min", { n: m });
+  return t("il y a {h} h {m}", {
+    h: Math.floor(m / 60),
+    m: String(m % 60).padStart(2, "0"),
+  });
 }
 
 function extendTrail(trail: TrailPoint[], pos: Position, now: number) {
@@ -313,14 +317,22 @@ export function positionEntry(unit: Position & { name?: string }) {
   const where = mn95
     ? `MN95 ${mn95}`
     : `WGS84 ${unit.lat.toFixed(5)}, ${unit.lng.toFixed(5)}`;
-  const label = unit.label || unit.name || "Équipe";
+  const label = unit.label || unit.name || t("Équipe");
   return {
     happenedAt: at,
     type: "Renseignement" as const,
-    message: `Position de ${label} à ${toZurichInput(unit.t, "time")} : ${where} (précision ± ${Math.round(unit.acc)} m, position GPS partagée en direct).`,
+    message: t(
+      "Position de {label} à {time} : {where} (précision ± {acc} m, position GPS partagée en direct).",
+      {
+        label,
+        time: toZurichInput(unit.t, "time"),
+        where,
+        acc: Math.round(unit.acc),
+      },
+    ),
     source: label,
     channel: "Autre" as const,
     coordinates: mn95 || `${unit.lat.toFixed(6)}, ${unit.lng.toFixed(6)}`,
-    tags: ["Position GPS"],
+    tags: [t("Position GPS")],
   };
 }

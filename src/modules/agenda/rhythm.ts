@@ -5,6 +5,8 @@ import {
   fromZurichWall,
   zurichWall,
 } from "../../../shared/time";
+import { formatLongDate } from "../../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 /** Current time, refreshed every `ms` while the page is visible. */
 export function useTicker(ms = 1000, active = true) {
@@ -40,11 +42,13 @@ export function countdown(target: number, at: number, seconds = true) {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   let text: string;
-  if (d > 0) text = `${d} j ${h} h`;
+  if (d > 0) text = t("{d} j {h} h", { d, h });
   else if (h > 0) text = `${h} h ${pad(m)}`;
   else if (m > 0) text = seconds ? `${m} min ${pad(sec)} s` : `${m} min`;
-  else text = seconds ? `${sec} s` : "moins d’une minute";
-  return diff >= 0 ? `dans ${text}` : `il y a ${text}`;
+  else text = seconds ? `${sec} s` : t("moins d’une minute");
+  return diff >= 0
+    ? t("dans {when}", { when: text })
+    : t("il y a {when}", { when: text });
 }
 
 /** Next full hour from now (at least 10 minutes ahead). */
@@ -68,12 +72,7 @@ export const zurichDay = (value: number) =>
   new Date(value).toLocaleDateString("sv-SE", { timeZone: "Europe/Zurich" });
 
 export const dayLabel = (value: number) =>
-  new Date(value).toLocaleDateString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  formatLongDate(value, { weekday: "long", day: "numeric", month: "long" });
 
 export const duration = (minutes: number) =>
   minutes >= 60

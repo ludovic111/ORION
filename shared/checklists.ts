@@ -7,9 +7,11 @@ import {
   type Entry,
   type Journal,
 } from "./journal.ts";
-import { upsert, type Ops } from "./ops.ts";
+import { journalLang, upsert, type Ops } from "./ops.ts";
 import { stableId } from "./history.ts";
-import { BUILTIN_TEMPLATES } from "./checklist-library.ts";
+import { builtinTemplates } from "./checklist-library.ts";
+import { LOCALES, type Lang } from "./i18n/core.ts";
+import { t, tIn } from "./i18n/checklists.ts";
 import type {
   Checklist,
   ChecklistStep,
@@ -17,7 +19,7 @@ import type {
   ChecklistTick,
 } from "./conduct-schemas.ts";
 
-export { BUILTIN_TEMPLATES } from "./checklist-library.ts";
+export { BUILTIN_TEMPLATES, builtinTemplates } from "./checklist-library.ts";
 
 // Checklists by type of event: templates (built in, changed or created in
 // the journal), lists started for the operation, and ticks.
@@ -56,10 +58,18 @@ export const tickId = (checklistId: string, stepId: string) =>
 export const newStepId = () =>
   `n${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
 
-/** Every template: built-in lists (as changed in the journal) and own lists. */
-export function templates(ops: Ops): TemplateView[] {
+/**
+ * Every template: built-in lists (as changed in the journal) and own lists.
+ * Built-in lists come in the language of the journal (journalLang); a
+ * "builtin:<key>" id is the same in every language.
+ */
+export function templates(
+  ops: Pick<Ops, "checklistTemplates" | "settings">,
+  lang: Lang = journalLang(ops),
+): TemplateView[] {
   const own = ops.checklistTemplates;
-  const out: TemplateView[] = BUILTIN_TEMPLATES.map((b, i) => {
+  const builtins = builtinTemplates(lang);
+  const out: TemplateView[] = builtins.map((b, i) => {
     const override = own.find((t) => t.builtIn === b.key);
     return {
       id: builtinRef(b.key),
@@ -75,7 +85,7 @@ export function templates(ops: Ops): TemplateView[] {
     };
   });
   for (const t of own)
-    if (!t.builtIn || !BUILTIN_TEMPLATES.some((b) => b.key === t.builtIn))
+    if (!t.builtIn || !builtins.some((b) => b.key === t.builtIn))
       out.push({
         id: t.id,
         name: t.name,
@@ -89,12 +99,15 @@ export function templates(ops: Ops): TemplateView[] {
         order: t.order || 100,
       });
   return out.sort(
-    (a, b) => a.order - b.order || a.name.localeCompare(b.name, "fr"),
+    (a, b) => a.order - b.order || a.name.localeCompare(b.name, LOCALES[lang]),
   );
 }
 
-export const findTemplate = (ops: Ops, id: string) =>
-  templates(ops).find((t) => t.id === id);
+export const findTemplate = (
+  ops: Pick<Ops, "checklistTemplates" | "settings">,
+  id: string,
+  lang: Lang = journalLang(ops),
+) => templates(ops, lang).find((t) => t.id === id);
 
 /** Save a template: a built-in list becomes its override record. */
 export function saveTemplate(
@@ -112,7 +125,7 @@ export function saveTemplate(
       : crypto.randomUUID();
   const value: Omit<ChecklistTemplate, "createdAt" | "updatedAt" | "by"> = {
     id,
-    name: view.name.trim() || "Liste sans nom",
+    name: view.name.trim() || tIn(journalLang(ops), "Liste sans nom"),
     event: view.event,
     description: view.description,
     steps: view.steps.filter((s) => s.text.trim()),
@@ -136,7 +149,7 @@ export function duplicateTemplate(
       id: "",
       builtIn: "",
       hidden: false,
-      name: `${view.name} (copie)`,
+      name: tIn(journalLang(ops), "{name} (copie)", { name: view.name }),
       steps: view.steps.map((s) => ({ ...s })),
     },
     author,
@@ -241,9 +254,9 @@ export function tickStep(
   }: { author: string; at?: string; log?: boolean; note?: string },
 ): Journal {
   const checklist = journal.ops.checklists.find((c) => c.id === checklistId);
-  if (!checklist) throw new Error("Liste de contrôle introuvable.");
+  if (!checklist) throw new Error(t("Liste de contrôle introuvable."));
   const step = checklist.steps.find((s) => s.id === stepId);
-  if (!step) throw new Error("Étape introuvable.");
+  if (!step) throw new Error(t("Étape introuvable."));
   const writes = log ?? step.log;
   let next = journal;
   let entryId = "";
@@ -259,12 +272,18 @@ export function tickStep(
         channel: "Sur place",
         reliability: "Confirmé",
         status: due ? "À traiter" : "Consigné",
-        message: `${checklist.title} : ${step.text}${due ? `. Contrôle à ${time(due)}.` : "."}`,
-        action: due ? `Contrôler : ${step.text}` : "",
+        message: due
+          ? t("{title} : {step}. Contrôle à {time}.", {
+              title: checklist.title,
+              step: step.text,
+              time: time(due),
+            })
+          : t("{title} : {step}.", { title: checklist.title, step: step.text }),
+        action: due ? t("Contrôler : {step}", { step: step.text }) : "",
         assignee: step.role,
         dueAt: due,
         notes: note,
-        tags: ["liste de contrôle"],
+        tags: [tIn(journalLang(journal.ops), "liste de contrôle")],
       },
       author,
     );
@@ -313,7 +332,7 @@ export function setChecklistClosed(
   author: string,
 ): Ops {
   const c = ops.checklists.find((x) => x.id === checklistId);
-  if (!c) throw new Error("Liste de contrôle introuvable.");
+  if (!c) throw new Error(t("Liste de contrôle introuvable."));
   return upsert(ops, "checklists", { ...c, closedAt }, author);
 }
 

@@ -19,6 +19,8 @@ import {
 } from "../../ui/fields";
 import type { MessageActions } from "./actions";
 import { FOLLOW_STATUSES, entryFrom, partyOptions } from "./model";
+import { enumLabel } from "../../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 /** "Inscrire au journal": the message becomes a journal entry, reviewed first. */
 export function Synthesis({
@@ -56,7 +58,7 @@ export function Synthesis({
 
   function confirm() {
     if (!fields.message.trim()) {
-      setError("Le texte de l’entrée est obligatoire.");
+      setError(t("Le texte de l’entrée est obligatoire."));
       return;
     }
     if (
@@ -71,7 +73,9 @@ export function Synthesis({
 
   return (
     <Modal
-      title={`Inscrire au journal · ${actions.label(message)}`}
+      title={t("Inscrire au journal · {label}", {
+        label: actions.label(message),
+      })}
       onClose={onClose}
       wide
     >
@@ -84,45 +88,53 @@ export function Synthesis({
           }
         }}
       >
-        <aside className="msg-synth-source" aria-label="Message reçu">
-          <span className="label">Message reçu</span>
+        <aside className="msg-synth-source" aria-label={t("Message reçu")}>
+          <span className="label">{t("Message reçu")}</span>
           <div className="msg-synth-route">
             <strong>{message.from || "—"}</strong>
             <ArrowRight size={13} />
             <strong>{message.to || "—"}</strong>
           </div>
           <small className="muted">
-            {dateTime(message.receivedAt)} · {message.via || "canal inconnu"}
+            {dateTime(message.receivedAt)} · {message.via || t("canal inconnu")}
             {message.category && ` · ${message.category}`}
           </small>
           {message.subject && <h4>{message.subject}</h4>}
           {message.body && <p>{message.body}</p>}
-          {message.location && <small>Lieu : {message.location}</small>}
-          {message.notes && <small>Remarques : {message.notes}</small>}
+          {message.location && (
+            <small>{t("Lieu : {value}", { value: message.location })}</small>
+          )}
+          {message.notes && (
+            <small>{t("Remarques : {value}", { value: message.notes })}</small>
+          )}
         </aside>
         <div className="msg-synth-form">
           <div className="form-grid">
             <ChoiceField
-              label="Nature"
+              label={t("Nature")}
               value={fields.type}
               onChange={(type) => set({ type })}
               options={TYPES}
             />
             <div className="msg-priority">
-              <span className="label">Priorité</span>
+              <span className="label">{t("Priorité")}</span>
               <Segmented
-                label="Priorité"
+                label={t("Priorité")}
                 value={fields.priority}
                 onChange={(priority) => set({ priority })}
                 options={PRIORITIES.map((p) => ({
                   value: p,
-                  label: <span className={`msg-prio-label ${p}`}>{p}</span>,
+                  label: (
+                    <span className={`msg-prio-label ${p}`}>
+                      {enumLabel(p)}
+                    </span>
+                  ),
                 }))}
               />
             </div>
             <TextField
               className="span-2"
-              label="Texte de l’entrée"
+              label={t("Texte de l’entrée")}
               required
               rows={5}
               value={fields.message}
@@ -130,57 +142,57 @@ export function Synthesis({
               maxLength={12000}
             />
             <ComboField
-              label="Émetteur"
+              label={t("Émetteur")}
               value={fields.source}
               onChange={(source) => set({ source })}
               options={parties}
             />
             <ComboField
-              label="Destinataire"
+              label={t("Destinataire")}
               value={fields.recipient}
               onChange={(recipient) => set({ recipient })}
               options={parties}
             />
             <ChoiceField
-              label="Canal"
+              label={t("Canal")}
               value={fields.channel}
               onChange={(channel) => set({ channel })}
               options={CHANNELS}
             />
             <TextField
-              label="Lieu"
+              label={t("Lieu")}
               value={fields.location}
               onChange={(location) => set({ location })}
             />
             <DateTimeField
-              label="Heure de l’événement"
+              label={t("Heure de l’événement")}
               required
               value={fields.happenedAt}
               onChange={(happenedAt) => set({ happenedAt })}
             />
             <DateTimeField
-              label="Heure de réception"
+              label={t("Heure de réception")}
               required
               value={fields.receivedAt}
               onChange={(receivedAt) => set({ receivedAt })}
             />
             <TextField
               className="span-2"
-              label="Mesure / décision"
+              label={t("Mesure / décision")}
               rows={2}
               value={fields.action}
               onChange={(action) => set({ action })}
               maxLength={12000}
-              placeholder="Ce qui est décidé ou entrepris (facultatif)"
+              placeholder={t("Ce qui est décidé ou entrepris (facultatif)")}
             />
             <ChoiceField
-              label="Suivi"
+              label={t("Suivi")}
               value={fields.status as (typeof FOLLOW_STATUSES)[number]}
               onChange={(status) => set({ status })}
               options={FOLLOW_STATUSES}
             />
             <ComboField
-              label="Responsable"
+              label={t("Responsable")}
               value={fields.assignee}
               onChange={(assignee) => set({ assignee })}
               options={people}
@@ -188,14 +200,14 @@ export function Synthesis({
             {follow && (
               <DateTimeField
                 className="span-2"
-                label="Échéance"
+                label={t("Échéance")}
                 value={fields.dueAt}
                 onChange={(dueAt) => set({ dueAt })}
               />
             )}
             <TextField
               className="span-2"
-              label="Coordonnées"
+              label={t("Coordonnées")}
               value={fields.coordinates}
               onChange={(coordinates) => set({ coordinates })}
               maxLength={150}
@@ -207,10 +219,10 @@ export function Synthesis({
             </p>
           )}
           <div className="msg-synth-foot">
-            <button onClick={onClose}>Annuler</button>
+            <button onClick={onClose}>{t("Annuler")}</button>
             <button className="primary" onClick={confirm}>
               <BookOpen size={14} />
-              Inscrire au journal
+              {t("Inscrire au journal")}
               <kbd>
                 ⌘<CornerDownLeft size={11} />
               </kbd>

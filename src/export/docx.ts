@@ -3,6 +3,9 @@ import { XML_HEAD, qrPng, zip } from "./bytes.ts";
 import { coverFacts, type Column, type Dossier } from "./dossier.ts";
 import { PROPS_RELS, PROPS_TYPES, bookInfo, docProps } from "./sheets.ts";
 import type { DocumentStamp } from "./stamp.ts";
+import { locale } from "../../shared/i18n/core.ts";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t } from "./i18n.ts";
 
 // Word document (.docx, ECMA-376 transitional) of a dossier: real styles
 // (Title, Heading 1/2, tables with repeated header rows), table of contents
@@ -142,8 +145,9 @@ function watermarkRun(value: string, landscape: boolean) {
 
 const rPr = (size: number, color = "", bold = false) =>
   `<w:rPr>${bold ? "<w:b/><w:bCs/>" : ""}${color ? `<w:color w:val="${color}"/>` : ""}<w:sz w:val="${size * 2}"/><w:szCs w:val="${size * 2}"/></w:rPr>`;
-const STYLES =
-  `${XML_HEAD}<w:styles xmlns:w="${NS_W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="fr-CH" w:eastAsia="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+// Functions, not constants: the language of the post can change.
+const styles = () =>
+  `${XML_HEAD}<w:styles xmlns:w="${NS_W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="${locale()}" w:eastAsia="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
 <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
 <w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style>
 <w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>
@@ -165,7 +169,8 @@ const STYLES =
 <w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:basedOn w:val="DefaultParagraphFont"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:rPr><w:color w:val="${ACCENT}"/><w:u w:val="single"/></w:rPr></w:style>
 </w:styles>`.replaceAll("\n", "");
 
-const SETTINGS = `${XML_HEAD}<w:settings xmlns:w="${NS_W}"><w:zoom w:percent="100"/><w:defaultTabStop w:val="708"/><w:hyphenationZone w:val="425"/><w:characterSpacingControl w:val="doNotCompress"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/><w:compatSetting w:name="overrideTableStyleFontSizeAndJustification" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/><w:compatSetting w:name="enableOpenTypeFeatures" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/><w:compatSetting w:name="doNotFlipMirrorIndents" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/></w:compat><w:themeFontLang w:val="fr-CH"/></w:settings>`;
+const settings = () =>
+  `${XML_HEAD}<w:settings xmlns:w="${NS_W}"><w:zoom w:percent="100"/><w:defaultTabStop w:val="708"/><w:hyphenationZone w:val="425"/><w:characterSpacingControl w:val="doNotCompress"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/><w:compatSetting w:name="overrideTableStyleFontSizeAndJustification" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/><w:compatSetting w:name="enableOpenTypeFeatures" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/><w:compatSetting w:name="doNotFlipMirrorIndents" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/></w:compat><w:themeFontLang w:val="${locale()}"/></w:settings>`;
 
 const FONT_TABLE = `${XML_HEAD}<w:fonts xmlns:w="${NS_W}"><w:font w:name="Calibri"><w:panose1 w:val="020F0502020204030204"/><w:charset w:val="00"/><w:family w:val="swiss"/><w:pitch w:val="variable"/></w:font></w:fonts>`;
 
@@ -193,7 +198,7 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
   const body: string[] = [];
 
   // Cover.
-  body.push(text("orion aic · dossier de l’opération", "Kicker"));
+  body.push(text(`orion aic · ${t("dossier de l’opération")}`, "Kicker"));
   body.push(text(c.title, "Title"));
   body.push(
     text(
@@ -205,13 +210,13 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
   body.push(
     table(
       [
-        { label: "Propriété", weight: 1 },
-        { label: "Valeur", weight: 2.6 },
+        { label: t("Propriété"), weight: 1 },
+        { label: t("Valeur"), weight: 2.6 },
       ],
       [
         ...coverFacts(c),
-        ["Document n°", o.stamp.id],
-        ["Empreinte", o.stamp.fingerprint],
+        [t("Document n°"), o.stamp.id],
+        [t("Empreinte"), o.stamp.fingerprint],
       ],
       width,
       false,
@@ -225,7 +230,7 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
       picture(
         qr.rid,
         qr.id,
-        "QR de vérification",
+        t("QR de vérification"),
         1080000,
         1080000,
         o.stamp.qr,
@@ -234,13 +239,13 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
   );
   body.push(
     text(
-      `Vérification : ce code identifie l’export et l’empreinte de son contenu. Dans orion aic, Traçabilité → Vérifier un document.\n${o.stamp.label}`,
+      `${t("Vérification : ce code identifie l’export et l’empreinte de son contenu. Dans orion aic, Traçabilité → Vérifier un document.")}\n${o.stamp.label}`,
       "Caption",
     ),
   );
 
   // Table of contents: a real Word field (update it with F9 for page numbers).
-  body.push(text("Sommaire", "TOCHeading"));
+  body.push(text(t("Sommaire"), "TOCHeading"));
   const entries = dossier.chapters.flatMap((ch) => [
     {
       level: 1,
@@ -253,7 +258,10 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
         : [
             {
               level: 2,
-              label: b.kind === "map" ? `Carte · ${b.title}` : b.table.title,
+              label:
+                b.kind === "map"
+                  ? t("Carte · {title}", { title: b.title })
+                  : b.table.title,
               anchor: `_Chap${ch.number}_${i + 1}`,
             },
           ],
@@ -284,7 +292,7 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
         body.push(text(b.body));
         if (b.meta) body.push(text(b.meta, "Caption"));
       } else if (b.kind === "map") {
-        body.push(heading(`Carte · ${b.title}`, 2, anchor));
+        body.push(heading(t("Carte · {title}", { title: b.title }), 2, anchor));
         const image = o.maps[b.mapId];
         if (image) {
           const size = image;
@@ -300,7 +308,14 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
           const p = addPicture(bytes.data, bytes.ext);
           body.push(
             para(
-              picture(p.rid, p.id, `Carte ${b.title}`, w, cy, b.title),
+              picture(
+                p.rid,
+                p.id,
+                t("Carte {title}", { title: b.title }),
+                w,
+                cy,
+                b.title,
+              ),
               "",
               '<w:jc w:val="center"/>',
             ),
@@ -313,20 +328,23 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
           ),
         );
       } else {
-        const t = b.table;
-        const view = t.compact ?? t;
-        body.push(heading(t.title, 2, anchor));
-        body.push(text(t.caption, "Caption"));
+        const tbl = b.table;
+        const view = tbl.compact ?? tbl;
+        body.push(heading(tbl.title, 2, anchor));
+        body.push(text(tbl.caption, "Caption"));
         const rows = view.rows.slice(0, DOCUMENT_ROWS);
         body.push(
           rows.length
             ? table(view.columns, rows, width)
-            : text("Aucun élément.", "Caption"),
+            : text(t("Aucun élément."), "Caption"),
         );
         if (view.rows.length > rows.length)
           body.push(
             text(
-              `… ${view.rows.length - rows.length} lignes de plus dans les exports tableur (Excel, OpenDocument, CSV).`,
+              t(
+                "… {n} lignes de plus dans les exports tableur (Excel, OpenDocument, CSV).",
+                { n: view.rows.length - rows.length },
+              ),
               "Caption",
             ),
           );
@@ -336,10 +354,13 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
   }
 
   // Verification block at the end.
-  body.push(text("Vérification de ce document", "TOCHeading"));
+  body.push(text(t("Vérification de ce document"), "TOCHeading"));
   body.push(
     text(
-      `Ce document a été produit par orion aic. Son contenu a l’empreinte ${o.stamp.fingerprint} ; l’export porte le numéro ${o.stamp.id}. L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération. Pour vérifier un exemplaire, déposez le fichier dans orion aic (Traçabilité → Vérifier un document) ou scannez le code ci-dessous.`,
+      t(
+        "Ce document a été produit par orion aic. Son contenu a l’empreinte {fingerprint} ; l’export porte le numéro {id}. L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération. Pour vérifier un exemplaire, déposez le fichier dans orion aic (Traçabilité → Vérifier un document) ou scannez le code ci-dessous.",
+        { fingerprint: o.stamp.fingerprint, id: o.stamp.id },
+      ),
     ),
   );
   const qr2 = addPicture(qrPng(o.stamp.qr));
@@ -348,7 +369,7 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
       picture(
         qr2.rid,
         qr2.id,
-        "QR de vérification",
+        t("QR de vérification"),
         1080000,
         1080000,
         o.stamp.qr,
@@ -358,14 +379,14 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
   body.push(text(o.stamp.label, "Caption"));
 
   const header = `${XML_HEAD}<w:hdr ${NAMESPACES}>${para(
-    `${o.watermark ? watermarkRun(o.watermark, landscape) : ""}${run(`orion aic · ${c.title}`)}<w:r><w:tab/></w:r><w:r><w:tab/></w:r>${run(`${c.mode.toUpperCase()} · ${c.classification.toUpperCase()}`, { bold: true })}`,
+    `${o.watermark ? watermarkRun(o.watermark, landscape) : ""}${run(`orion aic · ${c.title}`)}<w:r><w:tab/></w:r><w:r><w:tab/></w:r>${run(`${enumLabel(c.mode).toUpperCase()} · ${enumLabel(c.classification).toUpperCase()}`, { bold: true })}`,
     "Header",
     `<w:tabs><w:tab w:val="clear" w:pos="4536"/><w:tab w:val="clear" w:pos="9072"/><w:tab w:val="center" w:pos="${Math.round(width / 2)}"/><w:tab w:val="right" w:pos="${width}"/></w:tabs>`,
   )}</w:hdr>`;
   const field = (code: string) =>
     `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
   const footer = `${XML_HEAD}<w:ftr ${NAMESPACES}>${para(
-    `${run(o.stamp.label)}<w:r><w:tab/></w:r>${run("Page ")}${field("PAGE")}${run(" / ")}${field("NUMPAGES")}`,
+    `${run(o.stamp.label)}<w:r><w:tab/></w:r>${run(`${t("Page")} `)}${field("PAGE")}${run(" / ")}${field("NUMPAGES")}`,
     "Footer",
     `<w:tabs><w:tab w:val="clear" w:pos="4536"/><w:tab w:val="clear" w:pos="9072"/><w:tab w:val="right" w:pos="${width}"/></w:tabs>`,
   )}</w:ftr>`;
@@ -378,8 +399,8 @@ export function dossierDocx(dossier: Dossier, o: DocumentOptions): Uint8Array {
     ...docProps(info),
     "word/document.xml": document,
     "word/_rels/document.xml.rels": `${XML_HEAD}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="${REL}/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="${REL}/settings" Target="settings.xml"/><Relationship Id="rIdFonts" Type="${REL}/fontTable" Target="fontTable.xml"/><Relationship Id="rIdHeader" Type="${REL}/header" Target="header1.xml"/><Relationship Id="rIdFooter" Type="${REL}/footer" Target="footer1.xml"/>${rels.join("")}</Relationships>`,
-    "word/styles.xml": STYLES,
-    "word/settings.xml": SETTINGS,
+    "word/styles.xml": styles(),
+    "word/settings.xml": settings(),
     "word/fontTable.xml": FONT_TABLE,
     "word/header1.xml": header,
     "word/footer1.xml": footer,

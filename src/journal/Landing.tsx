@@ -8,25 +8,31 @@ import {
   Sun,
   Wifi,
 } from "lucide-react";
+import { LangSwitch, rich, type Lang } from "../i18n";
 import type { Journal } from "../../shared/journal";
 import { codeProblem, normalizeCode, validCode } from "../../shared/room";
 import type { SyncStatus } from "../sync/useSync";
 import { Brand } from "../ui/Mark";
 import { JournalSetup } from "./JournalSetup";
 import { CONTACT_EMAIL, feedbackLink } from "../app/contact";
+import { t } from "./i18n.ts";
 
 export type JoinRequest = { code: string; author: string; password?: string };
 
 // What the tool holds, as a table of contents: plain words, no badges.
-const CONTENTS: [string, string][] = [
-  ["Journal", "Main courante horodatée, suivis, retards, relèves."],
-  ["Messages", "Formule de message, tri, synthèse et impression A4."],
-  ["Carte", "Fonds swisstopo, signes OFPP, zones, périmètres, mesures."],
-  ["Moyens et équipe", "Engagements, états, présences et fonctions."],
-  ["Radio", "Plan de réseau Polycom et contrôles de liaison."],
-  ["Renseignements", "Chiffres clés, météo, agenda et rythme de conduite."],
-  ["Liens", "Chaque élément se relie aux autres, dans les deux sens."],
-  ["Multi-postes", "Synchronisation chiffrée entre les postes du PC."],
+// A function: read in the language of the post each time it is shown.
+const contents = (): [string, string][] => [
+  [t("Journal"), t("Main courante horodatée, suivis, retards, relèves.")],
+  [t("Messages"), t("Formule de message, tri, synthèse et impression A4.")],
+  [t("Carte"), t("Fonds swisstopo, signes OFPP, zones, périmètres, mesures.")],
+  [t("Moyens et équipe"), t("Engagements, états, présences et fonctions.")],
+  [t("Radio"), t("Plan de réseau Polycom et contrôles de liaison.")],
+  [
+    t("Renseignements"),
+    t("Chiffres clés, météo, agenda et rythme de conduite."),
+  ],
+  [t("Liens"), t("Chaque élément se relie aux autres, dans les deux sens.")],
+  [t("Multi-postes"), t("Synchronisation chiffrée entre les postes du PC.")],
 ];
 
 export function Landing({
@@ -45,6 +51,8 @@ export function Landing({
   onForget,
   theme,
   onTheme,
+  lang,
+  onLang,
   error,
 }: {
   stored: boolean;
@@ -66,6 +74,8 @@ export function Landing({
   onForget: () => Promise<void>;
   theme: string;
   onTheme: () => void;
+  lang: Lang;
+  onLang: (lang: Lang) => void;
   error: string;
 }) {
   const [tab, setTab] = useState<"resume" | "new" | "join">(
@@ -83,14 +93,15 @@ export function Landing({
     <div className="landing">
       <header className="landing-bar">
         <Brand size={28} />
-        <span className="landing-version">version 2.0</span>
+        <span className="landing-version">{t("version 2.0")}</span>
         <button className="link push" onClick={onPrivacy}>
-          Sécurité et données
+          {t("Sécurité et données")}
         </button>
+        <LangSwitch value={lang} onChange={onLang} />
         <button
           className="icon-button"
           onClick={onTheme}
-          aria-label={theme === "light" ? "Thème sombre" : "Thème clair"}
+          aria-label={theme === "light" ? t("Thème sombre") : t("Thème clair")}
         >
           {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
@@ -98,16 +109,16 @@ export function Landing({
       <main className="landing-main">
         <section className="hero reveal">
           <h1>
-            Tenir la conduite<span className="ember-dot">.</span>
+            {t("Tenir la conduite")}
+            <span className="ember-dot">.</span>
           </h1>
           <p className="lead">
-            Le journal, les messages, la carte, les moyens, l’équipe et la radio
-            d’un poste de conduite de protection civile, au même endroit. Tout
-            reste dans le navigateur, chiffré et sans compte ; les postes d’un
-            même PC se synchronisent en direct.
+            {t(
+              "Le journal, les messages, la carte, les moyens, l’équipe et la radio d’un poste de conduite de protection civile, au même endroit. Tout reste dans le navigateur, chiffré et sans compte ; les postes d’un même PC se synchronisent en direct.",
+            )}
           </p>
           <dl className="hero-index stagger">
-            {CONTENTS.map(([term, what]) => (
+            {contents().map(([term, what]) => (
               <div key={term}>
                 <dt>{term}</dt>
                 <dd>{what}</dd>
@@ -117,7 +128,7 @@ export function Landing({
           <div className="hero-actions">
             <button className="spark" onClick={onDemo}>
               <Play size={14} />
-              Ouvrir l’exercice de démonstration
+              {t("Ouvrir l’exercice de démonstration")}
               <ArrowRight size={14} />
             </button>
           </div>
@@ -133,18 +144,18 @@ export function Landing({
                 onClick={() => setTab("resume")}
               >
                 <LockKeyhole size={14} />
-                Reprendre
+                {t("Reprendre")}
               </button>
             )}
             <button aria-pressed={tab === "new"} onClick={() => setTab("new")}>
-              Nouvelle session
+              {t("Nouvelle session")}
             </button>
             <button
               aria-pressed={tab === "join"}
               onClick={() => setTab("join")}
             >
               <Wifi size={14} />
-              Rejoindre
+              {t("Rejoindre")}
             </button>
           </div>
           <div className="start-body">
@@ -166,10 +177,10 @@ export function Landing({
                   }}
                 >
                   <p className="muted">
-                    Une session chiffrée est enregistrée sur ce poste.
+                    {t("Une session chiffrée est enregistrée sur ce poste.")}
                   </p>
                   <label>
-                    Phrase de récupération
+                    {t("Phrase de récupération")}
                     <input
                       type="password"
                       required
@@ -182,24 +193,32 @@ export function Landing({
                     />
                   </label>
                   <button className="primary large" disabled={busy}>
-                    {busy ? "Déchiffrement…" : "Déverrouiller"}
+                    {busy ? t("Déchiffrement…") : t("Déverrouiller")}
                     <ArrowRight size={15} />
                   </button>
                 </form>
                 <details className="danger-zone">
-                  <summary>Phrase perdue</summary>
+                  <summary>{t("Phrase perdue")}</summary>
                   <p>
-                    Irrécupérable. Reprenez depuis une archive, ou effacez
-                    l’espace local de ce navigateur.
+                    {t(
+                      "Irrécupérable. Reprenez depuis une archive, ou effacez l’espace local de ce navigateur.",
+                    )}
                   </p>
                   <button
                     className="danger"
                     onClick={async () => {
-                      if (
-                        window.prompt(
-                          "Effacement définitif de l’espace chiffré de ce navigateur. Saisissez EFFACER.",
-                        ) === "EFFACER"
-                      ) {
+                      // The word to type follows the language of the post;
+                      // the French word is accepted everywhere.
+                      const word = t("EFFACER");
+                      const answer = window
+                        .prompt(
+                          t(
+                            "Effacement définitif de l’espace chiffré de ce navigateur. Saisissez {word}.",
+                            { word },
+                          ),
+                        )
+                        ?.trim();
+                      if (answer === word || answer === "EFFACER") {
                         try {
                           await onForget();
                           setTab("new");
@@ -209,7 +228,7 @@ export function Landing({
                       }
                     }}
                   >
-                    Effacer l’espace local
+                    {t("Effacer l’espace local")}
                   </button>
                 </details>
               </>
@@ -230,18 +249,24 @@ export function Landing({
                     <h3>
                       {syncStatus === "live"
                         ? relayCount
-                          ? "Réception de la session…"
-                          : "En attente d’un autre poste"
-                        : "Connexion…"}
+                          ? t("Réception de la session…")
+                          : t("En attente d’un autre poste")
+                        : t("Connexion…")}
                     </h3>
                     <p>
-                      Code <b className="mono">{joining.code}</b>.{" "}
+                      {rich(t("Code <0>{code}</0>.", { code: joining.code }), [
+                        <b className="mono" />,
+                      ])}{" "}
                       {syncStatus === "live" && !relayCount
-                        ? "Aucun poste n’a encore ouvert cette session : vérifiez le code, ou activez la synchronisation sur le poste qui a la session."
-                        : "La session arrive dès qu’un poste qui l’a est en ligne."}
+                        ? t(
+                            "Aucun poste n’a encore ouvert cette session : vérifiez le code, ou activez la synchronisation sur le poste qui a la session.",
+                          )
+                        : t(
+                            "La session arrive dès qu’un poste qui l’a est en ligne.",
+                          )}
                     </p>
                   </div>
-                  <button onClick={onCancelJoin}>Annuler</button>
+                  <button onClick={onCancelJoin}>{t("Annuler")}</button>
                 </div>
               ) : (
                 <form
@@ -255,7 +280,7 @@ export function Landing({
                     }
                     if (protect && secret !== repeat) {
                       setFailure(
-                        "Les phrases de récupération ne correspondent pas.",
+                        t("Les phrases de récupération ne correspondent pas."),
                       );
                       return;
                     }
@@ -267,11 +292,12 @@ export function Landing({
                   }}
                 >
                   <p className="muted">
-                    Un autre poste a partagé sa session (Réglages →
-                    Synchronisation). Saisissez son code ou scannez son QR code.
+                    {t(
+                      "Un autre poste a partagé sa session (Réglages → Synchronisation). Saisissez son code ou scannez son QR code.",
+                    )}
                   </p>
                   <label>
-                    Code de session
+                    {t("Code de session")}
                     <input
                       required
                       value={code}
@@ -283,14 +309,14 @@ export function Landing({
                     />
                   </label>
                   <label>
-                    Votre nom ou fonction
+                    {t("Votre nom ou fonction")}
                     <input
                       required
                       maxLength={120}
                       value={author}
                       autoFocus={!!code}
                       onChange={(e) => setAuthor(e.target.value)}
-                      placeholder="ex. Sgt Muller, opérateur journal"
+                      placeholder={t("ex. Sgt Muller, opérateur journal")}
                     />
                   </label>
                   {!stored && (
@@ -300,13 +326,13 @@ export function Landing({
                         checked={protect}
                         onChange={(e) => setProtect(e.target.checked)}
                       />
-                      <span>Sauvegarde chiffrée sur ce poste</span>
+                      <span>{t("Sauvegarde chiffrée sur ce poste")}</span>
                     </label>
                   )}
                   {protect && !stored && (
                     <div className="form-pair">
                       <label>
-                        Phrase de récupération
+                        {t("Phrase de récupération")}
                         <input
                           type="password"
                           required
@@ -318,7 +344,7 @@ export function Landing({
                         />
                       </label>
                       <label>
-                        Répéter
+                        {t("Répéter")}
                         <input
                           type="password"
                           required
@@ -333,22 +359,23 @@ export function Landing({
                   )}
                   {stored && (
                     <p className="hint warn">
-                      Une session est déjà enregistrée sur ce poste : celle-ci
-                      restera temporaire (exportez régulièrement).
+                      {t(
+                        "Une session est déjà enregistrée sur ce poste : celle-ci restera temporaire (exportez régulièrement).",
+                      )}
                     </p>
                   )}
                   <button className="primary large">
-                    Rejoindre la session
+                    {t("Rejoindre la session")}
                     <ArrowRight size={15} />
                   </button>
                 </form>
               ))}
           </div>
           <footer className="panel-foot">
-            <span>Fichier .orionaic, .orion, .json ou .csv</span>
+            <span>{t("Fichier .orionaic, .orion, .json ou .csv")}</span>
             <button onClick={onImport}>
               <FileUp size={14} />
-              Importer
+              {t("Importer")}
             </button>
           </footer>
           {(failure || error) && (
@@ -360,15 +387,16 @@ export function Landing({
       </main>
       <footer className="landing-foot">
         <span>
-          Logiciel indépendant. Sans affiliation ni homologation OFPP ou État de
-          Genève.
+          {t(
+            "Logiciel indépendant. Sans affiliation ni homologation OFPP ou État de Genève.",
+          )}
         </span>
         <span className="landing-foot-links">
           <a href={feedbackLink("Accueil")}>
-            Une idée, un besoin ? {CONTACT_EMAIL}
+            {t("Une idée, un besoin ? {email}", { email: CONTACT_EMAIL })}
           </a>
           <a href="/source/orion-aic-source.tar.gz" download>
-            Code source · AGPL-3.0
+            {t("Code source · AGPL-3.0")}
           </a>
         </span>
       </footer>

@@ -21,9 +21,11 @@ import {
 } from "../../shared/journal";
 import { thread } from "../../shared/workflow";
 import { columns } from "../../shared/interchange";
+import { enumLabel } from "../../shared/i18n/enums.ts";
 import { Modal } from "./Modal";
 import { openAssign, openDiffusion } from "../post/bus";
 import { EntryForm } from "./EntryForm";
+import { ENUM_COLUMNS, t, tn } from "./i18n.ts";
 export function EntryDetail({
   entry,
   author,
@@ -61,11 +63,11 @@ export function EntryDetail({
   return (
     <Modal
       wide
-      title={`${numberLabel(entry)} · ${f.type}`}
+      title={`${numberLabel(entry)} · ${enumLabel(f.type)}`}
       onClose={() => {
         if (
           !editing ||
-          window.confirm("Abandonner cette modification non enregistrée ?")
+          window.confirm(t("Abandonner cette modification non enregistrée ?"))
         )
           onClose();
       }}
@@ -86,16 +88,16 @@ export function EntryDetail({
             <span
               className={`tag ${f.priority === "Urgent" ? "crit solid" : f.priority === "Important" ? "warn solid" : ""}`}
             >
-              {f.priority}
+              {enumLabel(f.priority)}
             </span>
-            <span className="tag">{f.status}</span>
+            <span className="tag">{enumLabel(f.status)}</span>
             <span className="mono">{dateTime(f.happenedAt)}</span>
           </div>
           <p className="detail-message">{f.message}</p>
           <dl className="detail-grid">
             {columns
               .filter(
-                ([label, value]) =>
+                ([, value, key]) =>
                   value(entry) &&
                   ![
                     "N°",
@@ -105,15 +107,17 @@ export function EntryDetail({
                     "Type",
                     "Événement (ISO)",
                     "Identifiant",
-                  ].includes(label),
+                  ].includes(key),
               )
-              .map(([label, value]) => (
-                <div key={label}>
+              .map(([label, value, key]) => (
+                <div key={key}>
                   <dt>{label.replace(" (ISO)", "")}</dt>
                   <dd>
-                    {label.includes("(ISO)")
+                    {key.includes("(ISO)")
                       ? dateTime(value(entry))
-                      : value(entry)}
+                      : ENUM_COLUMNS.has(key)
+                        ? enumLabel(value(entry))
+                        : value(entry)}
                   </dd>
                 </div>
               ))}
@@ -121,17 +125,17 @@ export function EntryDetail({
           <div className="action-row">
             <button onClick={onPrint}>
               <FileText size={14} />
-              Fiche A4
+              {t("Fiche A4")}
             </button>
             {!readOnly && (
               <>
                 <button onClick={() => setEditing(true)}>
                   <Pencil size={14} />
-                  Modifier
+                  {t("Modifier")}
                 </button>
                 <button onClick={onReply}>
                   <Reply size={14} />
-                  Consigner une suite
+                  {t("Consigner une suite")}
                 </button>
                 <button
                   onClick={() =>
@@ -144,34 +148,36 @@ export function EntryDetail({
                   }
                 >
                   <Megaphone size={14} />
-                  Diffuser
+                  {t("Diffuser")}
                 </button>
                 <button
                   onClick={() => openAssign({ target: `entry:${entry.id}` })}
                 >
                   <UserCheck size={14} />
-                  Attribuer
+                  {t("Attribuer")}
                 </button>
                 {["À traiter", "En cours"].includes(f.status) && (
                   <button
                     onClick={() =>
                       onRevise(
                         { ...f, status: "Terminé" },
-                        "Suivi marqué terminé par l’opérateur",
+                        t("Suivi marqué terminé par l’opérateur"),
                       )
                     }
                   >
                     <Check size={14} />
-                    Terminer le suivi
+                    {t("Terminer le suivi")}
                   </button>
                 )}
                 {needsFollowUp(entry) && (
                   <button
                     onClick={() => onSnooze(15)}
-                    title="Reporter l’échéance de 15 minutes"
+                    title={t("Reporter l’échéance de 15 minutes")}
                   >
                     <AlarmClockPlus size={14} />
-                    {f.dueAt ? "Échéance +15 min" : "Échéance dans 15 min"}
+                    {f.dueAt
+                      ? t("Échéance +15 min")
+                      : t("Échéance dans 15 min")}
                   </button>
                 )}
               </>
@@ -181,8 +187,7 @@ export function EntryDetail({
               aria-expanded={history}
             >
               <History size={14} />
-              {entry.revisions.length} version
-              {entry.revisions.length > 1 ? "s" : ""}
+              {tn(entry.revisions.length, "{n} version", "{n} versions")}
             </button>
             {!readOnly && (
               <button
@@ -191,7 +196,7 @@ export function EntryDetail({
                 aria-expanded={deleting}
               >
                 <Trash2 size={14} />
-                Supprimer
+                {t("Supprimer")}
               </button>
             )}
           </div>
@@ -209,15 +214,15 @@ export function EntryDetail({
               }}
             >
               <p>
-                Supprimer définitivement {numberLabel(entry)} ? Son contenu et
-                son historique sont effacés ; restent au journal le numéro,
-                l’auteur, l’heure et le motif de la suppression. Pour une
-                information erronée, préférez « Modifier » ou le suivi « Annulé
-                ».
+                {t(
+                  "Supprimer définitivement {n} ? Son contenu et son historique sont effacés ; restent au journal le numéro, l’auteur, l’heure et le motif de la suppression. Pour une information erronée, préférez « Modifier » ou le suivi « Annulé ».",
+                  { n: numberLabel(entry) },
+                )}
               </p>
               <label>
                 <span>
-                  Motif de la suppression <span className="required">*</span>
+                  {t("Motif de la suppression")}{" "}
+                  <span className="required">*</span>
                 </span>
                 <input
                   required
@@ -226,7 +231,7 @@ export function EntryDetail({
                   maxLength={1000}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="Saisie en double, mauvais journal"
+                  placeholder={t("Saisie en double, mauvais journal")}
                 />
               </label>
               {error && (
@@ -236,11 +241,11 @@ export function EntryDetail({
               )}
               <div className="action-row">
                 <button type="button" onClick={() => setDeleting(false)}>
-                  Annuler
+                  {t("Annuler")}
                 </button>
                 <button className="danger solid" disabled={!reason.trim()}>
                   <Trash2 size={14} />
-                  Supprimer {numberLabel(entry)}
+                  {t("Supprimer {n}", { n: numberLabel(entry) })}
                 </button>
               </div>
             </form>
@@ -248,7 +253,7 @@ export function EntryDetail({
           {linked.length > 0 && (
             <section className="thread">
               <h3 className="section-label">
-                Fil · {linked.length} entrées liées
+                {t("Fil · {n} entrées liées", { n: linked.length })}
               </h3>
               <ol>
                 {linked.map((e) => {
@@ -263,9 +268,9 @@ export function EntryDetail({
                       >
                         <span className="mono">{numberLabel(e)}</span>
                         <span className="mono muted">{time(g.happenedAt)}</span>
-                        <span className="tag">{g.type}</span>
+                        <span className="tag">{enumLabel(g.type)}</span>
                         <span className="thread-text">{g.message}</span>
-                        <span className="state">{g.status}</span>
+                        <span className="state">{enumLabel(g.status)}</span>
                       </button>
                     </li>
                   );
@@ -275,11 +280,13 @@ export function EntryDetail({
           )}
           {history && (
             <section className="history">
-              <h3 className="label">Versions · auteurs déclarés, non signés</h3>
+              <h3 className="label">
+                {t("Versions · auteurs déclarés, non signés")}
+              </h3>
               {[...entry.revisions].reverse().map((revision, i) => (
                 <details key={revision.id}>
                   <summary>
-                    Version {entry.revisions.length - i} ·{" "}
+                    {t("Version {n}", { n: entry.revisions.length - i })} ·{" "}
                     {dateTime(revision.at)} · {revision.author}
                   </summary>
                   <p>{revision.reason}</p>
@@ -288,13 +295,15 @@ export function EntryDetail({
                       .filter(([, value]) => String(value))
                       .map(([key, value]) => (
                         <div key={key}>
-                          <dt>{fieldLabels[key] || key}</dt>
+                          <dt>{fieldLabel(key)}</dt>
                           <dd>
                             {key.endsWith("At")
                               ? dateTime(String(value))
                               : Array.isArray(value)
                                 ? value.join(", ")
-                                : value}
+                                : ENUM_FIELDS.has(key)
+                                  ? enumLabel(String(value))
+                                  : value}
                           </dd>
                         </div>
                       ))}
@@ -308,24 +317,56 @@ export function EntryDetail({
     </Modal>
   );
 }
-const fieldLabels: Record<string, string> = {
-  happenedAt: "Événement",
-  receivedAt: "Réception",
-  type: "Nature",
-  message: "Message",
-  source: "Émetteur",
-  recipient: "Destinataire",
-  channel: "Canal",
-  priority: "Priorité",
-  reliability: "Confirmation",
-  location: "Lieu",
-  coordinates: "Coordonnées",
-  action: "Mesure / décision",
-  assignee: "Responsable",
-  dueAt: "Échéance",
-  status: "Suivi",
-  resources: "Moyens / besoins",
-  reference: "Référence",
-  notes: "Observations",
-  tags: "Mots-clés",
-};
+/** Fields holding fixed schema values (shown with enumLabel). */
+const ENUM_FIELDS = new Set([
+  "type",
+  "channel",
+  "priority",
+  "reliability",
+  "status",
+]);
+/** Name of a field of an entry, in the language of the post. */
+function fieldLabel(key: string): string {
+  switch (key) {
+    case "happenedAt":
+      return t("Événement");
+    case "receivedAt":
+      return t("Réception");
+    case "type":
+      return t("Nature");
+    case "message":
+      return t("Message");
+    case "source":
+      return t("Émetteur");
+    case "recipient":
+      return t("Destinataire");
+    case "channel":
+      return t("Canal");
+    case "priority":
+      return t("Priorité");
+    case "reliability":
+      return t("Confirmation");
+    case "location":
+      return t("Lieu");
+    case "coordinates":
+      return t("Coordonnées");
+    case "action":
+      return t("Mesure / décision");
+    case "assignee":
+      return t("Responsable");
+    case "dueAt":
+      return t("Échéance");
+    case "status":
+      return t("Suivi");
+    case "resources":
+      return t("Moyens / besoins");
+    case "reference":
+      return t("Référence");
+    case "notes":
+      return t("Observations");
+    case "tags":
+      return t("Mots-clés");
+    default:
+      return key;
+  }
+}

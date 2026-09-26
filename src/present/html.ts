@@ -1,4 +1,6 @@
 import { esc, hexColor } from "./text.ts";
+import { locale } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 import {
   PAGE_H,
   PAGE_W,
@@ -143,7 +145,7 @@ export function writeHtml(
     })
     .join("");
   return `<!doctype html>
-<html lang="fr-CH">
+<html lang="${locale()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -182,7 +184,7 @@ body.idle #help{opacity:0}
 <body>
 <div id="deck"><div class="stage">${sections}</div></div>
 <div id="bar"></div>
-<div id="help">← → naviguer · F plein écran · N notes</div>
+<div id="help">${esc(t("← → naviguer · F plein écran · N notes"))}</div>
 <script>
 (function(){
 var slides=[].slice.call(document.querySelectorAll(".slide"));

@@ -47,6 +47,8 @@ import {
   personHue,
 } from "../../timeline/format";
 import { Figures } from "../../ui/Figures";
+import { useLang } from "../../i18n";
+import { modeLabel, t, tn } from "./i18n.ts";
 import "./trace.css";
 
 type Tab = "audit" | "compare" | "snapshots" | "exports" | "presentations";
@@ -70,11 +72,11 @@ export function Trace() {
           <>
             <button onClick={() => setViewAt(viewAt ?? Date.now())}>
               <History size={14} />
-              Remonter le temps
+              {t("Remonter le temps")}
             </button>
             <button onClick={() => setFreeze(true)}>
               <Snowflake size={14} />
-              Figer un point
+              {t("Figer un point")}
             </button>
             <button
               onClick={() =>
@@ -82,27 +84,34 @@ export function Trace() {
               }
             >
               <Download size={14} />
-              Exporter
+              {t("Exporter")}
             </button>
           </>
         }
       />
       <div className="trace-tabs">
         <Segmented
-          label="Vue"
+          label={t("Vue")}
           value={tab}
           onChange={setTab}
           options={[
-            { value: "audit", label: "Qui a fait quoi" },
-            { value: "compare", label: "Comparer" },
+            { value: "audit", label: t("Qui a fait quoi") },
+            { value: "compare", label: t("Comparer") },
             {
               value: "snapshots",
-              label: `Points figés · ${live.ops.snapshots.length}`,
+              label: t("Points figés · {n}", {
+                n: live.ops.snapshots.length,
+              }),
             },
-            { value: "exports", label: `Exports · ${live.ops.exports.length}` },
+            {
+              value: "exports",
+              label: t("Exports · {n}", { n: live.ops.exports.length }),
+            },
             {
               value: "presentations",
-              label: `Présentations · ${live.ops.presentations.length}`,
+              label: t("Présentations · {n}", {
+                n: live.ops.presentations.length,
+              }),
             },
           ]}
         />
@@ -162,6 +171,7 @@ const fold = (s: string) =>
 
 function Audit({ trail }: { trail: AuditItem[] }) {
   const { now, setViewAt } = useApp();
+  const lang = useLang();
   const [query, setQuery] = useState("");
   const [person, setPerson] = useState("");
   const [module, setModule] = useState<Module | "">("");
@@ -173,10 +183,13 @@ function Audit({ trail }: { trail: AuditItem[] }) {
   useEffect(() => setLimit(PAGE), [search, person, module, action, period]);
   const people = useMemo(() => {
     const counts = new Map<string, number>();
+    const unknown = t("Inconnu");
     for (const i of trail)
-      counts.set(i.by || "Inconnu", (counts.get(i.by || "Inconnu") ?? 0) + 1);
+      counts.set(i.by || unknown, (counts.get(i.by || unknown) ?? 0) + 1);
     return [...counts].sort((a, b) => b[1] - a[1]);
-  }, [trail]);
+    // lang: "Inconnu" is in the language of the post.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trail, lang]);
   const modules = useMemo(
     () => [...new Set(trail.map((i) => scopeInfo(i.scope).module))],
     [trail],
@@ -206,13 +219,13 @@ function Audit({ trail }: { trail: AuditItem[] }) {
   const filtered = useMemo(() => {
     const terms = fold(search).split(/\s+/).filter(Boolean);
     return trail.filter((i) => {
-      if (person && (i.by || "Inconnu") !== person) return false;
+      if (person && (i.by || t("Inconnu")) !== person) return false;
       if (module && scopeInfo(i.scope).module !== module) return false;
       if (action && i.action !== action) return false;
       if (since && Date.parse(i.at) < since) return false;
       if (!terms.length) return true;
       const hay = haystacks.get(i) ?? "";
-      return terms.every((t) => hay.includes(t));
+      return terms.every((term) => hay.includes(term));
     });
   }, [trail, haystacks, person, module, action, since, search]);
   const lastHour = trail.filter((i) => Date.parse(i.at) > now - HOUR).length;
@@ -226,17 +239,26 @@ function Audit({ trail }: { trail: AuditItem[] }) {
       else
         out.push({
           key,
-          label: `${day(item.at)} · ${time(item.at).slice(0, 2)} h`,
+          label: t("{day} · {hour} h", {
+            day: day(item.at),
+            hour: time(item.at).slice(0, 2),
+          }),
           items: [item],
         });
     }
     return out;
-  }, [filtered, limit]);
+    // lang: the labels of the hours are in the language of the post.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, limit, lang]);
   if (!trail.length)
     return (
-      <EmptyState icon={<History size={22} />} title="Aucun changement encore">
-        Dès qu’un élément est créé, modifié ou supprimé, son auteur, l’heure et
-        le détail apparaissent ici. Rien ne s’efface.
+      <EmptyState
+        icon={<History size={22} />}
+        title={t("Aucun changement encore")}
+      >
+        {t(
+          "Dès qu’un élément est créé, modifié ou supprimé, son auteur, l’heure et le détail apparaissent ici. Rien ne s’efface.",
+        )}
       </EmptyState>
     );
   return (
@@ -245,24 +267,27 @@ function Audit({ trail }: { trail: AuditItem[] }) {
         <div className="card trace-stats">
           <div className="stat">
             <strong>{trail.length}</strong>
-            <span>changements</span>
+            <span>{t("changements")}</span>
           </div>
           <div className="stat">
             <strong>{people.length}</strong>
-            <span>personnes</span>
+            <span>{t("personnes")}</span>
           </div>
           <div className="stat">
             <strong>{lastHour}</strong>
-            <span>dernière heure</span>
+            <span>{t("dernière heure")}</span>
           </div>
           <p className="muted">
-            Dernier : {trail[0].by || "—"} · {ago(trail[0].at, now)}
+            {t("Dernier : {by} · {ago}", {
+              by: trail[0].by || "—",
+              ago: ago(trail[0].at, now),
+            })}
           </p>
         </div>
         <div className="card">
           <div className="card-head">
             <Users size={15} />
-            <h3>Par personne</h3>
+            <h3>{t("Par personne")}</h3>
           </div>
           <ul className="trace-people">
             {people.map(([name, count]) => (
@@ -284,9 +309,9 @@ function Audit({ trail }: { trail: AuditItem[] }) {
           </ul>
         </div>
         <p className="muted trace-hint">
-          Les journaux d’avant cette version ne gardent que la création et la
-          dernière modification de chaque élément ; tout changement depuis est
-          tracé.
+          {t(
+            "Les journaux d’avant cette version ne gardent que la création et la dernière modification de chaque élément ; tout changement depuis est tracé.",
+          )}
         </p>
       </aside>
       <section className="trace-feed">
@@ -296,17 +321,17 @@ function Audit({ trail }: { trail: AuditItem[] }) {
             <input
               value={query}
               enterKeyHint="search"
-              placeholder="Personne, élément, valeur…"
-              aria-label="Rechercher dans l’historique"
+              placeholder={t("Personne, élément, valeur…")}
+              aria-label={t("Rechercher dans l’historique")}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <select
             value={module}
             onChange={(e) => setModule(e.target.value as Module | "")}
-            aria-label="Module"
+            aria-label={t("Module")}
           >
-            <option value="">Tous les modules</option>
+            <option value="">{t("Tous les modules")}</option>
             {modules.map((m) => (
               <option key={m} value={m}>
                 {moduleInfo(m).short}
@@ -316,27 +341,33 @@ function Audit({ trail }: { trail: AuditItem[] }) {
           <select
             value={action}
             onChange={(e) => setAction(e.target.value as ActionFilter)}
-            aria-label="Action"
+            aria-label={t("Action")}
           >
-            <option value="">Toutes les actions</option>
-            <option value="create">Créations</option>
-            <option value="update">Modifications</option>
-            <option value="remove">Suppressions</option>
+            <option value="">{t("Toutes les actions")}</option>
+            <option value="create">{t("Créations")}</option>
+            <option value="update">{t("Modifications")}</option>
+            <option value="remove">{t("Suppressions")}</option>
           </select>
           <Segmented
-            label="Période"
+            label={t("Période")}
             value={period}
             onChange={setPeriod}
             options={[
-              { value: "hour", label: "1 h" },
-              { value: "today", label: "Aujourd’hui" },
-              { value: "all", label: "Tout" },
+              { value: "hour", label: t("1 h") },
+              { value: "today", label: t("Aujourd’hui") },
+              { value: "all", label: t("Tout") },
             ]}
           />
         </div>
         <p className="muted trace-count">
-          {filtered.length} changement{filtered.length > 1 ? "s" : ""}
-          {person && ` de ${person}`}
+          {person
+            ? tn(
+                filtered.length,
+                "{n} changement de {person}",
+                "{n} changements de {person}",
+                { person },
+              )
+            : tn(filtered.length, "{n} changement", "{n} changements")}
           {(person || module || action || query || period !== "all") && (
             <button
               className="link"
@@ -348,7 +379,7 @@ function Audit({ trail }: { trail: AuditItem[] }) {
                 setPeriod("all");
               }}
             >
-              Tout afficher
+              {t("Tout afficher")}
             </button>
           )}
         </p>
@@ -372,11 +403,13 @@ function Audit({ trail }: { trail: AuditItem[] }) {
             className="trace-more"
             onClick={() => setLimit((n) => n + PAGE * 2)}
           >
-            Afficher plus ({filtered.length - limit} restants)
+            {t("Afficher plus ({n} restants)", { n: filtered.length - limit })}
           </button>
         )}
         {!filtered.length && (
-          <p className="muted">Aucun changement ne correspond aux filtres.</p>
+          <p className="muted">
+            {t("Aucun changement ne correspond aux filtres.")}
+          </p>
         )}
       </section>
     </div>
@@ -428,27 +461,27 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
     modified: diffs.filter((d) => d.kind === "modified").length,
     removed: diffs.filter((d) => d.kind === "removed").length,
   };
-  const pickTime = (value: string, set: (t: number) => void) => {
-    const t = zurichInputMs(value);
-    if (!Number.isNaN(t)) set(t);
+  const pickTime = (value: string, set: (ms: number) => void) => {
+    const ms = zurichInputMs(value);
+    if (!Number.isNaN(ms)) set(ms);
   };
   const presets: { label: string; run: () => void }[] = [
     {
-      label: "Dernière heure",
+      label: t("Dernière heure"),
       run: () => {
         setFrom(Date.now() - HOUR);
         setTo({ kind: "now" });
       },
     },
     {
-      label: "4 dernières heures",
+      label: t("4 dernières heures"),
       run: () => {
         setFrom(Date.now() - 4 * HOUR);
         setTo({ kind: "now" });
       },
     },
     {
-      label: "Depuis le début",
+      label: t("Depuis le début"),
       run: () => {
         setFrom(Date.parse(live.createdAt) - 1);
         setTo({ kind: "now" });
@@ -457,7 +490,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
   ];
   if (snapshots[0])
     presets.unshift({
-      label: `Depuis « ${snapshots[0].title} »`,
+      label: t("Depuis « {title} »", { title: snapshots[0].title }),
       run: () => {
         setFrom(Date.parse(snapshots[0].at));
         setTo({ kind: "now" });
@@ -467,22 +500,34 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
     print({
       kind: "tables",
       journal: live,
-      title: "Comparaison de deux moments",
-      extra: `Du ${dateTime(new Date(from).toISOString())} au ${to.kind === "now" ? "état actuel" : dateTime(new Date(to.at).toISOString())} · ${diffs.length} différence(s) · par ${workspace.author}`,
+      title: t("Comparaison de deux moments"),
+      extra:
+        to.kind === "now"
+          ? t("Du {from} au état actuel · {n} différence(s) · par {author}", {
+              from: dateTime(new Date(from).toISOString()),
+              n: diffs.length,
+              author: workspace.author,
+            })
+          : t("Du {from} au {to} · {n} différence(s) · par {author}", {
+              from: dateTime(new Date(from).toISOString()),
+              to: dateTime(new Date(to.at).toISOString()),
+              n: diffs.length,
+              author: workspace.author,
+            }),
       landscape: true,
-      name: "comparaison",
+      name: t("comparaison"),
       tables: byModule.map(([m, list]) => ({
         id: m,
         title: moduleInfo(m).label,
-        caption: `${list.length} différence(s)`,
-        head: ["Changement", "Élément", "Détail"],
+        caption: t("{n} différence(s)", { n: list.length }),
+        head: [t("Changement"), t("Élément"), t("Détail")],
         widths: [30, 80, 159],
         body: list.map((d) => [
           d.kind === "added"
-            ? "Ajouté"
+            ? t("Ajouté")
             : d.kind === "removed"
-              ? "Supprimé"
-              : "Modifié",
+              ? t("Supprimé")
+              : t("Modifié"),
           `${scopeInfo(d.scope).label} · ${d.title}`,
           d.fields
             .map(
@@ -498,7 +543,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
     <div className="compare">
       <div className="card compare-bounds">
         <div className="compare-bound">
-          <span className="label">Avant</span>
+          <span className="label">{t("Avant")}</span>
           <input
             type="datetime-local"
             value={localValue(from)}
@@ -511,9 +556,9 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
               onChange={(e) =>
                 e.target.value && setFrom(Number(e.target.value))
               }
-              aria-label="Point figé de départ"
+              aria-label={t("Point figé de départ")}
             >
-              <option value="">Point figé…</option>
+              <option value="">{t("Point figé…")}</option>
               {snapshots.map((s) => (
                 <option key={s.id} value={Date.parse(s.at)}>
                   {s.title} · {dateTime(s.at)}
@@ -524,16 +569,16 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
         </div>
         <GitCompareArrows size={22} className="compare-arrow" />
         <div className="compare-bound">
-          <span className="label">Après</span>
+          <span className="label">{t("Après")}</span>
           <Segmented
-            label="Fin de la comparaison"
+            label={t("Fin de la comparaison")}
             value={to.kind}
             onChange={(k) =>
               setTo(k === "now" ? { kind: "now" } : { kind: "at", at: now })
             }
             options={[
-              { value: "now", label: "Maintenant" },
-              { value: "at", label: "Autre moment" },
+              { value: "now", label: t("Maintenant") },
+              { value: "at", label: t("Autre moment") },
             ]}
           />
           {to.kind === "at" && (
@@ -542,7 +587,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
               value={localValue(to.at)}
               max={localValue(Date.now())}
               onChange={(e) =>
-                pickTime(e.target.value, (t) => setTo({ kind: "at", at: t }))
+                pickTime(e.target.value, (ms) => setTo({ kind: "at", at: ms }))
               }
             />
           )}
@@ -557,22 +602,29 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
       </div>
       <Figures
         className="compare-summary"
-        label="Résumé de la comparaison"
+        label={t("Résumé de la comparaison")}
         items={[
           {
-            label: `ajouté${counts.added > 1 ? "s" : ""}`,
+            label: tn(counts.added, "ajouté", "ajoutés"),
             value: counts.added,
           },
           {
-            label: `modifié${counts.modified > 1 ? "s" : ""}`,
+            label: tn(counts.modified, "modifié", "modifiés"),
             value: counts.modified,
           },
           {
-            label: `supprimé${counts.removed > 1 ? "s" : ""}`,
+            label: tn(counts.removed, "supprimé", "supprimés"),
             value: counts.removed,
           },
           {
-            label: `personne${authors.length > 1 ? "s" : ""} : ${authors.slice(0, 3).join(", ") || "—"}${authors.length > 3 ? "…" : ""}`,
+            label: tn(
+              authors.length,
+              "personne : {names}",
+              "personnes : {names}",
+              {
+                names: `${authors.slice(0, 3).join(", ") || "—"}${authors.length > 3 ? "…" : ""}`,
+              },
+            ),
             value: authors.length,
             hint: authors.join(", "),
           },
@@ -580,20 +632,20 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
       />
       <div className="compare-actions">
         <button onClick={() => setMaps((v) => !v)} aria-pressed={maps}>
-          Cartes côte à côte
+          {t("Cartes côte à côte")}
         </button>
         <button onClick={printComparison} disabled={!diffs.length}>
           <Printer size={14} />
-          Imprimer la comparaison
+          {t("Imprimer la comparaison")}
         </button>
       </div>
       {maps && <MapsSideBySide before={before} after={after} />}
       {!diffs.length ? (
         <EmptyState
           icon={<GitCompareArrows size={22} />}
-          title="Aucune différence"
+          title={t("Aucune différence")}
         >
-          Rien n’a changé entre ces deux moments.
+          {t("Rien n’a changé entre ces deux moments.")}
         </EmptyState>
       ) : (
         <div className="compare-groups stagger">
@@ -611,10 +663,10 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
                     <li key={`${d.scope}:${d.target}`} className={d.kind}>
                       <span className={`compare-tag ${d.kind}`}>
                         {d.kind === "added"
-                          ? "Ajouté"
+                          ? t("Ajouté")
                           : d.kind === "removed"
-                            ? "Supprimé"
-                            : "Modifié"}
+                            ? t("Supprimé")
+                            : t("Modifié")}
                       </span>
                       <div>
                         <button
@@ -653,7 +705,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
   );
 }
 
-const localValue = (t: number) => toZurichInput(t);
+const localValue = (ms: number) => toZurichInput(ms);
 
 function MapsSideBySide({
   before,
@@ -692,16 +744,16 @@ function MapsSideBySide({
       {error ? (
         <p className="error">{error}</p>
       ) : !images ? (
-        <p className="muted">Préparation des cartes…</p>
+        <p className="muted">{t("Préparation des cartes…")}</p>
       ) : (
         <>
           <figure>
-            <img src={images[0]} alt="Carte avant" />
-            <figcaption>Avant</figcaption>
+            <img src={images[0]} alt={t("Carte avant")} />
+            <figcaption>{t("Avant")}</figcaption>
           </figure>
           <figure>
-            <img src={images[1]} alt="Carte après" />
-            <figcaption>Après</figcaption>
+            <img src={images[1]} alt={t("Carte après")} />
+            <figcaption>{t("Après")}</figcaption>
           </figure>
         </>
       )}
@@ -727,16 +779,17 @@ function Snapshots({
     return (
       <EmptyState
         icon={<Snowflake size={22} />}
-        title="Aucun point de situation figé"
+        title={t("Aucun point de situation figé")}
         actions={
           <button className="primary" onClick={onFreeze}>
             <Snowflake size={14} />
-            Figer maintenant
+            {t("Figer maintenant")}
           </button>
         }
       >
-        Figez un moment (par exemple juste avant un rapport de conduite) pour le
-        retrouver en un clic : revoir, comparer, présenter, exporter.
+        {t(
+          "Figez un moment (par exemple juste avant un rapport de conduite) pour le retrouver en un clic : revoir, comparer, présenter, exporter.",
+        )}
       </EmptyState>
     );
   return (
@@ -749,22 +802,24 @@ function Snapshots({
           </div>
           <p className="mono">{dateTime(s.at)}</p>
           {s.notes && <p className="muted">{s.notes}</p>}
-          <p className="meta-line muted">Figé par {s.by || "—"}</p>
+          <p className="meta-line muted">
+            {t("Figé par {by}", { by: s.by || "—" })}
+          </p>
           <div className="snapshot-actions">
             <button
               className="small"
               onClick={() => setViewAt(Date.parse(s.at))}
             >
               <Clock3 size={12} />
-              Revoir
+              {t("Revoir")}
             </button>
             <button
               className="small"
               onClick={() => onCompare(Date.parse(s.at))}
-              title="Voir ce qui a changé depuis"
+              title={t("Voir ce qui a changé depuis")}
             >
               <GitCompareArrows size={12} />
-              Comparer
+              {t("Comparer")}
             </button>
             <button
               className="small"
@@ -776,7 +831,7 @@ function Snapshots({
               }
             >
               <MonitorPlay size={12} />
-              Présenter
+              {t("Présenter")}
             </button>
             <button
               className="small"
@@ -785,13 +840,17 @@ function Snapshots({
               }
             >
               <Download size={12} />
-              Exporter
+              {t("Exporter")}
             </button>
             <button
               className="icon-button"
-              aria-label={`Supprimer ${s.title}`}
+              aria-label={t("Supprimer {title}", { title: s.title })}
               onClick={() => {
-                if (!window.confirm(`Supprimer le point « ${s.title} » ?`))
+                if (
+                  !window.confirm(
+                    t("Supprimer le point « {title} » ?", { title: s.title }),
+                  )
+                )
                   return;
                 try {
                   updateOps((ops) => removeRecords(ops, [s.id]));
@@ -813,8 +872,8 @@ function Snapshots({
 
 const size = (bytes: number) =>
   bytes > 1_048_576
-    ? `${(bytes / 1_048_576).toFixed(1)} Mo`
-    : `${Math.max(1, Math.round(bytes / 1024))} ko`;
+    ? t("{n} Mo", { n: (bytes / 1_048_576).toFixed(1) })
+    : t("{n} ko", { n: Math.max(1, Math.round(bytes / 1024)) });
 
 function Exports() {
   const { live, exportCenter } = useApp();
@@ -827,10 +886,10 @@ function Exports() {
       <section className="card">
         <div className="card-head">
           <FileCheck2 size={15} />
-          <h3>Registre des exports</h3>
+          <h3>{t("Registre des exports")}</h3>
           <button className="small" onClick={() => exportCenter()}>
             <Download size={12} />
-            Nouvel export
+            {t("Nouvel export")}
           </button>
         </div>
         {list.length ? (
@@ -838,12 +897,12 @@ function Exports() {
             <table className="grid dense">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Par</th>
-                  <th>Format</th>
-                  <th>Contenu</th>
-                  <th>Fichier</th>
-                  <th>Empreinte</th>
+                  <th>{t("Date")}</th>
+                  <th>{t("Par")}</th>
+                  <th>{t("Format")}</th>
+                  <th>{t("Contenu")}</th>
+                  <th>{t("Fichier")}</th>
+                  <th>{t("Empreinte")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -867,15 +926,16 @@ function Exports() {
           </div>
         ) : (
           <p className="muted">
-            Chaque fichier exporté est inscrit ici avec son empreinte : on peut
-            ensuite vérifier qu’un document reçu est authentique et intact.
+            {t(
+              "Chaque fichier exporté est inscrit ici avec son empreinte : on peut ensuite vérifier qu’un document reçu est authentique et intact.",
+            )}
           </p>
         )}
       </section>
       <section className="card">
         <div className="card-head">
           <FileCheck2 size={15} />
-          <h3>Vérifier un document</h3>
+          <h3>{t("Vérifier un document")}</h3>
         </div>
         <VerifyPanel />
       </section>
@@ -896,10 +956,10 @@ function Presentations() {
     <section className="card">
       <div className="card-head">
         <MonitorPlay size={15} />
-        <h3>Présentations données</h3>
+        <h3>{t("Présentations données")}</h3>
         <button className="small" onClick={() => present("present")}>
           <MonitorPlay size={12} />
-          Présenter
+          {t("Présenter")}
         </button>
       </div>
       {list.length ? (
@@ -907,12 +967,12 @@ function Presentations() {
           <table className="grid dense">
             <thead>
               <tr>
-                <th>Début</th>
-                <th>Fin</th>
-                <th>Présenté par</th>
-                <th>Public</th>
-                <th>Version</th>
-                <th>Diapositives</th>
+                <th>{t("Début")}</th>
+                <th>{t("Fin")}</th>
+                <th>{t("Présenté par")}</th>
+                <th>{t("Public")}</th>
+                <th>{t("Version")}</th>
+                <th>{t("Diapositives")}</th>
               </tr>
             </thead>
             <tbody>
@@ -922,9 +982,9 @@ function Presentations() {
                   <td className="mono">{p.endedAt ? time(p.endedAt) : "—"}</td>
                   <td>{p.presenter || p.by || "—"}</td>
                   <td>{p.audience || "—"}</td>
-                  <td>{p.viewAt ? dateTime(p.viewAt) : "État du moment"}</td>
+                  <td>{p.viewAt ? dateTime(p.viewAt) : t("État du moment")}</td>
                   <td>
-                    {p.slides} · {p.mode}
+                    {p.slides} · {modeLabel(p.mode)}
                   </td>
                 </tr>
               ))}
@@ -933,8 +993,9 @@ function Presentations() {
         </div>
       ) : (
         <p className="muted">
-          Chaque présentation (mode présentation ou affichage mural) est
-          inscrite ici : qui a présenté, à qui, quand et quelle version.
+          {t(
+            "Chaque présentation (mode présentation ou affichage mural) est inscrite ici : qui a présenté, à qui, quand et quelle version.",
+          )}
         </p>
       )}
     </section>

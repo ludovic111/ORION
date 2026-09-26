@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from "react";
+import { t } from "./i18n.ts";
 
 /**
  * Stack of the overlays open on screen (dialogs, side sheets, ⌘K palette,
@@ -170,7 +171,7 @@ export function useLayer(
         if (
           !root ||
           (root.contains(active) &&
-            !active?.matches('.icon-button[aria-label="Fermer"]'))
+            !active?.matches(`.icon-button[aria-label="${t("Fermer")}"]`))
         )
           return;
         const wanted =
@@ -220,9 +221,9 @@ export function useLayer(
 }
 
 /** Message shown before closing a form whose changes are not saved. */
-export const DISCARD_CHANGES =
-  "Des modifications ne sont pas enregistrées. Fermer sans enregistrer ?";
+export const discardChangesText = () =>
+  t("Des modifications ne sont pas enregistrées. Fermer sans enregistrer ?");
 
 /** Asks before discarding unsaved changes; true when closing is fine. */
 export const confirmDiscard = (dirty: boolean | undefined) =>
-  !dirty || window.confirm(DISCARD_CHANGES);
+  !dirty || window.confirm(discardChangesText());

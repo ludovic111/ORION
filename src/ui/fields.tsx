@@ -6,8 +6,10 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { enumLabel } from "../../shared/i18n/enums.ts";
 import { Clock3, Plus, X } from "lucide-react";
 import { fromZurichInput, toZurichInput } from "../../shared/time";
+import { t } from "./i18n.ts";
 
 /** `datetime-local` value of an ISO time, in Zurich time (see shared/time). */
 export const localInput = (iso: string) => toZurichInput(iso);
@@ -157,7 +159,7 @@ export function ChoiceField<T extends string>({
         {options.map((o) =>
           typeof o === "string" ? (
             <option key={o} value={o}>
-              {o}
+              {enumLabel(o)}
             </option>
           ) : (
             <option key={o.value} value={o.value}>
@@ -281,7 +283,7 @@ export function ComboField({
                 {o}
               </button>
             ))}
-            <small>Texte libre accepté</small>
+            <small>{t("Texte libre accepté")}</small>
           </div>
         )}
       </div>
@@ -331,8 +333,8 @@ export function DateTimeField({
         <button
           type="button"
           className="icon-button"
-          title="Maintenant"
-          aria-label="Maintenant"
+          title={t("Maintenant")}
+          aria-label={t("Maintenant")}
           onClick={(e) => {
             e.preventDefault();
             onChange(new Date().toISOString());
@@ -344,8 +346,8 @@ export function DateTimeField({
           <button
             type="button"
             className="icon-button"
-            title="Effacer"
-            aria-label="Effacer"
+            title={t("Effacer")}
+            aria-label={t("Effacer")}
             onClick={(e) => {
               e.preventDefault();
               onChange("");
@@ -397,8 +399,8 @@ export function TagsField({
 }: Base & { value: string[]; onChange: (value: string[]) => void }) {
   const [tag, setTag] = useState("");
   const add = () => {
-    const t = tag.trim();
-    if (t && value.length < 20) onChange([...new Set([...value, t])]);
+    const text = tag.trim();
+    if (text && value.length < 20) onChange([...new Set([...value, text])]);
     setTag("");
   };
   return (
@@ -408,7 +410,7 @@ export function TagsField({
         <input
           value={tag}
           maxLength={60}
-          placeholder="Entrée pour ajouter"
+          placeholder={t("Entrée pour ajouter")}
           onChange={(e) => setTag(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -420,7 +422,7 @@ export function TagsField({
         <button
           type="button"
           className="icon-button"
-          aria-label="Ajouter"
+          aria-label={t("Ajouter")}
           onClick={add}
         >
           <Plus size={16} />
@@ -428,16 +430,16 @@ export function TagsField({
       </div>
       {value.length > 0 && (
         <div className="tag-list">
-          {value.map((t) => (
+          {value.map((item) => (
             <button
               type="button"
               className="tag"
-              key={t}
-              onClick={() => onChange(value.filter((v) => v !== t))}
+              key={item}
+              onClick={() => onChange(value.filter((v) => v !== item))}
             >
-              {t}
+              {item}
               <X size={12} />
-              <span className="sr-only">Retirer</span>
+              <span className="sr-only">{t("Retirer")}</span>
             </button>
           ))}
         </div>

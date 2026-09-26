@@ -10,6 +10,7 @@ import {
 import { useApp } from "../app/context";
 import { Sheet } from "../ui/Sheet";
 import { AuditEmpty, AuditRow } from "./AuditRow";
+import { t, tn } from "./i18n.ts";
 
 /** Who changed a record, when, and every version, newest first. */
 export function TraceSheet({
@@ -28,14 +29,17 @@ export function TraceSheet({
   function restore(item: AuditItem) {
     if (
       !window.confirm(
-        `Restaurer la version du ${dateTime(item.at)} ? L’état actuel reste dans l’historique.`,
+        t(
+          "Restaurer la version du {date} ? L’état actuel reste dans l’historique.",
+          { date: dateTime(item.at) },
+        ),
       )
     )
       return;
     try {
       updateJournal(restoreState(live, item, author));
       toast(
-        "Version restaurée. L’historique garde la trace de la restauration.",
+        t("Version restaurée. L’historique garde la trace de la restauration."),
       );
     } catch (err) {
       toast((err as Error).message);
@@ -55,37 +59,38 @@ export function TraceSheet({
       eyebrow={
         <>
           <History size={12} />
-          Historique · {scopeInfo(latest?.scope ?? "").label}
+          {t("Historique")} · {scopeInfo(latest?.scope ?? "").label}
         </>
       }
-      title={latest?.title ?? "Historique"}
+      title={latest?.title ?? t("Historique")}
     >
       {trail.length ? (
         <>
           <div className="trace-summary">
             <div>
-              <span className="label">Créé</span>
+              <span className="label">{t("Créé")}</span>
               <strong>{first.by || "—"}</strong>
               <small className="mono">{dateTime(first.at)}</small>
             </div>
             <div>
-              <span className="label">Dernier changement</span>
+              <span className="label">{t("Dernier changement")}</span>
               <strong>{latest.by || "—"}</strong>
               <small className="mono">{dateTime(latest.at)}</small>
             </div>
             <div>
-              <span className="label">Versions</span>
+              <span className="label">{t("Versions")}</span>
               <strong>{trail.length}</strong>
               <small>
-                {people.length} personne{people.length > 1 ? "s" : ""}
+                {tn(people.length, "{n} personne", "{n} personnes")}
               </small>
             </div>
           </div>
           {latest.action === "remove" && (
             <p className="banner warn" role="status">
-              Cet élément a été supprimé le {dateTime(latest.at)} par{" "}
-              {latest.by || "—"}. Ses versions restent consultables et
-              restaurables.
+              {t(
+                "Cet élément a été supprimé le {date} par {by}. Ses versions restent consultables et restaurables.",
+                { date: dateTime(latest.at), by: latest.by || "—" },
+              )}
             </p>
           )}
           <ol className="audit-list">
@@ -106,7 +111,11 @@ export function TraceSheet({
           </ol>
         </>
       ) : (
-        <AuditEmpty text="Aucun changement enregistré pour cet élément depuis la mise en place de l’historique. Sa création et sa dernière modification restent indiquées sur sa fiche." />
+        <AuditEmpty
+          text={t(
+            "Aucun changement enregistré pour cet élément depuis la mise en place de l’historique. Sa création et sa dernière modification restent indiquées sur sa fiche.",
+          )}
+        />
       )}
     </Sheet>
   );

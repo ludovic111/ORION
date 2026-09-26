@@ -1,5 +1,6 @@
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { esc, hexColor } from "./text.ts";
+import { locale } from "../../shared/i18n/core.ts";
 import {
   PAGE_H,
   PAGE_W,
@@ -26,6 +27,11 @@ export type OdpMeta = {
 };
 
 const PAGE_CM = 33.867;
+/** Language of the texts (the language of the post: "fr" / "CH"). */
+const language = () => {
+  const [lang, country] = locale().split("-");
+  return ` fo:language="${lang}" fo:country="${country}"`;
+};
 const cm = (px: number) => `${((px * PAGE_CM) / PAGE_W).toFixed(3)}cm`;
 const pt = (px: number) => `${(px / 2).toFixed(1)}pt`;
 const secs = (ms: number) =>
@@ -153,7 +159,7 @@ export function writeOdp(
         const tStyle = styles.get(
           "T",
           "text",
-          `<style:text-properties fo:font-family="Arial" style:font-family-generic="swiss" fo:font-size="${pt(run.size ?? para.size)}" fo:font-weight="${(run.bold ?? para.bold) ? "bold" : "normal"}" fo:color="${hex(colour)}"${para.spacing ? ` fo:letter-spacing="${cm(para.spacing)}"` : ""} fo:language="fr" fo:country="CH"/>`,
+          `<style:text-properties fo:font-family="Arial" style:font-family-generic="swiss" fo:font-size="${pt(run.size ?? para.size)}" fo:font-weight="${(run.bold ?? para.bold) ? "bold" : "normal"}" fo:color="${hex(colour)}"${para.spacing ? ` fo:letter-spacing="${cm(para.spacing)}"` : ""} ${language()}/>`,
         );
         return run.text
           .split("\n")
@@ -296,12 +302,12 @@ export function writeOdp(
 
   const content = `${HEAD}<office:document-content ${NS} office:version="1.3"><office:automatic-styles>${styles.xml.join("")}</office:automatic-styles><office:body><office:presentation>${pages.join("")}<presentation:settings presentation:mouse-visible="true"/></office:presentation></office:body></office:document-content>`;
 
-  const stylesXml = `${HEAD}<office:document-styles ${NS} office:version="1.3"><office:styles><style:default-style style:family="graphic"><style:graphic-properties draw:shadow="hidden"/><style:paragraph-properties fo:line-height="100%"/><style:text-properties fo:font-family="Arial" style:font-family-generic="swiss" fo:font-size="18pt" fo:language="fr" fo:country="CH"/></style:default-style><style:presentation-page-layout style:name="AL0T0"/></office:styles><office:automatic-styles><style:page-layout style:name="PM1"><style:page-layout-properties fo:margin-top="0cm" fo:margin-bottom="0cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:page-width="${PAGE_CM}cm" fo:page-height="${cm(PAGE_H)}" style:print-orientation="landscape"/></style:page-layout><style:page-layout style:name="PM2"><style:page-layout-properties fo:margin-top="0cm" fo:margin-bottom="0cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:page-width="21cm" fo:page-height="29.7cm" style:print-orientation="portrait"/></style:page-layout><style:style style:name="Mdp1" style:family="drawing-page"><style:drawing-page-properties draw:fill="solid" draw:fill-color="${hex(p.bg)}" draw:background-size="full"/></style:style></office:automatic-styles><office:master-styles><style:master-page style:name="Default" style:page-layout-name="PM1" draw:style-name="Mdp1"><presentation:notes style:page-layout-name="PM2"><draw:page-thumbnail svg:width="17cm" svg:height="9.563cm" svg:x="2cm" svg:y="2cm" presentation:class="page"/><draw:frame svg:width="17cm" svg:height="14cm" svg:x="2cm" svg:y="13cm" presentation:class="notes" presentation:placeholder="true"><draw:text-box/></draw:frame></presentation:notes></style:master-page></office:master-styles></office:document-styles>`;
+  const stylesXml = `${HEAD}<office:document-styles ${NS} office:version="1.3"><office:styles><style:default-style style:family="graphic"><style:graphic-properties draw:shadow="hidden"/><style:paragraph-properties fo:line-height="100%"/><style:text-properties fo:font-family="Arial" style:font-family-generic="swiss" fo:font-size="18pt"${language()}/></style:default-style><style:presentation-page-layout style:name="AL0T0"/></office:styles><office:automatic-styles><style:page-layout style:name="PM1"><style:page-layout-properties fo:margin-top="0cm" fo:margin-bottom="0cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:page-width="${PAGE_CM}cm" fo:page-height="${cm(PAGE_H)}" style:print-orientation="landscape"/></style:page-layout><style:page-layout style:name="PM2"><style:page-layout-properties fo:margin-top="0cm" fo:margin-bottom="0cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:page-width="21cm" fo:page-height="29.7cm" style:print-orientation="portrait"/></style:page-layout><style:style style:name="Mdp1" style:family="drawing-page"><style:drawing-page-properties draw:fill="solid" draw:fill-color="${hex(p.bg)}" draw:background-size="full"/></style:style></office:automatic-styles><office:master-styles><style:master-page style:name="Default" style:page-layout-name="PM1" draw:style-name="Mdp1"><presentation:notes style:page-layout-name="PM2"><draw:page-thumbnail svg:width="17cm" svg:height="9.563cm" svg:x="2cm" svg:y="2cm" presentation:class="page"/><draw:frame svg:width="17cm" svg:height="14cm" svg:x="2cm" svg:y="13cm" presentation:class="notes" presentation:placeholder="true"><draw:text-box/></draw:frame></presentation:notes></style:master-page></office:master-styles></office:document-styles>`;
 
   const created = (meta.created ?? new Date())
     .toISOString()
     .replace(/\.\d{3}Z$/, "");
-  const metaXml = `${HEAD}<office:document-meta ${NS} office:version="1.3"><office:meta><meta:generator>orion aic</meta:generator><dc:title>${esc(meta.title)}</dc:title><meta:initial-creator>${esc(meta.author)}</meta:initial-creator><dc:creator>${esc(meta.author)}</dc:creator><meta:creation-date>${created}</meta:creation-date><dc:date>${created}</dc:date><dc:language>fr-CH</dc:language></office:meta></office:document-meta>`;
+  const metaXml = `${HEAD}<office:document-meta ${NS} office:version="1.3"><office:meta><meta:generator>orion aic</meta:generator><dc:title>${esc(meta.title)}</dc:title><meta:initial-creator>${esc(meta.author)}</meta:initial-creator><dc:creator>${esc(meta.author)}</dc:creator><meta:creation-date>${created}</meta:creation-date><dc:date>${created}</dc:date><dc:language>${locale()}</dc:language></office:meta></office:document-meta>`;
 
   const manifest = `${HEAD}<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.presentation"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>${[
     ...pictures.values(),

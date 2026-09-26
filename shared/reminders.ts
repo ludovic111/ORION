@@ -1,5 +1,7 @@
 import type { AgendaItem, ExportLog, Ops } from "./ops.ts";
 import type { Reminder, ReminderAction } from "./conduct-schemas.ts";
+import { formatTime } from "./i18n/core.ts";
+import { t as tr } from "./i18n/reminders.ts";
 
 // Export and print reminders, scheduled in the application only (no
 // server): "every 2 h, export the archive", "30 min before each rapport de
@@ -10,17 +12,27 @@ import type { Reminder, ReminderAction } from "./conduct-schemas.ts";
 const MINUTE = 60_000;
 
 export const ACTION_LABEL: Record<ReminderAction, string> = {
-  export: "Exporter l’archive",
-  print: "Imprimer la situation",
-  point: "Préparer le point de situation",
-  other: "Autre",
+  get export() {
+    return tr("Exporter l’archive");
+  },
+  get print() {
+    return tr("Imprimer la situation");
+  },
+  get point() {
+    return tr("Préparer le point de situation");
+  },
+  get other() {
+    return tr("Autre");
+  },
 };
 
 /** Meetings counted as reports: kind or title says "rapport". */
 export const isReport = (item: Pick<AgendaItem, "kind" | "title">) =>
   /rapport/i.test(`${item.kind} ${item.title}`);
 
-const printed = (e: Pick<ExportLog, "format">) => /^impression/i.test(e.format);
+// "Impression (HTML)" (also a log written in German or Italian).
+const printed = (e: Pick<ExportLog, "format">) =>
+  /^(impression|druck|stampa)/i.test(e.format);
 
 /** An export of the log counts for the reminder. */
 export function matches(
@@ -54,12 +66,7 @@ export function doneSince(
   );
 }
 
-const hhmm = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fr-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const hhmm = (ms: number) => formatTime(ms);
 
 /** Last periodic due time at or before `at` (null before the first one). */
 export function lastPeriodic(reminder: Reminder, at: number): number | null {
@@ -83,7 +90,10 @@ export function dueReminders(
       out.push({
         reminder: r,
         dueAt: periodic,
-        reason: `toutes les ${r.every >= 60 && r.every % 60 === 0 ? `${r.every / 60} h` : `${r.every} min`}`,
+        reason:
+          r.every >= 60 && r.every % 60 === 0
+            ? tr("toutes les {n} h", { n: r.every / 60 })
+            : tr("toutes les {n} min", { n: r.every }),
         agendaId: "",
       });
     if (r.before)
@@ -97,7 +107,10 @@ export function dueReminders(
         out.push({
           reminder: r,
           dueAt: due,
-          reason: `avant « ${item.title} » de ${hhmm(start)}`,
+          reason: tr("avant « {title} » de {time}", {
+            title: item.title,
+            time: hhmm(start),
+          }),
           agendaId: item.id,
         });
       }
@@ -134,22 +147,31 @@ export const STANDARD_REMINDERS: Pick<
   Reminder,
   "title" | "action" | "every" | "before" | "notes"
 >[] = [
+  // Written into the journal in the language of the post that adds them.
   {
-    title: "Exporter l’archive chiffrée",
+    get title() {
+      return tr("Exporter l’archive chiffrée");
+    },
     action: "export",
     every: 120,
     before: 0,
-    notes: "Une archive .orionaic à jour sur une clé ou un autre poste.",
+    get notes() {
+      return tr("Une archive .orionaic à jour sur une clé ou un autre poste.");
+    },
   },
   {
-    title: "Imprimer la situation pour le rapport",
+    get title() {
+      return tr("Imprimer la situation pour le rapport");
+    },
     action: "print",
     every: 0,
     before: 30,
     notes: "",
   },
   {
-    title: "Préparer le point de situation",
+    get title() {
+      return tr("Préparer le point de situation");
+    },
     action: "point",
     every: 0,
     before: 45,

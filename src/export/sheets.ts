@@ -2,6 +2,8 @@ import { xml } from "../../shared/interchange.ts";
 import { XML_HEAD, zip } from "./bytes.ts";
 import { coverFacts, tablesOf, type Column, type Dossier } from "./dossier.ts";
 import type { DocumentStamp } from "./stamp.ts";
+import { locale } from "../../shared/i18n/core.ts";
+import { t } from "./i18n.ts";
 
 // Spreadsheets: Excel (.xlsx, ECMA-376) and OpenDocument (.ods). One sheet
 // per table of the dossier plus a cover sheet with the metadata and the
@@ -52,8 +54,9 @@ const clean = (value: string) =>
 export function sheetNames(wanted: string[]): string[] {
   const used = new Set<string>();
   return wanted.map((w) => {
-    let base = clean(cut(clean(w), 31)) || "Feuille";
-    if (base.toLowerCase() === "history") base = "Historique";
+    let base = clean(cut(clean(w), 31)) || t("Feuille");
+    // "History" is reserved by Excel.
+    if (base.toLowerCase() === "history") base = t("Historique");
     let name = base;
     for (let i = 2; used.has(name.toLowerCase()); i++) {
       const suffix = ` (${i})`;
@@ -71,35 +74,38 @@ export function dossierSheets(
   watermark: string,
 ): SheetData[] {
   const tables = tablesOf(dossier);
-  const names = sheetNames(["Couverture", ...tables.map((t) => t.table.sheet)]);
+  const names = sheetNames([
+    t("Couverture"),
+    ...tables.map((x) => x.table.sheet),
+  ]);
   const cover: SheetData = {
     name: names[0],
     cover: true,
     columns: [
-      { label: "Propriété", weight: 1 },
-      { label: "Valeur", weight: 3 },
+      { label: t("Propriété"), weight: 1 },
+      { label: t("Valeur"), weight: 3 },
     ],
     rows: [
-      ["Opération", dossier.cover.title],
+      [t("Opération"), dossier.cover.title],
       ...coverFacts(dossier.cover),
-      ["Document n°", stamp.id],
-      ["Empreinte du contenu", stamp.fingerprint],
-      ["Vérification", stamp.qr],
-      ...(watermark ? [["Mention", watermark]] : []),
+      [t("Document n°"), stamp.id],
+      [t("Empreinte du contenu"), stamp.fingerprint],
+      [t("Vérification"), stamp.qr],
+      ...(watermark ? [[t("Mention"), watermark]] : []),
       ["", ""],
-      ["Feuilles", "Contenu"],
-      ...tables.map((t, i) => [
+      [t("Feuilles"), t("Contenu")],
+      ...tables.map((x, i) => [
         names[i + 1],
-        `${t.chapter.number}. ${t.chapter.title} · ${t.table.title} · ${t.table.caption}`,
+        `${x.chapter.number}. ${x.chapter.title} · ${x.table.title} · ${x.table.caption}`,
       ]),
     ],
   };
   return [
     cover,
-    ...tables.map((t, i) => ({
+    ...tables.map((x, i) => ({
       name: names[i + 1],
-      columns: t.table.columns,
-      rows: t.table.rows,
+      columns: x.table.columns,
+      rows: x.table.rows,
     })),
   ];
 }
@@ -198,7 +204,7 @@ function xlsxSheet(sheet: SheetData, info: BookInfo, first: boolean) {
     )
     .join("");
   const landscape = sheet.columns.length > 5;
-  return `${XML_HEAD}<worksheet xmlns="${NS.main}" xmlns:r="${NS.r}"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${last}${height}"/><sheetViews><sheetView ${first ? 'tabSelected="1" ' : ""}workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${cols}</cols><sheetData>${body}</sheetData>${sheet.cover ? "" : `<autoFilter ref="A1:${last}${height}"/>`}<pageMargins left="0.4" right="0.4" top="0.7" bottom="0.7" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="${landscape ? "landscape" : "portrait"}" fitToWidth="1" fitToHeight="0"/><headerFooter><oddHeader>&amp;L${hf(info.title, 180)}&amp;R${hf(info.watermark, 60)}</oddHeader><oddFooter>&amp;L${hf(info.stamp.label, 200)}&amp;RPage &amp;P / &amp;N</oddFooter></headerFooter></worksheet>`;
+  return `${XML_HEAD}<worksheet xmlns="${NS.main}" xmlns:r="${NS.r}"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${last}${height}"/><sheetViews><sheetView ${first ? 'tabSelected="1" ' : ""}workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${cols}</cols><sheetData>${body}</sheetData>${sheet.cover ? "" : `<autoFilter ref="A1:${last}${height}"/>`}<pageMargins left="0.4" right="0.4" top="0.7" bottom="0.7" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="${landscape ? "landscape" : "portrait"}" fitToWidth="1" fitToHeight="0"/><headerFooter><oddHeader>&amp;L${hf(info.title, 180)}&amp;R${hf(info.watermark, 60)}</oddHeader><oddFooter>&amp;L${hf(info.stamp.label, 200)}&amp;R${hf(t("Page"), 20)} &amp;P / &amp;N</oddFooter></headerFooter></worksheet>`;
 }
 
 export function xlsxBook(sheets: SheetData[], info: BookInfo): Uint8Array {
@@ -258,8 +264,14 @@ export function odfText(value: string): string {
     .replace(/ {2,}/g, (m) => ` <text:s text:c="${m.length - 1}"/>`);
 }
 
+/** Language attributes of an OpenDocument style: the language of the post. */
+export function odfLanguage() {
+  const [language, country] = locale().split("-");
+  return `fo:language="${language}" fo:country="${country}"`;
+}
+
 export function odfMeta(info: BookInfo) {
-  return `${XML_HEAD}<office:document-meta ${ODF_NS} office:version="1.3"><office:meta><meta:generator>orion aic</meta:generator><dc:title>${xml(info.title)}</dc:title><dc:subject>${xml(info.subject)}</dc:subject><dc:description>${xml(info.stamp.label)}</dc:description><meta:keyword>orion aic</meta:keyword><meta:initial-creator>${xml(info.author)}</meta:initial-creator><dc:creator>${xml(info.author)}</dc:creator><meta:creation-date>${w3c(info.created).replace("Z", "")}</meta:creation-date><dc:date>${w3c(info.created).replace("Z", "")}</dc:date><meta:user-defined meta:name="Vérification">${xml(info.stamp.qr)}</meta:user-defined></office:meta></office:document-meta>`;
+  return `${XML_HEAD}<office:document-meta ${ODF_NS} office:version="1.3"><office:meta><meta:generator>orion aic</meta:generator><dc:title>${xml(info.title)}</dc:title><dc:subject>${xml(info.subject)}</dc:subject><dc:description>${xml(info.stamp.label)}</dc:description><meta:keyword>orion aic</meta:keyword><meta:initial-creator>${xml(info.author)}</meta:initial-creator><dc:creator>${xml(info.author)}</dc:creator><meta:creation-date>${w3c(info.created).replace("Z", "")}</meta:creation-date><dc:date>${w3c(info.created).replace("Z", "")}</dc:date><meta:user-defined meta:name="${xml(t("Vérification"))}">${xml(info.stamp.qr)}</meta:user-defined></office:meta></office:document-meta>`;
 }
 
 export function odfManifest(
@@ -330,7 +342,7 @@ export function odsBook(sheets: SheetData[], info: BookInfo): Uint8Array {
     .join(
       "",
     )}<style:style style:name="roHead" style:family="table-row"><style:table-row-properties style:row-height="0.7cm" fo:break-before="auto" style:use-optimal-row-height="false"/></style:style><style:style style:name="roBody" style:family="table-row"><style:table-row-properties fo:break-before="auto" style:use-optimal-row-height="true"/></style:style><style:style style:name="ta1" style:family="table" style:master-page-name="Default"><style:table-properties table:display="true" style:writing-mode="lr-tb"/></style:style><style:style style:name="ceHead" style:family="table-cell" style:parent-style-name="Default"><style:table-cell-properties fo:background-color="#1b1f3a" style:vertical-align="middle" fo:wrap-option="wrap" fo:padding="0.06cm"/><style:text-properties fo:color="#ffffff" fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/></style:style><style:style style:name="ceBody" style:family="table-cell" style:parent-style-name="Default"><style:table-cell-properties style:vertical-align="top" fo:wrap-option="wrap" fo:border-bottom="0.5pt solid #d4d8e4" fo:padding="0.04cm"/></style:style><style:style style:name="ceLabel" style:family="table-cell" style:parent-style-name="Default"><style:table-cell-properties fo:background-color="#eef0f8" style:vertical-align="top" fo:wrap-option="wrap" fo:border-bottom="0.5pt solid #d4d8e4" fo:padding="0.04cm"/><style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/></style:style></office:automatic-styles><office:body><office:spreadsheet>${tables}<table:database-ranges>${ranges}</table:database-ranges></office:spreadsheet></office:body></office:document-content>`;
-  const styles = `${XML_HEAD}<office:document-styles ${ODF_NS} office:version="1.3"><office:font-face-decls><style:font-face style:name="Calibri" svg:font-family="Calibri, Carlito" style:font-family-generic="swiss"/></office:font-face-decls><office:styles><style:default-style style:family="table-cell"><style:paragraph-properties style:tab-stop-distance="1.25cm"/><style:text-properties style:font-name="Calibri" fo:font-size="10pt" fo:language="fr" fo:country="CH"/></style:default-style><style:style style:name="Default" style:family="table-cell"/></office:styles><office:automatic-styles><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="29.7cm" fo:page-height="21cm" style:print-orientation="landscape" fo:margin-top="1cm" fo:margin-bottom="1cm" fo:margin-left="1cm" fo:margin-right="1cm" style:scale-to-X="1" style:scale-to-Y="0" style:print-page-order="ttb"/><style:header-style><style:header-footer-properties fo:min-height="0.6cm" fo:margin-bottom="0.2cm"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0.6cm" fo:margin-top="0.2cm"/></style:footer-style></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name="Default" style:page-layout-name="pm1"><style:header><style:region-left><text:p>${xml(info.title)}</text:p></style:region-left><style:region-right><text:p>${xml(info.watermark)}</text:p></style:region-right></style:header><style:footer><style:region-left><text:p>${xml(info.stamp.label)}</text:p></style:region-left><style:region-right><text:p>Page <text:page-number>1</text:page-number> / <text:page-count>1</text:page-count></text:p></style:region-right></style:footer></style:master-page></office:master-styles></office:document-styles>`;
+  const styles = `${XML_HEAD}<office:document-styles ${ODF_NS} office:version="1.3"><office:font-face-decls><style:font-face style:name="Calibri" svg:font-family="Calibri, Carlito" style:font-family-generic="swiss"/></office:font-face-decls><office:styles><style:default-style style:family="table-cell"><style:paragraph-properties style:tab-stop-distance="1.25cm"/><style:text-properties style:font-name="Calibri" fo:font-size="10pt" ${odfLanguage()}/></style:default-style><style:style style:name="Default" style:family="table-cell"/></office:styles><office:automatic-styles><style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="29.7cm" fo:page-height="21cm" style:print-orientation="landscape" fo:margin-top="1cm" fo:margin-bottom="1cm" fo:margin-left="1cm" fo:margin-right="1cm" style:scale-to-X="1" style:scale-to-Y="0" style:print-page-order="ttb"/><style:header-style><style:header-footer-properties fo:min-height="0.6cm" fo:margin-bottom="0.2cm"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0.6cm" fo:margin-top="0.2cm"/></style:footer-style></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name="Default" style:page-layout-name="pm1"><style:header><style:region-left><text:p>${xml(info.title)}</text:p></style:region-left><style:region-right><text:p>${xml(info.watermark)}</text:p></style:region-right></style:header><style:footer><style:region-left><text:p>${xml(info.stamp.label)}</text:p></style:region-left><style:region-right><text:p>${odfText(t("Page"))} <text:page-number>1</text:page-number> / <text:page-count>1</text:page-count></text:p></style:region-right></style:footer></style:master-page></office:master-styles></office:document-styles>`;
   const item = (name: string, type: string, value: string | number) =>
     `<config:config-item config:name="${name}" config:type="${type}">${value}</config:config-item>`;
   const settings = `${XML_HEAD}<office:document-settings ${ODF_NS} office:version="1.3"><office:settings><config:config-item-set config:name="ooo:view-settings"><config:config-item-map-indexed config:name="Views"><config:config-item-map-entry>${item("ViewId", "string", "view1")}<config:config-item-map-named config:name="Tables">${sheets

@@ -2,6 +2,9 @@ import { z } from "zod";
 import { messageHighWater, type Journal } from "./journal.ts";
 import { stableId } from "./history.ts";
 import { fromZurichWall, zurichWall } from "./time.ts";
+import { getLang } from "./i18n/core.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t as tr } from "./i18n/exercise.ts";
 import {
   INJECT_CHANNELS,
   INJECT_DELIVERIES,
@@ -140,7 +143,7 @@ function applyEffect(
             mission: "",
             eta: "",
             contact: "",
-            notes: "Créé par un inject d’exercice.",
+            notes: tr("Créé par un inject d’exercice."),
           },
       author,
     );
@@ -174,7 +177,7 @@ function applyEffect(
       precipitation: effect.precipitation,
       visibility: "",
       conditions: effect.conditions,
-      notes: "Observation transmise par un inject d’exercice.",
+      notes: tr("Observation transmise par un inject d’exercice."),
     },
     author,
   );
@@ -264,6 +267,13 @@ export type Reaction = {
 
 type ReactionSource = Pick<Journal, "ops" | "history" | "entries">;
 
+/** "message en traitement": state of a message, in the language of the post. */
+const messageHow = (status: string) =>
+  tr("message {status}", {
+    status:
+      getLang() === "de" ? enumLabel(status) : enumLabel(status).toLowerCase(),
+  });
+
 /** First time a message left the state « Nouveau » (ms), if ever. */
 export function treatedAt(
   journal: Pick<Journal, "ops" | "history" | "entries">,
@@ -278,13 +288,13 @@ export function treatedAt(
     if (status && status !== "Nouveau")
       candidates.push({
         at: Date.parse(e.at),
-        how: `message ${status.toLowerCase()}`,
+        how: messageHow(status),
       });
   }
   if (message && message.status !== "Nouveau" && !candidates.length)
     candidates.push({
       at: Date.parse(message.updatedAt),
-      how: `message ${message.status.toLowerCase()}`,
+      how: messageHow(message.status),
     });
   const entryId = message?.entryId;
   if (entryId) {
@@ -292,7 +302,7 @@ export function treatedAt(
     if (entry)
       candidates.push({
         at: Date.parse(entry.createdAt),
-        how: "inscrit au journal",
+        how: tr("inscrit au journal"),
       });
   }
   const self = `message:${messageId}`;
@@ -301,8 +311,8 @@ export function treatedAt(
       candidates.push({
         at: Date.parse(l.createdAt),
         how: (l.a === self ? l.b : l.a).startsWith("entry:")
-          ? "entrée liée"
-          : "élément lié",
+          ? tr("entrée liée")
+          : tr("élément lié"),
       });
   const valid = candidates.filter((c) => Number.isFinite(c.at));
   if (!valid.length) return null;
@@ -326,7 +336,7 @@ export function reactionOf(
   if (inject.reactedAt)
     found.push({
       at: Date.parse(inject.reactedAt),
-      how: inject.reactionNote || "marquée par la direction",
+      how: inject.reactionNote || tr("marquée par la direction"),
     });
   if (inject.messageId) {
     const t = treatedAt(journal, inject.messageId);
@@ -417,7 +427,8 @@ export const scenarioInjectSchema = z
   })
   .strict()
   .refine((i) => i.timing === "offset" || i.clock !== "", {
-    message: "Une heure (hh:mm) est requise pour un inject à heure fixe.",
+    error: () =>
+      tr("Une heure (hh:mm) est requise pour un inject à heure fixe."),
   });
 export const scenarioFileSchema = z
   .object({
@@ -441,7 +452,7 @@ export function exportScenario(
   return {
     format: SCENARIO_FORMAT,
     version: 1,
-    title: scenario?.title ?? "Scénario",
+    title: scenario?.title ?? tr("Scénario"),
     description: scenario?.description ?? "",
     exportedAt: at,
     injects: schedule(injectsOf(ops, scenario), scenario).map(
@@ -473,7 +484,7 @@ export function parseScenarioFile(input: unknown): ScenarioFile {
     try {
       value = JSON.parse(input);
     } catch {
-      throw new Error("Ce fichier n’est pas un scénario JSON lisible.");
+      throw new Error(tr("Ce fichier n’est pas un scénario JSON lisible."));
     }
   }
   if (
@@ -482,13 +493,18 @@ export function parseScenarioFile(input: unknown): ScenarioFile {
     (value as { format?: unknown }).format !== SCENARIO_FORMAT
   )
     throw new Error(
-      "Ce fichier n’est pas un scénario orion aic (format « orion-aic-scenario »).",
+      tr(
+        "Ce fichier n’est pas un scénario orion aic (format « orion-aic-scenario »).",
+      ),
     );
   const parsed = scenarioFileSchema.safeParse(value);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     throw new Error(
-      `Scénario invalide${issue?.path.length ? ` (${issue.path.join(".")})` : ""} : ${issue?.message ?? "format inconnu"}.`,
+      tr("Scénario invalide{path} : {reason}.", {
+        path: issue?.path.length ? ` (${issue.path.join(".")})` : "",
+        reason: issue?.message ?? tr("format inconnu"),
+      }),
     );
   }
   return parsed.data;

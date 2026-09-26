@@ -20,7 +20,9 @@ import {
   type Broadcast,
 } from "../../shared/conduct";
 import { messageEnvelope, openLiaisons, outgoing } from "../../shared/liaison";
-import { addBroadcast } from "./actions";
+import { addBroadcast, journalDefault } from "./actions";
+import { enumLabel } from "../../shared/i18n/enums.ts";
+import { t, tn } from "./i18n.ts";
 import {
   closeRequest,
   useRequest,
@@ -33,7 +35,7 @@ import { useIdentity } from "./roles";
 export function RecipientsField({
   value,
   onChange,
-  label = "Destinataires",
+  label = t("Destinataires"),
 }: {
   value: string[];
   onChange: (value: string[]) => void;
@@ -73,15 +75,15 @@ export function RecipientsField({
             aria-pressed={has(o)}
             onClick={() => toggle(o)}
           >
-            {o}
+            {o === EVERYONE ? t("Tous") : o}
           </button>
         ))}
       </div>
       <div className="conduct-add">
         <input
           value={typed}
-          placeholder="Autre destinataire (fonction, poste, nom)…"
-          aria-label="Autre destinataire"
+          placeholder={t("Autre destinataire (fonction, poste, nom)…")}
+          aria-label={t("Autre destinataire")}
           onChange={(e) => setTyped(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -92,7 +94,7 @@ export function RecipientsField({
         />
         <button type="button" onClick={add} disabled={!typed.trim()}>
           <Plus size={14} />
-          Ajouter
+          {t("Ajouter")}
         </button>
       </div>
     </fieldset>
@@ -131,7 +133,7 @@ function TargetField({
             onClick={() => setPicking(false)}
           >
             <X size={14} />
-            Annuler
+            {t("Annuler")}
           </button>
         </div>
       ) : (
@@ -141,7 +143,7 @@ function TargetField({
           onClick={() => setPicking(true)}
         >
           <Link2 size={14} />
-          Choisir un élément (ordre, entrée, message…)
+          {t("Choisir un élément (ordre, entrée, message…)")}
         </button>
       )}
     </div>
@@ -154,7 +156,8 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
   const [draft, setDraft] = useState({
     title: preset.title ?? "",
     body: preset.body ?? "",
-    kind: preset.kind ?? "Information",
+    kind:
+      preset.kind ?? journalDefault(live.ops, "broadcastKinds", "Information"),
     priority: preset.priority ?? ("Normal" as Broadcast["priority"]),
     target: preset.target ?? "",
     recipients: preset.recipients ?? [],
@@ -184,8 +187,14 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
       return;
     }
     toast(
-      `Diffusé à ${draft.recipients.length} destinataire${draft.recipients.length > 1 ? "s" : ""}.${
-        draft.ack !== "Aucun" ? ` Accusé « ${draft.ack} » attendu.` : ""
+      `${tn(
+        draft.recipients.length,
+        "Diffusé à {n} destinataire.",
+        "Diffusé à {n} destinataires.",
+      )}${
+        draft.ack !== "Aucun"
+          ? ` ${t("Accusé « {ack} » attendu.", { ack: enumLabel(draft.ack) })}`
+          : ""
       }`,
     );
     preset.onSent?.(id);
@@ -193,7 +202,7 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
   }
   return (
     <Modal
-      title="Diffuser avec accusé de lecture"
+      title={t("Diffuser avec accusé de lecture")}
       onClose={closeRequest}
       dirty={!!draft.title || !!draft.body}
       wide
@@ -207,7 +216,7 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
       >
         <TextField
           className="span-2"
-          label="Objet"
+          label={t("Objet")}
           value={draft.title}
           onChange={(title) => set({ title })}
           required
@@ -216,20 +225,20 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
         />
         <TextField
           className="span-2"
-          label="Texte"
+          label={t("Texte")}
           value={draft.body}
           onChange={(body) => set({ body })}
           rows={4}
           maxLength={8000}
         />
         <ComboField
-          label="Type"
+          label={t("Type")}
           value={draft.kind}
           onChange={(kind) => set({ kind })}
           options={lists("broadcastKinds")}
         />
         <ChoiceField
-          label="Priorité"
+          label={t("Priorité")}
           value={draft.priority}
           onChange={(priority) => set({ priority })}
           options={BROADCAST_PRIORITIES}
@@ -239,44 +248,45 @@ export function DiffusionDialog({ preset }: { preset: DiffusionPreset }) {
           onChange={(recipients) => set({ recipients })}
         />
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Accusé demandé</span>
+          <span className="label">{t("Accusé demandé")}</span>
           <Segmented
-            label="Accusé demandé"
+            label={t("Accusé demandé")}
             value={draft.ack}
             onChange={(ack) => set({ ack })}
             options={BROADCAST_ACKS.map((a) => ({
               value: a,
-              label: a === "Aucun" ? "Aucun" : `« ${a} »`,
+              label: a === "Aucun" ? enumLabel(a) : `« ${enumLabel(a)} »`,
             }))}
           />
         </div>
         <NumberField
-          label="Signaler sans réponse après (min)"
+          label={t("Signaler sans réponse après (min)")}
           value={draft.deadline}
           min={0}
           max={1440}
           onChange={(deadline) => set({ deadline })}
-          hint="0 : jamais."
+          hint={t("0 : jamais.")}
         />
         <TargetField
-          label="Élément diffusé"
+          label={t("Élément diffusé")}
           value={draft.target}
           onChange={(target) => set({ target })}
         />
         {liaisons.length > 0 && (
           <p className="hint span-2">
-            Part aussi par la liaison vers{" "}
-            {liaisons.map((l) => l.name).join(", ")} : l’autre PC la reçoit dans
-            ses messages et répond par son propre accusé.
+            {t(
+              "Part aussi par la liaison vers {names} : l’autre PC la reçoit dans ses messages et répond par son propre accusé.",
+              { names: liaisons.map((l) => l.name).join(", ") },
+            )}
           </p>
         )}
         <div className="action-row span-2">
           <button type="button" onClick={closeRequest}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary" disabled={!ready}>
             <Megaphone size={15} />
-            Diffuser
+            {t("Diffuser")}
           </button>
         </div>
       </form>
@@ -307,7 +317,9 @@ export function AssignDialog({ preset }: { preset: AssignPreset }) {
         upsert(ops, "assignments", { ...draft, done: false }, author),
       );
       toast(
-        `Attribué à ${[draft.role, draft.person].filter(Boolean).join(" · ")}.`,
+        t("Attribué à {who}.", {
+          who: [draft.role, draft.person].filter(Boolean).join(" · "),
+        }),
       );
       closeRequest();
     } catch (err) {
@@ -316,7 +328,7 @@ export function AssignDialog({ preset }: { preset: AssignPreset }) {
   }
   return (
     <Modal
-      title="Attribuer à une fonction ou une personne"
+      title={t("Attribuer à une fonction ou une personne")}
       onClose={closeRequest}
     >
       <form
@@ -327,12 +339,12 @@ export function AssignDialog({ preset }: { preset: AssignPreset }) {
         }}
       >
         <TargetField
-          label="Élément"
+          label={t("Élément")}
           value={draft.target}
           onChange={(target) => set({ target })}
         />
         <ComboField
-          label="Fonction"
+          label={t("Fonction")}
           value={draft.role}
           onChange={(role) => set({ role })}
           options={lists("postRoles")}
@@ -340,19 +352,19 @@ export function AssignDialog({ preset }: { preset: AssignPreset }) {
           className="span-2"
         />
         <ComboField
-          label="Personne"
+          label={t("Personne")}
           value={draft.person}
           onChange={(person) => set({ person })}
           options={people}
         />
         <DateTimeField
-          label="Échéance"
+          label={t("Échéance")}
           value={draft.dueAt}
           onChange={(dueAt) => set({ dueAt })}
         />
         <TextField
           className="span-2"
-          label="Consigne"
+          label={t("Consigne")}
           value={draft.note}
           onChange={(note) => set({ note })}
           rows={3}
@@ -360,11 +372,11 @@ export function AssignDialog({ preset }: { preset: AssignPreset }) {
         />
         <div className="action-row span-2">
           <button type="button" onClick={closeRequest}>
-            Annuler
+            {t("Annuler")}
           </button>
           <button className="primary" disabled={!ready}>
             <UserCheck size={15} />
-            Attribuer
+            {t("Attribuer")}
           </button>
         </div>
       </form>
@@ -379,7 +391,9 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState<Broadcast["priority"]>("Normal");
-  const [category, setCategory] = useState("Information");
+  const [category, setCategory] = useState(() =>
+    journalDefault(live.ops, "categories", "Information"),
+  );
   const liaison = open.find((l) => l.id === id);
   function send() {
     if (!liaison || !(subject.trim() || body.trim()) || !canWrite()) return;
@@ -406,7 +420,9 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
         ],
       }));
       toast(
-        `Message envoyé à ${liaison.name} : il part dès que la liaison répond.`,
+        t("Message envoyé à {name} : il part dès que la liaison répond.", {
+          name: liaison.name,
+        }),
       );
       closeRequest();
     } catch (err) {
@@ -415,13 +431,15 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
   }
   return (
     <Modal
-      title="Message à l’autre PC"
+      title={t("Message à l’autre PC")}
       onClose={closeRequest}
       dirty={!!subject || !!body}
     >
       {!open.length ? (
         <p className="muted">
-          Aucune liaison ouverte. Réglages → Synchronisation → Liaison entre PC.
+          {t(
+            "Aucune liaison ouverte. Réglages → Synchronisation → Liaison entre PC.",
+          )}
         </p>
       ) : (
         <form
@@ -434,7 +452,7 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
           {open.length > 1 && (
             <ChoiceField
               className="span-2"
-              label="Vers"
+              label={t("Vers")}
               value={id}
               onChange={setId}
               options={open.map((l) => ({ value: l.id, label: l.name }))}
@@ -442,7 +460,7 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
           )}
           <TextField
             className="span-2"
-            label="Objet"
+            label={t("Objet")}
             value={subject}
             onChange={setSubject}
             autoFocus
@@ -450,39 +468,42 @@ export function LiaisonMessageDialog({ liaisonId }: { liaisonId?: string }) {
           />
           <TextField
             className="span-2"
-            label="Texte"
+            label={t("Texte")}
             value={body}
             onChange={setBody}
             rows={5}
             maxLength={12000}
           />
           <ChoiceField
-            label="Priorité"
+            label={t("Priorité")}
             value={priority}
             onChange={setPriority}
             options={BROADCAST_PRIORITIES}
           />
           <ComboField
-            label="Catégorie"
+            label={t("Catégorie")}
             value={category}
             onChange={setCategory}
             options={lists("categories")}
           />
           <p className="hint span-2">
             {liaison
-              ? `Arrive dans les messages de ${liaison.name}, avec « ${liaison.self} » comme émetteur.`
+              ? t(
+                  "Arrive dans les messages de {name}, avec « {self} » comme émetteur.",
+                  { name: liaison.name, self: liaison.self },
+                )
               : ""}
           </p>
           <div className="action-row span-2">
             <button type="button" onClick={closeRequest}>
-              Annuler
+              {t("Annuler")}
             </button>
             <button
               className="primary"
               disabled={!liaison || !(subject.trim() || body.trim())}
             >
               <Send size={15} />
-              Envoyer
+              {t("Envoyer")}
             </button>
           </div>
         </form>

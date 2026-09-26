@@ -112,18 +112,21 @@ import {
 } from "lucide-react";
 import type { CustomSymbol } from "../../../shared/ops";
 import { useApp } from "../../app/context";
+import { useLang, type Lang } from "../../i18n";
 import {
   BUILTIN_GROUPS,
   BUILTIN_LIST,
   OFFICIAL,
   customId,
+  groupLabel,
   isCustom,
   officialNames,
   type BuiltinInfo,
 } from "./builtins";
 import { SymbolEditor } from "./SymbolEditor";
 import { symbolMatches } from "./symbolsearch";
-import { hexColor } from "./maps";
+import { hexColor, standardLayer } from "./maps";
+import { symbolLabel, symbolNames, t } from "./i18n-2.ts";
 
 // Symbols of the map: official civil symbols (signes conventionnels civils,
 // OFPP) served from /symbols/<id>.svg and loaded on demand, simple markers
@@ -286,10 +289,11 @@ export function iconOf(name: string): LucideIcon | null {
   return EXTRA_ICONS[name] ?? LUCIDE[name] ?? null;
 }
 
-export const BUILTINS: Builtin[] = BUILTIN_LIST.map((b) => ({
-  ...b,
-  Icon: iconOf(b.icon),
-}));
+// Same objects as BUILTIN_LIST (not a copy): their names are getters that
+// follow the language of the post.
+export const BUILTINS: Builtin[] = BUILTIN_LIST.map((b) =>
+  Object.assign(b, { Icon: iconOf(b.icon) }),
+);
 const BUILTIN = new Map(BUILTINS.map((b) => [b.id, b]));
 export const builtin = (id: string) => BUILTIN.get(id);
 
@@ -382,20 +386,42 @@ export function useCustomSymbolsSync(
   useLayoutEffect(() => notify(), [list]);
 }
 
-/** Name and default layer of a symbol value. */
-export function describeSymbol(id: string, list: SymbolInfo[] | null) {
+/**
+ * Name, family (both in the language of the post) and default layer of a
+ * symbol value. The layer is one of the standard layers, in the language of
+ * the journal when `lang` is given (journalLang(ops)), French otherwise.
+ */
+export function describeSymbol(
+  id: string,
+  list: SymbolInfo[] | null,
+  lang: Lang = "fr",
+) {
   const b = builtin(id);
-  if (b) return { name: b.name, layer: b.layer, group: b.group };
+  if (b)
+    return {
+      name: b.name,
+      layer: standardLayer(b.layer, lang),
+      group: groupLabel(b.group),
+    };
   const c = customSymbol(id);
-  if (c) return { name: c.name, layer: "Autre", group: c.group || CUSTOM };
+  if (c)
+    return {
+      name: c.name,
+      layer: standardLayer("Autre", lang),
+      group: c.group || t("Personnalisés"),
+    };
   const s = list?.find((x) => x.id === id);
   if (s)
     return {
-      name: s.name,
-      layer: GROUP_LAYER[s.group] ?? "Autre",
-      group: s.group,
+      name: symbolLabel(s.name),
+      layer: standardLayer(GROUP_LAYER[s.group] ?? "Autre", lang),
+      group: groupLabel(s.group),
     };
-  return { name: id ? "Signe" : "Point", layer: "Autre", group: "" };
+  return {
+    name: id ? t("Signe") : t("Point"),
+    layer: standardLayer("Autre", lang),
+    group: "",
+  };
 }
 
 const RECENT_KEY = "orion.map.recent";
@@ -510,9 +536,19 @@ export const Glyph = memo(function Glyph({
   );
 });
 
+// Tabs of the palette besides the families of the catalog (codes).
 const SIMPLE = "Marqueurs simples";
 const RECENT = "Récents";
 const CUSTOM = "Personnalisés";
+/** Title of a family or a section of the palette. */
+const familyLabel = (g: string) =>
+  g === SIMPLE
+    ? t("Marqueurs simples")
+    : g === RECENT
+      ? t("Récents")
+      : g === CUSTOM
+        ? t("Personnalisés")
+        : groupLabel(g);
 
 const norm = (s: string) =>
   s
@@ -532,6 +568,7 @@ export function SymbolPalette({
   onPick: (id: string) => void;
 }) {
   const { readOnly } = useApp();
+  const lang = useLang();
   const list = useCatalog();
   const own = useCustomSymbols();
   const [query, setQuery] = useState("");
@@ -544,6 +581,8 @@ export function SymbolPalette({
   const [group, setGroup] = useState(() =>
     recentSymbols().length ? RECENT : SIMPLE,
   );
+  // Names in the language of the post; the search also reads the French,
+  // German and Italian names and the French families (keywords).
   const all = useMemo(
     () => [
       ...BUILTINS.map(
@@ -553,10 +592,17 @@ export function SymbolPalette({
             name: b.name,
             group: SIMPLE,
             sub: b.group,
-            keywords: b.keywords,
+            keywords: `${b.group} ${b.keywords ?? ""}`,
           }) as SymbolInfo,
       ),
-      ...(list ?? []),
+      ...(list ?? []).map(
+        (s) =>
+          ({
+            ...s,
+            name: symbolLabel(s.name),
+            keywords: `${symbolNames(s.name)} ${s.group} ${s.sub ?? ""} ${s.keywords ?? ""}`,
+          }) as SymbolInfo,
+      ),
       ...own.map(
         (s) =>
           ({
@@ -567,14 +613,14 @@ export function SymbolPalette({
           }) as SymbolInfo,
       ),
     ],
-    [list, own],
+    [list, own, lang],
   );
   const shown = useMemo(() => {
     if (norm(query).trim())
       // French, German or Italian: « Feuer », « frana », « incendie ».
       return all.filter((s) =>
         symbolMatches(
-          `${s.name} ${s.group} ${s.sub ?? ""} ${s.keywords ?? ""}`,
+          `${s.name} ${familyLabel(s.group)} ${s.sub ? groupLabel(s.sub) : ""} ${s.keywords ?? ""}`,
           query,
         ),
       );
@@ -607,15 +653,15 @@ export function SymbolPalette({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Chercher : incendie, Feuer, frana, ambulance…"
-          aria-label="Chercher un signe (français, allemand ou italien)"
+          placeholder={t("Chercher : incendie, Feuer, frana, ambulance…")}
+          aria-label={t("Chercher un signe (français, allemand ou italien)")}
         />
       </div>
       {!query && (
         <div
           className="map-palette-tabs"
           role="tablist"
-          aria-label="Familles de signes"
+          aria-label={t("Familles de signes")}
         >
           {groups.map((g) => (
             <button
@@ -633,7 +679,7 @@ export function SymbolPalette({
               ) : g === CUSTOM ? (
                 <Sparkles size={12} />
               ) : null}
-              {g === CUSTOM ? "Signes personnalisés" : g}
+              {g === CUSTOM ? t("Signes personnalisés") : familyLabel(g)}
               {g === CUSTOM && own.length > 0 && <small>{own.length}</small>}
             </button>
           ))}
@@ -648,9 +694,9 @@ export function SymbolPalette({
           >
             <ImagePlus size={18} />
             <span>
-              <strong>Ajouter un signe</strong>
+              <strong>{t("Ajouter un signe")}</strong>
               <small>
-                Image PNG, SVG, JPEG ou WebP · fond rendu transparent
+                {t("Image PNG, SVG, JPEG ou WebP · fond rendu transparent")}
               </small>
             </span>
           </button>
@@ -660,18 +706,20 @@ export function SymbolPalette({
           group !== RECENT &&
           group !== CUSTOM &&
           !query && (
-            <p className="muted map-palette-note">Chargement des signes…</p>
+            <p className="muted map-palette-note">
+              {t("Chargement des signes…")}
+            </p>
           )}
         {sections.map(([title, items]) => (
           <section key={title || "-"}>
-            {title && <h4 className="label">{title}</h4>}
+            {title && <h4 className="label">{familyLabel(title)}</h4>}
             <div className="map-palette-grid">
               {items.map((s) => (
                 <div className="map-palette-cell" key={s.id}>
                   <button
                     type="button"
                     className={`map-palette-item${s.id === value ? " on" : ""}`}
-                    title={s.sub ? `${s.name} · ${s.sub}` : s.name}
+                    title={s.sub ? `${s.name} · ${groupLabel(s.sub)}` : s.name}
                     aria-pressed={s.id === value}
                     onClick={() => pick(s.id)}
                   >
@@ -682,8 +730,10 @@ export function SymbolPalette({
                     <button
                       type="button"
                       className="icon-button map-palette-edit"
-                      aria-label={`Modifier le signe « ${s.name} »`}
-                      title="Renommer, remplacer ou supprimer"
+                      aria-label={t("Modifier le signe « {name} »", {
+                        name: s.name,
+                      })}
+                      title={t("Renommer, remplacer ou supprimer")}
                       onClick={() => {
                         const c = customSymbol(s.id);
                         if (c) setEditing(c);
@@ -700,16 +750,20 @@ export function SymbolPalette({
         {!shown.length && (list || query || group === CUSTOM) && (
           <p className="muted map-palette-note">
             {query
-              ? "Aucun signe ne correspond."
+              ? t("Aucun signe ne correspond.")
               : group === CUSTOM
                 ? readOnly
-                  ? "Aucun signe personnalisé."
-                  : "Aucun signe personnalisé. Ajoutez le logo d’un partenaire, un pictogramme maison… Il sera disponible sur tous les postes."
-                : "Aucun signe récent."}
+                  ? t("Aucun signe personnalisé.")
+                  : t(
+                      "Aucun signe personnalisé. Ajoutez le logo d’un partenaire, un pictogramme maison… Il sera disponible sur tous les postes.",
+                    )
+                : t("Aucun signe récent.")}
           </p>
         )}
       </div>
-      <p className="map-palette-credit">Signes conventionnels civils · OFPP</p>
+      <p className="map-palette-credit">
+        {t("Signes conventionnels civils · OFPP")}
+      </p>
       {editing && (
         <SymbolEditor
           symbol={editing === "new" ? null : editing}

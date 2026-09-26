@@ -19,6 +19,7 @@ import { addLink, ref, type Ref } from "../../shared/links";
 import type { Radio } from "../../shared/radio";
 import { closableBy, snooze } from "../../shared/workflow";
 import { ReadOnlyError, writeRefusal } from "./gate";
+import { t } from "./i18n.ts";
 import type { AppContext, LogCollection } from "./context";
 
 type SetWorkspace = (
@@ -67,7 +68,7 @@ export function useJournalActions({
   /** Why a write is refused now (null: allowed). */
   const refusal = useCallback((allowClosed = false): string | null => {
     const { live: j, viewAt: at } = state.current;
-    if (!j) return "Aucun journal ouvert.";
+    if (!j) return t("Aucun journal ouvert.");
     return writeRefusal({ closedAt: j.closedAt, viewAt: at }, { allowClosed });
   }, []);
   /** True when writing is allowed; otherwise tells the operator why. */
@@ -94,7 +95,7 @@ export function useJournalActions({
       if (!gate(allowClosed)) return false;
       const { workspace: ws } = state.current;
       if (!ws?.journals.some((j) => j.id === value.id)) {
-        state.current.refuse("Ce journal n’est plus dans la session.");
+        state.current.refuse(t("Ce journal n’est plus dans la session."));
         return false;
       }
       const parsed = journalSchema.parse(value);
@@ -230,7 +231,7 @@ export function useJournalActions({
       const author = state.current.workspace?.author ?? "";
       return !!changeJournal((j) => {
         const entry = j.entries.find((e) => e.id === id);
-        if (!entry) throw new Error("Entrée introuvable.");
+        if (!entry) throw new Error(t("Entrée introuvable."));
         return reviseEntry(
           j,
           id,
@@ -251,11 +252,14 @@ export function useJournalActions({
         revise(
           id,
           { dueAt: snooze(current(entry).dueAt, minutes) },
-          `Échéance reportée de ${minutes} min`,
+          t("Échéance reportée de {n} min", { n: minutes }),
         )
       )
         state.current.toast(
-          `${numberLabel(entry)} : échéance reportée de ${minutes} min.`,
+          t("{entry} : échéance reportée de {n} min.", {
+            entry: numberLabel(entry),
+            n: minutes,
+          }),
         );
     },
     [revise],
@@ -312,7 +316,9 @@ export function useJournalActions({
           : value;
       });
       if (done && log)
-        state.current.toast(`Consigné au journal : ${log.message}`);
+        state.current.toast(
+          t("Consigné au journal : {message}", { message: log.message }),
+        );
     },
     [changeJournal],
   );
@@ -329,8 +335,8 @@ export function useJournalActions({
               ...emptyFields(),
               type: "Observation",
               message: closedAt
-                ? "Clôture du journal."
-                : "Réouverture du journal.",
+                ? t("Clôture du journal.")
+                : t("Réouverture du journal."),
               reliability: "Confirmé",
             },
             author,

@@ -19,6 +19,8 @@ import {
   type Verdict,
 } from "../../shared/signature";
 import { useApp } from "../app/context";
+import { rich, useLang } from "../i18n";
+import { t, tn } from "./i18n.ts";
 import {
   documentOf,
   matchVerify,
@@ -58,24 +60,38 @@ type Result =
 
 const size = (n: number) =>
   n < 1024
-    ? `${n} o`
+    ? t("{n} o", { n })
     : n < 1024 * 1024
-      ? `${(n / 1024).toFixed(0)} ko`
-      : `${(n / 1024 / 1024).toFixed(1)} Mo`;
+      ? t("{n} ko", { n: (n / 1024).toFixed(0) })
+      : t("{n} Mo", { n: (n / 1024 / 1024).toFixed(1) });
+
+/** Format of a register line; prints are written in French (reminders). */
+const formatLabel = (format: string) =>
+  format === "Impression (HTML)" ? t("Impression (HTML)") : format;
 
 function LogLine({ log }: { log: ExportLog }) {
   return (
     <li className="xv-log">
       <strong>{log.name}</strong>
       <span>
-        {log.format} · exporté par {log.by || "—"} le {dateTime(log.at)} ·{" "}
-        {size(log.bytes)}
+        {t("{format} · exporté par {name} le {date} · {size}", {
+          format: formatLabel(log.format),
+          name: log.by || "—",
+          date: dateTime(log.at),
+          size: size(log.bytes),
+        })}
       </span>
       <span>
-        Contenu : {log.scope.replace(/ · document [0-9a-f-]{36}$/, "")}
+        {t("{label} : {value}", {
+          label: t("Contenu"),
+          value: log.scope.replace(/ · document [0-9a-f-]{36}$/, ""),
+        })}
       </span>
       <code>
-        document {shortId(documentOf(log))} · empreinte {log.fingerprint}
+        {t("document {id} · empreinte {fingerprint}", {
+          id: shortId(documentOf(log)),
+          fingerprint: log.fingerprint,
+        })}
       </code>
     </li>
   );
@@ -135,7 +151,7 @@ function useKnownKeys(logs: ExportLog[], own?: string) {
       );
       if (own) {
         const mine = await keyFingerprint(own);
-        out.set(mine, "ce poste");
+        out.set(mine, t("ce poste"));
       }
       if (alive) setKnown(out);
     })();
@@ -163,17 +179,27 @@ function SignatureLine({
       <div>
         <strong>
           {verdict.state === "valid"
-            ? `${label} : signature valide`
-            : `${label} : signature invalide`}
+            ? t("{label} : signature valide", { label })
+            : t("{label} : signature invalide", { label })}
         </strong>
         <span>
           {verdict.state === "valid"
-            ? `Rien n’a changé depuis la signature du ${dateTime(verdict.at)} (heure du poste signataire).`
-            : "Le contenu a été modifié après la signature, ou la signature a été altérée."}
+            ? t(
+                "Rien n’a changé depuis la signature du {date} (heure du poste signataire).",
+                { date: dateTime(verdict.at) },
+              )
+            : t(
+                "Le contenu a été modifié après la signature, ou la signature a été altérée.",
+              )}
         </span>
         <code>
-          Clé {verdict.fingerprint} · {verdict.alg}
-          {who ? ` · connue : ${who}` : " · clé inconnue de cette opération"}
+          {t("Clé {key} · {alg}", {
+            key: verdict.fingerprint,
+            alg: verdict.alg,
+          })}
+          {who
+            ? ` · ${t("connue : {who}", { who })}`
+            : ` · ${t("clé inconnue de cette opération")}`}
         </code>
       </div>
     </div>
@@ -182,6 +208,7 @@ function SignatureLine({
 
 export function VerifyPanel({ className = "" }: { className?: string }) {
   const { live, workspace } = useApp();
+  useLang();
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState("");
   const [result, setResult] = useState<Result | null>(null);
@@ -213,7 +240,7 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
         register: await registerSignature(found, sha),
       });
     } catch {
-      setError("Ce fichier n’a pas pu être lu.");
+      setError(t("Ce fichier n’a pas pu être lu."));
     } finally {
       setBusy(false);
     }
@@ -224,7 +251,9 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
     const parsed = parseVerify(value);
     if (!parsed) {
       setError(
-        "Code non reconnu. Il commence par « orionaic:verify: » (texte du code QR).",
+        t(
+          "Code non reconnu. Il commence par « orionaic:verify: » (texte du code QR).",
+        ),
       );
       return;
     }
@@ -262,9 +291,9 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
         }}
       >
         <FileSearch size={22} />
-        <strong>Déposer un document à vérifier</strong>
+        <strong>{t("Déposer un document à vérifier")}</strong>
         <span className="mono">
-          PDF, Word, Excel, archive… · calcul local, rien n’est envoyé
+          {t("PDF, Word, Excel, archive… · calcul local, rien n’est envoyé")}
         </span>
         <input
           type="file"
@@ -284,7 +313,7 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
       >
         <label>
           <span>
-            <QrCode size={12} /> Ou le texte du code QR
+            <QrCode size={12} /> {t("Ou le texte du code QR")}
           </span>
           <div className="inline-field">
             <input
@@ -295,12 +324,12 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
               autoComplete="off"
             />
             <button type="submit" disabled={!code.trim()}>
-              Vérifier
+              {t("Vérifier")}
             </button>
           </div>
         </label>
       </form>
-      {busy && <p role="status">Calcul de l’empreinte…</p>}
+      {busy && <p role="status">{t("Calcul de l’empreinte…")}</p>}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -319,39 +348,46 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
           <div>
             <h3>
               {invalid
-                ? "Document modifié"
+                ? t("Document modifié")
                 : result.found.length
-                  ? "Document authentique"
+                  ? t("Document authentique")
                   : signedOk
-                    ? "Document intact, signé"
-                    : "Document inconnu"}
+                    ? t("Document intact, signé")
+                    : t("Document inconnu")}
             </h3>
             {invalid ? (
               <p>
-                La signature ne correspond plus au fichier : il a été modifié
-                après avoir été signé.
+                {t(
+                  "La signature ne correspond plus au fichier : il a été modifié après avoir été signé.",
+                )}
               </p>
             ) : result.found.length ? (
               <p>
-                Ce fichier est exactement celui produit par orion aic et inscrit
-                au registre de cette opération.
+                {t(
+                  "Ce fichier est exactement celui produit par orion aic et inscrit au registre de cette opération.",
+                )}
               </p>
             ) : signedOk ? (
               <p>
-                Ce fichier n’est pas au registre de cette opération, mais il
-                porte une signature valide : il n’a pas changé depuis qu’il a
-                été signé par la clé ci-dessous.
+                {t(
+                  "Ce fichier n’est pas au registre de cette opération, mais il porte une signature valide : il n’a pas changé depuis qu’il a été signé par la clé ci-dessous.",
+                )}
               </p>
             ) : (
               <p>
-                Ce fichier n’a pas été produit par cette session, ou il a été
-                modifié depuis (même d’un seul caractère).
+                {t(
+                  "Ce fichier n’a pas été produit par cette session, ou il a été modifié depuis (même d’un seul caractère).",
+                )}
               </p>
             )}
-            <SignatureLine verdict={result.own} label="Fichier" known={known} />
+            <SignatureLine
+              verdict={result.own}
+              label={t("Fichier")}
+              known={known}
+            />
             <SignatureLine
               verdict={result.register}
-              label="Registre"
+              label={t("Registre")}
               known={known}
             />
             <ul className="xv-logs">
@@ -381,48 +417,68 @@ export function VerifyPanel({ className = "" }: { className?: string }) {
           <div>
             <h3>
               {result.own.state === "invalid"
-                ? "Signature invalide"
+                ? t("Signature invalide")
                 : result.byDocument.length
-                  ? "Export connu"
+                  ? t("Export connu")
                   : result.sameContent.length
-                    ? "Contenu connu"
+                    ? t("Contenu connu")
                     : result.own.state === "valid"
-                      ? "Code signé"
-                      : "Code inconnu"}
+                      ? t("Code signé")
+                      : t("Code inconnu")}
             </h3>
             <p>
               {result.own.state === "invalid"
-                ? "Ce code a été modifié après sa signature."
+                ? t("Ce code a été modifié après sa signature.")
                 : result.byDocument.length
-                  ? "Ce code correspond à un export inscrit au registre. Pour certifier un fichier précis, déposez-le ci-dessus."
+                  ? t(
+                      "Ce code correspond à un export inscrit au registre. Pour certifier un fichier précis, déposez-le ci-dessus.",
+                    )
                   : result.sameContent.length
-                    ? "Ce document n’est pas au registre, mais le même contenu a été exporté."
+                    ? t(
+                        "Ce document n’est pas au registre, mais le même contenu a été exporté.",
+                      )
                     : result.own.state === "valid"
-                      ? "Ce code n’est pas au registre de cette opération, mais sa signature est valide : l’empreinte du contenu a bien été signée par la clé ci-dessous. Comparez-la avec celle imprimée sur le document."
-                      : "Aucun export de cette opération ne porte ce code."}
+                      ? t(
+                          "Ce code n’est pas au registre de cette opération, mais sa signature est valide : l’empreinte du contenu a bien été signée par la clé ci-dessous. Comparez-la avec celle imprimée sur le document.",
+                        )
+                      : t("Aucun export de cette opération ne porte ce code.")}
             </p>
-            <SignatureLine verdict={result.own} label="Code" known={known} />
+            <SignatureLine
+              verdict={result.own}
+              label={t("Code")}
+              known={known}
+            />
             <ul className="xv-logs">
               {[...result.byDocument, ...result.sameContent].map((l) => (
                 <LogLine key={l.id} log={l} />
               ))}
             </ul>
             <code className="xv-sha">
-              document {shortId(result.code.id)} · empreinte{" "}
-              {result.own.state !== "none" && result.own.sha
-                ? result.own.sha
-                : result.code.fingerprint}
+              {t("document {id} · empreinte {fingerprint}", {
+                id: shortId(result.code.id),
+                fingerprint:
+                  result.own.state !== "none" && result.own.sha
+                    ? result.own.sha
+                    : result.code.fingerprint,
+              })}
             </code>
           </div>
         </div>
       )}
       <p className="xv-count muted">
-        {logs.length} fichier{logs.length > 1 ? "s" : ""} au registre des
-        exports de « {live.title} ».
+        {tn(
+          logs.length,
+          "{n} fichier au registre des exports de « {title} ».",
+          "{n} fichiers au registre des exports de « {title} ».",
+          { title: live.title },
+        )}
         {mine && (
           <>
             {" "}
-            Clé de signature de ce poste : <span className="mono">{mine}</span>.
+            {rich(
+              t("Clé de signature de ce poste : <0>{key}</0>.", { key: mine }),
+              [<span className="mono" />],
+            )}
           </>
         )}
       </p>

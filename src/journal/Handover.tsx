@@ -22,7 +22,10 @@ import {
   type Journal,
 } from "../../shared/journal";
 import { activeAssignment, radioSummary } from "../../shared/radio";
+import { formatTime } from "../../shared/i18n/core.ts";
+import { useLang } from "../i18n";
 import { Modal } from "./Modal";
+import { t } from "./i18n.ts";
 
 export function Handover({
   journal,
@@ -44,9 +47,12 @@ export function Handover({
   const [since, setSince] = useState(() =>
     new Date(defaultSince(journal, at)).toISOString(),
   );
+  const lang = useLang();
+  // The summary holds texts: computed again when the language changes.
   const summary = useMemo(
     () => handoverSummary(journal, Date.parse(since) || at, at),
-    [journal, since, at],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [journal, since, at, lang],
   );
   const text = summaryText(summary);
   const pending = chronological(journal.entries.filter(needsFollowUp));
@@ -57,32 +63,32 @@ export function Handover({
   const radio = radioSummary(journal.radio);
   const issued = journal.radio.terminals.filter(activeAssignment);
   return (
-    <Modal title="Relève" onClose={onClose} wide>
+    <Modal title={t("Relève")} onClose={onClose} wide>
       <dl className="metrics compact">
         <div className={pending.length ? "warn" : ""}>
-          <dt>Suites à donner</dt>
+          <dt>{t("Suites à donner")}</dt>
           <dd>{pending.length}</dd>
         </div>
         <div className={pending.some((e) => overdue(e, at)) ? "crit" : ""}>
-          <dt>Échéances dépassées</dt>
+          <dt>{t("Échéances dépassées")}</dt>
           <dd>{pending.filter((e) => overdue(e, at)).length}</dd>
         </div>
         <div>
-          <dt>À confirmer</dt>
+          <dt>{t("À confirmer")}</dt>
           <dd>{unconfirmed.length}</dd>
         </div>
         <div>
-          <dt>Radios en service</dt>
+          <dt>{t("Radios en service")}</dt>
           <dd>
             {radio.issued}
             <small>/{radio.terminals}</small>
           </dd>
         </div>
       </dl>
-      <h3 className="section-label">Que s’est-il passé depuis…</h3>
+      <h3 className="section-label">{t("Que s’est-il passé depuis…")}</h3>
       <div className="hs-since">
         <DateTimeField
-          label="Depuis"
+          label={t("Depuis")}
           value={since}
           onChange={(v) => v && setSince(v)}
         />
@@ -90,8 +96,9 @@ export function Handover({
       <p className="hs-headline">{summaryHeadline(summary)}</p>
       <div className="hs-parts">
         {summaryParts(summary)
+          // Open and overdue points are listed below, as a table.
           .filter(
-            (p) => p.title !== "Points ouverts" && p.title !== "En retard",
+            (p) => p.lines !== summary.open && p.lines !== summary.overdue,
           )
           .map((p) => (
             <div key={p.title} className="hs-part">
@@ -99,13 +106,7 @@ export function Handover({
               <ul>
                 {p.lines.slice(0, 12).map((l, i) => (
                   <li key={i}>
-                    <span className="mono">
-                      {new Date(l.at).toLocaleTimeString("fr-CH", {
-                        timeZone: "Europe/Zurich",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    <span className="mono">{formatTime(l.at)}</span>
                     {l.ref ? (
                       <button
                         className="link"
@@ -123,7 +124,9 @@ export function Handover({
                   </li>
                 ))}
                 {p.lines.length > 12 && (
-                  <li className="muted">… et {p.lines.length - 12} autre(s)</li>
+                  <li className="muted">
+                    {t("… et {n} autre(s)", { n: p.lines.length - 12 })}
+                  </li>
                 )}
               </ul>
             </div>
@@ -136,39 +139,39 @@ export function Handover({
             print({
               kind: "tables",
               journal,
-              title: "Résumé de relève",
-              extra: `Établi par ${author}`,
+              title: t("Résumé de relève"),
+              extra: t("Établi par {author}", { author }),
               landscape: false,
-              name: "resume-de-releve",
+              name: t("resume-de-releve"),
               tables: summaryTables(summary),
             })
           }
         >
           <Printer size={13} />
-          Imprimer le résumé
+          {t("Imprimer le résumé")}
         </button>
         <button
           className="small"
           onClick={() =>
             void navigator.clipboard
               ?.writeText(text)
-              .then(() => toast("Résumé copié."))
-              .catch(() => toast("Copie impossible dans ce navigateur."))
+              .then(() => toast(t("Résumé copié.")))
+              .catch(() => toast(t("Copie impossible dans ce navigateur.")))
           }
         >
           <ClipboardCopy size={13} />
-          Copier
+          {t("Copier")}
         </button>
       </div>
-      <h3 className="section-label">Points ouverts</h3>
+      <h3 className="section-label">{t("Points ouverts")}</h3>
       {pending.length ? (
         <table className="grid dense">
           <thead>
             <tr>
-              <th>N°</th>
-              <th>Message · mesure</th>
-              <th>Responsable</th>
-              <th>Échéance</th>
+              <th>{t("N°")}</th>
+              <th>{t("Message · mesure")}</th>
+              <th>{t("Responsable")}</th>
+              <th>{t("Échéance")}</th>
             </tr>
           </thead>
           <tbody>
@@ -195,26 +198,26 @@ export function Handover({
           </tbody>
         </table>
       ) : (
-        <p className="muted">Aucun.</p>
+        <p className="muted">{t("Aucun.")}</p>
       )}
       {issued.length > 0 && (
         <>
-          <h3 className="section-label">Terminaux remis</h3>
+          <h3 className="section-label">{t("Terminaux remis")}</h3>
           <table className="grid dense">
             <thead>
               <tr>
-                <th>Terminal</th>
-                <th>Détenteur</th>
-                <th>Nom d’appel</th>
-                <th>Remis</th>
+                <th>{t("Terminal")}</th>
+                <th>{t("Détenteur")}</th>
+                <th>{t("Nom d’appel")}</th>
+                <th>{t("Remis")}</th>
               </tr>
             </thead>
             <tbody>
-              {issued.map((t) => {
-                const a = activeAssignment(t)!;
+              {issued.map((terminal) => {
+                const a = activeAssignment(terminal)!;
                 return (
-                  <tr key={t.id}>
-                    <td className="mono">{t.label}</td>
+                  <tr key={terminal.id}>
+                    <td className="mono">{terminal.label}</td>
                     <td>{a.holder}</td>
                     <td>{a.callsign || "—"}</td>
                     <td className="mono">{dateTime(a.issuedAt)}</td>
@@ -226,18 +229,20 @@ export function Handover({
         </>
       )}
       <p className="hint">
-        Autre poste : archive .orionaic, phrase transmise par un canal séparé.
+        {t(
+          "Autre poste : archive .orionaic, phrase transmise par un canal séparé.",
+        )}
       </p>
       <div className="modal-actions">
         <button onClick={() => onTakeOver()} disabled={!!journal.closedAt}>
-          Consigner la relève
+          {t("Consigner la relève")}
         </button>
         <button onClick={() => onTakeOver(text)} disabled={!!journal.closedAt}>
-          Consigner avec le résumé
+          {t("Consigner avec le résumé")}
         </button>
         <button className="primary" onClick={onExport}>
           <Download size={14} />
-          Exporter
+          {t("Exporter")}
         </button>
       </div>
     </Modal>

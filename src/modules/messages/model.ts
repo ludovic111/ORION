@@ -12,6 +12,8 @@ import {
 } from "../../../shared/ops";
 import { messageHighWater } from "../../../shared/journal";
 import { messageLabels } from "../../../shared/sync";
+import type { Lang } from "../../../shared/i18n/core.ts";
+import { t, tIn } from "./i18n.ts";
 
 export type Status = (typeof MESSAGE_STATUSES)[number];
 export type Priority = (typeof MESSAGE_PRIORITIES)[number];
@@ -35,11 +37,20 @@ export const PRIORITY_TONE: Record<Priority, string> = {
   Important: "warn",
   Urgent: "crit",
 };
+// Getters: read in the language of the post when shown.
 export const STATUS_HINT: Record<Status, string> = {
-  Nouveau: "Reçus, pas encore lus",
-  "En traitement": "Synthèse en cours",
-  Transmis: "Inscrits au journal",
-  Classé: "Sans suite au journal",
+  get Nouveau() {
+    return t("Reçus, pas encore lus");
+  },
+  get "En traitement"() {
+    return t("Synthèse en cours");
+  },
+  get Transmis() {
+    return t("Inscrits au journal");
+  },
+  get Classé() {
+    return t("Sans suite au journal");
+  },
 };
 
 /** "M013", or a label from messageLabels() ("013·B" → "M013·B"). */
@@ -83,24 +94,46 @@ const norm = (s: string) =>
     .trim()
     .toLocaleLowerCase("fr");
 
+// Categories and channels are free texts (référentiel of the journal, in
+// its language): French words first, then German and Italian ones.
+const starts = (text: string, words: string[]) =>
+  words.some((w) => text.startsWith(w));
+
 export function toType(category: string): (typeof TYPES)[number] {
   const c = norm(category);
-  if (c.startsWith("demande")) return "Demande";
-  if (c.startsWith("ordre") || c.startsWith("mission")) return "Mission";
-  if (c.startsWith("quittance")) return "Quittance";
-  if (c.startsWith("decision")) return "Décision";
+  if (starts(c, ["demande", "anfrage", "anforderung", "richiesta"]))
+    return "Demande";
+  if (starts(c, ["ordre", "mission", "befehl", "auftrag", "ordine"]))
+    return "Mission";
+  if (starts(c, ["quittance", "quittung", "quittanza"])) return "Quittance";
+  if (starts(c, ["decision", "entscheid", "decisione"])) return "Décision";
   return "Renseignement";
 }
+
+/** Category of an alert ("Alerte", "Alarm", "Allarme"). */
+const isAlert = (category: string) =>
+  starts(norm(category), ["alerte", "alarm", "allarm", "allerta"]);
 
 export function toChannel(via: string): (typeof CHANNELS)[number] {
   const v = norm(via);
   const exact = CHANNELS.find((c) => norm(c) === v);
   if (exact) return exact;
-  if (v === "sms" || v.startsWith("messager") || v.startsWith("message"))
+  if (
+    v === "sms" ||
+    starts(v, [
+      "messager",
+      "message",
+      "meldung",
+      "melder",
+      "messagg",
+      "staffett",
+    ])
+  )
     return "Message";
-  if (v.startsWith("tel") || v.startsWith("natel")) return "Téléphone";
-  if (v.startsWith("mail") || v.startsWith("courriel")) return "E-mail";
-  if (v.startsWith("radio") || v.startsWith("polycom")) return "Radio";
+  if (starts(v, ["tel", "natel"])) return "Téléphone";
+  if (starts(v, ["mail", "courriel", "e-mail"])) return "E-mail";
+  if (starts(v, ["radio", "polycom", "funk"])) return "Radio";
+  if (starts(v, ["sur place", "vor ort", "sul posto"])) return "Sur place";
   return "Autre";
 }
 
@@ -110,13 +143,13 @@ export const messageText = (m: Pick<Message, "subject" | "body">) =>
 /** Journal entry prefilled from a message (the synthesis). */
 export function entryFrom(m: Message, number: number | undefined): Fields {
   const type = toType(m.category);
-  const alert = norm(m.category).startsWith("alerte");
+  const alert = isAlert(m.category);
   const follow = m.replyNeeded || type === "Demande" || type === "Mission";
   return {
     happenedAt: m.receivedAt,
     receivedAt: m.receivedAt,
     type,
-    message: messageText(m) || `Message ${mLabel(number)}`,
+    message: messageText(m) || t("Message {label}", { label: mLabel(number) }),
     source: m.from,
     recipient: m.to,
     channel: toChannel(m.via),
@@ -129,7 +162,7 @@ export function entryFrom(m: Message, number: number | undefined): Fields {
     dueAt: m.replyNeeded ? m.replyBy : "",
     status: follow ? "À traiter" : "Consigné",
     resources: "",
-    reference: `Message ${mLabel(number)}`,
+    reference: t("Message {label}", { label: mLabel(number) }),
     notes: m.notes,
     tags: m.tags,
   };
@@ -143,41 +176,54 @@ export type Skeleton = {
   replyNeeded?: boolean;
   body: string;
 };
-export const SKELETONS: Skeleton[] = [
-  {
-    id: "report",
-    label: "Compte rendu",
-    category: "Compte rendu",
-    body: "Compte rendu.\nSituation : \nMesures prises : \nMoyens engagés : \nBesoins : ",
-  },
-  {
-    id: "request",
-    label: "Demande de moyens",
-    category: "Demande",
-    priority: "Important",
-    replyNeeded: true,
-    body: "Demande de moyens.\nMoyens : \nQuantité : \nLieu de livraison : \nDélai : \nMotif : ",
-  },
-  {
-    id: "alert",
-    label: "Alerte",
-    category: "Alerte",
-    priority: "Urgent",
-    body: "Alerte.\nQuoi : \nOù : \nPersonnes concernées : \nMesures immédiates : ",
-  },
-  {
-    id: "info",
-    label: "Information",
-    category: "Information",
-    body: "Information : ",
-  },
-  {
-    id: "receipt",
-    label: "Quittance",
-    category: "Quittance",
-    body: "Quittance : \nSuite du message : ",
-  },
-];
+/**
+ * Message templates: labels and text in the language of the post, the
+ * category in the language of the journal (its référentiel of categories).
+ */
+export function skeletons(journalLang: Lang): Skeleton[] {
+  const category = (key: Parameters<typeof tIn>[1]) => tIn(journalLang, key);
+  return [
+    {
+      id: "report",
+      label: t("Compte rendu"),
+      category: category("Compte rendu"),
+      body: t(
+        "Compte rendu.\nSituation : \nMesures prises : \nMoyens engagés : \nBesoins : ",
+      ),
+    },
+    {
+      id: "request",
+      label: t("Demande de moyens"),
+      category: category("Demande"),
+      priority: "Important",
+      replyNeeded: true,
+      body: t(
+        "Demande de moyens.\nMoyens : \nQuantité : \nLieu de livraison : \nDélai : \nMotif : ",
+      ),
+    },
+    {
+      id: "alert",
+      label: t("Alerte"),
+      category: category("Alerte"),
+      priority: "Urgent",
+      body: t(
+        "Alerte.\nQuoi : \nOù : \nPersonnes concernées : \nMesures immédiates : ",
+      ),
+    },
+    {
+      id: "info",
+      label: t("Information"),
+      category: category("Information"),
+      body: t("Information : "),
+    },
+    {
+      id: "receipt",
+      label: t("Quittance"),
+      category: category("Quittance"),
+      body: t("Quittance : \nSuite du message : "),
+    },
+  ];
+}
 
 /** Values proposed for "De" and "À": most used first, then the standards. */
 export function partyOptions(
@@ -201,16 +247,20 @@ export function partyOptions(
   ];
 }
 
-/** "dans 12 min", "en retard de 1 h 05". */
+/** "dans 12 min", "en retard de 1 h 05"; span alone: "12 min", "1 h 05". */
 export function countdown(iso: string, now: number) {
   const diff = Math.round((Date.parse(iso) - now) / 60000);
   const abs = Math.abs(diff);
-  const text =
+  const span =
     abs < 60
       ? `${abs} min`
       : `${Math.floor(abs / 60)} h ${String(abs % 60).padStart(2, "0")}`;
   return {
     late: diff < 0,
-    text: diff < 0 ? `en retard de ${text}` : `dans ${text}`,
+    span,
+    text:
+      diff < 0
+        ? t("en retard de {time}", { time: span })
+        : t("dans {time}", { time: span }),
   };
 }

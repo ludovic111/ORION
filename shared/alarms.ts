@@ -12,6 +12,8 @@ import {
   type Identity,
 } from "./diffusion.ts";
 import { zurichWall } from "./time.ts";
+import { enumLabel } from "./i18n/enums.ts";
+import { t as tr } from "./i18n/alarms.ts";
 
 // Alerts that reach people: what should ring or notify this post, and when.
 // Pure functions (tested): src/post/AlertService.tsx schedules them with
@@ -48,13 +50,22 @@ export type AlertSettings = {
   agendaLead: number;
 };
 
+const kind = (
+  kind: AlarmKind,
+  label: Parameters<typeof tr>[0],
+): { kind: AlarmKind; label: string } => ({
+  kind,
+  get label() {
+    return tr(label);
+  },
+});
 export const ALARM_KINDS: { kind: AlarmKind; label: string }[] = [
-  { kind: "message", label: "Message urgent reçu" },
-  { kind: "overdue", label: "Échéance dépassée (journal, mes tâches)" },
-  { kind: "agenda", label: "Rapport ou rendez-vous qui approche" },
-  { kind: "assigned", label: "Nouvelle tâche pour ma fonction" },
-  { kind: "broadcast", label: "Diffusion à quittancer" },
-  { kind: "unacked", label: "Mes diffusions sans accusé de lecture" },
+  kind("message", "Message urgent reçu"),
+  kind("overdue", "Échéance dépassée (journal, mes tâches)"),
+  kind("agenda", "Rapport ou rendez-vous qui approche"),
+  kind("assigned", "Nouvelle tâche pour ma fonction"),
+  kind("broadcast", "Diffusion à quittancer"),
+  kind("unacked", "Mes diffusions sans accusé de lecture"),
 ];
 
 export const allKinds = (): Record<AlarmKind, boolean> => ({
@@ -91,9 +102,12 @@ export function computeAlarms(
           kind: "message",
           at: Date.parse(m.createdAt),
           event: true,
-          title: "Message urgent",
+          title: tr("Message urgent"),
           body: clip(
-            [m.from && `De ${m.from}`, m.subject || first(m.body)]
+            [
+              m.from && tr("De {from}", { from: m.from }),
+              m.subject || first(m.body),
+            ]
               .filter(Boolean)
               .join(" : "),
           ),
@@ -110,7 +124,7 @@ export function computeAlarms(
         kind: "overdue",
         at: Date.parse(f.dueAt),
         event: false,
-        title: `Échéance dépassée : ${numberLabel(e)}`,
+        title: tr("Échéance dépassée : {label}", { label: numberLabel(e) }),
         body: clip(
           [f.assignee, first(f.action) || first(f.message)]
             .filter(Boolean)
@@ -129,7 +143,7 @@ export function computeAlarms(
           kind: "overdue",
           at: t.due,
           event: false,
-          title: "Échéance dépassée",
+          title: tr("Échéance dépassée"),
           body: clip(`${t.title} · ${t.detail}`),
           urgent: false,
           ref: t.ref,
@@ -145,8 +159,11 @@ export function computeAlarms(
           event: false,
           title:
             settings.agendaLead > 0
-              ? `Dans ${settings.agendaLead} min : ${a.title}`
-              : `Maintenant : ${a.title}`,
+              ? tr("Dans {n} min : {title}", {
+                  n: settings.agendaLead,
+                  title: a.title,
+                })
+              : tr("Maintenant : {title}", { title: a.title }),
           body: [a.kind, a.location].filter(Boolean).join(" · "),
           urgent: false,
           ref: `agenda:${a.id}`,
@@ -169,7 +186,10 @@ export function computeAlarms(
         kind: "assigned",
         at: Date.parse(set?.at ?? e.createdAt),
         event: true,
-        title: `Pour vous (${f.assignee}) : ${numberLabel(e)}`,
+        title: tr("Pour vous ({assignee}) : {label}", {
+          assignee: f.assignee,
+          label: numberLabel(e),
+        }),
         body: clip(first(f.action) || first(f.message)),
         urgent: f.priority === "Urgent",
         ref: `entry:${e.id}`,
@@ -182,7 +202,7 @@ export function computeAlarms(
           kind: "assigned",
           at: now,
           event: true,
-          title: "Nouvelle tâche pour vous",
+          title: tr("Nouvelle tâche pour vous"),
           body: clip(`${t.title} · ${t.detail}`),
           urgent: false,
           ref: t.ref,
@@ -195,12 +215,20 @@ export function computeAlarms(
         kind: "broadcast",
         at: Date.parse(b.sentAt),
         event: true,
-        title: `${b.kind || "Diffusion"} : ${b.title}`,
+        title: tr("{kind} : {title}", {
+          kind: b.kind || tr("Diffusion"),
+          title: b.title,
+        }),
         body: clip(
-          [`Pour ${recipients.join(", ")}`, b.sender && `de ${b.sender}`]
+          [
+            tr("Pour {recipients}", { recipients: recipients.join(", ") }),
+            b.sender && tr("de {sender}", { sender: b.sender }),
+          ]
             .filter(Boolean)
             .join(" · ") +
-            (b.ack !== "Aucun" ? ` · répondre « ${b.ack} »` : ""),
+            (b.ack !== "Aucun"
+              ? tr(" · répondre « {ack} »", { ack: enumLabel(b.ack) })
+              : ""),
         ),
         urgent: b.priority === "Urgent",
         ref: `broadcast:${b.id}`,
@@ -212,8 +240,10 @@ export function computeAlarms(
         kind: "unacked",
         at: Date.parse(b.sentAt) + b.deadline * 60_000,
         event: false,
-        title: `Sans accusé de lecture : ${b.title}`,
-        body: `Après ${b.deadline} min, un destinataire n’a pas répondu.`,
+        title: tr("Sans accusé de lecture : {title}", { title: b.title }),
+        body: tr("Après {n} min, un destinataire n’a pas répondu.", {
+          n: b.deadline,
+        }),
         urgent: b.priority === "Urgent",
         ref: `broadcast:${b.id}`,
       });

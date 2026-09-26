@@ -1,75 +1,85 @@
 import { ExternalLink } from "lucide-react";
 import { Modal } from "./Modal";
+import { t } from "./i18n.ts";
 
 export function Privacy({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="Sécurité et données" onClose={onClose}>
+    <Modal title={t("Sécurité et données")} onClose={onClose}>
       <dl className="spec">
         <div>
-          <dt>Session temporaire</dt>
-          <dd>Mémoire de l’onglet uniquement. Perdue à la fermeture.</dd>
+          <dt>{t("Session temporaire")}</dt>
+          <dd>{t("Mémoire de l’onglet uniquement. Perdue à la fermeture.")}</dd>
         </div>
         <div>
-          <dt>Sauvegarde locale</dt>
+          <dt>{t("Sauvegarde locale")}</dt>
           <dd>
-            IndexedDB de ce navigateur, chiffrée. Phrase et clé jamais
-            enregistrées.
+            {t(
+              "IndexedDB de ce navigateur, chiffrée. Phrase et clé jamais enregistrées.",
+            )}
           </dd>
         </div>
         <div>
-          <dt>Archive .orionaic</dt>
-          <dd>AES-256-GCM · PBKDF2-SHA-256, 600 000 itérations.</dd>
+          <dt>{t("Archive .orionaic")}</dt>
+          <dd>{t("AES-256-GCM · PBKDF2-SHA-256, 600 000 itérations.")}</dd>
         </div>
         <div>
-          <dt>Autres formats</dt>
-          <dd>En clair : PDF, Excel, Word, CSV, JSON, HTML, texte.</dd>
+          <dt>{t("Autres formats")}</dt>
+          <dd>{t("En clair : PDF, Excel, Word, CSV, JSON, HTML, texte.")}</dd>
         </div>
         <div>
-          <dt>Synchronisation</dt>
+          <dt>{t("Synchronisation")}</dt>
           <dd>
-            Facultative. Chiffrée de bout en bout avec le code de session ; le
-            relais ne voit que des messages illisibles et ne garde rien.
+            {t(
+              "Facultative. Chiffrée de bout en bout avec le code de session ; le relais ne voit que des messages illisibles et ne garde rien.",
+            )}
           </dd>
         </div>
         <div>
-          <dt>Services externes</dt>
+          <dt>{t("Services externes")}</dt>
           <dd>
-            Sur demande uniquement : tuiles swisstopo / OpenStreetMap, recherche
-            de lieu geo.admin.ch, prévisions Open-Meteo (coordonnées seulement).
-            Ni IA, ni statistiques, ni police distante.
+            {t(
+              "Sur demande uniquement : tuiles swisstopo / OpenStreetMap, recherche de lieu geo.admin.ch, prévisions Open-Meteo (coordonnées seulement). Ni IA, ni statistiques, ni police distante.",
+            )}
           </dd>
         </div>
         <div>
-          <dt>Hébergeur</dt>
-          <dd>Voit les requêtes de chargement (adresse IP).</dd>
+          <dt>{t("Hébergeur")}</dt>
+          <dd>{t("Voit les requêtes de chargement (adresse IP).")}</dd>
         </div>
         <div>
-          <dt>Identité</dt>
-          <dd>Noms d’opérateur déclaratifs. Historique non signé.</dd>
+          <dt>{t("Identité")}</dt>
+          <dd>{t("Noms d’opérateur déclaratifs. Historique non signé.")}</dd>
         </div>
       </dl>
-      <h3 className="section-label">Limites</h3>
+      <h3 className="section-label">{t("Limites")}</h3>
       <ul className="plain">
         <li>
-          Un poste compromis ou une session déverrouillée expose les données.
-        </li>
-        <li>Effacer les données du navigateur efface la sauvegarde locale.</li>
-        <li>
-          Le code de session donne accès à toute la session : le transmettre
-          comme un mot de passe.
+          {t(
+            "Un poste compromis ou une session déverrouillée expose les données.",
+          )}
         </li>
         <li>
-          Conservation, destinataires et autorisation de traiter des données
-          réelles : responsabilité de l’organisation.
+          {t("Effacer les données du navigateur efface la sauvegarde locale.")}
         </li>
         <li>
-          Logiciel indépendant, sans homologation OFPP ni État de Genève. Les
-          numéros de groupes et RFSI viennent du plan de flotte cantonal.
+          {t(
+            "Le code de session donne accès à toute la session : le transmettre comme un mot de passe.",
+          )}
+        </li>
+        <li>
+          {t(
+            "Conservation, destinataires et autorisation de traiter des données réelles : responsabilité de l’organisation.",
+          )}
+        </li>
+        <li>
+          {t(
+            "Logiciel indépendant, sans homologation OFPP ni État de Genève. Les numéros de groupes et RFSI viennent du plan de flotte cantonal.",
+          )}
         </li>
       </ul>
       <div className="action-row">
         <a className="button" href="/source/orion-aic-source.tar.gz" download>
-          Code source · AGPL-3.0
+          {t("Code source · AGPL-3.0")}
         </a>
         <a
           className="link"
@@ -77,7 +87,7 @@ export function Privacy({ onClose }: { onClose: () => void }) {
           target="_blank"
           rel="noreferrer"
         >
-          Documents OFPP
+          {t("Documents OFPP")}
           <ExternalLink size={12} />
         </a>
       </div>

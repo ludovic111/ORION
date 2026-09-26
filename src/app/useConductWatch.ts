@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Journal } from "../../shared/journal";
 import { applyThresholds, latestForecast } from "../../shared/thresholds";
 import type { JournalActions } from "./useJournalActions";
+import { t } from "./i18n.ts";
 
 /**
  * Background checks of the live journal, in the page only (no server):
@@ -46,8 +47,13 @@ export function useConductWatch({
       a.changeJournal((x) => applyThresholds(x, forecast, by, at).journal);
       say(
         created.length === 1
-          ? `Seuil météo franchi : ${created[0].threshold.label || "alerte créée"} (${created[0].crossing.day.split("-").reverse().join(".")}).`
-          : `${created.length} seuils météo franchis : alertes créées dans Météo.`,
+          ? t("Seuil météo franchi : {label} ({day}).", {
+              label: created[0].threshold.label || t("alerte créée"),
+              day: created[0].crossing.day.split("-").reverse().join("."),
+            })
+          : t("{n} seuils météo franchis : alertes créées dans Météo.", {
+              n: created.length,
+            }),
       );
     } catch {
       // A later forecast tries again.
