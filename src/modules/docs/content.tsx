@@ -5,6 +5,7 @@ import {
   History,
   Lightbulb,
   MonitorPlay,
+  Navigation,
   Keyboard,
   LayoutDashboard,
   Link2,
@@ -2214,7 +2215,10 @@ export const TOPICS: Topic[] = [
           Tout le contenu : journaux et entrées, messages, carte, moyens,
           équipe, radio, contacts, météo, agenda, liens, référentiels. Ce qui
           reste propre à chaque poste : les <strong>réglages du poste</strong>{" "}
-          (thème, modules affichés, impression automatique).
+          (thème, modules affichés, impression automatique). Les{" "}
+          <strong>positions en direct</strong> des équipes passent aussi par la
+          synchronisation, mais ne sont jamais enregistrées (voir « Positions
+          des équipes en direct »).
         </p>
         <H>Hors ligne</H>
         <p>
@@ -2297,6 +2301,141 @@ export const TOPICS: Topic[] = [
             ; les autres continuent.
           </li>
         </ul>
+      </>
+    ),
+  },
+  {
+    id: "positions",
+    group: "together",
+    title: "Positions des équipes en direct",
+    icon: Navigation,
+    hue: 20,
+    module: "map",
+    openLabel: "Ouvrir la carte",
+    short: (
+      <p>
+        Un téléphone ou une tablette d’une patrouille peut{" "}
+        <strong>partager sa position</strong> : le poste de conduite la voit sur
+        la carte, en direct. Rien n’est enregistré, sauf si quelqu’un le
+        demande.
+      </p>
+    ),
+    guide: (
+      <>
+        <H>Sur le téléphone de l’équipe : partager</H>
+        <Steps>
+          <li>
+            Rejoignez la session (code de session), puis ouvrez la{" "}
+            <Ui>Carte</Ui>.
+          </li>
+          <li>
+            Touchez le bouton flèche <Ui>Partager ma position</Ui> (colonne de
+            droite, sous <Ui>Ma position</Ui>).
+          </li>
+          <li>
+            Lisez qui la voit et ce qui est gardé. Choisissez l’équipe ou le
+            moyen représenté (fiche Équipe ou Moyens) et le libellé, par exemple
+            « Patrouille 2 ».
+          </li>
+          <li>
+            <Ui>Partager ma position</Ui>, puis acceptez la demande de
+            localisation du navigateur.
+          </li>
+        </Steps>
+        <p>
+          Tant que le partage dure, un bandeau reste en haut de l’écran :{" "}
+          <Ui>Position partagée</Ui>, l’heure du dernier envoi et le bouton{" "}
+          <Ui>Arrêter</Ui>.
+        </p>
+        <H>Au poste de conduite : suivre</H>
+        <Steps>
+          <li>
+            Sur la carte, chaque équipe a un point orange, son nom, l’âge de la
+            position (« il y a 40 s »), un cercle de précision et son trajet des
+            30 dernières minutes.
+          </li>
+          <li>
+            Un clic sur le point : <Ui>Centrer</Ui>,{" "}
+            <Ui>Consigner au journal</Ui> (une entrée avec les coordonnées
+            MN95), <Ui>Créer un point ici</Ui> (un objet normal de la carte) ou{" "}
+            <Ui>Fiche</Ui>.
+          </li>
+          <li>
+            <Path steps={["Carte", "Calques", "Positions en direct"]} /> masque
+            ou affiche ce calque.
+          </li>
+        </Steps>
+        <Note kind="info">
+          Une position de plus de 2 minutes devient grise ; après 30 minutes
+          sans nouvelle, l’équipe disparaît de la carte.
+        </Note>
+      </>
+    ),
+    full: (
+      <>
+        <H>Ce qui est envoyé, et à qui</H>
+        <ul>
+          <li>
+            La latitude, la longitude, la précision, la direction et la vitesse,
+            le libellé et la fiche liée. Rien d’autre.
+          </li>
+          <li>
+            Environ toutes les 15 secondes, ou après 25 m de déplacement (au
+            plus toutes les 5 secondes) : peu de données, pas de coût
+            supplémentaire pour le relais.
+          </li>
+          <li>
+            Seulement aux postes connectés à la même session, chiffré avec le
+            code de session comme le reste. Le relais ne peut pas lire la
+            position et ne la garde pas.
+          </li>
+        </ul>
+        <H>Ce qui est gardé</H>
+        <ul>
+          <li>
+            Rien sur le serveur. Les autres postes gardent la dernière position
+            et le trajet des 30 dernières minutes <strong>en mémoire</strong>{" "}
+            seulement : fermer l’onglet les efface.
+          </li>
+          <li>
+            Les positions n’entrent ni dans le journal, ni dans l’historique, ni
+            dans les archives, ni dans la machine à remonter le temps (le calque
+            y est masqué).
+          </li>
+          <li>
+            Pour garder une trace, il faut le faire exprès :{" "}
+            <Ui>Consigner au journal</Ui> ou <Ui>Créer un point ici</Ui> au
+            poste de conduite, ou <Ui>Enregistrer la trace</Ui> sur le poste qui
+            partage.
+          </li>
+        </ul>
+        <H>Enregistrer la trace</H>
+        <p>
+          À cocher au début du partage (ou dans le détail du bandeau). Le trajet
+          reste sur le téléphone. À l’arrêt, orion aic demande :{" "}
+          <Ui>Enregistrer sur la carte</Ui> (une ligne du calque Moyens, visible
+          de tous et gardée dans l’historique) ou <Ui>Abandonner la trace</Ui>.
+        </p>
+        <H>Quand le partage s’arrête</H>
+        <ul>
+          <li>
+            Bouton <Ui>Arrêter</Ui> du bandeau : les autres postes retirent
+            l’équipe tout de suite.
+          </li>
+          <li>
+            Onglet fermé, page rechargée, session fermée : le partage s’arrête.
+          </li>
+          <li>
+            Écran verrouillé ou application en arrière-plan : le navigateur
+            coupe la localisation. L’option <Ui>Garder l’écran allumé</Ui> évite
+            le verrouillage (consomme davantage de batterie).
+          </li>
+        </ul>
+        <Note kind="warn">
+          La précision dépend de l’appareil : en ville ou en intérieur, le
+          cercle peut dépasser 50 m. Pour une position importante, confirmez par
+          radio.
+        </Note>
       </>
     ),
   },

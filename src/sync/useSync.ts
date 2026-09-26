@@ -26,6 +26,12 @@ import {
 } from "../../shared/protocol";
 import { parseTolerant } from "../../shared/tolerant";
 import {
+  ephemeralWire,
+  isEphemeral,
+  readEphemeral,
+  type EphemeralWire,
+} from "../../shared/ephemeral";
+import {
   PEER_ID,
   PROTOCOL,
   Reassembler,
@@ -46,6 +52,8 @@ import {
 //   against its version vector), and the removed journals. A peer whose
 //   digest did not move after a partial state gets the whole journal.
 // - presence, bye.
+// - eph: ephemeral messages (shared/ephemeral.ts), handed to the listeners
+//   of their kind and nothing else: never merged, stored or in the digests.
 // Large messages are split into parts (shared/room.ts), so no frame ever
 // reaches the limit of the relay.
 
@@ -96,7 +104,8 @@ type Wire =
       module: string;
       journal: string;
     }
-  | { type: "bye"; v: number; peer: string };
+  | { type: "bye"; v: number; peer: string }
+  | EphemeralWire;
 
 const HEARTBEAT = 40_000;
 /** A connection that lasted this long resets the reconnection delay. */
@@ -142,6 +151,12 @@ export const conflictId = (c: Conflict) =>
     ? `${c.journalId}:${c.scope}:${c.number}:${c.items.length}`
     : `${c.journalId}:${c.target}:${c.kept.id}:${c.overwritten.map((o) => o.id).join(",")}`;
 
+/** Listener of the ephemeral messages of one kind. */
+export type EphemeralHandler = (
+  data: unknown,
+  from: { peer: string; name: string },
+) => void;
+
 export function useSync(options: {
   code: string | null;
   workspace: Workspace | null;
@@ -172,6 +187,8 @@ export function useSync(options: {
   // leaves as the difference.
   const announced = useRef(new Map<string, VersionVector>());
   const flushRef = useRef<(() => Promise<void>) | null>(null);
+  // Ephemeral messages: listeners by kind.
+  const ephemeral = useRef(new Map<string, Set<EphemeralHandler>>());
 
   const reject = useCallback((item: Omit<Rejected, "at">) => {
     setRejected((list) => [{ ...item, at: Date.now() }, ...list].slice(0, 50));
@@ -281,6 +298,13 @@ export function useSync(options: {
       if (!wire || typeof wire !== "object" || wire.peer === peerId.current)
         return;
       if (!versionOf(wire)) return;
+      if (isEphemeral(wire)) {
+        const message = readEphemeral(wire);
+        if (!message) return;
+        for (const handler of ephemeral.current.get(message.kind) ?? [])
+          handler(message.data, { peer: message.peer, name: message.name });
+        return;
+      }
       if ("name" in wire && typeof wire.name === "string")
         names.set(from, wire.name);
       if (wire.type === "bye") {
@@ -612,6 +636,38 @@ export function useSync(options: {
     [found, seenIds, rejected],
   );
 
+  /**
+   * Send an ephemeral message to the connected posts (or to the post of
+   * relay id `to`); false when not connected (nothing is kept for later).
+   */
+  const sendEphemeral = useCallback(
+    async (kind: string, data: unknown, to = "") => {
+      const ch = channel.current;
+      if (!ch) return false;
+      await ch.send(
+        ephemeralWire(
+          { v: PROTOCOL, peer: peerId.current, name: latest.current.author },
+          kind,
+          data,
+        ),
+        to,
+      );
+      return true;
+    },
+    [],
+  );
+  /** Listen to the ephemeral messages of `kind`; returns the unsubscribe. */
+  const onEphemeral = useCallback((kind: string, handler: EphemeralHandler) => {
+    const map = ephemeral.current;
+    const set = map.get(kind) ?? new Set<EphemeralHandler>();
+    set.add(handler);
+    map.set(kind, set);
+    return () => {
+      set.delete(handler);
+      if (!set.size) map.delete(kind);
+    };
+  }, []);
+
   return {
     status,
     relayCount,
@@ -625,5 +681,7 @@ export function useSync(options: {
     seen: seenIds,
     markSeen,
     clearRejected: () => setRejected([]),
+    sendEphemeral,
+    onEphemeral,
   };
 }

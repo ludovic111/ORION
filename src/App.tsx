@@ -56,6 +56,7 @@ import { TopBar } from "./app/TopBar";
 import { JournalMenu, OperatorMenu } from "./app/ShellMenus";
 import { OverlayHost } from "./app/OverlayHost";
 import { useSync } from "./sync/useSync";
+import { LiveHost } from "./live/LiveHost";
 import { JournalView } from "./modules/journal/JournalView";
 import { Situation } from "./modules/situation/Situation";
 import { Messages } from "./modules/messages/Messages";
@@ -1078,6 +1079,8 @@ export default function App() {
         onDone={() => setAutoQueue((q) => q.slice(1))}
       />
       {viewAt !== null && <TimeBar />}
+      {/* Live positions of the teams (ephemeral, never stored). */}
+      <LiveHost sync={sync} />
       <Toast message={toast} onDone={() => setToast(null)} />
     </Ctx.Provider>
   );

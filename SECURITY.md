@@ -48,7 +48,15 @@ Le service worker met en cache le code de l’application, les signes cartograph
 
 ## Caméra, position et QR codes
 
-La caméra est demandée uniquement à l’ouverture du scanner et arrêtée à sa fermeture ; les images sont analysées dans le navigateur. La position (« Ma position » sur la carte ou la météo) n’est demandée que sur clic et n’est pas enregistrée sauf si l’opérateur place un objet ou choisit ce lieu. `Permissions-Policy` limite caméra et géolocalisation à l’origine du site. Les étiquettes QR des radios contiennent l’adresse du site et le numéro du terminal ; le QR de synchronisation contient le code de session (à ne montrer qu’aux postes autorisés).
+La caméra est demandée uniquement à l’ouverture du scanner et arrêtée à sa fermeture ; les images sont analysées dans le navigateur. La position (« Ma position » sur la carte ou la météo) n’est demandée que sur clic et n’est pas enregistrée sauf si l’opérateur place un objet ou choisit ce lieu.
+
+**Positions des équipes en direct** (`shared/live.ts`, `src/live/`) :
+
+- Le partage est volontaire : un écran de consentement dit qui voit la position (les postes connectés à la même session), ce qui est gardé et quand le partage s’arrête. Tant qu’il dure, un bandeau reste affiché sur le poste qui partage, avec un bouton « Arrêter » ; fermer l’onglet, recharger, fermer la session ou verrouiller l’appareil l’arrête aussi (le navigateur coupe la localisation). Le verrou d’écran (Wake Lock) n’est pris que si l’opérateur le choisit.
+- Ce qui part : latitude, longitude, précision, cap, vitesse, âge de la mesure, libellé et fiche liée (`cell:…` ou `resource:…`), environ 100 octets, au plus toutes les 5 s (toutes les 15 s à l’arrêt, ou après 25 m). Ces **messages éphémères** (`shared/ephemeral.ts`) sont chiffrés avec la clé de session comme les autres ; le relais les transmet sans pouvoir les lire et ne garde rien.
+- Ce qui est gardé : rien sur le serveur ; sur les autres postes, en mémoire seulement, la dernière position et le trajet des 30 dernières minutes (effacés après 30 minutes sans nouvelle, ou à la fermeture de l’onglet). Les messages éphémères ne sont jamais fusionnés : ni journal, ni historique, ni empreinte de synchronisation, ni archive, ni sauvegarde locale. La machine à remonter le temps masque le calque.
+- Une position n’est enregistrée que sur action explicite : « Consigner au journal » (entrée ordinaire avec coordonnées MN95), « Créer un point ici » (objet de la carte), ou « Enregistrer la trace » confirmé à l’arrêt par le poste qui partage (ligne de la carte). Ces écritures passent par la porte d’écriture (refusées en lecture seule) et entrent dans l’historique comme toute modification.
+- Limites : tout détenteur du code de session voit les positions partagées et peut en envoyer sous n’importe quel libellé (pas d’authentification de l’expéditeur, voir plus haut). La précision dépend de l’appareil. `Permissions-Policy` limite caméra et géolocalisation à l’origine du site. Les étiquettes QR des radios contiennent l’adresse du site et le numéro du terminal ; le QR de synchronisation contient le code de session (à ne montrer qu’aux postes autorisés).
 
 ## Suppression
 

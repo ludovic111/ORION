@@ -2298,3 +2298,108 @@ button.map-coords:hover {
 .map-sector-dialog > button.small {
   align-self: flex-start;
 }
+
+/* ---------- Positions en direct (teams sharing their GPS) ---------- */
+/* The ember dot marks what is live; an old position turns grey. */
+.map-layer-dot.live {
+  width: 10px;
+  height: 10px;
+  margin: 1px;
+  background: var(--ember);
+}
+.map-team-icon {
+  overflow: visible;
+}
+.map-team {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.map-team-dot {
+  position: absolute;
+  inset: 2px;
+  border: 2px solid var(--map-ink-halo);
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.map-team.self .map-team-dot {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+.map-team-heading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: -17px 0 0 -5px;
+  border-right: 5px solid transparent;
+  border-bottom: 9px solid var(--ember);
+  border-left: 5px solid transparent;
+  transform-origin: 5px 17px;
+}
+.map-team-label {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 7px 3px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  background: var(--solid);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.map-team-label b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.map-team-label small {
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.map-team.stale .map-team-dot {
+  background: var(--text-3);
+}
+.map-team.stale .map-team-label {
+  color: var(--text-2);
+}
+.map-team-acc {
+  fill: var(--ember);
+  fill-opacity: 0.1;
+  stroke: var(--ember);
+  stroke-opacity: 0.5;
+  stroke-width: 1px;
+}
+.map-team-trail {
+  fill: none;
+  stroke: var(--ember);
+  stroke-opacity: 0.7;
+  stroke-width: 2.5px;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+.map-team-acc.stale,
+.map-team-trail.stale {
+  fill: var(--text-3);
+  stroke: var(--text-3);
+}
+.map-team-trail.stale {
+  fill: none;
+}
+.map-team-card > strong {
+  display: block;
+  font-size: 15px;
+}
+.map-team-card .map-ghost-actions {
+  flex-wrap: wrap;
+}
