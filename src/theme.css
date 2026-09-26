@@ -426,11 +426,36 @@ h3,
 .command-trigger kbd {
   margin-left: auto;
 }
+.command-trigger {
+  min-width: 0;
+}
+.command-trigger span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .bar-status {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   margin-left: auto;
+}
+/* Between the phone layout and a wide screen the status area needs the
+   room: the search box shrinks to its icon and the secondary labels go. */
+@media (max-width: 1180px) {
+  .command-trigger span,
+  .command-trigger kbd,
+  .journal-switch small {
+    display: none;
+  }
+  .command-trigger {
+    flex: none;
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+    margin: 0 0 0 8px;
+  }
 }
 .status-chip {
   display: inline-flex;
