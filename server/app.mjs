@@ -15,15 +15,17 @@ const types = {
   ".gz": "application/gzip",
   ".png": "image/png",
 };
-// Map tiles (swisstopo), weather (Open-Meteo) and place search (geo.admin.ch)
-// are optional services queried from the browser on demand. The map tiles
-// are listed in connect-src too: the service worker fetches them (to keep
-// them offline) and a worker's fetch() is governed by connect-src, not
-// img-src. Without it every tile fails and the map claims to be offline.
+// Map tiles (swisstopo, geo.admin.ch overlays), weather (Open-Meteo), place
+// search, elevation profiles and feature info (api3.geo.admin.ch) and live
+// hydrology / MeteoSwiss data (data.geo.admin.ch) are optional services
+// queried from the browser on demand. The map tiles are listed in
+// connect-src too: the service worker fetches them (to keep them offline)
+// and a worker's fetch() is governed by connect-src, not img-src. Without
+// it every tile fails and the map claims to be offline.
 export const MAP_ORIGINS =
-  "https://wmts.geo.admin.ch https://tile.openstreetmap.org";
+  "https://wmts.geo.admin.ch https://wms.geo.admin.ch https://tile.openstreetmap.org";
 export const API_ORIGINS =
-  "https://api.open-meteo.com https://api3.geo.admin.ch";
+  "https://api.open-meteo.com https://api3.geo.admin.ch https://data.geo.admin.ch";
 /**
  * Content security policy. Over HTTPS the relay is reached with wss:// only
  * and any http:// sub-request is upgraded, so browsers never flag the page

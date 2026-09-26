@@ -1,5 +1,12 @@
 import type { Journal } from "../../../shared/journal.ts";
 import type { OpsMap, Place } from "../../../shared/ops.ts";
+import {
+  fromMN03,
+  fromMN95,
+  isMN03,
+  isMN95,
+  toMN95,
+} from "../../../shared/coordinates.ts";
 import { builtinInfo, symbolName } from "./builtins.ts";
 import { TONE_COLOR, hexColor, placesOf, simplifyTo, toneOf } from "./maps.ts";
 
@@ -67,22 +74,45 @@ function properties(journal: Journal, p: Place, names: Map<string, string>) {
 }
 
 const closed = (points: LatLng[]) => [...points, points[0]];
+const ringsOf = (p: Place) => [p.points, ...(p.holes ?? [])];
+
+export type GeoJSONOptions = {
+  /** Coordinates in MN95 (EPSG:2056, metres) instead of WGS84. */
+  crs?: "EPSG:4326" | "EPSG:2056";
+};
 
 /** GeoJSON FeatureCollection of the objects of a map ("" : every object). */
-export function toGeoJSON(journal: Journal, mapId = ""): string {
+export function toGeoJSON(
+  journal: Journal,
+  mapId = "",
+  options: GeoJSONOptions = {},
+): string {
   const { places, names, title } = context(journal, mapId);
-  const xy = ([lat, lng]: LatLng) => [
-    Math.round(lng * 1e7) / 1e7,
-    Math.round(lat * 1e7) / 1e7,
-  ];
-  const features = places.map((p) => {
+  const swiss = options.crs === "EPSG:2056";
+  const xy = ([lat, lng]: LatLng) => {
+    if (swiss) {
+      const { east, north } = toMN95(lat, lng);
+      return [Math.round(east * 100) / 100, Math.round(north * 100) / 100];
+    }
+    return [Math.round(lng * 1e7) / 1e7, Math.round(lat * 1e7) / 1e7];
+  };
+  const features = places.flatMap((p) => {
     const color = effectiveColor(p);
-    const geometry =
-      p.kind === "line"
-        ? { type: "LineString", coordinates: p.points.map(xy) }
-        : p.kind === "area"
-          ? { type: "Polygon", coordinates: [closed(p.points).map(xy)] }
-          : { type: "Point", coordinates: xy(p.points[0]) };
+    let geometry: { type: string; coordinates: unknown };
+    try {
+      geometry =
+        p.kind === "line"
+          ? { type: "LineString", coordinates: p.points.map(xy) }
+          : p.kind === "area"
+            ? {
+                type: "Polygon",
+                coordinates: ringsOf(p).map((r) => closed(r).map(xy)),
+              }
+            : { type: "Point", coordinates: xy(p.points[0]) };
+    } catch {
+      // Outside the Swiss grid: not expressible in MN95.
+      return [];
+    }
     return {
       type: "Feature",
       id: p.id,
@@ -103,7 +133,17 @@ export function toGeoJSON(journal: Journal, mapId = ""): string {
     };
   });
   return JSON.stringify(
-    { type: "FeatureCollection", name: title, features },
+    {
+      type: "FeatureCollection",
+      name: title,
+      ...(swiss && {
+        crs: {
+          type: "name",
+          properties: { name: "urn:ogc:def:crs:EPSG::2056" },
+        },
+      }),
+      features,
+    },
     null,
     1,
   );
@@ -141,7 +181,14 @@ export function toKML(journal: Journal, mapId = ""): string {
       p.kind === "line"
         ? `<LineString><tessellate>1</tessellate><coordinates>${p.points.map(lngLat).join(" ")}</coordinates></LineString>`
         : p.kind === "area"
-          ? `<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>${closed(p.points).map(lngLat).join(" ")}</coordinates></LinearRing></outerBoundaryIs></Polygon>`
+          ? `<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>${closed(p.points).map(lngLat).join(" ")}</coordinates></LinearRing></outerBoundaryIs>${(
+              p.holes ?? []
+            )
+              .map(
+                (h) =>
+                  `<innerBoundaryIs><LinearRing><coordinates>${closed(h).map(lngLat).join(" ")}</coordinates></LinearRing></innerBoundaryIs>`,
+              )
+              .join("")}</Polygon>`
           : `<Point><coordinates>${lngLat(p.points[0])}</coordinates></Point>`;
     return (
       `<Placemark id="p-${p.id}"><name>${escapeXml(p.label)}</name>` +
@@ -360,6 +407,8 @@ function* walk(node: XmlNode): Generator<XmlNode> {
 export type ImportedFeature = {
   kind: Place["kind"];
   points: LatLng[];
+  /** Holes of an area. */
+  holes?: LatLng[][];
   label: string;
   notes: string;
   layer?: string;
@@ -376,6 +425,8 @@ export type ImportedFeature = {
 type Base = Omit<ImportedFeature, "kind" | "points"> & { kind?: Place["kind"] };
 export type ImportResult = {
   format: "GeoJSON" | "KML" | "GPX";
+  /** Coordinates found in the file (converted to WGS84 on import). */
+  crs?: "WGS84" | "MN95" | "MN03";
   features: ImportedFeature[];
   /** Geometries left out (invalid coordinates, too few points…). */
   skipped: number;
@@ -433,22 +484,33 @@ function styleProps(props: Record<string, unknown>): Partial<ImportedFeature> {
   return out;
 }
 
+/** Valid, rounded, without repeated vertices (nor the closing one). */
+function cleanRing(raw: LatLng[], area: boolean): LatLng[] {
+  const points: LatLng[] = [];
+  for (const [lat, lng] of raw) {
+    if (!validPoint(lat, lng)) continue;
+    const p: LatLng = [round6(lat), round6(lng)];
+    const last = points[points.length - 1];
+    if (!last || last[0] !== p[0] || last[1] !== p[1]) points.push(p);
+  }
+  if (area && points.length > 1) {
+    const [a, z] = [points[0], points[points.length - 1]];
+    if (a[0] === z[0] && a[1] === z[1]) points.pop();
+  }
+  return points;
+}
+
 class Collector {
   features: ImportedFeature[] = [];
   skipped = 0;
   simplified = 0;
-  add(kind: Place["kind"], raw: LatLng[], base: Base) {
-    let points: LatLng[] = [];
-    for (const [lat, lng] of raw) {
-      if (!validPoint(lat, lng)) continue;
-      const p: LatLng = [round6(lat), round6(lng)];
-      const last = points[points.length - 1];
-      if (!last || last[0] !== p[0] || last[1] !== p[1]) points.push(p);
-    }
-    if (kind === "area" && points.length > 1) {
-      const [a, z] = [points[0], points[points.length - 1]];
-      if (a[0] === z[0] && a[1] === z[1]) points.pop();
-    }
+  add(
+    kind: Place["kind"],
+    raw: LatLng[],
+    base: Base,
+    rawHoles: LatLng[][] = [],
+  ) {
+    let points = cleanRing(raw, kind === "area");
     const min = kind === "area" ? 3 : kind === "line" ? 2 : 1;
     if (points.length < min) {
       this.skipped++;
@@ -459,6 +521,14 @@ class Collector {
       points = simplifyTo(points, MAX_POINTS, 1e-6);
       this.simplified++;
     }
+    const holes: LatLng[][] = [];
+    if (kind === "area")
+      for (const h of rawHoles.slice(0, 50)) {
+        let ring = cleanRing(h, true);
+        if (ring.length < 3) continue;
+        if (ring.length > MAX_POINTS) ring = simplifyTo(ring, MAX_POINTS, 1e-6);
+        holes.push(ring);
+      }
     const f: ImportedFeature = {
       ...base,
       ...(base.color !== undefined && { color: hexColor(base.color) }),
@@ -466,9 +536,62 @@ class Collector {
       label: base.label.slice(0, 200),
       notes: base.notes.slice(0, 4000),
       points,
+      ...(holes.length && { holes }),
     };
     this.features.push(f);
   }
+}
+
+/** A number, or NaN for null, "", booleans, arrays… (never 0 by default). */
+function finite(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+  if (typeof v === "string" && v.trim() !== "") return Number(v);
+  return NaN;
+}
+
+const ringArgs = (
+  [outer, holes]: [LatLng[], LatLng[][]],
+  base: Base,
+): [LatLng[], Base, LatLng[][]] => [outer, base, holes];
+
+/** First position of a GeoJSON document, as written ([x, y]). */
+function firstPosition(node: unknown, depth = 0): [number, number] | null {
+  if (depth > 60 || !node || typeof node !== "object") return null;
+  if (Array.isArray(node)) {
+    if (node.length >= 2 && typeof node[0] === "number")
+      return [finite(node[0]), finite(node[1])];
+    for (const n of node) {
+      const p = firstPosition(n, depth + 1);
+      if (p) return p;
+    }
+    return null;
+  }
+  const o = node as Record<string, unknown>;
+  for (const k of ["coordinates", "geometry", "geometries", "features"]) {
+    const p = firstPosition(o[k], depth + 1);
+    if (p) return p;
+  }
+  return null;
+}
+
+/**
+ * Swiss GeoJSON files (geo.admin.ch, cantonal portals) use MN95
+ * (EPSG:2056) or MN03 (EPSG:21781): named in the "crs" member, or
+ * recognisable by the size of the coordinates.
+ */
+function swissCrs(data: unknown): "WGS84" | "MN95" | "MN03" {
+  const name = String(
+    (data as { crs?: { properties?: { name?: unknown } } })?.crs?.properties
+      ?.name ?? "",
+  );
+  if (/2056/.test(name)) return "MN95";
+  if (/21781/.test(name)) return "MN03";
+  const p = firstPosition(data);
+  if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) {
+    if (isMN95(p[0], p[1])) return "MN95";
+    if (isMN03(p[0], p[1]) && p[0] > 1000) return "MN03";
+  }
+  return "WGS84";
 }
 
 function readGeoJSON(text: string): ImportResult {
@@ -479,9 +602,22 @@ function readGeoJSON(text: string): ImportResult {
     throw new Error("Fichier GeoJSON illisible (JSON invalide).");
   }
   const out = new Collector();
-  const pair = (c: unknown): LatLng =>
-    Array.isArray(c) ? [Number(c[1]), Number(c[0])] : [NaN, NaN];
+  const crs = swissCrs(data);
+  const pair = (c: unknown): LatLng => {
+    if (!Array.isArray(c) || c.length < 2) return [NaN, NaN];
+    const x = finite(c[0]);
+    const y = finite(c[1]);
+    if (crs === "WGS84") return [y, x];
+    try {
+      const { lat, lng } = crs === "MN95" ? fromMN95(x, y) : fromMN03(x, y);
+      return [lat, lng];
+    } catch {
+      return [NaN, NaN];
+    }
+  };
   const list = (c: unknown): LatLng[] => (Array.isArray(c) ? c.map(pair) : []);
+  const rings = (c: unknown): [LatLng[], LatLng[][]] =>
+    Array.isArray(c) ? [list(c[0]), c.slice(1).map(list)] : [[], []];
   const geometry = (g: unknown, base: Base) => {
     const geo = g as {
       type?: string;
@@ -503,13 +639,13 @@ function readGeoJSON(text: string): ImportResult {
           : void out.skipped++;
       case "Polygon":
         return Array.isArray(c)
-          ? out.add("area", list(c[0]), base)
+          ? out.add("area", ...ringArgs(rings(c), base))
           : void out.skipped++;
       case "MultiPolygon":
         return Array.isArray(c)
           ? c.forEach((poly) =>
               Array.isArray(poly)
-                ? out.add("area", list(poly[0]), base)
+                ? out.add("area", ...ringArgs(rings(poly), base))
                 : out.skipped++,
             )
           : void out.skipped++;
@@ -559,21 +695,27 @@ function readGeoJSON(text: string): ImportResult {
   else throw new Error("Ce fichier n’est pas du GeoJSON.");
   return {
     format: "GeoJSON",
+    crs,
     features: out.features,
     skipped: out.skipped,
     simplified: out.simplified,
   };
 }
 
-/** "lng,lat[,alt] lng,lat…" */
-const kmlCoordinates = (s: string): LatLng[] =>
+/**
+ * "lng,lat[,alt] lng,lat…", tolerating spaces around the commas
+ * ("7.1, 46.1 7.2, 46.2"). A tuple with an empty or non-numeric member is
+ * invalid (NaN), never read as 0.
+ */
+export const kmlCoordinates = (s: string): LatLng[] =>
   s
     .trim()
+    .replace(/\s*,\s*/g, ",")
     .split(/\s+/)
     .filter(Boolean)
     .map((t) => {
-      const [lng, lat] = t.split(",").map(Number);
-      return [lat, lng] as LatLng;
+      const [lng, lat] = t.split(",").map(finite);
+      return [lat ?? NaN, lng ?? NaN] as LatLng;
     });
 const fromKmlColor = (s: string) => {
   const v = s.trim().toLowerCase();
@@ -613,8 +755,19 @@ function readKML(text: string): ImportResult {
     if (maps.has(url)) url = maps.get(url)!.replace(/^.*#/, "");
     return styles.get(url) ?? {};
   };
-  for (const pm of walk(root)) {
-    if (pm.name !== "Placemark") continue;
+  // Placemarks with the name of their folder: a folder becomes a layer.
+  const placemarks: { pm: XmlNode; folder: string }[] = [];
+  const visit = (node: XmlNode, folder: string, depth: number) => {
+    if (depth > 200) return;
+    for (const c of node.children) {
+      if (c.name === "Placemark") placemarks.push({ pm: c, folder });
+      else if (c.name === "Folder")
+        visit(c, textOf(c, "name").slice(0, 80) || folder, depth + 1);
+      else visit(c, folder, depth + 1);
+    }
+  };
+  visit(root, "", 0);
+  for (const { pm, folder } of placemarks) {
     const data: Record<string, unknown> = {};
     for (const d of children(child(pm, "ExtendedData"), "Data"))
       if (d.attrs.name) data[d.attrs.name] = textOf(d, "value");
@@ -623,6 +776,7 @@ function readKML(text: string): ImportResult {
     const base: Base = {
       label: textOf(pm, "name"),
       notes: plain(textOf(pm, "description")),
+      ...(folder && !own && { layer: folder }),
       ...styleProps(data),
     };
     if (data.kind === "text") base.kind = "text";
@@ -635,14 +789,19 @@ function readKML(text: string): ImportResult {
               : kind === "line"
                 ? style.line
                 : style.icon) || "";
-      const add = (kind: Place["kind"], pts: LatLng[]) =>
-        out.add(kind, pts, {
-          ...base,
-          color: colorFor(kind),
-          ...(!own && style.width && kind !== "point"
-            ? { weight: style.width }
-            : {}),
-        });
+      const add = (kind: Place["kind"], pts: LatLng[], holes?: LatLng[][]) =>
+        out.add(
+          kind,
+          pts,
+          {
+            ...base,
+            color: colorFor(kind),
+            ...(!own && style.width && kind !== "point"
+              ? { weight: style.width }
+              : {}),
+          },
+          holes,
+        );
       switch (g.name) {
         case "Point":
           return add("point", kmlCoordinates(textOf(g, "coordinates")));
@@ -652,7 +811,16 @@ function readKML(text: string): ImportResult {
           return add("area", kmlCoordinates(textOf(g, "coordinates")));
         case "Polygon": {
           const ring = child(child(g, "outerBoundaryIs"), "LinearRing");
-          return add("area", kmlCoordinates(textOf(ring, "coordinates")));
+          const holes = children(g, "innerBoundaryIs").flatMap((inner) =>
+            children(inner, "LinearRing").map((r) =>
+              kmlCoordinates(textOf(r, "coordinates")),
+            ),
+          );
+          return add(
+            "area",
+            kmlCoordinates(textOf(ring, "coordinates")),
+            holes,
+          );
         }
         case "MultiGeometry":
           return g.children.forEach(geometry);
@@ -660,8 +828,8 @@ function readKML(text: string): ImportResult {
           return add(
             "line",
             children(g, "coord").map((c) => {
-              const [lng, lat] = c.text.trim().split(/\s+/).map(Number);
-              return [lat, lng] as LatLng;
+              const [lng, lat] = c.text.trim().split(/\s+/).map(finite);
+              return [lat ?? NaN, lng ?? NaN] as LatLng;
             }),
           );
         case "MultiTrack":

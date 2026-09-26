@@ -1770,3 +1770,531 @@ label.map-swatch.custom {
     display: none;
   }
 }
+
+/* ---------- Coordinates: click to copy ---------- */
+button.map-coords {
+  min-height: 0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+button.map-coords:hover {
+  border-color: var(--line-2);
+  background: var(--solid);
+}
+.map-coords-copy {
+  color: var(--text-3);
+}
+.map-control-stack .icon-button[aria-pressed="true"] {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.map-control-stack .icon-button:disabled {
+  opacity: 0.35;
+}
+/* Reticle at the centre (coordinates of the centre, touch screens). */
+.map-reticle {
+  position: absolute;
+  z-index: 9;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 2px 100% no-repeat,
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 100% 2px no-repeat;
+  -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px);
+  mask: radial-gradient(circle, transparent 5px, #000 6px);
+  filter: drop-shadow(0 0 1px var(--map-ink-halo));
+}
+
+/* ---------- Swiss grid ---------- */
+.map-grid-line {
+  stroke: var(--map-ink);
+  stroke-opacity: 0.38;
+}
+.map-grid-line.major {
+  stroke-opacity: 0.6;
+}
+.map-grid-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--map-ink-halo) 82%, transparent);
+  color: var(--map-ink);
+  font: 500 10.5px/1.5 var(--mono);
+  white-space: nowrap;
+}
+
+/* ---------- geo.admin.ch overlays ---------- */
+.map-overlays {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.map-overlays-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+.map-overlays-note {
+  padding: 0 4px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.map-overlay-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.map-overlay-group h4 {
+  margin: 8px 4px 2px;
+}
+.map-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: var(--radius);
+}
+.map-overlay.on {
+  padding-bottom: 6px;
+  background: var(--bg-2);
+}
+.map-overlay-toggle {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  white-space: normal;
+}
+.map-overlay-toggle .row-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.map-overlay-toggle strong {
+  font-weight: 500;
+}
+.map-overlay-toggle small {
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.map-overlay-toggle svg {
+  flex: none;
+  color: var(--text-3);
+}
+.map-overlay.on .map-overlay-toggle svg {
+  color: var(--text);
+}
+.map-overlay-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+.map-overlay-tools input[type="range"] {
+  flex: 1;
+  min-width: 60px;
+}
+.map-overlay-tools output {
+  width: 40px;
+  font-size: 11.5px;
+  text-align: right;
+}
+.map-overlay-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.map-overlay-status {
+  padding: 0 10px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+/* Live data: arrows of the measured wind. */
+.map-wind {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+.map-wind i {
+  position: absolute;
+  inset: 3px;
+  transform: rotate(var(--dir));
+  background: #1f6fe0;
+  clip-path: polygon(
+    50% 0,
+    78% 42%,
+    58% 38%,
+    58% 100%,
+    42% 100%,
+    42% 38%,
+    22% 42%
+  );
+  filter: drop-shadow(0 0 1px #fff);
+}
+.map-wind span {
+  position: absolute;
+  left: 26px;
+  top: 4px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111427;
+  font: 600 10.5px/1.4 var(--mono);
+}
+.map-shell .leaflet-tooltip.map-live-tip {
+  font-size: 12px;
+}
+/* Nuit tactique: live data and grid pass through the red filter too. */
+:root[data-palette="nuit"] :is(.map-live-pane, .map-grid-pane) {
+  filter: grayscale(1) brightness(0.7) sepia(1) saturate(5) hue-rotate(-38deg);
+}
+
+/* ---------- Information card (layers, live data) ---------- */
+.map-info-card {
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(60vh, 420px);
+  overflow: auto;
+  pointer-events: auto;
+}
+.map-info-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.map-info-card section + section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.map-info-card strong {
+  font-weight: 500;
+}
+.map-info-card dl {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+.map-info-card dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+.map-info-card dt {
+  color: var(--text-2);
+}
+.map-info-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Tools: rings, plume ---------- */
+.map-hint-rings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-hint-rings input,
+.map-hint-field input {
+  width: auto;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.map-hint .map-hint-field {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.map-hint-field input {
+  width: 74px;
+}
+
+/* ---------- Objects of the first map on every map ---------- */
+.map-stray {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 4px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+}
+
+/* ---------- Offline sectors, print, profile ---------- */
+.map-sector-dialog .seg {
+  align-self: flex-start;
+}
+.map-sector-bases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.map-sector-bases legend {
+  margin-bottom: 6px;
+}
+.map-sector-bases .check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.map-sector-estimate,
+.map-print-extent {
+  font-size: 12.5px;
+}
+.map-sector-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.map-sector-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.map-sector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.map-sector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.map-sector-row .row-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.map-sector-row small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.map-sector-storage {
+  font-size: 11.5px;
+}
+.map-profile,
+.map-sheet-restore {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-2);
+}
+.map-profile header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.map-profile p {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+.map-profile-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 10px 0 6px;
+}
+.map-profile-chart .area {
+  fill: var(--text);
+  fill-opacity: 0.08;
+}
+.map-profile-chart .line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.map-profile-chart .axis {
+  stroke: var(--line-2);
+}
+.map-profile-chart text {
+  fill: var(--text-2);
+  font: 10px var(--mono);
+}
+.map-profile dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 4px 0 8px;
+  font-size: 12.5px;
+}
+.map-profile dd {
+  margin: 0;
+}
+.map-sheet-restore {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.map-sheet-restore p {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* ---------- Full screen map ---------- */
+.map-shell.full {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  min-height: 0;
+  border-radius: 0;
+  border: 0;
+}
+
+/* ---------- Phones: the map fills the screen under the bar ---------- */
+@media (max-width: 700px) {
+  /* Between the top bar and the dock, edge to edge: the title of the
+     module stays behind, the map takes the whole screen. */
+  .module-head:has(+ .map-shell) {
+    display: none;
+  }
+  .map-shell:not(.full) {
+    margin: -20px -16px 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .map-shell.past:not(.full) {
+    box-shadow: inset 0 0 0 2px var(--warn);
+  }
+  .map-bottom {
+    bottom: 10px;
+  }
+  .map-toolbar {
+    padding: 4px;
+  }
+  .map-tool {
+    min-width: 48px;
+  }
+  .map-tool span {
+    font-size: 10.5px;
+  }
+  /* The side panel becomes a bottom sheet over the tool bar. */
+  .map-shell.with-panel .map-top-left {
+    bottom: 8px;
+    z-index: 12;
+  }
+  .map-panel {
+    max-height: 58%;
+    border-radius: 18px 18px 14px 14px;
+  }
+  .map-hint {
+    bottom: 112px;
+    padding: 6px 6px 6px 12px;
+    font-size: 12.5px;
+  }
+  .map-control-stack .icon-button {
+    width: 38px;
+    height: 38px;
+  }
+}
+.map-tool:disabled {
+  opacity: 0.35;
+}
+.map-tool:disabled:hover {
+  background: none;
+  color: var(--text-2);
+}
+.map-tool.icon {
+  min-width: 38px;
+  padding: 4px;
+}
+/* Not enough room beside the side panel: icons only (names in the
+   tooltips), the coordinates stay visible. */
+@container map (min-width: 901px) and (max-width: 1320px) {
+  .map-shell.with-panel .map-tool {
+    min-width: 42px;
+    height: 44px;
+  }
+  .map-shell.with-panel .map-tool span {
+    display: none;
+  }
+}
+@container map (min-width: 901px) and (max-width: 1320px) {
+  .map-shell.with-panel .map-bottom {
+    justify-content: flex-end;
+  }
+}
+/* Calques: the layers of the operation, then the geo.admin.ch layers,
+   in one scroll. */
+.map-panel-body:has(> .map-overlays) {
+  overflow-y: auto;
+}
+.map-panel-body > .map-overlays,
+.map-panel-body:has(> .map-overlays) > .map-layers {
+  flex: none;
+  overflow: visible;
+}
+.map-overlays-search.search {
+  flex: none;
+}
+.map-dialog .map-sector-bases label.check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  white-space: nowrap;
+}
+.map-dialog .map-sector-bases input[type="checkbox"] {
+  width: auto;
+  height: auto;
+}
+.map-sector-bases .switch {
+  flex-basis: 100%;
+}
+.map-hint .map-hint-field input {
+  width: 64px;
+}
+/* A full screen map escapes the page (the module fades in with a
+   transform, which would otherwise hold a fixed element). */
+:has(> .map-shell.full) {
+  transform: none !important;
+  animation: none !important;
+}
+.map-sector-dialog > button.small {
+  align-self: flex-start;
+}

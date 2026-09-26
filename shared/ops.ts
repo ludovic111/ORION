@@ -149,6 +149,8 @@ export const placeSchema = z
     color: text(20),
     layer: text(80),
     points: z.array(latLng).min(1).max(2000),
+    // Holes of an area (imported KML / GeoJSON polygons); absent: none.
+    holes: z.array(z.array(latLng).min(3).max(2000)).max(50).optional(),
     notes: text(4000),
     // Maps showing this object; empty: every map.
     maps: z.array(z.uuid()).max(50).default([]),

@@ -122,6 +122,7 @@ import {
   type BuiltinInfo,
 } from "./builtins";
 import { SymbolEditor } from "./SymbolEditor";
+import { symbolMatches } from "./symbolsearch";
 import { hexColor } from "./maps";
 
 // Symbols of the map: official civil symbols (signes conventionnels civils,
@@ -569,14 +570,14 @@ export function SymbolPalette({
     [list, own],
   );
   const shown = useMemo(() => {
-    const terms = norm(query).split(/\s+/).filter(Boolean);
-    if (terms.length)
-      return all.filter((s) => {
-        const hay = norm(
+    if (norm(query).trim())
+      // French, German or Italian: « Feuer », « frana », « incendie ».
+      return all.filter((s) =>
+        symbolMatches(
           `${s.name} ${s.group} ${s.sub ?? ""} ${s.keywords ?? ""}`,
-        );
-        return terms.every((t) => hay.includes(t));
-      });
+          query,
+        ),
+      );
     if (group === RECENT)
       return recent
         .map((id) => all.find((s) => s.id === id))
@@ -606,8 +607,8 @@ export function SymbolPalette({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Chercher : incendie, ambulance, tente…"
-          aria-label="Chercher un signe"
+          placeholder="Chercher : incendie, Feuer, frana, ambulance…"
+          aria-label="Chercher un signe (français, allemand ou italien)"
         />
       </div>
       {!query && (

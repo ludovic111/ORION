@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   Crosshair,
   Ellipsis,
+  CloudDownload,
   FileDown,
+  FileJson,
+  Printer,
   FileUp,
   Map as MapIcon,
   PencilLine,
@@ -26,6 +29,9 @@ export function MapTabs({
   onFrame,
   onImport,
   onExport,
+  onPrint,
+  onOffline,
+  onSwissGeoJSON,
 }: {
   maps: OpsMap[];
   /** Id of the map shown; "" for the implicit main map. */
@@ -37,6 +43,9 @@ export function MapTabs({
   onFrame: () => void;
   onImport: () => void;
   onExport: () => void;
+  onPrint: () => void;
+  onOffline: () => void;
+  onSwissGeoJSON: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
@@ -158,6 +167,36 @@ export function MapTabs({
             <span className="row-main">
               <strong>Exporter ou imprimer…</strong>
               <small className="muted">Image, PDF, KML, GeoJSON, GPX</small>
+            </span>
+          </button>
+          <button type="button" role="menuitem" data-close onClick={onPrint}>
+            <Printer size={14} />
+            <span className="row-main">
+              <strong>Imprimer à l’échelle</strong>
+              <small className="muted">
+                A4 / A3, 1:5 000 à 1:50 000, quadrillage, légende
+              </small>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-close
+            onClick={onSwissGeoJSON}
+          >
+            <FileJson size={14} />
+            <span className="row-main">
+              <strong>GeoJSON en MN95</strong>
+              <small className="muted">EPSG:2056, pour les SIG suisses</small>
+            </span>
+          </button>
+          <button type="button" role="menuitem" data-close onClick={onOffline}>
+            <CloudDownload size={14} />
+            <span className="row-main">
+              <strong>Carte hors ligne…</strong>
+              <small className="muted">
+                Télécharger un secteur, voir l’espace utilisé
+              </small>
             </span>
           </button>
         </Popover>

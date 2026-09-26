@@ -5,7 +5,7 @@
   X-Frame-Options: DENY
   X-Robots-Tag: noindex, nofollow, noarchive
   Permissions-Policy: camera=(self), microphone=(), geolocation=(self), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wmts.geo.admin.ch https://tile.openstreetmap.org; connect-src 'self' https://api.open-meteo.com https://api3.geo.admin.ch https://wmts.geo.admin.ch https://tile.openstreetmap.org; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wmts.geo.admin.ch https://wms.geo.admin.ch https://tile.openstreetmap.org; connect-src 'self' https://api.open-meteo.com https://api3.geo.admin.ch https://data.geo.admin.ch https://wmts.geo.admin.ch https://wms.geo.admin.ch https://tile.openstreetmap.org; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; upgrade-insecure-requests
 /index.html
   Cache-Control: no-cache
 /sw.js

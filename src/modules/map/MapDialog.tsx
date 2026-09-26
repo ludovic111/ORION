@@ -11,7 +11,7 @@ import { useApp } from "../../app/context";
 import { Modal } from "../../journal/Modal";
 import { TextField, Toggle } from "../../ui/fields";
 import { TraceLine } from "../../timeline/TraceLine";
-import { MAIN_NAME, sortMaps } from "./maps";
+import { MAIN_NAME, mapsForNewMap, onMap, sortMaps } from "./maps";
 
 type View = { lat: number; lng: number; zoom: number };
 type Seed = { base: string; hidden: string[]; view: View };
@@ -39,6 +39,7 @@ export function MapDialog({
   map,
   main,
   current,
+  shown,
   onClose,
   onSelect,
 }: {
@@ -48,6 +49,8 @@ export function MapDialog({
   main?: boolean;
   /** Background, hidden layers and view of the map shown. */
   current: Seed;
+  /** Id of the map shown ("" : implicit main map). */
+  shown?: string;
   onClose: () => void;
   onSelect: (id: string) => void;
 }) {
@@ -56,12 +59,16 @@ export function MapDialog({
   const [name, setName] = useState(map?.name ?? (main ? MAIN_NAME : ""));
   const [purpose, setPurpose] = useState(map?.purpose ?? "");
   const [notes, setNotes] = useState(map?.notes ?? "");
-  const [keepOnMain, setKeepOnMain] = useState(false);
+  const [takeAlong, setTakeAlong] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [withObjects, setWithObjects] = useState(false);
   const [error, setError] = useState("");
-  const firstExtra = !map && !main && maps.length === 0;
-  const unplaced = journal.ops.places.filter((p) => !p.maps.length).length;
+  const creating = !map && !main;
+  const known = new Set(maps.map((m) => m.id));
+  const shownMap = maps.find((m) => m.id === shown) ?? maps[0];
+  const shownCount = journal.ops.places.filter((p) =>
+    onMap(p, shownMap?.id ?? "", known),
+  ).length;
   const own = map
     ? journal.ops.places.filter(
         (p) => p.maps.length === 1 && p.maps[0] === map.id,
@@ -107,7 +114,8 @@ export function MapDialog({
             next,
           );
         }
-        if (!next.maps.length) {
+        let existing = next.maps.map((m) => m.id);
+        if (!existing.length) {
           // The main map becomes a record like the others.
           next = record(
             {
@@ -122,14 +130,28 @@ export function MapDialog({
             },
             next,
           );
-          if (keepOnMain)
-            next = {
-              ...next,
-              places: next.places.map((p) =>
-                p.maps.length ? p : { ...p, maps: [mainId] },
-              ),
-            };
+          existing = [mainId];
         }
+        // The new map starts empty: the objects drawn so far stay on the
+        // map(s) they were drawn on, unless the operator takes them along.
+        const at = new Date().toISOString();
+        const before = next.places;
+        const after = mapsForNewMap(
+          before,
+          existing,
+          id,
+          takeAlong
+            ? shown && existing.includes(shown)
+              ? shown
+              : existing[0]
+            : null,
+        );
+        next = {
+          ...next,
+          places: after.map((p, i) =>
+            p === before[i] ? p : { ...p, updatedAt: at },
+          ),
+        };
         return record(
           {
             id,
@@ -175,6 +197,22 @@ export function MapDialog({
   function remove() {
     if (!map) return;
     const gone = map.id;
+    try {
+      removeMap(gone);
+    } catch (err) {
+      setError((err as Error).message);
+      return;
+    }
+    toast(
+      withObjects && own
+        ? `Carte supprimée avec ${own} objet${own > 1 ? "s" : ""}.`
+        : "Carte supprimée.",
+    );
+    onSelect(maps.find((m) => m.id !== gone)?.id ?? "");
+    onClose();
+  }
+
+  function removeMap(gone: string) {
     updateOps((ops) => {
       const own = ops.places
         .filter((p) => p.maps.length === 1 && p.maps[0] === gone)
@@ -191,13 +229,6 @@ export function MapDialog({
       next = removeRecords(next, withObjects ? [gone, ...own] : [gone]);
       return next;
     });
-    toast(
-      withObjects && own
-        ? `Carte supprimée avec ${own} objet${own > 1 ? "s" : ""}.`
-        : "Carte supprimée.",
-    );
-    onSelect(maps.find((m) => m.id !== gone)?.id ?? "");
-    onClose();
   }
 
   return (
@@ -249,19 +280,19 @@ export function MapDialog({
           maxLength={2000}
           onChange={setNotes}
         />
-        {!map && !main && (
+        {creating && (
           <p className="muted map-dialog-note">
-            La nouvelle carte part du cadrage et du fond affichés. Elle garde
-            ensuite son propre fond, son cadrage et ses calques masqués,
+            La nouvelle carte part vide, du cadrage et du fond affichés. Elle
+            garde ensuite son propre fond, son cadrage et ses calques masqués,
             partagés avec tous les postes.
           </p>
         )}
-        {firstExtra && unplaced > 0 && (
+        {creating && shownCount > 0 && (
           <Toggle
-            label={`Garder les ${unplaced} objets déjà posés sur « ${MAIN_NAME} » seulement`}
-            hint="Sinon, ils restent visibles sur toutes les cartes."
-            checked={keepOnMain}
-            onChange={setKeepOnMain}
+            label={`Reprendre les ${shownCount} objet${shownCount > 1 ? "s" : ""} de « ${shownMap?.name ?? MAIN_NAME} »`}
+            hint="Les mêmes objets, visibles sur les deux cartes. Sinon, la nouvelle carte part vide."
+            checked={takeAlong}
+            onChange={setTakeAlong}
           />
         )}
         {map && maps.length > 1 && (

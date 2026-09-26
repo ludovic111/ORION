@@ -67,7 +67,10 @@ export function ImportDialog({
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [target, setTarget] = useState(maps.length > 1 ? current : "");
+  const [target, setTarget] = useState(
+    // Imported objects belong to the map shown, like drawn ones.
+    maps.length ? current || maps[0].id : "",
+  );
   const [layer, setLayer] = useState("");
   const [keepLayers, setKeepLayers] = useState(true);
   const [color, setColor] = useState("");
@@ -129,6 +132,7 @@ export function ImportDialog({
               kind: f.kind,
               notes: f.notes,
               points: f.points,
+              ...(f.holes && { holes: f.holes }),
               layer: ((keepLayers && f.layer) || layer || "Autre").slice(0, 80),
               symbol: f.kind === "point" ? f.symbol || symbol : "",
               color: hexColor(color) || hexColor(f.color),
@@ -181,8 +185,8 @@ export function ImportDialog({
           )}
           <strong>{file || "Choisir un fichier"}</strong>
           <small>
-            KML, KMZ (Google Earth), GeoJSON, GPX · 5 Mo au maximum ·
-            coordonnées WGS84
+            KML, KMZ (Google Earth), GeoJSON, GPX · 5 Mo au maximum · WGS84, ou
+            MN95 / MN03 (GeoJSON suisse)
           </small>
         </button>
         <input
@@ -199,6 +203,9 @@ export function ImportDialog({
           <>
             <div className="map-import-summary" role="status">
               <span className="pill accent">{result.format}</span>
+              {result.crs && result.crs !== "WGS84" && (
+                <span className="pill plain">{result.crs} converti</span>
+              )}
               {kinds.map(({ n, label, Icon }) => (
                 <span key={label} className="pill plain">
                   <Icon size={12} />
