@@ -8,6 +8,7 @@ import {
   Inbox,
   KanbanSquare,
   LifeBuoy,
+  ClipboardCheck,
   ListChecks,
   Map,
   Network,
@@ -93,6 +94,16 @@ export const MODULES: ModuleInfo[] = [
     group: 0,
     description:
       "Ordres en cinq points, diffusions avec accusé de lecture, liaison avec l’autre PC.",
+  },
+  {
+    id: "checklists",
+    label: "Listes de contrôle",
+    short: "Listes",
+    icon: ClipboardCheck,
+    hue: 96,
+    group: 0,
+    description:
+      "Ce qu’il ne faut pas oublier par type d’événement : étapes, fonction responsable, contrôles à suivre.",
   },
   {
     id: "map",

@@ -1,0 +1,247 @@
+/* Listes de contrôle */
+.ck-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.ck-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-margin-top: 90px;
+  transition: border-color 200ms var(--ease);
+}
+.ck-highlight {
+  border-color: var(--text);
+}
+.ck-closed-card {
+  opacity: 0.85;
+}
+.ck-head {
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+.ck-title {
+  min-width: 0;
+}
+.ck-title h2 {
+  font-size: 17px;
+  font-weight: 500;
+}
+.ck-title small {
+  display: block;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.ck-count {
+  font-size: 22px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ck-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.ck-bar span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+  transition: width 240ms var(--ease);
+}
+.ck-notes {
+  font-size: 13px;
+}
+.ck-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.ck-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ck-check {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 400;
+}
+.ck-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+.ck-num {
+  flex: none;
+  width: 20px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 22px;
+}
+.ck-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ck-text small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.ck-step.done .ck-text > span {
+  color: var(--text-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-2);
+}
+.ck-step.late .ck-text small {
+  color: var(--crit);
+}
+.ck-step-side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+.ck-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.ck-log,
+.ck-log[aria-pressed="true"] {
+  background: none;
+  border-color: transparent;
+  color: var(--text-2);
+}
+.ck-log[aria-pressed="false"] {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+.ck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ck-closed {
+  margin: 8px 0 16px;
+}
+.ck-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  font-weight: 500;
+}
+.ck-toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+.ck-templates {
+  margin-top: 16px;
+}
+.ck-template.muted .row-main strong {
+  color: var(--text-3);
+}
+.ck-template-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.ck-pick {
+  display: flex;
+  flex-direction: column;
+  max-height: 44vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.ck-pick .row-item[aria-pressed="true"] {
+  background: var(--bg-3);
+  box-shadow: inset 3px 0 0 var(--text);
+}
+.ck-start-fields {
+  margin-top: 16px;
+}
+.ck-steps-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0 8px;
+}
+.ck-edit-steps {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.ck-edit-step {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.ck-edit-num {
+  flex: none;
+  width: 22px;
+  padding-top: 26px;
+  color: var(--text-3);
+}
+.ck-edit-fields {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.ck-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 8px;
+}
+.ck-edit-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 22px;
+}
+@media (max-width: 640px) {
+  .ck-template {
+    flex-wrap: wrap;
+  }
+  .ck-template-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .ck-edit-row {
+    grid-template-columns: 1fr;
+  }
+  .ck-step {
+    flex-wrap: wrap;
+  }
+  .ck-step-side {
+    margin-left: 50px;
+  }
+}
+.card.ck-templates .card-head > h2:last-child {
+  margin-left: 0;
+  margin-right: auto;
+}

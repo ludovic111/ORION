@@ -49,6 +49,13 @@ Workspace
    │  ├─ broadcasts, acks          diffusions et accusés de lecture (jamais modifiés)
    │  ├─ assignments               éléments attribués à une fonction ou une personne
    │  ├─ liaisons, exchanges       liaisons avec un autre PC et ce qui les a traversées
+   │  ├─ checklistTemplates, checklists, checklistTicks
+   │  │                            listes de contrôle : modèles du journal, listes démarrées,
+   │  │                            une coche par étape (id dérivé de la liste et de l’étape)
+   │  ├─ requests                  demandes de moyens (demandé → arrivé, étapes datées)
+   │  ├─ presences, shifts         arrivées / départs, plan de relève
+   │  ├─ thresholds, reminders     seuils météo (alertes à id dérivé du seuil et du jour),
+   │  │                            rappels d’export et d’impression
    │  └─ settings                  référentiels, lieu météo, vue de carte
    ├─ sync { clock, removed, compacted }
    │                               horodatages (horloge logique hybride) des changements,

@@ -398,3 +398,18 @@ button.agenda-hero:hover {
     left: -22px;
   }
 }
+
+/* Préparer le point de situation (reports) */
+.agenda-item.has-point {
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+}
+.agenda-point {
+  width: 40px;
+  height: 40px;
+  color: var(--text-2);
+}
+.agenda-point-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}

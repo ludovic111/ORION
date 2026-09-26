@@ -1,0 +1,262 @@
+import {
+  addEntry,
+  emptyFields,
+  journalSchema,
+  time,
+  type Journal,
+} from "./journal.ts";
+import {
+  upsert,
+  type ForecastData,
+  type ForecastRecord,
+  type Ops,
+} from "./ops.ts";
+import { stableId } from "./history.ts";
+import { zurichDate } from "./time.ts";
+import type { Threshold, ThresholdMetric } from "./conduct-schemas.ts";
+
+export { THRESHOLD_METRICS } from "./conduct-schemas.ts";
+
+// Weather thresholds of the journal, evaluated on the forecasts received
+// (Open-Meteo, already used by the weather module). A threshold crossed on a
+// day creates one weather alert, and optionally an entry "à suivre", once
+// per threshold and Zurich day: their ids derive from the threshold and the
+// day, so two posts evaluating the same forecast create the same records,
+// which merge into one. A record removed by an operator is not recreated.
+
+export const METRICS: Record<
+  ThresholdMetric,
+  { label: string; unit: string; above: boolean; hazard: string }
+> = {
+  gusts: { label: "Rafales", unit: "km/h", above: true, hazard: "Vent" },
+  wind: { label: "Vent moyen", unit: "km/h", above: true, hazard: "Vent" },
+  rain1h: {
+    label: "Pluie en 1 h",
+    unit: "mm",
+    above: true,
+    hazard: "Fortes précipitations",
+  },
+  rain24h: {
+    label: "Pluie en 24 h",
+    unit: "mm",
+    above: true,
+    hazard: "Fortes précipitations",
+  },
+  tmax: {
+    label: "Température maximale",
+    unit: "°C",
+    above: true,
+    hazard: "Canicule",
+  },
+  tmin: {
+    label: "Température minimale",
+    unit: "°C",
+    above: false,
+    hazard: "Gel / froid",
+  },
+};
+
+export const thresholdLabel = (t: Pick<Threshold, "metric" | "value">) =>
+  `${METRICS[t.metric].label} ${METRICS[t.metric].above ? "≥" : "≤"} ${t.value} ${METRICS[t.metric].unit}`;
+
+export type Crossing = {
+  /** Zurich day, "YYYY-MM-DD". */
+  day: string;
+  /** First and last hour (ms) of the crossing that day. */
+  first: number;
+  last: number;
+  peak: number;
+  peakAt: number;
+};
+
+const HOUR = 3_600_000;
+
+/** Hourly series of a metric (rain over 24 h is a running sum). */
+function series(
+  metric: ThresholdMetric,
+  data: ForecastData,
+): { at: number; value: number }[] {
+  const hours = [...data.hours].sort((a, b) => a.at - b.at);
+  if (metric === "rain24h")
+    return hours.map((h) => ({
+      at: h.at,
+      value: hours
+        .filter((x) => x.at > h.at - 24 * HOUR && x.at <= h.at)
+        .reduce((n, x) => n + (x.precipitation ?? 0), 0),
+    }));
+  const pick = (h: (typeof hours)[number]) =>
+    metric === "gusts"
+      ? h.gusts
+      : metric === "wind"
+        ? h.wind
+        : metric === "rain1h"
+          ? h.precipitation
+          : h.temperature;
+  return hours
+    .map((h) => ({ at: h.at, value: pick(h) }))
+    .filter((x): x is { at: number; value: number } => x.value !== null);
+}
+
+/** Hours of forecast looked at: the next two days. */
+export const HORIZON_HOURS = 48;
+
+/**
+ * Days on which a threshold is crossed, from `from` on over the next
+ * HORIZON_HOURS (hours already past are ignored).
+ */
+export function crossings(
+  threshold: Pick<Threshold, "metric" | "value">,
+  data: ForecastData,
+  from: number,
+  horizon = HORIZON_HOURS,
+): Crossing[] {
+  const { above } = METRICS[threshold.metric];
+  const out = new Map<string, Crossing>();
+  for (const { at, value } of series(threshold.metric, data)) {
+    if (at < from - HOUR + 1 || at > from + horizon * HOUR) continue;
+    const crossed = above ? value >= threshold.value : value <= threshold.value;
+    if (!crossed) continue;
+    const day = zurichDate(at);
+    const known = out.get(day);
+    if (!known)
+      out.set(day, { day, first: at, last: at, peak: value, peakAt: at });
+    else {
+      known.last = Math.max(known.last, at);
+      known.first = Math.min(known.first, at);
+      if (above ? value > known.peak : value < known.peak) {
+        known.peak = value;
+        known.peakAt = at;
+      }
+    }
+  }
+  return [...out.values()].sort((a, b) => a.first - b.first);
+}
+
+/** Deduplication key of the alert of a threshold on a day. */
+export const alertKey = (thresholdId: string, day: string) =>
+  `seuil|${thresholdId}|${day}`;
+export const alertIdFor = (thresholdId: string, day: string) =>
+  stableId(alertKey(thresholdId, day));
+export const entryIdFor = (thresholdId: string, day: string) =>
+  stableId(`seuil-entree|${thresholdId}|${day}`);
+const linkIdFor = (thresholdId: string, day: string) =>
+  stableId(`seuil-lien|${thresholdId}|${day}`);
+
+/** The latest forecast received for the weather place of the journal. */
+export function latestForecast(
+  ops: Pick<Ops, "forecasts" | "settings">,
+): ForecastRecord | undefined {
+  const place = ops.settings.weatherPlace?.name;
+  return [...ops.forecasts]
+    .filter((f) => !place || f.place === place)
+    .sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt))[0];
+}
+
+const round = (v: number) => Math.round(v * 10) / 10;
+const dayLabel = (day: string) => {
+  const [y, m, d] = day.split("-");
+  return `${d}.${m}.${y}`;
+};
+
+export type Created = {
+  threshold: Threshold;
+  crossing: Crossing;
+  entry: boolean;
+};
+
+/**
+ * Alerts (and entries "à suivre") for the thresholds crossed by a forecast.
+ * Returns the journal unchanged when there is nothing new.
+ */
+export function applyThresholds(
+  journal: Journal,
+  forecast: ForecastRecord,
+  author: string,
+  at = Date.now(),
+): { journal: Journal; created: Created[] } {
+  const created: Created[] = [];
+  let next = journal;
+  const removed = journal.sync.removed;
+  const deleted = new Set(journal.deleted.map((d) => d.id));
+  for (const t of journal.ops.thresholds) {
+    if (!t.active) continue;
+    const info = METRICS[t.metric];
+    for (const c of crossings(t, forecast.data, at)) {
+      const alertId = alertIdFor(t.id, c.day);
+      if (removed[alertId] || next.ops.alerts.some((a) => a.id === alertId))
+        continue;
+      const period = `le ${dayLabel(c.day)} de ${time(new Date(c.first).toISOString())} à ${time(new Date(c.last + HOUR).toISOString())}`;
+      const peak = `${round(c.peak)} ${info.unit} à ${time(new Date(c.peakAt).toISOString())}`;
+      let ops = upsert(
+        next.ops,
+        "alerts",
+        {
+          id: alertId,
+          level: t.level,
+          hazard: (t.label || `${info.hazard} : ${thresholdLabel(t)}`).slice(
+            0,
+            120,
+          ),
+          region: (t.region || forecast.place).slice(0, 200),
+          from: new Date(c.first).toISOString(),
+          to: new Date(c.last + HOUR).toISOString(),
+          source: `Seuil du journal · prévision ${forecast.data.model}`.slice(
+            0,
+            200,
+          ),
+          notes: `${thresholdLabel(t)} prévu ${period}. Pic : ${peak}. Prévision reçue à ${time(forecast.fetchedAt)}.`,
+        },
+        author,
+      );
+      next = { ...next, ops };
+      const entryId = entryIdFor(t.id, c.day);
+      const writes =
+        t.followUp &&
+        !deleted.has(entryId) &&
+        !next.entries.some((e) => e.id === entryId);
+      if (writes) {
+        const onset = Math.max(c.first, at + 30 * 60_000);
+        const added = addEntry(
+          next,
+          {
+            ...emptyFields(),
+            happenedAt: new Date(at).toISOString(),
+            receivedAt: new Date(at).toISOString(),
+            type: "Renseignement",
+            priority: Number(t.level) >= 4 ? "Important" : "Normal",
+            status: "À traiter",
+            channel: "Autre",
+            reliability: "Non confirmé",
+            source: `Prévision ${forecast.data.model}`,
+            message: `Seuil météo franchi : ${thresholdLabel(t)} prévu ${period} (pic ${peak}).`,
+            action: "Suivre l’évolution et décider des mesures.",
+            location: t.region || forecast.place,
+            dueAt: new Date(onset).toISOString(),
+            tags: ["météo", "seuil"],
+          },
+          author,
+        );
+        const entries = added.entries.map((e, i, all) =>
+          i === all.length - 1 ? { ...e, id: entryId } : e,
+        );
+        ops = upsert(
+          added.ops,
+          "links",
+          {
+            id: linkIdFor(t.id, c.day),
+            a: `entry:${entryId}`,
+            b: `alert:${alertId}`,
+            label: "seuil franchi",
+          },
+          author,
+        );
+        next = { ...added, entries, ops };
+      }
+      created.push({ threshold: t, crossing: c, entry: !!writes });
+    }
+  }
+  return {
+    journal: created.length ? journalSchema.parse(next) : journal,
+    created,
+  };
+}

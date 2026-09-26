@@ -288,13 +288,15 @@ export function OverlayHost({
             closeDialog();
             open({ kind: "entry", id, mode: "view" });
           }}
-          onTakeOver={() => {
+          onTakeOver={(summary) => {
             if (!actions.gate()) return;
             composeWith({
               ...emptyFields(),
               type: "Relève",
               reliability: "Confirmé",
-              message: takeOverMessage,
+              message: summary
+                ? `${takeOverMessage}\n\n${summary}`.slice(0, 12000)
+                : takeOverMessage,
             });
           }}
         />

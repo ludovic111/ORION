@@ -68,6 +68,11 @@ export type AppContext = {
   updateJournal: (journal: Journal) => boolean;
   /** Change the module records; throws (with a message) when read only. */
   updateOps: (change: (ops: Ops) => Ops) => void;
+  /**
+   * Change the live journal from its latest state in one step (entries and
+   * records together); refused with a message (false) when read only.
+   */
+  changeJournal: (change: (journal: Journal) => Journal) => boolean;
   /** Standard values of a référentiel (editable in the settings). */
   lists: (name: string) => string[];
   go: (module: Module) => void;

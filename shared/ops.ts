@@ -9,6 +9,16 @@ import {
   liaisonSchema,
   orderSchema,
 } from "./conduct.ts";
+import {
+  checklistSchema,
+  checklistTemplateSchema,
+  checklistTickSchema,
+  presenceSchema,
+  reminderSchema,
+  requestSchema,
+  shiftSchema,
+  thresholdSchema,
+} from "./conduct-schemas.ts";
 
 // Everything an AIC cell keeps next to the journal: message intake, team,
 // resources, contacts, map, rhythm, key facts, weather and the links between
@@ -401,6 +411,9 @@ export const REF_KINDS = [
   // Conduct (shared/conduct.ts).
   "order",
   "broadcast",
+  "checklist",
+  "request",
+  "shift",
 ] as const;
 export type RefKind = (typeof REF_KINDS)[number];
 export const refSchema = z
@@ -439,6 +452,14 @@ export const settingsSchema = z
       })
       .nullable()
       .default(null),
+    // Presences: longest time on duty and shortest rest (hours) before a
+    // warning (shared/presence.ts). Absent: 12 h and 8 h.
+    presence: z
+      .object({
+        dutyHours: z.number().min(1).max(72),
+        restHours: z.number().min(0).max(48),
+      })
+      .optional(),
   })
   .strict();
 
@@ -470,6 +491,15 @@ export const opsSchema = z
     assignments: z.array(assignmentSchema).max(5000).default([]),
     liaisons: z.array(liaisonSchema).max(20).default([]),
     exchanges: z.array(exchangeSchema).max(10000).default([]),
+    // Conduct follow-up (shared/conduct-schemas.ts).
+    checklistTemplates: z.array(checklistTemplateSchema).max(300).default([]),
+    checklists: z.array(checklistSchema).max(1000).default([]),
+    checklistTicks: z.array(checklistTickSchema).max(40000).default([]),
+    requests: z.array(requestSchema).max(5000).default([]),
+    presences: z.array(presenceSchema).max(40000).default([]),
+    shifts: z.array(shiftSchema).max(2000).default([]),
+    thresholds: z.array(thresholdSchema).max(200).default([]),
+    reminders: z.array(reminderSchema).max(200).default([]),
     settings: settingsSchema.default({
       lists: {},
       weatherPlace: null,
@@ -526,6 +556,14 @@ export const COLLECTIONS = [
   "assignments",
   "liaisons",
   "exchanges",
+  "checklistTemplates",
+  "checklists",
+  "checklistTicks",
+  "requests",
+  "presences",
+  "shifts",
+  "thresholds",
+  "reminders",
 ] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 export type RecordOf<C extends Collection> = Ops[C][number];
@@ -556,6 +594,14 @@ export const RECORD_SCHEMAS = {
   assignments: assignmentSchema,
   liaisons: liaisonSchema,
   exchanges: exchangeSchema,
+  checklistTemplates: checklistTemplateSchema,
+  checklists: checklistSchema,
+  checklistTicks: checklistTickSchema,
+  requests: requestSchema,
+  presences: presenceSchema,
+  shifts: shiftSchema,
+  thresholds: thresholdSchema,
+  reminders: reminderSchema,
 } as const satisfies Record<Collection, z.ZodType>;
 /** A record as written by a form: optional fields may be left out. */
 export type InputOf<C extends Collection> = z.input<(typeof RECORD_SCHEMAS)[C]>;
@@ -722,6 +768,25 @@ export const DEFAULT_LISTS: Record<
   layers: {
     label: "Calques de la carte",
     values: ["Effets", "Dangers", "Moyens", "Mesures", "Emplacements", "Autre"],
+  },
+  eventKinds: {
+    label: "Types d’événement (listes de contrôle)",
+    values: [
+      "Crue / inondation",
+      "Panne d’électricité / black-out",
+      "Canicule",
+      "Accident chimique / ABC",
+      "Tempête",
+      "Séisme",
+      "Recherche de personne",
+      "Accueil de personnes évacuées",
+      "Ouverture du PC",
+      "Autre",
+    ],
+  },
+  requestUnits: {
+    label: "Unités des demandes de moyens",
+    values: ["pce", "pers.", "véh.", "lot", "sacs", "l", "m³", "kVA"],
   },
   factCategories: {
     label: "Catégories de renseignements clés",

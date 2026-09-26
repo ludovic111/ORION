@@ -25,6 +25,7 @@ import {
 import { addLink, ref, type Ref } from "../../shared/links.ts";
 import type { HistoryEvent } from "../../shared/events.ts";
 import { zurichHour, zurichMidnight } from "../../shared/time.ts";
+import { demoConduct } from "./demo-logistics.ts";
 import {
   emptyRadio,
   issueTerminal,
@@ -846,6 +847,7 @@ export function demoWorkspace(now = Date.now()): Workspace {
   journal = { ...journal, ops: demoOps(journal, at) };
   journal = demoHistory(journal, at);
   journal = withConductDemo(journal, at);
+  journal = demoConduct(journal, at);
   return {
     version: 1,
     author: "Opérateur · démo",

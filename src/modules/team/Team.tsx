@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   Building2,
   Check,
+  Clock3,
   LayoutGrid,
   List,
   MapPin,
@@ -53,10 +54,11 @@ import {
   type MemberDraft,
 } from "./TeamSheets";
 import { Figures } from "../../ui/Figures";
+import { Presence } from "./Presence";
 import "./team.css";
 
 type Status = (typeof MEMBER_STATUSES)[number];
-type View = "org" | "list";
+type View = "org" | "list" | "presence";
 type SortKey =
   "name" | "grade" | "role" | "cell" | "callsign" | "phone" | "status";
 type Editing =
@@ -124,8 +126,11 @@ export function shift(m: Member) {
 }
 
 function readView(): View {
+  // A presence badge scanned with a phone opens #team/presence=<id>.
+  if (location.hash.includes("presence=")) return "presence";
   try {
-    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "org";
+    const saved = localStorage.getItem(VIEW_KEY);
+    return saved === "list" || saved === "presence" ? saved : "org";
   } catch {
     return "org";
   }
@@ -213,6 +218,11 @@ export function Team() {
   useEffect(() => {
     if (!focus) return;
     const { kind, id } = parseRef(focus);
+    // A shift opens in the presence view, which clears the focus.
+    if (kind === "shift") {
+      setViewState("presence");
+      return;
+    }
     if (kind === "member") {
       const m = members.find((x) => x.id === id);
       if (id === "new") setEditing({ kind: "member", value: blankMember() });
@@ -563,11 +573,21 @@ export function Team() {
                       </>
                     ),
                   },
+                  {
+                    value: "presence",
+                    label: (
+                      <>
+                        <Clock3 size={13} /> Présences
+                      </>
+                    ),
+                  },
                 ]}
               />
             </div>
           </div>
-          {view === "org" ? (
+          {view === "presence" ? (
+            <Presence />
+          ) : view === "org" ? (
             <div className="team-org">
               {cells.map((c, i) => {
                 const list = (byCell.get(c.id) ?? []).filter(matches);

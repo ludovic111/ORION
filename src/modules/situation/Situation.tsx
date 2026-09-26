@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   CircleAlert,
   CloudSun,
+  FileText,
   Gauge,
   Inbox,
   LayoutList,
@@ -67,6 +68,8 @@ import {
 } from "../weather/forecast";
 import "../weather/weather.css";
 import "./situation.css";
+import { FollowCards } from "./FollowCards";
+import { SituationPointDialog } from "./SituationPoint";
 
 type FactDraft = Omit<Fact, "id" | "createdAt" | "updatedAt" | "by"> &
   Partial<Pick<Fact, "id" | "createdAt" | "updatedAt" | "by">>;
@@ -148,6 +151,7 @@ export function Situation() {
     useApp();
   const [fact, setFact] = useState<FactDraft | null>(null);
   const [board, setBoard] = useState<BoardDraft | null>(null);
+  const [pointOpen, setPointOpen] = useState(false);
   // Value of a fact before the last unrecorded changes, by id.
   const [changed, setChanged] = useState<Record<string, string>>({});
 
@@ -178,18 +182,24 @@ export function Situation() {
         title={journal.title}
         description={`Situation au ${dateTime(new Date(now).toISOString())}`}
         actions={
-          !readOnly && (
-            <>
-              <button onClick={() => open("message:new" as Ref)}>
-                <Inbox size={14} />
-                Nouveau message
-              </button>
-              <button className="primary" onClick={() => compose()}>
-                <Plus size={15} />
-                Nouvelle entrée
-              </button>
-            </>
-          )
+          <>
+            <button onClick={() => setPointOpen(true)}>
+              <FileText size={14} />
+              Point de situation
+            </button>
+            {!readOnly && (
+              <>
+                <button onClick={() => open("message:new" as Ref)}>
+                  <Inbox size={14} />
+                  Nouveau message
+                </button>
+                <button className="primary" onClick={() => compose()}>
+                  <Plus size={15} />
+                  Nouvelle entrée
+                </button>
+              </>
+            )}
+          </>
         }
       />
       <div className="bento stagger situation">
@@ -209,6 +219,7 @@ export function Situation() {
         <OpenPoints />
         <Boards onEdit={setBoard} />
         <NextMeetings />
+        <FollowCards />
         <LatestMessages />
         <LatestEntries />
         <ResourcesCard />
@@ -239,6 +250,9 @@ export function Situation() {
               markChanged(before, before.value);
           }}
         />
+      )}
+      {pointOpen && (
+        <SituationPointDialog onClose={() => setPointOpen(false)} />
       )}
       {board && (
         <RecordSheet

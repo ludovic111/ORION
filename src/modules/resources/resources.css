@@ -406,3 +406,15 @@
     margin-left: 0;
   }
 }
+
+/* Moyens / Demandes */
+.res-tabs {
+  margin: 0 0 16px;
+}
+.res-tabs .seg button {
+  gap: 6px;
+}
+.res-tabs .pill {
+  height: 18px;
+  margin-left: 4px;
+}

@@ -52,6 +52,8 @@ import { useShortcuts } from "./app/useShortcuts";
 import { useOverlays } from "./app/overlays";
 import { useJournalActions } from "./app/useJournalActions";
 import { useDrafts } from "./app/useDrafts";
+import { useConductWatch } from "./app/useConductWatch";
+import { ReminderBar } from "./app/ReminderBar";
 import { TopBar } from "./app/TopBar";
 import { JournalMenu, OperatorMenu } from "./app/ShellMenus";
 import { OverlayHost } from "./app/OverlayHost";
@@ -103,6 +105,7 @@ const NetworkModule = lazy(
   retry(() => import("./modules/network/NetworkModule")),
 );
 const PresentationMode = lazy(retry(() => import("./present/Presentation")));
+const Checklists = lazy(retry(() => import("./modules/checklists/Checklists")));
 const Trace = lazy(
   retry(() =>
     import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
@@ -188,6 +191,13 @@ export default function App() {
     viewAt,
     toast: notify,
     refuse,
+  });
+  useConductWatch({
+    live: journal ?? null,
+    viewAt,
+    author: workspace?.author ?? "",
+    actions,
+    notify,
   });
   const drafts = useDrafts({ workspace, setWorkspace });
   const draftExists = () => {
@@ -653,6 +663,7 @@ export default function App() {
             module,
             updateJournal: actions.updateJournal,
             updateOps: actions.updateOps,
+            changeJournal: (change) => !!actions.changeJournal(change),
             lists,
             go,
             focus,
@@ -938,6 +949,8 @@ export default function App() {
                   <Messages />
                 ) : module === "missions" ? (
                   <Missions />
+                ) : module === "checklists" ? (
+                  <Checklists />
                 ) : module === "map" ? (
                   <MapModule />
                 ) : module === "resources" ? (
@@ -1096,6 +1109,7 @@ export default function App() {
       {viewAt !== null && <TimeBar />}
       {/* Live positions of the teams (ephemeral, never stored). */}
       <LiveHost sync={sync} />
+      <ReminderBar />
       <Toast message={toast} onDone={() => setToast(null)} />
     </Ctx.Provider>
   );

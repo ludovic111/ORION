@@ -65,6 +65,7 @@ import {
   type Hour,
   type WeatherPlace,
 } from "./forecast";
+import { ThresholdsCard } from "./Thresholds";
 import "./weather.css";
 
 const HOUR = 3600000;
@@ -751,6 +752,7 @@ export function Weather() {
             </p>
           )}
         </section>
+        <ThresholdsCard />
       </div>
 
       {picking && (
