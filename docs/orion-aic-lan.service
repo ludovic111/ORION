@@ -1,0 +1,31 @@
+# orion aic · réseau local, démarré avec l’ordinateur (PC en valise).
+# Voir docs/PC-EN-VALISE.md, « Démarrage automatique ».
+#
+# Avant d’activer : construire une fois l’application (npm ci && npm run build)
+# et adapter User et WorkingDirectory ci-dessous.
+#
+#   sudo cp docs/orion-aic-lan.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now orion-aic-lan
+#   journalctl -u orion-aic-lan -o cat      # adresses, empreinte, QR code
+
+[Unit]
+Description=orion aic (réseau local HTTPS)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=orion
+WorkingDirectory=/home/orion/orion-aic
+Environment=PORT=4443
+# Sert dist/ tel quel : npm run lan reconstruirait à chaque démarrage.
+ExecStart=/usr/bin/node server/lan.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -52,6 +52,7 @@ import { useShortcuts } from "./app/useShortcuts";
 import { useOverlays } from "./app/overlays";
 import { useJournalActions } from "./app/useJournalActions";
 import { useDrafts } from "./app/useDrafts";
+import { useSigningKey } from "./app/useSigningKey";
 import { TopBar } from "./app/TopBar";
 import { JournalMenu, OperatorMenu } from "./app/ShellMenus";
 import { OverlayHost } from "./app/OverlayHost";
@@ -68,6 +69,7 @@ import { Agenda } from "./modules/agenda/Agenda";
 import { Docs } from "./modules/docs/Docs";
 import { TimeBar } from "./timeline/TimeBar";
 import { usePastJournal } from "./timeline/replay";
+import { ExerciseRunner } from "./exercise/Runner";
 import { edges as allEdges, items as allItems } from "../shared/links";
 
 const MapModule = lazy(() => import("./modules/map/MapModule"));
@@ -75,6 +77,14 @@ const NetworkModule = lazy(() => import("./modules/network/NetworkModule"));
 const PresentationMode = lazy(() => import("./present/Presentation"));
 const Trace = lazy(() =>
   import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
+);
+const WallScreen = lazy(() =>
+  import("./wall/WallScreen").then((m) => ({ default: m.WallScreen })),
+);
+/** Address of the wall screen (a second browser joined to the session). */
+const WALL_HASH = "#mur";
+const Debrief = lazy(() =>
+  import("./modules/debrief/Debrief").then((m) => ({ default: m.Debrief })),
 );
 const ExportCenter = lazy(() =>
   import("./export/ExportCenter").then((m) => ({ default: m.ExportCenter })),
@@ -156,6 +166,7 @@ export default function App() {
     refuse,
   });
   const drafts = useDrafts({ workspace, setWorkspace });
+  useSigningKey(workspace, setWorkspace);
   const draftExists = () => {
     const j = latestJournal.current;
     return drafts.typing || (!!j && !!drafts.get(j.id));
@@ -271,6 +282,17 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [module, journal?.id]);
+  // #mur opens the wall screen, at load or later.
+  const sessionOpen = !!workspace;
+  useEffect(() => {
+    if (!sessionOpen) return;
+    const check = () => {
+      if (location.hash === WALL_HASH) overlays.open({ kind: "wall" });
+    };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [sessionOpen, overlays.open]);
 
   // ---------- Derived data ----------
   const graph = useMemo<Graph>(() => {
@@ -914,6 +936,8 @@ export default function App() {
                   <NetworkModule />
                 ) : module === "trace" ? (
                   <Trace />
+                ) : module === "debrief" ? (
+                  <Debrief />
                 ) : (
                   <Docs topic={docsTopic} />
                 )}
@@ -988,7 +1012,19 @@ export default function App() {
           }
           onTheme={toggleTheme}
           onEnd={() => void closeSession()}
+          onWall={() => overlays.open({ kind: "wall" })}
         />
+      )}
+      {overlays.get("wall") && (
+        <Suspense fallback={null}>
+          <WallScreen
+            onClose={() => {
+              overlays.close("wall");
+              if (location.hash === WALL_HASH)
+                history.replaceState(null, "", location.pathname);
+            }}
+          />
+        </Suspense>
       )}
       <OverlayHost
         overlays={overlays}
@@ -1050,6 +1086,7 @@ export default function App() {
         onDone={() => setAutoQueue((q) => q.slice(1))}
       />
       {viewAt !== null && <TimeBar />}
+      <ExerciseRunner />
       <Toast message={toast} onDone={() => setToast(null)} />
     </Ctx.Provider>
   );

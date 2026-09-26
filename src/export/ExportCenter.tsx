@@ -432,6 +432,7 @@ export function ExportCenter({
         versions,
         passphrase,
         origin: location.origin,
+        signing: app.workspace.signing,
         onProgress: (label, ratio) => setStatus({ label, ratio }),
       });
       setStatus({ label: "Empreinte du fichier", ratio: 0.97 });

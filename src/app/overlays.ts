@@ -25,6 +25,8 @@ export type Overlay =
   | { kind: "entry"; id: string; mode: "view" | "edit" | "delete" }
   | { kind: "trace"; target: string }
   | { kind: "print"; job: PrintJob }
+  // Wall screen of the command post room (src/wall/WallScreen.tsx).
+  | { kind: "wall" }
   | {
       kind: "present";
       mode: "present" | "wall";

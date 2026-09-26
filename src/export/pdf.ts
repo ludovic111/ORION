@@ -421,7 +421,9 @@ function verification(
   font(doc, 8.5, false, INK);
   doc.text(
     doc.splitTextToSize(
-      `Ce code identifie l’export n° ${o.stamp.id} et l’empreinte de son contenu (${o.stamp.fingerprint}). L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération : dans orion aic, Traçabilité → Vérifier un document.`,
+      o.stamp.key
+        ? `Ce code identifie l’export n° ${o.stamp.id}, l’empreinte SHA-256 de son contenu et sa signature par la clé ${o.stamp.key} (${o.stamp.alg}). Le fichier PDF est signé lui aussi. Dans orion aic, Traçabilité → Vérifier un document : déposer le PDF ou saisir le texte de ce code.`
+        : `Ce code identifie l’export n° ${o.stamp.id} et l’empreinte de son contenu (${o.stamp.fingerprint}). L’empreinte SHA-256 du fichier est inscrite au registre des exports de l’opération : dans orion aic, Traçabilité → Vérifier un document.`,
       inner - 52,
     ) as string[],
     x + 46,

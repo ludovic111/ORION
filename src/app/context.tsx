@@ -8,7 +8,12 @@ import type { ExportScope } from "../export/scope";
 
 /** Registers written even on a closed journal or from the time machine. */
 export type LogCollection =
-  "exports" | "presentations" | "snapshots" | "forecasts";
+  | "exports"
+  | "presentations"
+  | "snapshots"
+  | "forecasts"
+  // Debriefing notes: written after the closure too.
+  | "retex";
 export type ExportPreset = Partial<ExportScope> & {
   /** Format id selected when the export centre opens. */
   format?: string;

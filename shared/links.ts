@@ -35,6 +35,7 @@ export type Module =
   | "agenda"
   | "network"
   | "trace"
+  | "debrief"
   | "docs";
 
 export const KIND_INFO: Record<

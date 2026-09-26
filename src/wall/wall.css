@@ -1,0 +1,320 @@
+/* Wall screen: tokens only, so every palette (and the red night) applies.
+   Read at several metres: large type, figures in Plex Mono, rules instead
+   of boxes. */
+
+.wall {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+}
+.wall-frame {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 22px);
+  height: 100%;
+  padding: clamp(14px, 2.4vh, 36px) clamp(16px, 2.4vw, 44px);
+  transition: transform 1.2s var(--ease);
+}
+.wall-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding-bottom: clamp(8px, 1.2vh, 16px);
+  border-bottom: 2px solid var(--text);
+}
+.wall-title {
+  min-width: 0;
+}
+.wall-title h1 {
+  margin: 2px 0 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 3.4vw, 58px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.wall-title p {
+  margin: 4px 0 0;
+  font-size: clamp(13px, 1.3vw, 22px);
+  color: var(--text-2);
+}
+.wall-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(12px, 1vw, 17px);
+  color: var(--text-2);
+}
+.wall-live i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ember);
+}
+.wall-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+}
+.wall-clock strong {
+  font-size: clamp(30px, 4.6vw, 84px);
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.wall-clock span {
+  font-size: clamp(12px, 1.1vw, 20px);
+  color: var(--text-2);
+}
+
+.wall-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "map map next"
+    "map map open"
+    "facts resources latest";
+  grid-template-rows: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(10px, 1.4vw, 26px);
+}
+.wall-grid > section {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wall-grid h2 {
+  margin: 0 0 clamp(6px, 0.8vh, 12px);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-2);
+  font-size: clamp(13px, 1.15vw, 21px);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.wall-map {
+  grid-area: map;
+}
+.wall-next {
+  grid-area: next;
+}
+.wall-open {
+  grid-area: open;
+}
+.wall-facts {
+  grid-area: facts;
+}
+.wall-resources {
+  grid-area: resources;
+}
+.wall-latest {
+  grid-area: latest;
+}
+.wall-map-box {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.wall-map-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.wall-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: clamp(13px, 1.1vw, 20px);
+}
+.wall-next > strong {
+  font-size: clamp(28px, 3.6vw, 66px);
+  font-weight: 500;
+  line-height: 1.05;
+}
+.wall-next > p {
+  margin: 4px 0 0;
+  font-size: clamp(13px, 1.2vw, 22px);
+  color: var(--text-2);
+}
+.wall-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: auto 0 0;
+  border-top: 1px solid var(--line-2);
+}
+.wall-figures div {
+  padding: 8px 6px 0 0;
+}
+.wall-figures dd {
+  margin: 0;
+  font-size: clamp(22px, 2.6vw, 48px);
+  font-weight: 500;
+  line-height: 1.1;
+}
+.wall-figures dt {
+  font-size: clamp(11px, 0.85vw, 16px);
+  color: var(--text-2);
+}
+.wall-figures .zero {
+  color: var(--text-3);
+}
+.wall-figures .crit dd {
+  color: var(--crit);
+}
+
+.wall-open ol,
+.wall-latest ol,
+.wall-resources ul,
+.wall-alerts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wall-open li,
+.wall-latest li,
+.wall-resources li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: clamp(4px, 0.6vh, 9px) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: clamp(14px, 1.25vw, 24px);
+  line-height: 1.25;
+}
+.wall-open li .mono,
+.wall-latest li .mono {
+  flex: none;
+  color: var(--text-2);
+}
+.wall-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wall-open li.late .wall-due,
+.wall-open li.late > .mono:first-child {
+  color: var(--crit);
+}
+.wall-due {
+  flex: none;
+}
+.wall-latest li.urgent .wall-text {
+  font-weight: 500;
+}
+.wall-status {
+  flex: none;
+  color: var(--text-2);
+  font-size: 0.85em;
+}
+.wall-facts dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(6px, 1vh, 14px) 16px;
+}
+.wall-facts dt {
+  font-size: clamp(11px, 0.9vw, 17px);
+  color: var(--text-2);
+}
+.wall-facts dd {
+  margin: 0;
+  font-size: clamp(20px, 2.1vw, 40px);
+  font-weight: 500;
+  line-height: 1.1;
+}
+.wall-facts dd small {
+  font-size: 0.5em;
+  color: var(--text-2);
+}
+.wall-alerts {
+  margin-top: 10px;
+}
+.wall-alerts li {
+  font-size: clamp(13px, 1.1vw, 20px);
+  color: var(--warn);
+}
+
+.wall-controls {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  transition: opacity 200ms var(--ease);
+}
+.wall.idle .wall-controls {
+  opacity: 0;
+  pointer-events: none;
+}
+.wall.idle {
+  cursor: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall-frame {
+    transition: none;
+  }
+}
+:root[data-motion="reduced"] .wall-frame {
+  transition: none;
+}
+
+/* Portrait screens and phones: one column, scrolled. */
+@media (max-width: 900px), (orientation: portrait) {
+  .wall {
+    overflow-y: auto;
+  }
+  .wall-frame {
+    height: auto;
+    min-height: 100%;
+  }
+  .wall-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "next"
+      "map"
+      "open"
+      "facts"
+      "resources"
+      "latest";
+  }
+  .wall-map-box {
+    height: 56vw;
+    min-height: 200px;
+  }
+  .wall-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .wall-clock {
+    align-items: flex-start;
+  }
+  .wall.idle .wall-controls {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .wall-text {
+    white-space: normal;
+  }
+}
+@media (max-width: 480px) {
+  .wall-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -61,6 +61,11 @@ export const SECTIONS = [
     label: "Traçabilité",
     detail: "Qui a fait quoi, quand : historique complet",
   },
+  {
+    id: "exercise",
+    label: "Exercice et débriefing",
+    detail: "Scénario, injects et réactions, échéances, RETEX",
+  },
 ] as const;
 export type SectionId = (typeof SECTIONS)[number]["id"];
 export const SECTION_IDS = SECTIONS.map((s) => s.id) as SectionId[];
@@ -95,6 +100,7 @@ const OWNED: Partial<Record<SectionId, Collection[]>> = {
   agenda: ["agenda"],
   links: ["links"],
   trace: ["exports", "presentations"],
+  exercise: ["scenarios", "injects", "retex"],
 };
 
 /** Collections whose items can be picked one by one. */

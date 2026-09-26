@@ -341,6 +341,8 @@ export async function tablesPdf(
     tables: SheetTable[];
     orientation: "portrait" | "landscape";
     footer: string;
+    /** Verification box after the tables: QR code (signed) and its text. */
+    verify?: { qr: string; text: string };
   },
 ) {
   const [doc, { autoTable }] = await Promise.all([
@@ -396,8 +398,51 @@ export async function tablesPdf(
       (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable
         .finalY + 7;
   }
+  if (options.verify) {
+    const size = 34;
+    if (y + size + 4 > pageHeight(doc) - 16) {
+      doc.addPage();
+      y = band() + 4;
+    }
+    const W = pageWidth(doc) - PAGE.m * 2;
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.3);
+    doc.rect(PAGE.m, y, W, size + 4);
+    drawQr(doc, options.verify.qr, PAGE.m + 2, y + 2, size);
+    font(doc, 7, true);
+    doc.text("VÉRIFIER CE DOCUMENT", PAGE.m + size + 6, y + 6, {
+      charSpace: 0.35,
+    });
+    font(doc, 7.5, false);
+    doc.text(
+      doc.splitTextToSize(options.verify.text, W - size - 10) as string[],
+      PAGE.m + size + 6,
+      y + 11,
+    );
+  }
   drawFooters(doc, `${journal.title} · ${options.footer}`);
   return doc.output("blob");
+}
+
+/** QR code drawn in black on white, with its quiet zone. */
+function drawQr(doc: Doc, text: string, x: number, y: number, size: number) {
+  const matrix = qrMatrix(text);
+  const cell = size / (matrix.length + 2);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(x, y, size, size, "F");
+  doc.setFillColor(...INK);
+  matrix.forEach((row, r) =>
+    row.forEach((dark, c) => {
+      if (dark)
+        doc.rect(
+          x + (c + 1) * cell,
+          y + (r + 1) * cell,
+          cell + 0.01,
+          cell + 0.01,
+          "F",
+        );
+    }),
+  );
 }
 
 export const radioPdf = (journal: Journal, author: string) =>

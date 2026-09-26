@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { gunzipSync, gzipSync } from "fflate";
+import { signatureBlockSchema } from "./signature.ts";
 
 // Encryption of the local vault (IndexedDB) and of .orionaic archives:
 // AES-256-GCM, key derived from a passphrase with PBKDF2-SHA-256.
@@ -34,6 +35,8 @@ export const encryptedV2Schema = z
     version: z.literal(2),
     compression: z.literal("gzip"),
     ciphertext: z.string().min(24),
+    // Signature of the post that wrote the file (shared/signature.ts).
+    signature: signatureBlockSchema.optional(),
   })
   .strict();
 export const encryptedSchema = z.discriminatedUnion("version", [

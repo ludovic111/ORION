@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  ClipboardCheck,
   Download,
   FileText,
   FileUp,
@@ -104,11 +105,26 @@ export function buildCommands({
       keywords: "présentation diaporama autorités visite powerpoint",
     },
     {
+      id: "wall-screen",
+      label: "Écran mural de la salle de conduite",
+      icon: <Tv size={16} />,
+      run: () => open({ kind: "wall" }),
+      keywords: "mur grand écran projecteur salle kiosque tv affichage #mur",
+    },
+    {
       id: "wall",
-      label: "Affichage mural",
+      label: "Affichage mural en diaporama",
       icon: <Tv size={16} />,
       run: () => open({ kind: "present", mode: "wall" }),
-      keywords: "écran projecteur salle kiosque",
+      keywords: "écran projecteur salle kiosque diapositives boucle",
+    },
+    {
+      id: "debrief",
+      label: "Débriefing et exercice (RETEX)",
+      icon: <ClipboardCheck size={16} />,
+      run: () => go("debrief"),
+      keywords:
+        "retex retour expérience exercice inject scénario direction relecture",
     },
     {
       id: "trace",

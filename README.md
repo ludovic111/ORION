@@ -27,12 +27,13 @@ Locale et chiffrée, sans compte ni base de données, synchronisée en direct en
 10. [Plan du réseau radio](#plan-du-réseau-radio)
 11. [Téléphone, tablette et QR codes](#téléphone-tablette-et-qr-codes)
 12. [Présenter, remonter le temps, exporter](#présenter-remonter-le-temps-exporter)
-13. [Sécurité](#sécurité)
-14. [Limites](#limites)
-15. [Installation et hébergement](#installation-et-hébergement)
-16. [Développement](#développement)
-17. [Structure du code](#structure-du-code)
-18. [Sources métier](#sources-métier)
+13. [Exercices et débriefing](#exercices-et-débriefing)
+14. [Sécurité](#sécurité)
+15. [Limites](#limites)
+16. [Installation et hébergement](#installation-et-hébergement)
+17. [Développement](#développement)
+18. [Structure du code](#structure-du-code)
+19. [Sources métier](#sources-métier)
 
 ---
 
@@ -415,6 +416,8 @@ Chaque création, modification et suppression, dans tous les modules, est enregi
 
 Filigrane automatique « EXERCICE » / « CONFIDENTIEL ». Chaque fichier porte une ligne d’identification et, quand la place le permet, un QR code ; il est inscrit au **registre des exports** avec son SHA-256. **Traçabilité → Exports → Vérifier un document** dit si un fichier reçu est authentique et intact.
 
+**Signature** : chaque poste a sa clé Ed25519 (ECDSA P-256 à défaut), créée dans le navigateur et gardée dans la session chiffrée. Les PDF (signature après la fin du fichier), les archives `.orionaic` et JSON (champ `signature`), les codes QR imprimés (SHA-256 du contenu signé) et chaque ligne du registre sont signés ; le pied de page montre l’empreinte courte de la clé. La vérification affiche « signature valide / invalide » et l’empreinte. Auto-signé, sans horodatage de confiance : ce que cela prouve et ne prouve pas est dans [SECURITY.md](SECURITY.md#signature-des-exports).
+
 **Import** (`.orionaic`, `.orion`, `.json`, `.csv`, `.tsv`, 32 Mo maximum) : fichier lu localement, aperçu avant toute modification, puis au choix :
 
 - **Journal séparé** : le journal actuel reste intact ; l’opération importée se rejoue avec la machine à remonter le temps.
@@ -425,6 +428,22 @@ La carte importe aussi des fichiers **KML, KMZ, GeoJSON et GPX** reçus de parte
 Sur la carte, un objet ne bouge que si on le glisse vraiment : un glissement de moins de 8 pixels, un deuxième doigt (pincer pour zoomer) ou un zoom pendant le glissement le remettent exactement à sa place ; sur écran tactile, il faut d’abord toucher l’objet pour le sélectionner. Le **cadenas** (sous le zoom) verrouille tous les objets de ce poste. Les tuiles déjà vues restent en cache ; si le fond manque, le bandeau distingue « hors ligne » (plus de réseau) de « le serveur du fond ne répond pas » (bouton Réessayer), et les tuiles se rechargent seules au retour du réseau.
 
 Les anciens exports `orion-export-v1` (ORION 0.3) sont reconnus : seules les entrées de journal sont converties.
+
+### Écran mural
+
+`⌘K` → **Écran mural de la salle de conduite**, le menu de l’opérateur, ou l’adresse `…/#mur` sur un navigateur qui a rejoint la session : plein écran en lecture seule pour un grand écran de la salle. Carte, points ouverts et retards, compte à rebours du prochain rapport, renseignements clés, moyens engagés, dernières entrées, alertes en vigueur et horloge, en très grands caractères, dans le thème du poste (nuit tactique comprise). L’écran est maintenu allumé (Wake Lock) et se décale de quelques pixels toutes les deux minutes contre le marquage.
+
+### Dictée vocale
+
+Bouton micro dans la nouvelle entrée et la saisie des messages (API Web Speech, `fr-CH` puis `fr-FR`), **désactivé par défaut** : Réglages → Ce poste. Commandes « nouvelle ligne », « point », « virgule »… Dans Chrome et Edge, le son est transcrit par les serveurs de l’éditeur du navigateur et demande internet ; le bouton n’apparaît pas où l’API manque.
+
+## Exercices et débriefing
+
+Module **Débriefing et exercice** (RETEX).
+
+- **Direction d’exercice** (journaux en mode Exercice uniquement) : scénario d’injects datés (T+ minutes ou heure fixe de Zurich, jour de l’exercice), avec émetteur joué, cellule visée, canal (message, radio, téléphone), contenu, réaction attendue, délai et effets à l’arrivée (état d’un moyen, observation météo, renseignement clé). À l’heure prévue, le poste de la direction fait arriver l’inject dans Messages, ou l’affiche en grand pour qu’elle le lise. Vue masquée aux joueurs par un code choisi sur le poste (pas une protection). Import / export JSON (`orion-aic-scenario`), exemple « Crue de l’Arve » fourni. Aucun inject ne part jamais dans un journal d’intervention.
+- **Débriefing** (tous les journaux) : relecture de toute l’application à ×10 ou ×60 (carte, journal, moyens ensemble, par la machine à remonter le temps), temps de réaction à chaque inject (message traité, inscrit au journal, lié à une entrée, ou réaction notée par la direction), échéances dépassées et retard cumulé, délai de traitement des messages, entrées par heure, qui a fait quoi, points « positifs » et « à améliorer ». Export PDF ou Word par le centre d’export (partie « Exercice et débriefing »).
+- **Démonstration vivante** : l’exercice de démonstration joue ce scénario pendant qu’on le regarde ; toutes les quelques minutes arrivent un message, un changement d’état d’un moyen, une mise à jour météo.
 
 ## Sécurité
 
@@ -464,6 +483,10 @@ npm run lan
 ```
 
 L’application est servie en HTTPS sur le port 4443 de toutes les interfaces, avec un certificat auto-signé créé dans `.lan/`. La console affiche les adresses (`https://192.168.x.x:4443`) et l’empreinte du certificat. Les autres postes du même réseau ouvrent l’adresse, acceptent le certificat une fois, puis rejoignent la session avec son code.
+
+Le port se change avec `npm run lan -- --port 4444` (ou `PORT`) ; `npm run lan:serve` démarre sans reconstruire. La console affiche aussi l’empreinte SHA-256 du certificat, sa date de fin et un QR code par adresse (`--no-qr` pour les masquer).
+
+**PC en valise** : un Raspberry Pi 5 (ou un vieux portable) avec son propre Wi-Fi sert orion aic à tous les postes du PC, sans internet. Matériel et prix indicatifs, point d’accès, démarrage automatique ([`docs/orion-aic-lan.service`](docs/orion-aic-lan.service)), préparation des secteurs de carte, impression, alimentation et liste de contrôle : [docs/PC-EN-VALISE.md](docs/PC-EN-VALISE.md).
 
 ### Docker
 
@@ -520,14 +543,20 @@ shared/            Modèle validé, sans dépendance au navigateur
   workflow.ts      Entrées liées et fil, clôture par quittance, relance d’échéance, modèles
   interchange.ts   CSV/TSV, import JSON et ancien format, HTML, texte
   crypto.ts        Enveloppe chiffrée AES-GCM / PBKDF2, compressée (version 2)
+  signature.ts     Clé du poste (Ed25519 / ECDSA P-256), signature des PDF, archives, codes QR
+  exercise.ts      Exercices : échéancier des injects, remise, réactions, fichiers scénario
+  scenario-arve.ts Scénario d’exemple « Crue de l’Arve » (fictif)
+  debrief.ts       Débriefing : échéances, traitement des messages, rythme, qui a fait quoi
   coordinates.ts   Conversion MN95 ↔ WGS84 (formules swisstopo)
 src/
   App.tsx          Coque : dock, barre, palette ⌘K, dialogues, session, synchronisation
   app/             Contexte, modules, réglages du poste, thèmes de couleur (palettes.ts),
                    dialogue Réglages
   modules/         Un dossier par module (situation, journal, messages, missions, map,
-                   resources, team, contacts, weather, agenda, network, trace, docs)
-  timeline/        Barre du temps et relecture, fiche Historique, points figés
+                   resources, team, contacts, weather, agenda, network, trace, debrief, docs)
+  timeline/        Barre du temps et relecture (pas à pas, ×10, ×60), fiche Historique, points figés
+  exercise/        Remise des injects (Runner), direction d’exercice (code du poste), démo vivante
+  wall/            Écran mural de la salle (#mur)
   export/          Centre d’export : périmètre, dossier, écrivains (PDF, Word, ODT, Excel,
                    ODS, HTML, texte, agenda, contacts), empreintes, vérification
   present/         Mode présentation, affichage mural, vue orateur, annotations,
@@ -543,7 +572,7 @@ server/
   app.mjs          Fichiers statiques en lecture seule, en-têtes, /healthz
   relay.mjs        Relais WebSocket en mémoire
   index.mjs        Serveur HTTP
-  lan.mjs          Serveur HTTPS du réseau local
+  lan.mjs          Serveur HTTPS du réseau local (QR code des adresses : terminal-qr.mjs)
 scripts/           Archive du code source, service worker
 tests/             Tests node:test
 docs/              Architecture, système de design, kit d’interface, choix métier, licences,

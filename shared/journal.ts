@@ -15,6 +15,7 @@ import {
   type HistoryEvent,
 } from "./events.ts";
 import { NODE, canonicalStamp, stampSchema } from "./hlc.ts";
+import { signatureBlockSchema, signingKeySchema } from "./signature.ts";
 import {
   BLOB_KEY,
   DATA_IMAGE,
@@ -222,6 +223,9 @@ export const workspaceSchema = z
     room: z.string().max(40).optional(),
     // Id of this post in the stamps (shared/hlc.ts), kept on this post only.
     node: z.string().regex(NODE).optional(),
+    // Key pair signing the exports of this post (shared/signature.ts), kept
+    // in the encrypted session only, never synchronised nor exported.
+    signing: signingKeySchema.optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -243,6 +247,8 @@ export const archiveSchema = z
     version: z.literal(1),
     exportedAt: instant,
     journal: journalSchema,
+    // Signature of the post that exported it (shared/signature.ts).
+    signature: signatureBlockSchema.optional(),
   })
   .strict();
 export type Fields = z.infer<typeof fieldsSchema>;

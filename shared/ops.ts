@@ -232,6 +232,17 @@ export const exportLogSchema = z
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
     bytes: z.number().int().min(0),
     fingerprint: text(80),
+    // Signature of the file by the post that exported it (shared/signature.ts):
+    // algorithm, public key and signature in base64url, time signed.
+    signature: z
+      .object({
+        alg: z.enum(["Ed25519", "ECDSA-P256"]),
+        key: z.string().max(200),
+        sig: z.string().max(200),
+        at: instant,
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -406,6 +417,117 @@ export const linkSchema = z
   })
   .strict();
 
+// ---------- Exercises (scenario, injects) and debriefing (RETEX) ----------
+// Only exercise journals run a scenario (shared/exercise.ts); the debriefing
+// notes exist for every journal.
+
+export const INJECT_CHANNELS = ["Message", "Radio", "Téléphone"] as const;
+/** "message": arrives in Messages; "read": the direction reads it out. */
+export const INJECT_DELIVERIES = ["message", "read"] as const;
+export const INJECT_TIMINGS = ["offset", "clock"] as const;
+export const RETEX_KINDS = ["positif", "amélioration"] as const;
+
+/** What an inject changes when it is delivered, besides the message. */
+export const injectEffectSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("resource"),
+      name: text(120).min(1),
+      status: z.enum(RESOURCE_STATUSES),
+      location: text(300).default(""),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("observation"),
+      place: text(200),
+      conditions: text(200),
+      temperature: text(40).default(""),
+      wind: text(80).default(""),
+      precipitation: text(80).default(""),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("fact"),
+      label: text(120).min(1),
+      value: text(120),
+      unit: text(40).default(""),
+    })
+    .strict(),
+]);
+
+export const scenarioSchema = z
+  .object({
+    ...record,
+    title: text(200).min(1),
+    description: text(4000),
+    // Start of the exercise (T0); "" until the direction starts it.
+    startAt: optionalInstant,
+    endedAt: optionalInstant,
+    // Demonstration: every post delivers the injects (no direction post).
+    autoplay: z.boolean().default(false),
+  })
+  .strict();
+
+export const injectSchema = z
+  .object({
+    ...record,
+    scenarioId: optionalId,
+    order: z.number().int(),
+    title: text(200).min(1),
+    // "offset": T0 + offset minutes; "clock": hh:mm (Zurich) on day `day`
+    // of the exercise (0: the day of T0).
+    timing: z.enum(INJECT_TIMINGS),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .max(60 * 24 * 14),
+    clock: z.union([
+      z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      z.literal(""),
+    ]),
+    day: z.number().int().min(0).max(14).default(0),
+    from: text(200),
+    to: text(200),
+    via: z.enum(INJECT_CHANNELS),
+    priority: z.enum(MESSAGE_PRIORITIES),
+    category: text(80),
+    body: text(12000),
+    delivery: z.enum(INJECT_DELIVERIES),
+    // Reaction expected from the players and its deadline (minutes after
+    // delivery, 0: none).
+    expected: text(4000),
+    deadline: z
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 60),
+    effects: z.array(injectEffectSchema).max(10).default([]),
+    deliveredAt: optionalInstant,
+    // Message created in Messages by the delivery.
+    messageId: optionalId,
+    // Reaction marked by the direction (the automatic ones are computed).
+    reactedAt: optionalInstant,
+    reactionRef: text(80),
+    reactionNote: text(1000),
+    skipped: z.boolean().default(false),
+  })
+  .strict();
+
+/** Debriefing note: « point positif » or « à améliorer ». */
+export const retexSchema = z
+  .object({
+    ...record,
+    kind: z.enum(RETEX_KINDS),
+    text: text(4000).min(1),
+    topic: text(120),
+    owner: text(200),
+    order: z.number().int(),
+  })
+  .strict();
+
 export const settingsSchema = z
   .object({
     lists: z.record(text(40), z.array(text(120)).max(200)).default({}),
@@ -449,6 +571,9 @@ export const opsSchema = z
     presentations: z.array(presentationSchema).max(5000).default([]),
     // Thinned on each reception (thinForecasts); merges of posts add up.
     forecasts: z.array(forecastSchema).max(10000).default([]),
+    scenarios: z.array(scenarioSchema).max(50).default([]),
+    injects: z.array(injectSchema).max(2000).default([]),
+    retex: z.array(retexSchema).max(1000).default([]),
     settings: settingsSchema.default({
       lists: {},
       weatherPlace: null,
@@ -477,6 +602,10 @@ export type Presentation = z.infer<typeof presentationSchema>;
 export type ForecastData = z.infer<typeof forecastDataSchema>;
 export type ForecastRecord = z.infer<typeof forecastSchema>;
 export type OpsSettings = z.infer<typeof settingsSchema>;
+export type Scenario = z.infer<typeof scenarioSchema>;
+export type Inject = z.infer<typeof injectSchema>;
+export type InjectEffect = z.infer<typeof injectEffectSchema>;
+export type RetexNote = z.infer<typeof retexSchema>;
 export type Ops = z.infer<typeof opsSchema>;
 
 /** Collections of records with an id, in a fixed order. */
@@ -499,6 +628,9 @@ export const COLLECTIONS = [
   "exports",
   "presentations",
   "forecasts",
+  "scenarios",
+  "injects",
+  "retex",
 ] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 export type RecordOf<C extends Collection> = Ops[C][number];
@@ -523,6 +655,9 @@ export const RECORD_SCHEMAS = {
   exports: exportLogSchema,
   presentations: presentationSchema,
   forecasts: forecastSchema,
+  scenarios: scenarioSchema,
+  injects: injectSchema,
+  retex: retexSchema,
 } as const satisfies Record<Collection, z.ZodType>;
 /** A record as written by a form: optional fields may be left out. */
 export type InputOf<C extends Collection> = z.input<(typeof RECORD_SCHEMAS)[C]>;

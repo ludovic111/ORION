@@ -1,6 +1,12 @@
 import { dateTime, type Journal } from "../../shared/journal.ts";
 import { stableStringify } from "../../shared/history.ts";
 import type { ExportLog } from "../../shared/ops.ts";
+import {
+  keyFingerprint,
+  shortFingerprint,
+  signCode,
+  type SigningKey,
+} from "../../shared/signature.ts";
 
 // Integrity of the files produced. Before writing, every export gets a
 // document id and the fingerprint of its content (SHA-256 of the canonical
@@ -22,6 +28,10 @@ export type DocumentStamp = {
   label: string;
   /** Text of the verification QR code. */
   qr: string;
+  /** Signed stamp: SHA-256 of the content and fingerprint of the key. */
+  content?: string;
+  key?: string;
+  alg?: string;
 };
 
 export const VERIFY_PREFIX = "orionaic:verify:";
@@ -67,6 +77,32 @@ export function makeStamp(
       .filter(Boolean)
       .join(" · "),
     qr: `${VERIFY_PREFIX}${id}:${fingerprint}`,
+  };
+}
+
+/** SHA-256 of the canonical JSON of a journal (64 hex). */
+export const contentHashOf = (journal: Journal) =>
+  sha256Hex(stableStringify(journal));
+
+/**
+ * The stamp signed by this post: the QR code carries the SHA-256 of the
+ * content, the time, the public key and the signature (shared/signature.ts);
+ * the footer shows the short fingerprint of the key.
+ */
+export async function signStamp(
+  stamp: DocumentStamp,
+  key: SigningKey,
+  content: string,
+  at: string,
+): Promise<DocumentStamp> {
+  const fingerprint = await keyFingerprint(key.publicKey);
+  return {
+    ...stamp,
+    content,
+    key: fingerprint,
+    alg: key.alg,
+    label: `${stamp.label} · clé ${shortFingerprint(fingerprint)}`,
+    qr: await signCode(key, stamp.qr, stamp.id, content, at),
   };
 }
 

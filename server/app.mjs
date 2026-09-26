@@ -60,7 +60,7 @@ export async function handle(req, res) {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader(
     "Permissions-Policy",
-    "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()",
+    "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()",
   );
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405);

@@ -18,12 +18,17 @@ import { useApp } from "../app/context";
 import { localInput, fromInput } from "../ui/fields";
 import { Popover } from "../ui/Popover";
 import { SnapshotDialog } from "./SnapshotDialog";
+import { onReplay, takeReplay } from "./playback";
 import "./timeline.css";
 
+// Change by change (a step every `ms`), or in accelerated real time (the
+// film of the operation: map, journal and resources move together).
 const SPEEDS = [
-  { id: "slow", label: "Lent", ms: 1400 },
-  { id: "normal", label: "Normal", ms: 650 },
-  { id: "fast", label: "Rapide", ms: 220 },
+  { id: "slow", label: "Lent", ms: 1400, factor: 0 },
+  { id: "normal", label: "Normal", ms: 650, factor: 0 },
+  { id: "fast", label: "Rapide", ms: 220, factor: 0 },
+  { id: "x10", label: "×10", ms: 200, factor: 10 },
+  { id: "x60", label: "×60", ms: 200, factor: 60 },
 ] as const;
 type Speed = (typeof SPEEDS)[number]["id"];
 const BINS = 72;
@@ -78,8 +83,8 @@ export function TimeBar() {
   }, [steps, at]);
   // Moments of change still to come after the time shown.
   const pending = steps.length - index;
-  const latest = useRef({ index, steps });
-  latest.current = { index, steps };
+  const latest = useRef({ index, steps, at, end });
+  latest.current = { index, steps, at, end };
 
   useEffect(() => {
     const timer = setInterval(() => setClock(Date.now()), 30_000);
@@ -89,9 +94,32 @@ export function TimeBar() {
       delete document.documentElement.dataset.past;
     };
   }, []);
+  // A replay asked by another screen (the debriefing).
+  useEffect(() => {
+    const take = () => {
+      const asked = takeReplay();
+      if (!asked) return;
+      setSpeed(asked);
+      setPlaying(true);
+    };
+    take();
+    return onReplay(take);
+  }, []);
   useEffect(() => {
     if (!playing) return;
-    const delay = SPEEDS.find((s) => s.id === speed)!.ms;
+    const { ms: delay, factor } = SPEEDS.find((s) => s.id === speed)!;
+    if (factor) {
+      let last = performance.now();
+      const timer = setInterval(() => {
+        const t = performance.now();
+        const { at: shown, end: stop } = latest.current;
+        const next = Math.min(stop, shown + (t - last) * factor);
+        last = t;
+        setViewAt(next);
+        if (next >= stop) setPlaying(false);
+      }, delay);
+      return () => clearInterval(timer);
+    }
     const timer = setInterval(() => {
       const { index: i, steps: list } = latest.current;
       if (i >= list.length) {
@@ -118,7 +146,8 @@ export function TimeBar() {
     goModule("trace");
   };
   const play = () => {
-    if (!playing && index >= steps.length) setViewAt(steps[0] ?? start);
+    if (!playing && (index >= steps.length || at >= end))
+      setViewAt(steps[0] ?? start);
     setPlaying(!playing);
   };
   const percent = ((at - start) / span) * 100;
