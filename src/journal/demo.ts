@@ -34,6 +34,8 @@ import {
   type Talkgroup,
 } from "../../shared/radio.ts";
 
+import { withConductDemo } from "./demo-conduct.ts";
+
 // Fictitious numbering: real talkgroups and RFSI come from the cantonal fleet plan.
 function demoRadio(at: (minutes: number) => string): Radio {
   const group = (
@@ -843,6 +845,7 @@ export function demoWorkspace(now = Date.now()): Workspace {
   journal = updateRadio(journal, demoRadio(at));
   journal = { ...journal, ops: demoOps(journal, at) };
   journal = demoHistory(journal, at);
+  journal = withConductDemo(journal, at);
   return {
     version: 1,
     author: "Opérateur · démo",

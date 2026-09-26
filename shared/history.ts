@@ -118,6 +118,28 @@ const OPS_SCOPES: Record<Collection, ScopeInfo> = {
     plural: "Prévisions météo",
     module: "weather",
   },
+  orders: { label: "Ordre", plural: "Ordres", module: "orders" },
+  broadcasts: { label: "Diffusion", plural: "Diffusions", module: "orders" },
+  acks: {
+    label: "Accusé de lecture",
+    plural: "Accusés de lecture",
+    module: "orders",
+  },
+  assignments: {
+    label: "Attribution",
+    plural: "Attributions",
+    module: "tasks",
+  },
+  liaisons: {
+    label: "Liaison entre PC",
+    plural: "Liaisons entre PC",
+    module: "orders",
+  },
+  exchanges: {
+    label: "Échange de liaison",
+    plural: "Échanges de liaison",
+    module: "orders",
+  },
 };
 export const SCOPES: Record<string, ScopeInfo> = {
   entries: { label: "Entrée", plural: "Journal", module: "journal" },

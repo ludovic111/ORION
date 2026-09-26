@@ -8,6 +8,7 @@ import {
 import { activeAssignment, callsignKey } from "./radio.ts";
 import { referencedEntries } from "./workflow.ts";
 import { nowIso, type Link, type Ops, type RefKind } from "./ops.ts";
+import { conductEdges, conductItems } from "./conduct-items.ts";
 
 // Every item of a journal can be referred to as "kind:id". Links are either
 // explicit (ops.links, created by the operator or by an action such as
@@ -35,7 +36,9 @@ export type Module =
   | "agenda"
   | "network"
   | "trace"
-  | "docs";
+  | "docs"
+  | "orders"
+  | "tasks";
 
 export const KIND_INFO: Record<
   RefKind,
@@ -105,6 +108,13 @@ export const KIND_INFO: Record<
     plural: "Groupes radio",
     module: "radio",
     hue: 100,
+  },
+  order: { label: "Ordre", plural: "Ordres", module: "orders", hue: 18 },
+  broadcast: {
+    label: "Diffusion",
+    plural: "Diffusions",
+    module: "orders",
+    hue: 238,
   },
 };
 
@@ -367,6 +377,7 @@ export function items(journal: Journal): Item[] {
         x.notes,
       ].join(" "),
     });
+  for (const item of conductItems(journal)) push(item);
   for (const t of r.terminals) {
     const open = activeAssignment(t);
     push({
@@ -449,6 +460,9 @@ export function edges(journal: Journal): Edge[] {
   for (const m of o.messages)
     if (m.entryId && journal.entries.some((e) => e.id === m.entryId))
       add(ref("message", m.id), ref("entry", m.entryId), "inscrit au journal");
+  for (const [a, b, label] of conductEdges(journal))
+    if (exists.has(a as Ref) && exists.has(b as Ref))
+      add(a as Ref, b as Ref, label);
   for (const m of o.members)
     if (m.cellId && o.cells.some((c) => c.id === m.cellId))
       add(ref("member", m.id), ref("cell", m.cellId), "membre de");

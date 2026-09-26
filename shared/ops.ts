@@ -1,5 +1,14 @@
 import { z } from "zod";
 import { BLOB_REF, DATA_IMAGE } from "./blobs.ts";
+import {
+  CONDUCT_LISTS,
+  ackSchema,
+  assignmentSchema,
+  broadcastSchema,
+  exchangeSchema,
+  liaisonSchema,
+  orderSchema,
+} from "./conduct.ts";
 
 // Everything an AIC cell keeps next to the journal: message intake, team,
 // resources, contacts, map, rhythm, key facts, weather and the links between
@@ -389,6 +398,9 @@ export const REF_KINDS = [
   "terminal",
   "station",
   "talkgroup",
+  // Conduct (shared/conduct.ts).
+  "order",
+  "broadcast",
 ] as const;
 export type RefKind = (typeof REF_KINDS)[number];
 export const refSchema = z
@@ -451,6 +463,13 @@ export const opsSchema = z
     presentations: z.array(presentationSchema).max(5000).default([]),
     // Thinned on each reception (thinForecasts); merges of posts add up.
     forecasts: z.array(forecastSchema).max(10000).default([]),
+    // Conduct (shared/conduct.ts).
+    orders: z.array(orderSchema).max(2000).default([]),
+    broadcasts: z.array(broadcastSchema).max(5000).default([]),
+    acks: z.array(ackSchema).max(50000).default([]),
+    assignments: z.array(assignmentSchema).max(5000).default([]),
+    liaisons: z.array(liaisonSchema).max(20).default([]),
+    exchanges: z.array(exchangeSchema).max(10000).default([]),
     settings: settingsSchema.default({
       lists: {},
       weatherPlace: null,
@@ -501,6 +520,12 @@ export const COLLECTIONS = [
   "exports",
   "presentations",
   "forecasts",
+  "orders",
+  "broadcasts",
+  "acks",
+  "assignments",
+  "liaisons",
+  "exchanges",
 ] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 export type RecordOf<C extends Collection> = Ops[C][number];
@@ -525,6 +550,12 @@ export const RECORD_SCHEMAS = {
   exports: exportLogSchema,
   presentations: presentationSchema,
   forecasts: forecastSchema,
+  orders: orderSchema,
+  broadcasts: broadcastSchema,
+  acks: ackSchema,
+  assignments: assignmentSchema,
+  liaisons: liaisonSchema,
+  exchanges: exchangeSchema,
 } as const satisfies Record<Collection, z.ZodType>;
 /** A record as written by a form: optional fields may be left out. */
 export type InputOf<C extends Collection> = z.input<(typeof RECORD_SCHEMAS)[C]>;
@@ -702,6 +733,7 @@ export const DEFAULT_LISTS: Record<
       "Autre",
     ],
   },
+  ...CONDUCT_LISTS,
 };
 export type ListName = keyof typeof DEFAULT_LISTS;
 export const listValues = (ops: Ops, name: string) =>

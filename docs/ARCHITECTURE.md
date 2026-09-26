@@ -45,6 +45,10 @@ Workspace
    │  ├─ snapshots                 points de situation figés (moment nommé)
    │  ├─ exports, presentations    registres : fichiers produits (SHA-256), présentations données
    │  ├─ forecasts                 prévisions météo reçues (une version par réception)
+   │  ├─ orders                    ordres en cinq points (numéro stable, missions, distribution)
+   │  ├─ broadcasts, acks          diffusions et accusés de lecture (jamais modifiés)
+   │  ├─ assignments               éléments attribués à une fonction ou une personne
+   │  ├─ liaisons, exchanges       liaisons avec un autre PC et ce qui les a traversées
    │  └─ settings                  référentiels, lieu météo, vue de carte
    ├─ sync { clock, removed, compacted }
    │                               horodatages (horloge logique hybride) des changements,
@@ -99,6 +103,15 @@ Le graphe (`items`, `edges`) alimente les aperçus au survol, les fiches, la rec
 7. **Fusions à signaler** (`conflicts()`, `src/sync/ConflictPanel.tsx`, Réglages → Synchronisation) : numéros partagés et leurs suffixes, modifications simultanées (même `base`) avec les deux versions, journaux refusés et pourquoi. Le nombre non vu apparaît dans la puce de synchronisation.
 
 Coût : aucun stockage serveur, mémoire du relais bornée par les limites ci-dessus ; en régime établi, seules des différences et des `hello` circulent.
+
+## Conduite : alertes, fonctions, diffusions, ordres, liaison entre PC
+
+- **Fonction du poste** (`src/post/store.ts`, local au navigateur comme le thème) : fonction, cellule, module d’arrivée, réglages des alertes. L’identité d’un poste (`shared/diffusion.ts`) réunit l’opérateur, la fonction, la cellule et le nom du PC donné par la liaison ; un destinataire ou un responsable la désigne par l’un de ces noms (sans accents ni casse), « Tous » désigne chacun.
+- **Mes tâches** (`myTasks`) : entrées à suivre dont le responsable désigne le poste, éléments attribués (`ops.assignments`), missions des ordres émis, diffusions à quittancer ; en retard d’abord, puis par échéance.
+- **Alertes** (`shared/alarms.ts`, fonctions pures ; `src/post/useAlerts.ts`) : alarmes programmées (échéance, rendez-vous moins N minutes, diffusion sans accusé) qui sonnent quand leur heure passe entre deux vérifications, et alarmes d’événement (message urgent, tâche attribuée, diffusion à quittancer) qui sonnent quand elles apparaissent. Minuterie jusqu’à la prochaine, vérification toutes les 30 s et à chaque changement ; mémoire par journal dans le navigateur. Notification du système (`Notification`, ou le service worker sur téléphone), son WebAudio sans fichier, heures calmes. Aucun serveur de notification.
+- **Diffusions** : un accusé (`ops.acks`) est un nouvel enregistrement par destinataire, jamais modifié : deux postes qui répondent en même temps donnent deux accusés, gardés tous les deux par la fusion. Retard : sans accusé après `deadline` minutes.
+- **Ordres** : numéro donné à la création (le plus haut jamais donné par ce PC, ordres supprimés compris, + 1), suffixe comme les entrées en cas de collision (`orderLabels`), ordres reçus d’un autre PC libellés par leur source.
+- **Liaison entre PC** (`shared/liaison.ts`, `src/liaison/useLiaisons.ts`) : un code de liaison (même générateur que les sessions) dérive, avec d’autres étiquettes PBKDF2 / HKDF, une autre salle et une autre clé : il n’ouvre jamais une session, ni l’inverse. Le relais est inchangé. Les éléments à envoyer sont des enregistrements `ops.exchanges` (sortants, identifiant stable) renvoyés à chaque contact jusqu’à l’accusé de réception `got` ; un élément reçu garde l’identifiant de son enveloppe (et des enregistrements qu’il porte), si bien que plusieurs postes qui le reçoivent n’en gardent qu’un. Seuls passent : messages (dans Messages de l’autre PC, avec le PC d’origine), diffusions avec leur ordre, accusés. Le code de liaison et les échanges ne sont pas exportés.
 
 Le mode réseau local (`server/lan.mjs`) sert la même application et le même relais en HTTPS sur le réseau du poste de conduite, avec un certificat auto-signé.
 

@@ -33,6 +33,8 @@ import { MODULES, moduleInfo } from "./modules";
 import { DARK_PALETTES, LIGHT_PALETTES, type Palette } from "./palettes";
 import type { useSync } from "../sync/useSync";
 import { ConflictPanel } from "../sync/ConflictPanel";
+import { AlertSettings, PostRoleSettings } from "../post/PostPanel";
+import { LiaisonPanel } from "../liaison/LiaisonPanel";
 
 export type SettingsTab = "post" | "lists" | "sync" | "session" | "contact";
 
@@ -162,6 +164,8 @@ function PostSettings() {
   const { prefs, setPrefs } = useApp();
   return (
     <div className="stack" style={{ gap: 22 }}>
+      <PostRoleSettings />
+      <AlertSettings />
       <section className="settings-section">
         <h3 className="section-label">Apparence</h3>
         <div className="form-grid">
@@ -595,6 +599,10 @@ function SyncSettings({
           <ConflictPanel sync={sync} />
         </section>
       )}
+      <section className="stack" style={{ gap: 10 }}>
+        <span className="label">Liaison entre PC</span>
+        <LiaisonPanel />
+      </section>
       <details>
         <summary>Sans internet : réseau local (Wi-Fi ou câble)</summary>
         <div className="details-fields">

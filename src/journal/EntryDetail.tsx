@@ -4,9 +4,11 @@ import {
   Check,
   FileText,
   History,
+  Megaphone,
   Pencil,
   Reply,
   Trash2,
+  UserCheck,
 } from "lucide-react";
 import {
   current,
@@ -20,6 +22,7 @@ import {
 import { thread } from "../../shared/workflow";
 import { columns } from "../../shared/interchange";
 import { Modal } from "./Modal";
+import { openAssign, openDiffusion } from "../post/bus";
 import { EntryForm } from "./EntryForm";
 export function EntryDetail({
   entry,
@@ -129,6 +132,25 @@ export function EntryDetail({
                 <button onClick={onReply}>
                   <Reply size={14} />
                   Consigner une suite
+                </button>
+                <button
+                  onClick={() =>
+                    openDiffusion({
+                      title: `${numberLabel(entry)} ${f.message.split("\n")[0].slice(0, 200)}`,
+                      body: f.action,
+                      target: `entry:${entry.id}`,
+                      priority: f.priority,
+                    })
+                  }
+                >
+                  <Megaphone size={14} />
+                  Diffuser
+                </button>
+                <button
+                  onClick={() => openAssign({ target: `entry:${entry.id}` })}
+                >
+                  <UserCheck size={14} />
+                  Attribuer
                 </button>
                 {["À traiter", "En cours"].includes(f.status) && (
                   <button
