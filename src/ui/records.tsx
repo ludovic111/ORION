@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import {
   removeRecords,
@@ -246,8 +246,40 @@ export function RecordSheet<T extends Value>({
   const [confirming, setConfirming] = useState(false);
   const existing = typeof initial.id === "string" ? (initial.id as string) : "";
   const Icon = KIND_ICON[kind];
+  // Unsaved changes: closing (Échap, backdrop, ×) asks first.
+  const dirty = useMemo(
+    () => !readOnly && JSON.stringify(value) !== JSON.stringify(initial),
+    [value, initial, readOnly],
+  );
   function save(e?: FormEvent) {
     e?.preventDefault();
+    if (readOnly) {
+      setError(
+        viewAt !== null
+          ? "Lecture seule : vous consultez le passé. Revenez au direct pour écrire."
+          : "Journal clôturé — rouvrez-le pour écrire.",
+      );
+      return;
+    }
+    // Required fields: a value of spaces only is missing.
+    const missing = spec
+      .filter(
+        (f): f is Extract<FieldSpec, { key: string; label: string }> =>
+          "key" in f &&
+          "label" in f &&
+          !!(f as { required?: boolean }).required,
+      )
+      .filter((f) => {
+        const v = value[f.key];
+        return typeof v === "string"
+          ? !v.trim()
+          : v === undefined || v === null;
+      })
+      .map((f) => f.label);
+    if (missing.length) {
+      setError(`Champ obligatoire : ${missing.join(", ")}.`);
+      return;
+    }
     const problem = validate?.(value);
     if (problem) {
       setError(problem);
@@ -269,6 +301,7 @@ export function RecordSheet<T extends Value>({
   return (
     <Sheet
       onClose={onClose}
+      dirty={dirty}
       eyebrow={
         <>
           <Icon size={12} />

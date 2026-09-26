@@ -163,39 +163,7 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-.compare-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-.compare-kpi {
-  display: grid;
-  gap: 4px;
-  padding: 20px 22px;
-}
-.compare-kpi strong {
-  font-family: var(--display);
-  font-size: 34px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-.compare-kpi span {
-  overflow: hidden;
-  color: var(--text-2);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.compare-kpi.added strong {
-  color: var(--ok);
-}
-.compare-kpi.modified strong {
-  color: var(--text);
-}
-.compare-kpi.removed strong {
-  color: var(--crit);
-}
+
 .compare-actions {
   display: flex;
   flex-wrap: wrap;
@@ -300,9 +268,6 @@
   }
   .trace-side {
     position: static;
-  }
-  .compare-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {

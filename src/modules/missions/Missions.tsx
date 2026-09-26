@@ -7,7 +7,6 @@ import {
   CircleDashed,
   Clock,
   ExternalLink,
-  Hourglass,
   KanbanSquare,
   Link2,
   NotebookPen,
@@ -35,9 +34,9 @@ import { snooze } from "../../../shared/workflow";
 import { useApp } from "../../app/context";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
 import { Popover } from "../../ui/Popover";
-import { CountUp } from "../../ui/effects";
 import { Segmented, Toggle } from "../../ui/fields";
 import { HoverCard } from "../../ui/links";
+import { Figures } from "../../ui/Figures";
 import "./missions.css";
 
 type Status = Fields["status"];
@@ -142,6 +141,7 @@ function sortLane(list: Entry[], status: Status, now: number) {
 export function Missions() {
   const {
     journal,
+    live,
     author,
     now,
     readOnly,
@@ -240,14 +240,19 @@ export function Missions() {
   }, [bySwimlane, shown]);
 
   function move(id: string, status: Status) {
-    const entry = journal.entries.find((e) => e.id === id);
-    if (!entry || readOnly) return;
+    // Written to the live journal; the gate refuses (with a message) in the
+    // time machine or on a closed journal.
+    const entry = live.entries.find((e) => e.id === id);
+    if (!entry) return;
     const f = current(entry);
     if (f.status === status) return;
     try {
-      updateJournal(
-        reviseEntry(journal, id, { ...f, status }, author, `Suivi : ${status}`),
-      );
+      if (
+        !updateJournal(
+          reviseEntry(live, id, { ...f, status }, author, `Suivi : ${status}`),
+        )
+      )
+        return;
       clearTimeout(movedTimer.current);
       setMoved({ id, done: status === "Terminé" });
       movedTimer.current = setTimeout(() => setMoved(null), 1600);
@@ -257,18 +262,22 @@ export function Missions() {
     }
   }
 
-  function postpone(entry: Entry) {
+  function postpone(shown: Entry) {
+    const entry = live.entries.find((e) => e.id === shown.id) ?? shown;
     const f = current(entry);
     try {
-      updateJournal(
-        reviseEntry(
-          journal,
-          entry.id,
-          { ...f, dueAt: snooze(f.dueAt, 15) },
-          author,
-          "Échéance reportée de 15 min",
-        ),
-      );
+      if (
+        !updateJournal(
+          reviseEntry(
+            live,
+            entry.id,
+            { ...f, dueAt: snooze(f.dueAt, 15) },
+            author,
+            "Échéance reportée de 15 min",
+          ),
+        )
+      )
+        return;
       toast(`${numberLabel(entry)} : échéance reportée de 15 min.`);
     } catch (error) {
       toast(error instanceof Error ? error.message : String(error));
@@ -322,51 +331,35 @@ export function Missions() {
     <>
       <ModuleHead actions={actions} />
 
-      <div className="missions-summary stagger">
-        {LANES.filter((l) => l.status !== "Consigné").map((l) => {
-          const Icon = l.icon;
-          return (
-            <div
-              key={l.status}
-              className={`missions-stat missions-tone-${l.tone}`}
-            >
-              <Icon size={16} />
-              <strong>
-                <CountUp value={summary.count.get(l.status) ?? 0} />
-              </strong>
-              <span>{l.status}</span>
-            </div>
-          );
-        })}
-        <div
-          className={`missions-stat ${summary.late ? "missions-tone-crit" : "missions-tone-muted"}`}
-        >
-          <Hourglass size={16} />
-          <strong>
-            <CountUp value={summary.late} />
-          </strong>
-          <span>En retard</span>
-        </div>
-        <button
-          type="button"
-          className="missions-stat missions-next"
-          disabled={!summary.next}
-          onClick={() => summary.next && openEntry(summary.next.id)}
-        >
-          <Clock size={16} />
-          {summary.next ? (
-            <>
-              <strong>{numberLabel(summary.next)}</strong>
-              <span>Prochaine échéance {dueInfo(summary.next, now)?.text}</span>
-            </>
-          ) : (
-            <>
-              <strong>—</strong>
-              <span>Aucune échéance à venir</span>
-            </>
-          )}
-        </button>
-      </div>
+      <Figures
+        className="missions-summary"
+        label="Suivi en chiffres"
+        items={[
+          ...LANES.filter((l) => l.status !== "Consigné").map((l) => {
+            const n = summary.count.get(l.status) ?? 0;
+            return {
+              label: l.status,
+              value: n,
+              tone: (l.status === "À traiter" && n ? "warn" : "") as
+                "warn" | "",
+            };
+          }),
+          {
+            label: "En retard",
+            value: summary.late,
+            tone: summary.late ? "crit" : "",
+            onClick: summary.late ? () => setLateOnly(true) : undefined,
+          },
+          summary.next
+            ? {
+                id: "next",
+                label: `Prochaine échéance ${dueInfo(summary.next, now)?.text ?? ""}`,
+                value: numberLabel(summary.next),
+                onClick: () => summary.next && openEntry(summary.next.id),
+              }
+            : { id: "next", label: "Aucune échéance à venir", value: "—" },
+        ]}
+      />
 
       {!anything && !withLogged ? (
         <EmptyState

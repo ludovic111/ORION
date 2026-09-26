@@ -1,72 +1,6 @@
 /* Messages: intake, synthesis and board. */
 
-.msg-stats {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.msg-stat {
-  --tone: var(--text-2);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 18px 22px 20px;
-  overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  background: var(--bg-1);
-  box-shadow: var(--shadow-xl);
-}
-:root[data-theme="dark"] .msg-stat {
-  border-color: var(--line);
-}
-.msg-stat strong {
-  font-family: var(--display);
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--tone);
-}
 /* A toned dot marks the state, no coloured bar. */
-.msg-stat > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 6px;
-  font-size: 13.5px;
-  font-weight: 500;
-}
-.msg-stat > span::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--tone);
-  flex: none;
-}
-.msg-stat small {
-  color: var(--text-3);
-  font-size: 12px;
-}
-.msg-stat.tone-accent {
-  --tone: var(--text);
-}
-.msg-stat.tone-warn {
-  --tone: var(--warn);
-}
-.msg-stat.tone-ok {
-  --tone: var(--ok);
-}
-.msg-stat.tone-crit {
-  --tone: var(--crit);
-}
-.msg-stat.tone-muted,
-.msg-stat.tone-plain {
-  --tone: var(--text-3);
-}
 
 /* Layout: capture on the left, board on the right. */
 .msg-layout {
@@ -152,17 +86,12 @@
   align-items: center;
   gap: 6px;
 }
-.msg-prio-label::before {
+/* The word says the priority; only « Urgent » keeps a dot (DESIGN.md). */
+.msg-prio-label.Urgent::before {
   content: "";
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--text-3);
-}
-.msg-prio-label.Important::before {
-  background: var(--warn);
-}
-.msg-prio-label.Urgent::before {
   background: var(--crit);
 }
 .msg-reply {
@@ -659,9 +588,6 @@
   }
 }
 @media (max-width: 900px) {
-  .msg-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .msg-synth {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -681,10 +607,5 @@
   .msg-toolbar select {
     max-width: none;
     flex: 1 1 140px;
-  }
-}
-@media (max-width: 520px) {
-  .msg-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

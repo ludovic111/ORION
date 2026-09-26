@@ -200,6 +200,7 @@ export function EntryDetail({
                 <input
                   required
                   autoFocus
+                  data-autofocus
                   maxLength={1000}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}

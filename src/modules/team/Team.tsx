@@ -37,7 +37,6 @@ import {
 } from "../../../shared/ops";
 import { callsignKey } from "../../../shared/radio";
 import { useApp } from "../../app/context";
-import { CountUp } from "../../ui/effects";
 import { Segmented } from "../../ui/fields";
 import { HoverCard, LinkChip } from "../../ui/links";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
@@ -53,6 +52,7 @@ import {
   type CellDraft,
   type MemberDraft,
 } from "./TeamSheets";
+import { Figures } from "../../ui/Figures";
 import "./team.css";
 
 type Status = (typeof MEMBER_STATUSES)[number];
@@ -501,36 +501,18 @@ export function Team() {
         </div>
       ) : (
         <>
-          <div
-            className="team-presence stagger"
-            role="list"
-            aria-label="Présences"
-          >
-            <div className="team-stat" role="listitem">
-              <strong>
-                <CountUp value={members.length} />
-              </strong>
-              <span>Personnes</span>
-            </div>
-            {MEMBER_STATUSES.map((s) => (
-              <div
-                className={`team-stat tone-${STATUS_TONE[s]}`}
-                role="listitem"
-                key={s}
-              >
-                <strong>
-                  <CountUp value={presence[s]} />
-                </strong>
-                <span>{s}</span>
-              </div>
-            ))}
-            <div className="team-stat" role="listitem">
-              <strong>
-                <CountUp value={cells.length} />
-              </strong>
-              <span>Postes et cellules</span>
-            </div>
-          </div>
+          <Figures
+            className="team-presence"
+            label="Présences"
+            items={[
+              { label: "Personnes", value: members.length },
+              ...MEMBER_STATUSES.map((st) => ({
+                label: st,
+                value: presence[st],
+              })),
+              { label: "Postes et cellules", value: cells.length },
+            ]}
+          />
           <div className="card team-toolbar">
             <div className="search">
               <Search size={14} />

@@ -2,11 +2,8 @@ import { useState } from "react";
 import { FileText } from "lucide-react";
 import { current, type Journal } from "../../shared/journal";
 import type { ReportRange } from "../print/report";
-import { localInput } from "./EntryForm";
+import { fromInput, localInput } from "../ui/fields";
 import { Modal } from "./Modal";
-
-const fromInput = (value: string) =>
-  value ? new Date(value).toISOString() : "";
 
 export function ReportDialog({
   journal,

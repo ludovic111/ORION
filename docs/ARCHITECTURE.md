@@ -87,7 +87,7 @@ Le mode réseau local (`server/lan.mjs`) sert la même application et le même r
 ## Interface
 
 - `src/App.tsx` : coque (dock, barre supérieure, palette ⌘K, dialogues), état de session, synchronisation, impression automatique, routage par ancre (`#journal`, `#map`…).
-- `src/app/` : contexte partagé (`useApp`), liste des modules, réglages du poste, dialogue Réglages.
+- `src/app/` : contexte partagé (`useApp`, mémorisé), liste des modules, réglages du poste, dialogue Réglages ; la coque y est découpée : porte d’écriture et actions (`gate.ts`, `useJournalActions.ts`), brouillons (`useDrafts.ts`), pile des superpositions (`overlays.ts`, `OverlayHost.tsx`), barre et menus (`TopBar.tsx`, `ShellMenus.tsx`), palette et raccourcis (`commands.tsx`, `useShortcuts.ts`).
 - `src/modules/<module>/` : un dossier par module (situation, journal, messages, missions, carte, moyens, équipe, contacts, météo, agenda, réseau, aide).
 - `src/ui/` : kit d’interface (champs standardisés, fiche générique, liens et aperçus, feuille latérale, fond papier). Guide : [UI.md](UI.md).
 - `src/journal/`, `src/radio/`, `src/print/` : journal, réseau radio et impressions A4 / PDF.

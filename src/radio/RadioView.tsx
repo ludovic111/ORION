@@ -115,7 +115,12 @@ export function RadioView({
   // A scanned label opens the right action: return if issued, else handout.
   function act(terminal: Terminal) {
     setTab("terminals");
-    if (readOnly) return;
+    if (readOnly) {
+      onError(
+        "Lecture seule : rouvrez le journal ou revenez au direct pour remettre ou reprendre ce terminal.",
+      );
+      return;
+    }
     const state = terminalState(terminal);
     if (state === "En service") setForm({ kind: "return", terminal });
     else if (state === "Disponible" || state === "À recharger")

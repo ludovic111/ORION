@@ -33,7 +33,7 @@ import { JournalRow } from "../../journal/JournalRow";
 import { Alerts } from "../../journal/Alerts";
 import { ModuleHead } from "../../ui/ModuleHead";
 import { Toggle } from "../../ui/fields";
-import { CountUp } from "../../ui/effects";
+import { Figures } from "../../ui/Figures";
 import { useSlider } from "../../ui/motion";
 
 type Filter = "all" | "follow" | "urgent" | "decisions";
@@ -173,13 +173,28 @@ export function JournalView({
               <UsersRound size={14} />
               Relève
             </button>
-            <button onClick={() => onDialog("export")}>
+            <button
+              onClick={() => onDialog("export")}
+              title={
+                dirty
+                  ? "Des changements ne sont pas encore dans une archive exportée"
+                  : "Archive à jour"
+              }
+            >
               <Download size={14} />
               Exporter
+              {dirty && <span className="pill warn">à faire</span>}
             </button>
             <button
               className="primary"
-              disabled={readOnly}
+              aria-disabled={readOnly || undefined}
+              title={
+                readOnly
+                  ? journal.closedAt
+                    ? "Journal clôturé — rouvrez-le pour écrire"
+                    : "Lecture seule : vous consultez le passé"
+                  : undefined
+              }
               onClick={() => compose()}
             >
               <Plus size={15} />
@@ -222,47 +237,39 @@ export function JournalView({
           toast(`${numberLabel(e)} terminé.`);
         }}
       />
-      <dl className="metrics">
-        <div>
-          <dt>Entrées</dt>
-          <dd>
-            <CountUp value={journal.entries.length} />
-          </dd>
-        </div>
-        <div className={follow.length ? "warn" : ""}>
-          <dt>À suivre</dt>
-          <dd>
-            <CountUp value={follow.length} />
-          </dd>
-        </div>
-        <div className={late.length ? "crit" : ""}>
-          <dt>Échéances dépassées</dt>
-          <dd>
-            <CountUp value={late.length} />
-          </dd>
-        </div>
-        <div className={urgent ? "crit" : ""}>
-          <dt>Urgent</dt>
-          <dd>
-            <CountUp value={urgent} />
-          </dd>
-        </div>
-        <div>
-          <dt>Radios en service</dt>
-          <dd>
-            <CountUp value={radio.issued} />
-            <small>/{radio.terminals}</small>
-          </dd>
-        </div>
-        <div className={dirty ? "warn" : ""}>
-          <dt>Archive</dt>
-          <dd className="text">
-            <button className="link" onClick={() => onDialog("export")}>
-              {dirty ? "À exporter" : "À jour"}
-            </button>
-          </dd>
-        </div>
-      </dl>
+      <Figures
+        label="Le journal en chiffres"
+        items={[
+          {
+            label: "Entrées",
+            value: journal.entries.length,
+            onClick: () => setFilter("all"),
+          },
+          {
+            label: "À suivre",
+            value: follow.length,
+            tone: follow.length ? "warn" : "",
+            onClick: () => setFilter("follow"),
+          },
+          {
+            label: "Échéances dépassées",
+            value: late.length,
+            tone: late.length ? "crit" : "",
+            onClick: () => setFilter("follow"),
+          },
+          {
+            label: "Urgent",
+            value: urgent,
+            tone: urgent ? "crit" : "",
+            onClick: () => setFilter("urgent"),
+          },
+          {
+            label: "Radios en service",
+            value: radio.issued,
+            unit: `/${radio.terminals}`,
+          },
+        ]}
+      />
       <div className="journal-layout">
         <section className="panel journal-panel" aria-label="Entrées">
           <div className="toolbar">

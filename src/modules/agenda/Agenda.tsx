@@ -17,6 +17,7 @@ import {
 import { dateTime, time } from "../../../shared/journal";
 import { upsert, type AgendaItem } from "../../../shared/ops";
 import { parseRef, ref } from "../../../shared/links";
+import { recurrence } from "../../../shared/time";
 import { useApp } from "../../app/context";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
 import { RecordSheet, type FieldSpec } from "../../ui/records";
@@ -577,7 +578,9 @@ function PlanDialog({ onClose }: { onClose: () => void }) {
   const times = useMemo(() => {
     const base = Date.parse(first);
     if (!valid || !Number.isFinite(base)) return [];
-    return Array.from({ length: count }, (_, k) => base + k * hours * HOUR);
+    // Wall-clock time in Zurich: an 08:00 meeting stays at 08:00 after a
+    // change of hour.
+    return recurrence(base, hours, count);
   }, [first, hours, count, valid]);
   function create() {
     if (!title.trim()) return setError("Indiquez un titre.");

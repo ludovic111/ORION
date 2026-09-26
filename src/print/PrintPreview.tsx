@@ -16,6 +16,7 @@ import {
 import { radioTables, type SheetTable } from "./radio-sheet";
 import { situationReport, type ReportRange } from "./report";
 import { qrMatrix, qrPath } from "./qr";
+import { useLayer } from "../ui/overlay";
 import "./print.css";
 
 export type PrintJob =
@@ -377,20 +378,12 @@ export function PrintPreview({
   const [stamp] = useState(printedAt);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const close = useRef(onClose);
-  close.current = onClose;
+  const box = useRef<HTMLDivElement>(null);
+  // Topmost overlay: Échap closes the preview only; the focus comes back.
+  useLayer(box, { kind: "preview", onEscape: onClose });
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close.current();
-    };
     document.body.classList.add("previewing");
-    window.addEventListener("keydown", key);
-    return () => {
-      document.body.classList.remove("previewing");
-      window.removeEventListener("keydown", key);
-      previous?.focus();
-    };
+    return () => document.body.classList.remove("previewing");
   }, []);
   async function pdf() {
     setBusy(true);
@@ -439,6 +432,7 @@ export function PrintPreview({
   return (
     <>
       <div
+        ref={box}
         className="preview"
         role="dialog"
         aria-modal="true"
@@ -504,20 +498,37 @@ export function AutoPrint({
     if (!job) return;
     setStamp(printedAt());
     let finished = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     const finish = () => {
       if (finished) return;
       finished = true;
       window.removeEventListener("afterprint", finish);
+      timers.forEach(clearTimeout);
       done.current();
     };
+    // The job ends on "afterprint". window.print() does not block everywhere
+    // (Safari, iOS): removing the sheets right after it printed blank pages.
+    // Without "afterprint", a long fallback ends the job; while the page is
+    // hidden behind the print dialog, the fallback waits.
     window.addEventListener("afterprint", finish);
+    const fallback = () => {
+      if (
+        document.visibilityState === "hidden" ||
+        document.hasFocus?.() === false
+      )
+        timers.push(setTimeout(fallback, 2_000));
+      else finish();
+    };
     // Let the sheets render before opening the print dialog.
-    const timer = setTimeout(() => {
-      window.print();
-      setTimeout(finish, 400);
-    }, 150);
+    timers.push(
+      setTimeout(() => {
+        window.print();
+        timers.push(setTimeout(fallback, 60_000));
+      }, 150),
+    );
     return () => {
-      clearTimeout(timer);
+      finished = true;
+      timers.forEach(clearTimeout);
       window.removeEventListener("afterprint", finish);
     };
   }, [job]);

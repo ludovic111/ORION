@@ -21,12 +21,9 @@ import {
   type Talkgroup,
   type Terminal,
 } from "../../shared/radio";
-import { localInput } from "../journal/EntryForm";
+import { fromInput, localInput } from "../ui/fields";
 import { Modal } from "../journal/Modal";
 import { talkgroupLabel } from "../print/radio-sheet";
-
-const fromInput = (value: string) =>
-  value ? new Date(value).toISOString() : "";
 
 function Shell({
   title,
@@ -227,6 +224,7 @@ export function TalkgroupForm({
             onChange={(e) => set("number", e.target.value)}
             placeholder="G101 · D481 · R395"
             autoFocus
+            data-autofocus
           />
         </label>
         <Select
@@ -343,6 +341,7 @@ export function StationForm({
           onChange={(e) => set("callsign", e.target.value)}
           placeholder="PC front, Chef sct appui"
           autoFocus
+          data-autofocus
         />
         <small>Désigne la fonction, jamais la personne.</small>
       </label>
@@ -456,6 +455,7 @@ export function TerminalForm({
             value={value.label}
             onChange={(e) => set("label", e.target.value)}
             autoFocus
+            data-autofocus
           />
         </label>
         <label>
@@ -737,6 +737,7 @@ export function IssueForm({
           maxLength={60}
           value={value.callsign}
           autoFocus
+          data-autofocus
           onChange={(e) => {
             const station = radio.stations.find(
               (s) => callsignKey(s.callsign) === callsignKey(e.target.value),
@@ -991,6 +992,7 @@ export function CheckForm({
             maxLength={60}
             value={value.callsign}
             autoFocus={!callsign}
+            data-autofocus={!callsign || undefined}
             onChange={(e) => {
               const s = radio.stations.find(
                 (x) => callsignKey(x.callsign) === callsignKey(e.target.value),

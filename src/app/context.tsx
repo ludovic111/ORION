@@ -31,17 +31,27 @@ export type AppContext = {
   author: string;
   /** Journal closed or past version shown: reading and exports only. */
   readOnly: boolean;
+  /**
+   * The write gate: true when writing is allowed; otherwise shows why
+   * (time machine, closed journal) and returns false. Use it instead of a
+   * silent `if (readOnly) return`.
+   */
+  canWrite: () => boolean;
   /** Moment shown by the time machine (ms since epoch); null: live. */
   viewAt: number | null;
   setViewAt: (at: number | null) => void;
   /** Show who changed a record (or entry) and when, with its versions. */
   trace: (target: string) => void;
-  /** Append to a register of the live journal; returns the new id. */
+  /**
+   * Append to a register of the live journal (or of `journalId`, the journal
+   * an asynchronous request was made for); returns the new id.
+   */
   record: <C extends LogCollection>(
     collection: C,
     value: Omit<InputOf<C>, "id" | "createdAt" | "updatedAt" | "by"> & {
       id?: string;
     },
+    journalId?: string,
   ) => string;
   /** Open the export centre, optionally preset. */
   exportCenter: (preset?: ExportPreset) => void;
@@ -51,7 +61,12 @@ export type AppContext = {
   now: number;
   graph: Graph;
   module: Module;
-  updateJournal: (journal: Journal) => void;
+  /**
+   * Replace the live journal. Refused with a message (returns false) in the
+   * time machine or on a closed journal: build the value from `live`.
+   */
+  updateJournal: (journal: Journal) => boolean;
+  /** Change the module records; throws (with a message) when read only. */
   updateOps: (change: (ops: Ops) => Ops) => void;
   /** Standard values of a référentiel (editable in the settings). */
   lists: (name: string) => string[];

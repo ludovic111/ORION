@@ -41,6 +41,7 @@ import {
   type Journal,
 } from "../../shared/journal";
 import { fromInput, localInput } from "../ui/fields";
+import { useLayer } from "../ui/overlay";
 import {
   describeScope,
   fullScope,
@@ -516,6 +517,14 @@ export default function PresentationMode({
     initialMode === "wall" ? "show" : "setup",
   );
   const root = useRef<HTMLDivElement>(null);
+  // In the overlay stack: the palette and the panels behind stay quiet. Its
+  // own keys handle Escape (captured before the stack sees it).
+  useLayer(root, {
+    kind: "present",
+    onEscape: () => {},
+    trap: false,
+    autoFocus: false,
+  });
 
   const fullscreen = (on: boolean) => {
     try {

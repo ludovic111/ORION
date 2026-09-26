@@ -58,6 +58,7 @@ export function Capture({
     journal,
     author,
     readOnly,
+    canWrite,
     lists,
     updateOps,
     toast,
@@ -113,7 +114,7 @@ export function Capture({
   }
 
   function save() {
-    if (readOnly) return;
+    if (!canWrite()) return;
     if (!draft.subject.trim() && !draft.body.trim()) {
       setError("Écrivez au moins l’objet ou le texte du message.");
       body.current?.focus();

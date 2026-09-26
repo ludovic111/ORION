@@ -172,6 +172,7 @@ export function Resources() {
     journal,
     author,
     readOnly,
+    canWrite,
     now,
     graph,
     updateOps,
@@ -322,7 +323,7 @@ export function Resources() {
   }
 
   function setStatus(r: Resource, status: Status) {
-    if (readOnly || r.status === status) return;
+    if (r.status === status || !canWrite()) return;
     try {
       updateOps((ops) => upsert(ops, "resources", { ...r, status }, author));
       logChange(r, r.status, status);

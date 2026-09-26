@@ -14,6 +14,7 @@ import {
   batteryDue,
   radioSummary,
 } from "../../shared/radio.ts";
+import { journalAt } from "../../shared/history.ts";
 import { talkgroupLabel, type SheetTable } from "./radio-sheet.ts";
 
 export type ReportRange = { from: string; to: string; chronology: boolean };
@@ -37,15 +38,18 @@ export function situationReport(
     return at >= from && at <= to;
   };
   const period = chronological(journal.entries.filter(inRange));
-  const open = chronological(journal.entries.filter(needsFollowUp));
+  // Open points, radios and terminals as they were at the end of the period
+  // (reconstructed from the history), not as they are now.
+  const atEnd = to >= Date.now() ? journal : journalAt(journal, to);
+  const open = chronological(atEnd.entries.filter(needsFollowUp));
   const late = open.filter((e) => overdue(e, to));
-  const radio = radioSummary(journal.radio);
+  const radio = radioSummary(atEnd.radio);
   const checks = journal.radio.checks.filter((c) => {
     const at = Date.parse(c.at);
     return at >= from && at <= to;
   });
   const weak = checks.filter((c) => c.result === "1" || c.result === "0");
-  const issued = journal.radio.terminals.filter(activeAssignment);
+  const issued = atEnd.radio.terminals.filter(activeAssignment);
   const of = (...types: string[]) =>
     period.filter((e) => types.includes(current(e).type));
   const row = (e: Entry) => [dateTime(current(e).happenedAt), numberLabel(e)];

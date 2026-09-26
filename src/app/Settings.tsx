@@ -518,7 +518,9 @@ function SyncSettings({
                 <dt>Dernier échange</dt>
                 <dd>
                   {sync.lastSync
-                    ? new Date(sync.lastSync).toLocaleTimeString("fr-CH")
+                    ? new Date(sync.lastSync).toLocaleTimeString("fr-CH", {
+                        timeZone: "Europe/Zurich",
+                      })
                     : "—"}
                 </dd>
               </div>
@@ -594,32 +596,80 @@ function SyncSettings({
   );
 }
 
+const PROPERTY_LABELS: Record<string, string> = {
+  title: "Événement",
+  organization: "Organisation",
+  location: "Lieu / secteur",
+  reference: "Référence",
+  mode: "Mode",
+  classification: "Diffusion",
+};
+
 function JournalProperties() {
-  const { journal, updateJournal, readOnly, toast } = useApp();
+  const { live, updateJournal, readOnly, toast } = useApp();
   const [value, setValue] = useState({
-    title: journal.title,
-    organization: journal.organization,
-    location: journal.location,
-    reference: journal.reference,
-    mode: journal.mode,
-    classification: journal.classification,
+    title: live.title,
+    organization: live.organization,
+    location: live.location,
+    reference: live.reference,
+    mode: live.mode,
+    classification: live.classification,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const set = (patch: Partial<typeof value>) => {
+    setValue({ ...value, ...patch });
+    const keys = Object.keys(patch);
+    if (keys.some((k) => errors[k]))
+      setErrors((previous) => {
+        const next = { ...previous };
+        keys.forEach((k) => delete next[k]);
+        return next;
+      });
+  };
   return (
     <form
       className="settings-section"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        const parsed = journalSchema.safeParse({
-          ...journal,
+        const trimmed = {
           ...value,
           title: value.title.trim(),
-        });
-        if (!parsed.success) return;
-        updateJournal(parsed.data);
-        toast("Journal modifié.");
+          organization: value.organization.trim(),
+          location: value.location.trim(),
+          reference: value.reference.trim(),
+        };
+        const found: Record<string, string> = {};
+        if (!trimmed.title) found.title = "Indiquez le nom de l’événement.";
+        const parsed = journalSchema.safeParse({ ...live, ...trimmed });
+        if (!parsed.success)
+          for (const issue of parsed.error.issues) {
+            const key = String(issue.path[0] ?? "");
+            if (key in PROPERTY_LABELS && !found[key])
+              found[key] =
+                `${PROPERTY_LABELS[key]} : valeur refusée (trop longue ?).`;
+          }
+        if (Object.keys(found).length || !parsed.success) {
+          setErrors(
+            Object.keys(found).length
+              ? found
+              : { title: "Ces propriétés ne peuvent pas être enregistrées." },
+          );
+          return;
+        }
+        setErrors({});
+        setValue(trimmed);
+        if (updateJournal(parsed.data)) toast("Journal modifié.");
       }}
     >
       <h3 className="section-label">Journal · propriétés</h3>
+      {readOnly && (
+        <p className="muted">
+          {live.closedAt
+            ? "Journal clôturé : rouvrez-le (ci-dessous) pour modifier ses propriétés."
+            : "Lecture seule : vous consultez le passé. Revenez au direct pour modifier."}
+        </p>
+      )}
       <fieldset
         disabled={readOnly}
         style={{ border: 0, padding: 0, margin: 0 }}
@@ -630,35 +680,37 @@ function JournalProperties() {
             label="Événement"
             required
             value={value.title}
-            onChange={(title) => setValue({ ...value, title })}
+            error={errors.title}
+            onChange={(title) => set({ title })}
           />
           <TextField
             label="Organisation"
             value={value.organization}
-            onChange={(organization) => setValue({ ...value, organization })}
+            error={errors.organization}
+            onChange={(organization) => set({ organization })}
           />
           <TextField
             label="Lieu / secteur"
             value={value.location}
-            onChange={(location) => setValue({ ...value, location })}
+            error={errors.location}
+            onChange={(location) => set({ location })}
           />
           <TextField
             label="Référence"
             value={value.reference}
-            onChange={(reference) => setValue({ ...value, reference })}
+            error={errors.reference}
+            onChange={(reference) => set({ reference })}
           />
           <ChoiceField
             label="Mode"
             value={value.mode}
-            onChange={(mode) => setValue({ ...value, mode })}
+            onChange={(mode) => set({ mode })}
             options={["Exercice", "Intervention"] as const}
           />
           <ChoiceField
             label="Diffusion"
             value={value.classification}
-            onChange={(classification) =>
-              setValue({ ...value, classification })
-            }
+            onChange={(classification) => set({ classification })}
             options={["Interne", "Confidentiel"] as const}
           />
         </div>

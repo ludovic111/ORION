@@ -20,7 +20,6 @@ import {
   type Message,
 } from "../../../shared/ops";
 import { useApp } from "../../app/context";
-import { CountUp } from "../../ui/effects";
 import { Segmented, Toggle } from "../../ui/fields";
 import { LinkChip } from "../../ui/links";
 import { EmptyState, ModuleHead } from "../../ui/ModuleHead";
@@ -37,12 +36,15 @@ import {
   mLabel,
   type Status,
 } from "./model";
+import { Figures } from "../../ui/Figures";
 import "./messages.css";
 
 type View = "board" | "list";
 const VIEW_KEY = "orion-aic-messages-view";
 const PRIORITY_RANK = { Urgent: 0, Important: 1, Normal: 2 } as const;
 const LANE_LIMIT = 40;
+/** Rows of the list rendered at once; more on demand (a long operation can hold thousands). */
+const LIST_PAGE = 150;
 
 const norm = (s: string) =>
   s
@@ -78,6 +80,10 @@ export function Messages() {
   // Highlight messages arriving (typed here or on another post).
   const seen = useRef<Set<string>>(new Set(messages.map((m) => m.id)));
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [listLimit, setListLimit] = useState(LIST_PAGE);
+  useEffect(() => {
+    setListLimit(LIST_PAGE);
+  }, [query, priority, recipient, replyOnly, openOnly, view]);
   useEffect(() => {
     const added = messages
       .filter((m) => !seen.current.has(m.id))
@@ -244,35 +250,24 @@ export function Messages() {
           </>
         }
       />
-      <div
-        className="msg-stats stagger"
-        role="list"
-        aria-label="Messages par état"
-      >
-        {MESSAGE_STATUSES.map((s) => (
-          <div
-            key={s}
-            className={`msg-stat tone-${STATUS_TONE[s]}`}
-            role="listitem"
-          >
-            <strong>
-              <CountUp value={counts[s]} />
-            </strong>
-            <span>{s}</span>
-            <small>{STATUS_HINT[s]}</small>
-          </div>
-        ))}
-        <div
-          className={`msg-stat tone-${late ? "crit" : "plain"}`}
-          role="listitem"
-        >
-          <strong>
-            <CountUp value={late} />
-          </strong>
-          <span>Réponses en retard</span>
-          <small>Échéance dépassée</small>
-        </div>
-      </div>
+      <Figures
+        className="msg-stats"
+        label="Messages par état"
+        items={[
+          ...MESSAGE_STATUSES.map((st) => ({
+            label: st,
+            value: counts[st],
+            hint: STATUS_HINT[st],
+            tone: (st === "Nouveau" && counts[st] ? "warn" : "") as "warn" | "",
+          })),
+          {
+            label: "Réponses en retard",
+            value: late,
+            hint: "Échéance dépassée",
+            tone: late ? "crit" : "",
+          },
+        ]}
+      />
       <div className="msg-layout">
         <div className="msg-side">
           <Capture boxRef={captureRef} />
@@ -511,7 +506,7 @@ export function Messages() {
                         </tr>
                       </thead>
                       <tbody>
-                        {newestFirst.map((m) => (
+                        {newestFirst.slice(0, listLimit).map((m) => (
                           <tr
                             key={m.id}
                             className={`${m.priority === "Urgent" ? "urgent" : ""}${m.status === "Classé" ? " dim-row" : ""}${fresh.has(m.id) ? " live-row" : ""}`}
@@ -585,6 +580,17 @@ export function Messages() {
                       </tbody>
                     </table>
                   </div>
+                  {newestFirst.length > listLimit && (
+                    <button
+                      className="msg-more"
+                      onClick={() => setListLimit((n) => n + LIST_PAGE * 2)}
+                    >
+                      Afficher{" "}
+                      {Math.min(LIST_PAGE * 2, newestFirst.length - listLimit)}{" "}
+                      de plus · {newestFirst.length - listLimit} restant
+                      {newestFirst.length - listLimit > 1 ? "s" : ""}
+                    </button>
+                  )}
                   {!newestFirst.length && (
                     <p className="muted msg-none">
                       Aucun message ne correspond aux filtres.

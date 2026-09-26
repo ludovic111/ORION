@@ -113,6 +113,7 @@ export function Contacts() {
     journal,
     author,
     readOnly,
+    canWrite,
     graph,
     updateOps,
     lists,
@@ -263,7 +264,7 @@ export function Contacts() {
   }
 
   function toggleFavorite(c: Contact) {
-    if (readOnly) return;
+    if (!canWrite()) return;
     try {
       updateOps((ops) =>
         upsert(ops, "contacts", { ...c, favorite: !c.favorite }, author),

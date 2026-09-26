@@ -233,16 +233,31 @@ export function Weather() {
   }, []);
 
   const busy = useRef(false);
+  // The module is remounted per journal: a request still running when the
+  // operator switches journal must not touch the new one.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const liveForecasts = useRef(live.ops.forecasts);
+  liveForecasts.current = live.ops.forecasts;
   const refresh = useCallback(async () => {
     if (!place || busy.current) return;
+    // Captured at request time: the forecast belongs to this journal.
+    const journalId = journal.id;
     busy.current = true;
     setLoading(true);
     setError("");
     try {
-      const result = await fetchForecast(journal.id, place);
-      setData(result);
-      setPicked(null);
-      const last = live.ops.forecasts.reduce<string>(
+      const result = await fetchForecast(journalId, place);
+      if (mounted.current) {
+        setData(result);
+        setPicked(null);
+      }
+      const last = liveForecasts.current.reduce<string>(
         (top, f) =>
           f.place === result.place.name && f.fetchedAt > top
             ? f.fetchedAt
@@ -251,14 +266,19 @@ export function Weather() {
       );
       // Keep at most one version every 5 minutes per place.
       if (!last || result.fetchedAt - Date.parse(last) > 5 * 60_000)
-        record("forecasts", {
-          fetchedAt: new Date(result.fetchedAt).toISOString(),
-          place: result.place.name.slice(0, 200),
-          lat: result.place.lat,
-          lng: result.place.lng,
-          data: result.forecast,
-        });
+        record(
+          "forecasts",
+          {
+            fetchedAt: new Date(result.fetchedAt).toISOString(),
+            place: result.place.name.slice(0, 200),
+            lat: result.place.lat,
+            lng: result.place.lng,
+            data: result.forecast,
+          },
+          journalId,
+        );
     } catch (err) {
+      if (!mounted.current) return;
       setError(
         !navigator.onLine
           ? "Hors ligne : la dernière prévision reste affichée."
@@ -268,9 +288,9 @@ export function Weather() {
       );
     } finally {
       busy.current = false;
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
-  }, [journal.id, place, live.ops.forecasts, record]);
+  }, [journal.id, place, record]);
 
   // Opt-in automatic refresh, only while the page is visible.
   const fetchedAt = data?.fetchedAt ?? 0;

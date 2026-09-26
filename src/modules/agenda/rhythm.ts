@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import type { AgendaItem } from "../../../shared/ops";
+import {
+  addZurichWall,
+  fromZurichWall,
+  zurichWall,
+} from "../../../shared/time";
 
 /** Current time, refreshed every `ms` while the page is visible. */
 export function useTicker(ms = 1000, active = true) {
@@ -44,10 +49,9 @@ export function countdown(target: number, at: number, seconds = true) {
 
 /** Next full hour from now (at least 10 minutes ahead). */
 export function nextRoundHour(at = Date.now()) {
-  const d = new Date(at + 10 * 60000);
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 1);
-  return d.toISOString();
+  const w = zurichWall(at + 10 * 60000);
+  const hour = fromZurichWall({ ...w, minute: 0, second: 0 });
+  return new Date(addZurichWall(hour, 60)).toISOString();
 }
 
 export const endOf = (item: AgendaItem) =>

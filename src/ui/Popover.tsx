@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useLayer } from "./overlay";
 
 /** Menu anchored to a button; closes on outside click or Escape. */
 export function Popover({
@@ -39,14 +40,11 @@ export function Popover({
       const t = e.target as Node;
       if (!ref.current?.contains(t) && !anchor?.contains(t)) onClose();
     };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("pointerdown", down, true);
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("pointerdown", down, true);
-      window.removeEventListener("keydown", key);
-    };
+    return () => window.removeEventListener("pointerdown", down, true);
   }, [anchor, onClose]);
+  // Échap closes the menu only, not the panel it was opened from.
+  useLayer(ref, { kind: "menu", onEscape: onClose, trap: false });
   return createPortal(
     <div
       ref={ref}

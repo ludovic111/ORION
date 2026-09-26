@@ -7,16 +7,12 @@ import {
   type ReactNode,
 } from "react";
 import { Clock3, Plus, X } from "lucide-react";
+import { fromZurichInput, toZurichInput } from "../../shared/time";
 
-export function localInput(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
-export const fromInput = (value: string) =>
-  value ? new Date(value).toISOString() : "";
+/** `datetime-local` value of an ISO time, in Zurich time (see shared/time). */
+export const localInput = (iso: string) => toZurichInput(iso);
+/** ISO time of a `datetime-local` value read as Zurich time. */
+export const fromInput = (value: string) => fromZurichInput(value);
 
 type Base = {
   label: ReactNode;
@@ -50,6 +46,7 @@ export function TextField({
   type = "text",
   maxLength = 500,
   autoFocus,
+  error,
 }: Base & {
   value: string;
   onChange: (value: string) => void;
@@ -58,9 +55,15 @@ export function TextField({
   type?: string;
   maxLength?: number;
   autoFocus?: boolean;
+  /** Message shown under the field, which is then marked invalid. */
+  error?: string;
 }) {
+  const errorId = useId();
+  const invalid = error
+    ? { "aria-invalid": true as const, "aria-describedby": errorId }
+    : {};
   return (
-    <label className={className}>
+    <label className={`${className ?? ""}${error ? " has-error" : ""}`}>
       <Label label={label} required={required} />
       {rows ? (
         <textarea
@@ -70,7 +73,9 @@ export function TextField({
           placeholder={placeholder}
           required={required}
           autoFocus={autoFocus}
+          data-autofocus={autoFocus || undefined}
           onChange={(e) => onChange(e.target.value)}
+          {...invalid}
         />
       ) : (
         <input
@@ -80,10 +85,18 @@ export function TextField({
           placeholder={placeholder}
           required={required}
           autoFocus={autoFocus}
+          data-autofocus={autoFocus || undefined}
           onChange={(e) => onChange(e.target.value)}
+          {...invalid}
         />
       )}
-      {hint && <small>{hint}</small>}
+      {error ? (
+        <small className="field-error" id={errorId} role="alert">
+          {error}
+        </small>
+      ) : (
+        hint && <small>{hint}</small>
+      )}
     </label>
   );
 }

@@ -4,6 +4,7 @@ import { KIND_INFO, searchItems, type Ref } from "../../shared/links";
 import { useApp } from "../app/context";
 import { MODULES } from "../app/modules";
 import { KIND_ICON } from "./links";
+import { useLayer } from "./overlay";
 
 export type Command = {
   id: string;
@@ -32,6 +33,9 @@ export function Palette({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const list = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  // Topmost overlay: Échap closes the palette only, Tab stays inside.
+  useLayer(box, { kind: "palette", onEscape: onClose });
   const results = useMemo(() => {
     const q = norm(query.trim());
     const actions = commands.filter(
@@ -97,6 +101,7 @@ export function Palette({
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={box}
         className="palette"
         role="dialog"
         aria-modal="true"
@@ -110,8 +115,7 @@ export function Palette({
             placeholder="Rechercher partout, ou taper une action…"
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
-              else if (e.key === "ArrowDown") {
+              if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActive((a) => Math.min(flat.length - 1, a + 1));
               } else if (e.key === "ArrowUp") {

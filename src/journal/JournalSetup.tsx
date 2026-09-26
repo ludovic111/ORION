@@ -68,6 +68,7 @@ export function JournalSetup({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Crue de l’Arve · secteur Carouge"
           autoFocus
+          data-autofocus
         />
       </label>
       <div className="form-pair">

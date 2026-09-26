@@ -24,6 +24,7 @@ import {
 } from "../../shared/ops.ts";
 import { addLink, ref, type Ref } from "../../shared/links.ts";
 import type { HistoryEvent } from "../../shared/events.ts";
+import { zurichHour, zurichMidnight } from "../../shared/time.ts";
 import {
   emptyRadio,
   issueTerminal,
@@ -738,22 +739,27 @@ function demoOps(journal: Journal, at: (minutes: number) => string): Ops {
     },
   };
 }
-export function demoWorkspace(): Workspace {
+/**
+ * Start of the exercise: 2 h 30 before `now`, rounded down to 5 minutes, so
+ * that the story is always recent whatever the hour (also at night, then
+ * over two days): the first due dates are just past, the next ones to come.
+ */
+export function demoStart(now = Date.now()): number {
+  return Math.floor((now - 150 * 60_000) / 300_000) * 300_000;
+}
+
+export function demoWorkspace(now = Date.now()): Workspace {
   let journal = newJournal("Crue de l’Arve", {
     organization: "PCi · Exercice de démonstration",
     location: "Carouge · Genève",
     reference: "EX-2026-09",
     mode: "Exercice",
   });
-  // The exercise starts at 08:00, or earlier today so that its first two
-  // hours are already past (the time machine then has a story to replay).
-  const base = new Date();
-  base.setHours(8, 0, 0, 0);
-  const latest = Date.now() - 150 * 60_000;
-  if (base.getTime() > latest)
-    base.setTime(Math.floor(latest / 300_000) * 300_000);
+  // The first two hours and a half are already past: the time machine has a
+  // story to replay and the due dates are recent.
+  const base = demoStart(now);
   const at = (minutes: number) =>
-    new Date(base.getTime() + minutes * 60_000).toISOString();
+    new Date(base + minutes * 60_000).toISOString();
   const examples: Partial<Fields>[] = [
     {
       message: "Ouverture du poste de conduite. Début de la tenue du journal.",
@@ -858,7 +864,7 @@ function demoForecast(fetched: number, wet: number) {
   const start = Math.floor(fetched / hour) * hour;
   const hours = Array.from({ length: 72 }, (_, i) => {
     const t = start + i * hour;
-    const h = new Date(t).getHours();
+    const h = zurichHour(t);
     const rain = Math.max(
       0,
       wet * (1.6 + Math.sin(i / 5)) - (i > 30 ? 1.5 : 0),
@@ -875,8 +881,7 @@ function demoForecast(fetched: number, wet: number) {
     };
   });
   const day = 86_400_000;
-  const midnight = new Date(start);
-  midnight.setHours(0, 0, 0, 0);
+  const midnight = new Date(zurichMidnight(start));
   const days = [0, 1, 2].map((d) => {
     const list = hours.filter(
       (h) =>

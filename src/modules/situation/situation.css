@@ -110,63 +110,10 @@
   font-size: 13.5px;
   line-height: 1.45;
 }
-/* Figures of the engagement: one ruled line, like a report header. */
-.situation-kpis {
-  display: grid;
+/* Figures of the engagement: the ruled line of src/ui/Figures.tsx. */
+.figures.situation-kpis {
   grid-template-columns: repeat(3, minmax(104px, auto));
-  border-top: 1px solid var(--line-2);
-}
-.situation-kpi {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 2px;
-  height: auto;
-  padding: 10px 20px 10px 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: none;
-  font-weight: 400;
-  text-align: left;
-  white-space: normal;
-  box-shadow: none;
-}
-.situation-kpi:hover {
-  border-color: var(--line);
-  background: none;
-}
-.situation-kpi:hover > span {
-  color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.situation-kpi strong {
-  font-family: var(--mono);
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.situation-kpi > span {
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.25;
-}
-.situation-kpi.zero strong {
-  color: var(--text-3);
-}
-.situation-kpi.warn strong {
-  color: var(--warn);
-}
-.situation-kpi.crit strong,
-.situation-kpi.crit > span {
-  color: var(--crit);
-}
-.situation-kpi.crit:hover {
-  background: none;
+  margin: 0;
 }
 
 /* Key facts */
@@ -226,7 +173,7 @@
 .situation-fact-open:hover {
   background: none;
 }
-/* The category carries a faint dot of its hue, never a glow. */
+/* The category is a word, without a coloured dot (DESIGN.md). */
 .situation-fact-cat {
   display: inline-flex;
   align-items: center;
@@ -237,14 +184,6 @@
   font-weight: 500;
   letter-spacing: -0.01em;
   text-transform: none;
-}
-.situation-fact-cat::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--fact-hue);
-  flex: none;
 }
 .situation-fact-value {
   display: flex;
@@ -803,7 +742,7 @@ button.situation-obs:hover {
   .situation-pulse {
     grid-template-columns: minmax(0, 1fr);
   }
-  .situation-kpis {
+  .figures.situation-kpis {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
@@ -812,7 +751,7 @@ button.situation-obs:hover {
     gap: 16px 18px;
     padding: 20px;
   }
-  .situation-kpis {
+  .figures.situation-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .situation-fact-grid {

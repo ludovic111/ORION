@@ -8,7 +8,9 @@ Référence pour écrire un module. Tout est en français dans l’interface, en
 - **Tout est modifiable et supprimable** : chaque élément ouvre une fiche (`RecordSheet`) avec « Enregistrer » et « Supprimer ».
 - **Valeurs standards + texte libre** : `ComboField` (ou `kind: "combo"` dans un `FieldSpec`) propose les valeurs d’un référentiel en un clic et accepte toute saisie.
 - **Tout est relié** : chaque fiche montre ses liens (`LinksPanel`), chaque référence s’affiche avec `LinkChip` (aperçu au survol, clic = ouvrir).
-- **Journal clôturé = lecture seule** : `readOnly` du contexte ; `updateOps` lève une erreur.
+- **Journal clôturé = lecture seule** : `readOnly` du contexte ; toute écriture passe par une seule porte (`src/app/gate.ts`, `src/app/useJournalActions.ts`) qui refuse avec un message visible (« Lecture seule : vous consultez le passé », « Journal clôturé — rouvrez-le pour écrire »). `updateOps` lève alors une erreur, `updateJournal` renvoie `false`. Dans un gestionnaire de clic, écrire `if (!canWrite()) return;` plutôt qu’un `if (readOnly) return;` muet.
+- **Heures de Zurich** : les champs date / heure lisent et écrivent l’heure de Zurich quel que soit le fuseau du navigateur (`localInput` / `fromInput` de `ui/fields.tsx`, qui s’appuient sur `shared/time.ts`, exact aux changements d’heure).
+- **Superpositions** : fiches, dialogues, palette ⌘K, menus, aperçu et présentation s’inscrivent dans une pile (`src/ui/overlay.ts`, `useLayer`) : seule la plus haute répond à Échap, Tab reste à l’intérieur, le focus revient à sa place à la fermeture. `Sheet` et `Modal` acceptent `dirty` pour demander avant de perdre une saisie.
 - **Machine à remonter le temps** : `journal` peut être une version passée (`viewAt !== null`) ; `readOnly` est alors vrai. Afficher depuis `journal`, écrire dans les registres avec `record`, lire l’état actuel avec `live`.
 - **Tout est tracé** : ne rien faire de spécial, `updateOps` suffit ; la fiche générique montre déjà « Créé par… » et le bouton Historique. Pour une fiche maison : `<TraceLine target={id} />` (`src/timeline/TraceLine.tsx`) ou `trace(id)`.
 - Lisible avant tout : les animations accompagnent, elles ne gênent pas (`data-motion="reduced"` les coupe).
@@ -20,6 +22,7 @@ const {
   journal,
   author,
   readOnly,
+  canWrite,
   now,
   graph,
   updateOps,
@@ -40,25 +43,26 @@ const {
 } = useApp();
 ```
 
-| Clé                        | Usage                                                                                                                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `journal.ops`              | Données des modules : `messages`, `cells`, `members`, `resources`, `contacts`, `places`, `agenda`, `facts`, `boards`, `observations`, `alerts`, `links`, `settings` (voir `shared/ops.ts`). |
-| `updateOps(ops => …)`      | Seule façon de modifier `ops`. Utiliser `upsert(ops, "resources", value, author)` et `removeRecords(ops, [id])`. Validé par Zod ; en cas d’erreur, exception avec message.                  |
-| `lists("recipients")`      | Valeurs d’un référentiel (`DEFAULT_LISTS` modifiables dans Réglages).                                                                                                                       |
-| `graph`                    | `items` (tous les éléments affichables), `byRef`, `edges` (liens explicites et implicites), `degree`.                                                                                       |
-| `focus` / `setFocus(null)` | Élément à montrer quand on arrive depuis un lien (`"resource:<uuid>"`). Le module ouvre la fiche puis remet `setFocus(null)`. `"message:new"` demande un nouveau message.                   |
-| `open(ref)`                | Aller vers n’importe quel élément (entrée du journal, moyen, objet carte…). `open("place:new:resource:<uuid>")` ouvre la carte en mode placement : le point posé est relié à cet élément.   |
-| `addEntry(fields, links)`  | Consigne une entrée au journal et la relie aux références données ; renvoie son id.                                                                                                         |
-| `compose(preset)`          | Ouvre le formulaire d’entrée prérempli (l’opérateur valide).                                                                                                                                |
-| `queuePrint(job)`          | Impression directe sans aperçu (impression automatique).                                                                                                                                    |
-| `print(job)`               | Aperçu A4 : `{ kind: "forms", journal, sheets, title, name }` ou `{ kind: "tables", journal, title, extra, tables, landscape, name }`.                                                      |
-| `live` / `viewAt`          | Journal actuel / moment affiché par la machine à remonter le temps (ms, `null` = direct). `setViewAt(ms)` y envoie l’utilisateur.                                                           |
-| `trace(id)`                | Ouvre l’historique d’un élément (versions, restauration).                                                                                                                                   |
-| `record(collection, v)`    | Ajoute à un registre (`snapshots`, `exports`, `presentations`, `forecasts`), même journal clôturé ou dans le passé.                                                                         |
-| `exportCenter(preset)`     | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                      |
-| `present(mode, preset)`    | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                              |
-| `help(topic)`              | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                |
-| `prefs`                    | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).       |
+| Clé                         | Usage                                                                                                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `journal.ops`               | Données des modules : `messages`, `cells`, `members`, `resources`, `contacts`, `places`, `agenda`, `facts`, `boards`, `observations`, `alerts`, `links`, `settings` (voir `shared/ops.ts`).    |
+| `updateOps(ops => …)`       | Seule façon de modifier `ops`. Utiliser `upsert(ops, "resources", value, author)` et `removeRecords(ops, [id])`. Validé par Zod ; en cas d’erreur, exception avec message.                     |
+| `canWrite()`                | Porte d’écriture : `true` si l’écriture est permise, sinon affiche pourquoi et renvoie `false`.                                                                                                |
+| `lists("recipients")`       | Valeurs d’un référentiel (`DEFAULT_LISTS` modifiables dans Réglages).                                                                                                                          |
+| `graph`                     | `items` (tous les éléments affichables), `byRef`, `edges` (liens explicites et implicites), `degree`.                                                                                          |
+| `focus` / `setFocus(null)`  | Élément à montrer quand on arrive depuis un lien (`"resource:<uuid>"`). Le module ouvre la fiche puis remet `setFocus(null)`. `"message:new"` demande un nouveau message.                      |
+| `open(ref)`                 | Aller vers n’importe quel élément (entrée du journal, moyen, objet carte…). `open("place:new:resource:<uuid>")` ouvre la carte en mode placement : le point posé est relié à cet élément.      |
+| `addEntry(fields, links)`   | Consigne une entrée au journal et la relie aux références données ; renvoie son id.                                                                                                            |
+| `compose(preset)`           | Ouvre le formulaire d’entrée prérempli (l’opérateur valide).                                                                                                                                   |
+| `queuePrint(job)`           | Impression directe sans aperçu (impression automatique).                                                                                                                                       |
+| `print(job)`                | Aperçu A4 : `{ kind: "forms", journal, sheets, title, name }` ou `{ kind: "tables", journal, title, extra, tables, landscape, name }`.                                                         |
+| `live` / `viewAt`           | Journal actuel / moment affiché par la machine à remonter le temps (ms, `null` = direct). `setViewAt(ms)` y envoie l’utilisateur.                                                              |
+| `trace(id)`                 | Ouvre l’historique d’un élément (versions, restauration).                                                                                                                                      |
+| `record(collection, v, id)` | Ajoute à un registre (`snapshots`, `exports`, `presentations`, `forecasts`), même journal clôturé ou dans le passé ; `id` vise le journal d’une requête lancée avant un changement de journal. |
+| `exportCenter(preset)`      | Ouvre le centre d’export (`{ sections, viewAt, format }` facultatifs).                                                                                                                         |
+| `present(mode, preset)`     | Mode présentation (`"present"`) ou affichage mural (`"wall"`).                                                                                                                                 |
+| `help(topic)`               | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                   |
+| `prefs`                     | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).          |
 
 ## Composants
 
@@ -68,7 +72,9 @@ const {
 | `ui/records.tsx`    | `RecordSheet` (fiche latérale générique), `RecordFields`, type `FieldSpec`                                                              |
 | `ui/fields.tsx`     | `TextField`, `ComboField`, `ChoiceField`, `DateTimeField`, `NumberField`, `Toggle`, `TagsField`, `Segmented`, `localInput`, `fromInput` |
 | `ui/links.tsx`      | `LinkChip`, `LinksPanel`, `ItemPreview`, `HoverCard`, `ItemSearch`, `KindDot`, `KIND_ICON`, `hueStyle`                                  |
-| `ui/Sheet.tsx`      | `Sheet` (panneau latéral)                                                                                                               |
+| `ui/Sheet.tsx`      | `Sheet` (panneau latéral, `dirty` : demander avant de fermer)                                                                           |
+| `ui/Figures.tsx`    | `Figures` (ligne de chiffres réglée, à la place des cartes « statistique »)                                                             |
+| `ui/overlay.ts`     | `useLayer` (pile des superpositions : Échap, focus, restitution), `confirmDiscard`                                                      |
 | `ui/Popover.tsx`    | `Popover` (menu ancré, classe `.menu`)                                                                                                  |
 | `ui/effects.tsx`    | `CountUp` (affiche la valeur telle quelle), `DecryptText`, `useSpotlight`, `ClickSparks` : signatures gardées, sans effet visuel        |
 | `journal/Modal.tsx` | `Modal` (boîte de dialogue)                                                                                                             |

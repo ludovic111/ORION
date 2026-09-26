@@ -1273,3 +1273,355 @@ button.status-chip {
   font-weight: 400;
   line-height: 1.35;
 }
+
+/* ---------- Ligne de chiffres (DESIGN.md) ----------
+   One ruled line instead of a row of identical statistic cards: a rule
+   above, one under each row, the figure in Plex Mono, its label under it,
+   a zero greyed out, a late count in --crit. `.metrics` (journal, radio,
+   relève) takes the same shape. */
+.figures,
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line-2);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
+:root[data-theme] .figures,
+:root[data-theme] .metrics {
+  border-color: var(--line-2);
+}
+.figure-cell,
+.metrics > div {
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+.figure,
+.metrics > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: 10px 18px 10px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+.metrics > div {
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+}
+button.figure {
+  cursor: pointer;
+}
+button.figure:hover {
+  background: none;
+}
+button.figure:hover > span {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+button.figure:disabled {
+  cursor: default;
+  opacity: 1;
+}
+button.figure:disabled:hover > span {
+  text-decoration: none;
+}
+.figure strong,
+.metrics dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: inherit;
+}
+.figure strong small,
+.metrics dd small {
+  margin-left: 2px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+.figure > span,
+.metrics dt {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.metrics > .warn dt::before,
+.metrics > .crit dt::before {
+  content: none;
+}
+.figures.compact .figure strong,
+.metrics.compact dd {
+  font-size: 20px;
+}
+.figure.zero strong {
+  color: var(--text-3);
+}
+.figure.warn strong,
+.metrics .warn dd {
+  color: var(--warn);
+}
+.figure.crit strong,
+.figure.crit > span,
+.metrics .crit dd,
+.metrics .crit dt {
+  color: var(--crit);
+}
+.figure.ok strong {
+  color: var(--ok);
+}
+.metrics .warn dt {
+  color: var(--text-2);
+}
+.metrics dd.text {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  font-family: var(--sans);
+  font-size: 14px;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.metrics dd.text .link {
+  color: inherit;
+}
+@media (max-width: 600px) {
+  .figures,
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .figure,
+  .metrics > div {
+    padding-right: 10px;
+  }
+  .figure strong,
+  .metrics dd {
+    font-size: 22px;
+  }
+}
+
+/* A field refused on saving says why, under it. */
+.has-error input,
+.has-error textarea {
+  border-color: var(--crit);
+}
+.field-error {
+  color: var(--crit);
+}
+
+/* ---------- Dock tooltip, « Plus » and phone bar ---------- */
+.dock-tip {
+  max-width: min(320px, calc(100vw - 16px));
+  white-space: normal;
+}
+.dock-item .badge.dot {
+  top: 6px;
+  right: 6px;
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+}
+.dock-more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+.dock-more-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: auto;
+  min-height: 72px;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: normal;
+  text-align: center;
+}
+.dock-more-item[aria-current="page"] {
+  border-color: var(--text);
+}
+.dock-more-item .badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--crit);
+  color: #fff;
+  font-size: 10px;
+  line-height: 17px;
+}
+.dock-more-item .badge.accent {
+  background: var(--text);
+  color: var(--solid);
+}
+button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.show-phone {
+  display: none !important;
+}
+@media (max-width: 900px) {
+  /* Everything fits: no horizontal scroll, no cut icon. */
+  .dock-rail {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 440px;
+    gap: 2px;
+    padding: 6px;
+    overflow: visible;
+  }
+  .dock-item {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: 56px;
+    height: 44px;
+    margin: 0;
+    transform: none;
+  }
+  .show-phone {
+    display: flex !important;
+  }
+  .hide-phone {
+    display: none !important;
+  }
+}
+
+/* The toast is shown in the top layer (popover) to stay above dialogs. */
+.toast[popover] {
+  inset: auto 24px 24px auto;
+  margin: 0;
+  overflow: visible;
+}
+:root[data-past] .toast {
+  bottom: 170px;
+}
+@media (max-width: 900px) {
+  .toast[popover] {
+    top: auto;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+  :root[data-past] .toast[popover] {
+    bottom: calc(230px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ---------- Phones: compact headers, nothing wider than the screen ---------- */
+@media (max-width: 900px) {
+  .dock {
+    padding: 0 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  .module-head {
+    position: relative;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .module-head > div:first-child {
+    min-width: 0;
+    padding-right: 40px;
+  }
+  .module-head .eyebrow {
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .module-head h1 {
+    font-size: 24px;
+    overflow-wrap: anywhere;
+  }
+  .module-head p {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    font-size: 13.5px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .module-actions {
+    width: 100%;
+    gap: 6px;
+  }
+  .module-actions > button,
+  .module-actions > a,
+  .module-actions > label {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .module-actions > button kbd {
+    display: none;
+  }
+  .module-actions .help-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+  /* Segmented controls wider than the screen scroll inside themselves. */
+  .main .seg,
+  .main .segmented {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .main .seg > button,
+  .main .segmented > button {
+    flex: none;
+  }
+  /* The main column never scrolls sideways; wide tables scroll inside. */
+  .main {
+    overflow-x: clip;
+  }
+}
+@media (max-width: 480px) {
+  .module-head .eyebrow {
+    display: none;
+  }
+}

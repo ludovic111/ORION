@@ -11,15 +11,8 @@ import {
   type Fields,
 } from "../../shared/journal";
 import { TEMPLATES, applyTemplate } from "../../shared/workflow";
-export function localInput(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
-const fromInput = (value: string) =>
-  value ? new Date(value).toISOString() : "";
+import { fromInput, localInput } from "../ui/fields";
+export { localInput };
 export function EntryForm({
   initial,
   preset,
@@ -206,6 +199,7 @@ export function EntryForm({
           onChange={(e) => update("message", e.target.value)}
           placeholder="Texte du message"
           autoFocus={!compact}
+          data-autofocus={!compact || undefined}
         />
       </label>
       <div className="form-pair">

@@ -51,6 +51,7 @@ import { useApp } from "../../app/context";
 import { ModuleHead } from "../../ui/ModuleHead";
 import { RecordSheet, type FieldSpec } from "../../ui/records";
 import { CountUp } from "../../ui/effects";
+import { Figures } from "../../ui/Figures";
 import { LinkChip } from "../../ui/links";
 import { countdown, upcoming, useTicker } from "../agenda/rhythm";
 import {
@@ -381,20 +382,16 @@ function Pulse() {
             .join(" · ")}
         </small>
       </div>
-      <div className="situation-kpis">
-        {kpis.map((k) => (
-          <button
-            key={k.label}
-            className={`situation-kpi ${k.tone ?? ""}${k.value ? "" : " zero"}`}
-            onClick={() => go(k.to)}
-          >
-            <strong>
-              <CountUp value={k.value} />
-            </strong>
-            <span>{k.label}</span>
-          </button>
-        ))}
-      </div>
+      <Figures
+        className="situation-kpis"
+        label="L’engagement en chiffres"
+        items={kpis.map((k) => ({
+          label: k.label,
+          value: k.value,
+          tone: k.tone as "warn" | "crit" | "accent" | "",
+          onClick: () => go(k.to),
+        }))}
+      />
     </section>
   );
 }
@@ -724,7 +721,7 @@ function OpenPoints() {
 }
 
 function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
-  const { journal, updateOps, author, readOnly, toast } = useApp();
+  const { journal, updateOps, author, readOnly, toast, canWrite } = useApp();
   const boards = useMemo(
     () => [...journal.ops.boards].sort((a, b) => a.order - b.order),
     [journal.ops.boards],
@@ -734,7 +731,7 @@ function Boards({ onEdit }: { onEdit: (board: BoardDraft) => void }) {
   const cancelled = useRef(false);
 
   function start(b: Board) {
-    if (readOnly) return;
+    if (!canWrite()) return;
     cancelled.current = false;
     setText(b.body);
     setEditing(b.id);

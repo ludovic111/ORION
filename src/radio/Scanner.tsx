@@ -100,6 +100,7 @@ export function Scanner({
           placeholder="N° du terminal, ex. R-04"
           value={typed}
           autoFocus={camera === "none"}
+          data-autofocus={camera === "none" || undefined}
           onChange={(e) => setTyped(e.target.value)}
         />
         <button className="primary" disabled={!typed.trim()}>

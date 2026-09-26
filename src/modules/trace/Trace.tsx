@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { dateTime, day, time, type Journal } from "../../../shared/journal";
 import { removeRecords } from "../../../shared/ops";
+import { toZurichInput, zurichHour, zurichInputMs } from "../../../shared/time";
 import {
   auditTrail,
   compareVersions,
@@ -45,6 +46,7 @@ import {
   initials,
   personHue,
 } from "../../timeline/format";
+import { Figures } from "../../ui/Figures";
 import "./trace.css";
 
 type Tab = "audit" | "compare" | "snapshots" | "exports" | "presentations";
@@ -218,8 +220,7 @@ function Audit({ trail }: { trail: AuditItem[] }) {
   const groups = useMemo(() => {
     const out: { key: string; label: string; items: AuditItem[] }[] = [];
     for (const item of filtered.slice(0, limit)) {
-      const d = new Date(item.at);
-      const key = `${day(item.at)} ${d.getHours()}`;
+      const key = `${day(item.at)} ${zurichHour(Date.parse(item.at))}`;
       const last = out[out.length - 1];
       if (last?.key === key) last.items.push(item);
       else
@@ -428,7 +429,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
     removed: diffs.filter((d) => d.kind === "removed").length,
   };
   const pickTime = (value: string, set: (t: number) => void) => {
-    const t = Date.parse(value);
+    const t = zurichInputMs(value);
     if (!Number.isNaN(t)) set(t);
   };
   const presets: { label: string; run: () => void }[] = [
@@ -554,28 +555,29 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
           ))}
         </div>
       </div>
-      <div className="compare-summary">
-        <div className="card compare-kpi added">
-          <strong>{counts.added}</strong>
-          <span>ajouté{counts.added > 1 ? "s" : ""}</span>
-        </div>
-        <div className="card compare-kpi modified">
-          <strong>{counts.modified}</strong>
-          <span>modifié{counts.modified > 1 ? "s" : ""}</span>
-        </div>
-        <div className="card compare-kpi removed">
-          <strong>{counts.removed}</strong>
-          <span>supprimé{counts.removed > 1 ? "s" : ""}</span>
-        </div>
-        <div className="card compare-kpi">
-          <strong>{authors.length}</strong>
-          <span title={authors.join(", ")}>
-            personne{authors.length > 1 ? "s" : ""} :{" "}
-            {authors.slice(0, 3).join(", ") || "—"}
-            {authors.length > 3 ? "…" : ""}
-          </span>
-        </div>
-      </div>
+      <Figures
+        className="compare-summary"
+        label="Résumé de la comparaison"
+        items={[
+          {
+            label: `ajouté${counts.added > 1 ? "s" : ""}`,
+            value: counts.added,
+          },
+          {
+            label: `modifié${counts.modified > 1 ? "s" : ""}`,
+            value: counts.modified,
+          },
+          {
+            label: `supprimé${counts.removed > 1 ? "s" : ""}`,
+            value: counts.removed,
+          },
+          {
+            label: `personne${authors.length > 1 ? "s" : ""} : ${authors.slice(0, 3).join(", ") || "—"}${authors.length > 3 ? "…" : ""}`,
+            value: authors.length,
+            hint: authors.join(", "),
+          },
+        ]}
+      />
       <div className="compare-actions">
         <button onClick={() => setMaps((v) => !v)} aria-pressed={maps}>
           Cartes côte à côte
@@ -651,10 +653,7 @@ function Compare({ initialFrom }: { initialFrom: number | null }) {
   );
 }
 
-const localValue = (t: number) => {
-  const d = new Date(t);
-  return new Date(t - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
+const localValue = (t: number) => toZurichInput(t);
 
 function MapsSideBySide({
   before,

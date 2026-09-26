@@ -89,7 +89,7 @@ Règles :
 - **Bouton principal** : aplat `--accent`, texte `--on-accent`, rayon 8 px. Un seul par zone.
 - **Bouton secondaire** : fond `--bg-1`, filet `--line-2`.
 - **Étiquette** (`.pill`) : pilule 24 px, filet fin, sans pastille ; `.crit` garde un point.
-- **Ligne de chiffres** (`.situation-kpis`) : filets haut et bas, chiffre en Plex Mono 26 px, libellé dessous, zéro en `--text-3`, retard en `--crit`.
+- **Ligne de chiffres** (`Figures`, `src/ui/Figures.tsx`, classe `.figures` ; `.metrics` prend la même forme) : filets haut et bas, chiffre en Plex Mono 26 px, libellé dessous, zéro en `--text-3`, retard en `--crit`. Situation, Journal, Missions, Messages, Équipe et la comparaison de Traçabilité l’utilisent.
 - **Sommaire** (`.hero-index`) : deux colonnes, filet au-dessus de chaque terme, une ligne factuelle.
 - **Point en direct** : 8 px, `--ember`, à gauche du libellé.
 
