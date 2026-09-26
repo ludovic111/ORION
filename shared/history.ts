@@ -118,6 +118,34 @@ const OPS_SCOPES: Record<Collection, ScopeInfo> = {
     plural: "Prévisions météo",
     module: "weather",
   },
+  checklistTemplates: {
+    label: "Modèle de liste de contrôle",
+    plural: "Modèles de listes de contrôle",
+    module: "checklists",
+  },
+  checklists: {
+    label: "Liste de contrôle",
+    plural: "Listes de contrôle",
+    module: "checklists",
+  },
+  checklistTicks: {
+    label: "Étape cochée",
+    plural: "Étapes cochées",
+    module: "checklists",
+  },
+  requests: {
+    label: "Demande de moyens",
+    plural: "Demandes de moyens",
+    module: "resources",
+  },
+  presences: { label: "Présence", plural: "Présences", module: "team" },
+  shifts: { label: "Relève", plural: "Plan de relève", module: "team" },
+  thresholds: {
+    label: "Seuil météo",
+    plural: "Seuils météo",
+    module: "weather",
+  },
+  reminders: { label: "Rappel", plural: "Rappels", module: "agenda" },
 };
 export const SCOPES: Record<string, ScopeInfo> = {
   entries: { label: "Entrée", plural: "Journal", module: "journal" },

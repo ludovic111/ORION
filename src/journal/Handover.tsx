@@ -1,4 +1,17 @@
-import { Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ClipboardCopy, Download, Printer } from "lucide-react";
+import {
+  defaultSince,
+  handoverSummary,
+  summaryHeadline,
+  summaryParts,
+  summaryTables,
+  summaryText,
+} from "../../shared/handover-summary";
+import { useApp } from "../app/context";
+import type { Ref } from "../../shared/links";
+import { DateTimeField } from "../ui/fields";
+import "../ui/conduct.css";
 import {
   chronological,
   current,
@@ -24,8 +37,18 @@ export function Handover({
   onClose: () => void;
   onExport: () => void;
   onOpen: (id: string) => void;
-  onTakeOver: () => void;
+  /** Record the handover; `summary`: the text "depuis HH:MM" to add. */
+  onTakeOver: (summary?: string) => void;
 }) {
+  const { print, author, toast, open } = useApp();
+  const [since, setSince] = useState(() =>
+    new Date(defaultSince(journal, at)).toISOString(),
+  );
+  const summary = useMemo(
+    () => handoverSummary(journal, Date.parse(since) || at, at),
+    [journal, since, at],
+  );
+  const text = summaryText(summary);
   const pending = chronological(journal.entries.filter(needsFollowUp));
   const unconfirmed = journal.entries.filter(
     (e) =>
@@ -56,6 +79,87 @@ export function Handover({
           </dd>
         </div>
       </dl>
+      <h3 className="section-label">Que s’est-il passé depuis…</h3>
+      <div className="hs-since">
+        <DateTimeField
+          label="Depuis"
+          value={since}
+          onChange={(v) => v && setSince(v)}
+        />
+      </div>
+      <p className="hs-headline">{summaryHeadline(summary)}</p>
+      <div className="hs-parts">
+        {summaryParts(summary)
+          .filter(
+            (p) => p.title !== "Points ouverts" && p.title !== "En retard",
+          )
+          .map((p) => (
+            <div key={p.title} className="hs-part">
+              <h4>{p.title}</h4>
+              <ul>
+                {p.lines.slice(0, 12).map((l, i) => (
+                  <li key={i}>
+                    <span className="mono">
+                      {new Date(l.at).toLocaleTimeString("fr-CH", {
+                        timeZone: "Europe/Zurich",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {l.ref ? (
+                      <button
+                        className="link"
+                        onClick={() =>
+                          l.ref.startsWith("entry:")
+                            ? onOpen(l.ref.slice(6))
+                            : (onClose(), open(l.ref as Ref))
+                        }
+                      >
+                        {l.text}
+                      </button>
+                    ) : (
+                      <span>{l.text}</span>
+                    )}
+                  </li>
+                ))}
+                {p.lines.length > 12 && (
+                  <li className="muted">… et {p.lines.length - 12} autre(s)</li>
+                )}
+              </ul>
+            </div>
+          ))}
+      </div>
+      <div className="hs-actions">
+        <button
+          className="small"
+          onClick={() =>
+            print({
+              kind: "tables",
+              journal,
+              title: "Résumé de relève",
+              extra: `Établi par ${author}`,
+              landscape: false,
+              name: "resume-de-releve",
+              tables: summaryTables(summary),
+            })
+          }
+        >
+          <Printer size={13} />
+          Imprimer le résumé
+        </button>
+        <button
+          className="small"
+          onClick={() =>
+            void navigator.clipboard
+              ?.writeText(text)
+              .then(() => toast("Résumé copié."))
+              .catch(() => toast("Copie impossible dans ce navigateur."))
+          }
+        >
+          <ClipboardCopy size={13} />
+          Copier
+        </button>
+      </div>
       <h3 className="section-label">Points ouverts</h3>
       {pending.length ? (
         <table className="grid dense">
@@ -125,8 +229,11 @@ export function Handover({
         Autre poste : archive .orionaic, phrase transmise par un canal séparé.
       </p>
       <div className="modal-actions">
-        <button onClick={onTakeOver} disabled={!!journal.closedAt}>
+        <button onClick={() => onTakeOver()} disabled={!!journal.closedAt}>
           Consigner la relève
+        </button>
+        <button onClick={() => onTakeOver(text)} disabled={!!journal.closedAt}>
+          Consigner avec le résumé
         </button>
         <button className="primary" onClick={onExport}>
           <Download size={14} />

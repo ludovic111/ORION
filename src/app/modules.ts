@@ -8,6 +8,7 @@ import {
   Inbox,
   KanbanSquare,
   LifeBuoy,
+  ListChecks,
   Map,
   Network,
   Radio,
@@ -71,6 +72,16 @@ export const MODULES: ModuleInfo[] = [
     hue: 30,
     group: 0,
     description: "Tableau des missions, demandes et points à suivre, par état.",
+  },
+  {
+    id: "checklists",
+    label: "Listes de contrôle",
+    short: "Listes",
+    icon: ListChecks,
+    hue: 96,
+    group: 0,
+    description:
+      "Ce qu’il ne faut pas oublier par type d’événement : étapes, fonction responsable, contrôles à suivre.",
   },
   {
     id: "map",

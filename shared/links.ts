@@ -8,6 +8,7 @@ import {
 import { activeAssignment, callsignKey } from "./radio.ts";
 import { referencedEntries } from "./workflow.ts";
 import { nowIso, type Link, type Ops, type RefKind } from "./ops.ts";
+import { conductEdges, conductItems } from "./conduct-links.ts";
 
 // Every item of a journal can be referred to as "kind:id". Links are either
 // explicit (ops.links, created by the operator or by an action such as
@@ -35,7 +36,8 @@ export type Module =
   | "agenda"
   | "network"
   | "trace"
-  | "docs";
+  | "docs"
+  | "checklists";
 
 export const KIND_INFO: Record<
   RefKind,
@@ -105,6 +107,24 @@ export const KIND_INFO: Record<
     plural: "Groupes radio",
     module: "radio",
     hue: 100,
+  },
+  checklist: {
+    label: "Liste de contrôle",
+    plural: "Listes de contrôle",
+    module: "checklists",
+    hue: 96,
+  },
+  request: {
+    label: "Demande de moyens",
+    plural: "Demandes de moyens",
+    module: "resources",
+    hue: 18,
+  },
+  shift: {
+    label: "Relève",
+    plural: "Plan de relève",
+    module: "team",
+    hue: 316,
   },
 };
 
@@ -367,6 +387,7 @@ export function items(journal: Journal): Item[] {
         x.notes,
       ].join(" "),
     });
+  conductItems(journal).forEach(push);
   for (const t of r.terminals) {
     const open = activeAssignment(t);
     push({
@@ -522,6 +543,8 @@ export function edges(journal: Journal): Edge[] {
     if (station)
       add(ref("member", m.id), ref("station", station.id), "nom d’appel");
   }
+  for (const e of conductEdges(journal, exists))
+    add(e.a as Ref, e.b as Ref, e.label);
   return [...out.values()];
 }
 

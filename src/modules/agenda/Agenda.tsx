@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Circle,
   CircleCheck,
+  FileText,
   Link2,
   MapPin,
   NotebookPen,
@@ -39,6 +40,9 @@ import {
   useTicker,
   zurichDay,
 } from "./rhythm";
+import { isReport } from "../../../shared/reminders";
+import { SituationPointDialog } from "../situation/SituationPoint";
+import { RemindersCard } from "./Reminders";
 import "./agenda.css";
 
 type Draft = Omit<AgendaItem, "id" | "createdAt" | "updatedAt" | "by"> &
@@ -108,6 +112,8 @@ export function Agenda() {
   const [planning, setPlanning] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [justDone, setJustDone] = useState<string[]>([]);
+  // Report whose point de situation is being prepared.
+  const [pointFor, setPointFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!focus) return;
@@ -233,7 +239,10 @@ export function Agenda() {
             : "";
     const links = graph.degree.get(ref("agenda", item.id)) ?? 0;
     return (
-      <li key={item.id} className={`agenda-item ${state}`}>
+      <li
+        key={item.id}
+        className={`agenda-item ${state} ${isReport(item) && !item.done ? "has-point" : ""}`}
+      >
         <span className="agenda-dot" aria-hidden="true" />
         <div className="agenda-time">
           <strong>{time(item.at)}</strong>
@@ -271,6 +280,16 @@ export function Agenda() {
             )}
           </span>
         </button>
+        {isReport(item) && !item.done && (
+          <button
+            className="icon-button agenda-point"
+            title="Préparer le point de situation"
+            aria-label={`Préparer le point de situation pour « ${item.title} »`}
+            onClick={() => setPointFor(item.id)}
+          >
+            <FileText size={18} />
+          </button>
+        )}
         <button
           className="icon-button agenda-check"
           aria-pressed={item.done}
@@ -386,7 +405,17 @@ export function Agenda() {
       ) : (
         <div className="agenda-layout">
           {nextItem ? (
-            <NextUp item={nextItem} onOpen={() => setEditing(nextItem)} />
+            <>
+              <NextUp item={nextItem} onOpen={() => setEditing(nextItem)} />
+              {isReport(nextItem) && (
+                <div className="agenda-point-bar">
+                  <button onClick={() => setPointFor(nextItem.id)}>
+                    <FileText size={14} />
+                    Préparer le point de situation
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="card agenda-hero agenda-hero-empty">
               <CalendarClock size={22} />
@@ -432,6 +461,7 @@ export function Agenda() {
           </div>
         </div>
       )}
+      <RemindersCard />
       {editing && (
         <RecordSheet
           collection="agenda"
@@ -451,22 +481,43 @@ export function Agenda() {
                   : ""
           }
           footer={
-            editing.id && !readOnly && !editing.done ? (
-              <button
-                onClick={() => {
-                  const item = items.find((i) => i.id === editing.id);
-                  if (item) toggleDone(item);
-                  setEditing(null);
-                }}
-              >
-                <CircleCheck size={14} />
-                Tenu
-              </button>
+            editing.id && !editing.done ? (
+              <>
+                {isReport(editing) && (
+                  <button
+                    onClick={() => {
+                      setPointFor(editing.id!);
+                      setEditing(null);
+                    }}
+                  >
+                    <FileText size={14} />
+                    Point de situation
+                  </button>
+                )}
+                {!readOnly && (
+                  <button
+                    onClick={() => {
+                      const item = items.find((i) => i.id === editing.id);
+                      if (item) toggleDone(item);
+                      setEditing(null);
+                    }}
+                  >
+                    <CircleCheck size={14} />
+                    Tenu
+                  </button>
+                )}
+              </>
             ) : undefined
           }
         />
       )}
       {planning && <PlanDialog onClose={() => setPlanning(false)} />}
+      {pointFor && (
+        <SituationPointDialog
+          agendaId={pointFor}
+          onClose={() => setPointFor(null)}
+        />
+      )}
     </>
   );
 }

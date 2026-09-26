@@ -85,14 +85,21 @@ export const fullScope = (): ExportScope => ({
 
 /** Collections owned by each part. */
 const OWNED: Partial<Record<SectionId, Collection[]>> = {
-  situation: ["facts", "boards", "snapshots"],
+  situation: [
+    "facts",
+    "boards",
+    "snapshots",
+    "checklistTemplates",
+    "checklists",
+    "checklistTicks",
+  ],
   messages: ["messages"],
   map: ["places", "maps", "symbols"],
-  resources: ["resources"],
-  team: ["cells", "members"],
+  resources: ["resources", "requests"],
+  team: ["cells", "members", "presences", "shifts"],
   contacts: ["contacts"],
-  weather: ["observations", "alerts", "forecasts"],
-  agenda: ["agenda"],
+  weather: ["observations", "alerts", "forecasts", "thresholds"],
+  agenda: ["agenda", "reminders"],
   links: ["links"],
   trace: ["exports", "presentations"],
 };
@@ -114,6 +121,9 @@ const SELECTABLE = new Set<Collection>([
   "links",
   "exports",
   "presentations",
+  "checklists",
+  "requests",
+  "shifts",
 ]);
 
 /**

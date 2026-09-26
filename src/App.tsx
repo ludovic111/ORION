@@ -52,6 +52,8 @@ import { useShortcuts } from "./app/useShortcuts";
 import { useOverlays } from "./app/overlays";
 import { useJournalActions } from "./app/useJournalActions";
 import { useDrafts } from "./app/useDrafts";
+import { useConductWatch } from "./app/useConductWatch";
+import { ReminderBar } from "./app/ReminderBar";
 import { TopBar } from "./app/TopBar";
 import { JournalMenu, OperatorMenu } from "./app/ShellMenus";
 import { OverlayHost } from "./app/OverlayHost";
@@ -73,6 +75,7 @@ import { edges as allEdges, items as allItems } from "../shared/links";
 const MapModule = lazy(() => import("./modules/map/MapModule"));
 const NetworkModule = lazy(() => import("./modules/network/NetworkModule"));
 const PresentationMode = lazy(() => import("./present/Presentation"));
+const Checklists = lazy(() => import("./modules/checklists/Checklists"));
 const Trace = lazy(() =>
   import("./modules/trace/Trace").then((m) => ({ default: m.Trace })),
 );
@@ -154,6 +157,13 @@ export default function App() {
     viewAt,
     toast: notify,
     refuse,
+  });
+  useConductWatch({
+    live: journal ?? null,
+    viewAt,
+    author: workspace?.author ?? "",
+    actions,
+    notify,
   });
   const drafts = useDrafts({ workspace, setWorkspace });
   const draftExists = () => {
@@ -621,6 +631,7 @@ export default function App() {
             module,
             updateJournal: actions.updateJournal,
             updateOps: actions.updateOps,
+            changeJournal: (change) => !!actions.changeJournal(change),
             lists,
             go,
             focus,
@@ -898,6 +909,8 @@ export default function App() {
                   <Messages />
                 ) : module === "missions" ? (
                   <Missions />
+                ) : module === "checklists" ? (
+                  <Checklists />
                 ) : module === "map" ? (
                   <MapModule />
                 ) : module === "resources" ? (
@@ -1050,6 +1063,7 @@ export default function App() {
         onDone={() => setAutoQueue((q) => q.slice(1))}
       />
       {viewAt !== null && <TimeBar />}
+      <ReminderBar />
       <Toast message={toast} onDone={() => setToast(null)} />
     </Ctx.Provider>
   );

@@ -45,6 +45,13 @@ Workspace
    │  ├─ snapshots                 points de situation figés (moment nommé)
    │  ├─ exports, presentations    registres : fichiers produits (SHA-256), présentations données
    │  ├─ forecasts                 prévisions météo reçues (une version par réception)
+   │  ├─ checklistTemplates, checklists, checklistTicks
+   │  │                            listes de contrôle : modèles du journal, listes démarrées,
+   │  │                            une coche par étape (id dérivé de la liste et de l’étape)
+   │  ├─ requests                  demandes de moyens (demandé → arrivé, étapes datées)
+   │  ├─ presences, shifts         arrivées / départs, plan de relève
+   │  ├─ thresholds, reminders     seuils météo (alertes à id dérivé du seuil et du jour),
+   │  │                            rappels d’export et d’impression
    │  └─ settings                  référentiels, lieu météo, vue de carte
    ├─ sync { clock, removed, compacted }
    │                               horodatages (horloge logique hybride) des changements,

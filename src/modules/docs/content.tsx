@@ -22,6 +22,10 @@ import type { Module } from "../../../shared/links";
 import { moduleInfo } from "../../app/modules";
 import { CONTACT_EMAIL, ContactCard, feedbackLink } from "../../app/contact";
 import {
+  CONDUCT_MODULE_TOPICS,
+  CONDUCT_TOGETHER_TOPICS,
+} from "./content-conduct";
+import {
   Example,
   Faq,
   Gloss,
@@ -1025,6 +1029,7 @@ export const TOPICS: Topic[] = [
       </>
     ),
   },
+  ...CONDUCT_MODULE_TOPICS,
   {
     id: "map",
     group: "modules",
@@ -1314,7 +1319,9 @@ export const TOPICS: Topic[] = [
             à sa fiche.
           </li>
           <li>
-            <Ui>Demander des moyens</Ui> : prépare une demande de moyens.
+            <Ui>Demander des moyens</Ui> : ouvre une demande dans l’onglet{" "}
+            <Ui>Demandes</Ui>, suivie jusqu’à l’arrivée (voir « Demandes de
+            moyens »).
           </li>
           <li>
             <strong>Impression A4</strong> du tableau des moyens.
@@ -1395,6 +1402,11 @@ export const TOPICS: Topic[] = [
           </li>
           <li>
             <strong>Impression</strong> de la liste de l’équipe en A4.
+          </li>
+          <li>
+            Troisième vue <Ui>Présences</Ui> : arrivées et départs (bouton ou
+            badge QR), temps de service, plan de relève (voir « Présences et
+            relève »).
           </li>
         </ul>
         <Note kind="info">
@@ -2719,6 +2731,7 @@ export const TOPICS: Topic[] = [
   },
 
   // ---------------------------------------------------------------- reference
+  ...CONDUCT_TOGETHER_TOPICS,
   {
     id: "settings",
     group: "reference",

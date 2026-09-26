@@ -16,6 +16,7 @@ import {
 import { radioTables, type SheetTable } from "./radio-sheet";
 import { situationReport, type ReportRange } from "./report";
 import { qrMatrix, qrPath } from "./qr";
+import { BadgesView, type Badge } from "./badges";
 import { useLayer } from "../ui/overlay";
 import "./print.css";
 
@@ -30,6 +31,7 @@ export type PrintJob =
     }
   | { kind: "report"; journal: Journal; author: string; range: ReportRange }
   | { kind: "labels"; journal: Journal }
+  | { kind: "badges"; journal: Journal; badges: Badge[] }
   | {
       kind: "forms";
       journal: Journal;
@@ -332,6 +334,10 @@ export function Sheets({ job, stamp }: { job: PrintJob; stamp: string }) {
     );
   if (job.kind === "labels")
     return <LabelsView journal={job.journal} stamp={stamp} />;
+  if (job.kind === "badges")
+    return (
+      <BadgesView journal={job.journal} badges={job.badges} stamp={stamp} />
+    );
   return job.kind === "radio" ? (
     <TablesSheetView
       journal={job.journal}
@@ -365,6 +371,8 @@ function title(job: PrintJob) {
     return `${job.sheets.length} ${job.title} · A4 portrait`;
   if (job.kind === "tables")
     return `${job.title} · A4 ${job.landscape ? "paysage" : "portrait"}`;
+  if (job.kind === "badges")
+    return `${job.badges.length} badge(s) de présence · A4 portrait`;
   return `${job.journal.radio.terminals.length} étiquettes QR · A4 portrait`;
 }
 
@@ -422,6 +430,8 @@ export function PrintPreview({
           }),
           job.name,
         );
+      else if (job.kind === "badges")
+        save(await pdfs.badgesPdf(journal, job.badges), "badges");
       else save(await pdfs.labelsPdf(journal, location.origin), "etiquettes");
     } catch (err) {
       setError((err as Error).message);

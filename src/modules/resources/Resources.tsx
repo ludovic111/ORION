@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -45,6 +46,8 @@ import { HoverCard, LinkChip } from "../../ui/links";
 import { Popover } from "../../ui/Popover";
 import { CountUp } from "../../ui/effects";
 import type { SheetTable } from "../../print/radio-sheet";
+import { Requests } from "./Requests";
+import { WAITING, requestLate } from "../../../shared/requests";
 import "./resources.css";
 
 type Status = (typeof RESOURCE_STATUSES)[number];
@@ -63,6 +66,7 @@ type SortKey =
   | "links";
 
 const LOG_KEY = "orion-aic-resources-log";
+const TAB_KEY = "orion-aic-resources-tab";
 const VIEW_KEY = "orion-aic-resources-view";
 
 const STATUS_TONE: Record<Status, string> = {
@@ -182,7 +186,6 @@ export function Resources() {
     toast,
     print,
     addEntry,
-    compose,
   } = useApp();
   const resources = journal.ops.resources;
   const [view, setViewState] = useState<View>(() => {
@@ -193,6 +196,25 @@ export function Resources() {
     setViewState(v);
     writeLocal(VIEW_KEY, v);
   };
+  // Resources or requests for resources (Requests.tsx).
+  const [tab, setTabState] = useState<"resources" | "requests">(() =>
+    readLocal(TAB_KEY) === "requests" ? "requests" : "resources",
+  );
+  const setTab = (v: "resources" | "requests") => {
+    setTabState(v);
+    writeLocal(TAB_KEY, v);
+  };
+  const [creating, setCreating] = useState(0);
+  const clearCreating = useCallback(() => setCreating(0), []);
+  useEffect(() => {
+    if (focus?.startsWith("request:")) setTabState("requests");
+  }, [focus]);
+  const waitingRequests = journal.ops.requests.filter((r) =>
+    WAITING.includes(r.status),
+  );
+  const lateRequests = waitingRequests.filter((r) =>
+    requestLate(r, now),
+  ).length;
   const [logChanges, setLogChanges] = useState(
     () => readLocal(LOG_KEY) === "1",
   );
@@ -407,14 +429,11 @@ export function Resources() {
     });
   }
 
-  const requestResources = () =>
-    compose({
-      type: "Demande",
-      priority: "Important",
-      status: "À traiter",
-      message:
-        "Demande de moyens.\nMoyens : \nQuantité : \nLieu de livraison : \nDélai : \nMotif : ",
-    });
+  // A request is followed in the "Demandes" tab (demandé → arrivé).
+  const requestResources = () => {
+    setTab("requests");
+    setCreating((n) => n + 1);
+  };
 
   const spec: FieldSpec[] = [
     { kind: "group", label: "Identification" },
@@ -555,10 +574,12 @@ export function Resources() {
       <ModuleHead
         actions={
           <>
-            <button onClick={printBoard} disabled={!resources.length}>
-              <Printer size={14} />
-              Imprimer
-            </button>
+            {tab === "resources" && (
+              <button onClick={printBoard} disabled={!resources.length}>
+                <Printer size={14} />
+                Imprimer
+              </button>
+            )}
             <button onClick={requestResources} disabled={readOnly}>
               <Megaphone size={14} />
               Demander des moyens
@@ -574,8 +595,38 @@ export function Resources() {
           </>
         }
       />
+      <div className="res-tabs">
+        <Segmented
+          label="Moyens ou demandes"
+          value={tab}
+          onChange={setTab}
+          options={[
+            {
+              value: "resources",
+              label: (
+                <>
+                  <Truck size={13} /> Moyens · {resources.length}
+                </>
+              ),
+            },
+            {
+              value: "requests",
+              label: (
+                <>
+                  <Megaphone size={13} /> Demandes · {waitingRequests.length}
+                  {lateRequests > 0 && (
+                    <span className="pill crit">{lateRequests} en retard</span>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
 
-      {resources.length === 0 ? (
+      {tab === "requests" ? (
+        <Requests create={creating} onCreated={clearCreating} />
+      ) : resources.length === 0 ? (
         <EmptyState
           icon={<Truck size={28} />}
           title="Aucun moyen pour l’instant"

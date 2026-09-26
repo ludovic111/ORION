@@ -4,12 +4,15 @@ import {
   AlertTriangle,
   BookOpen,
   CalendarClock,
+  CalendarRange,
   Contact,
   Gauge,
   Inbox,
   LayoutList,
   Link2,
+  ListChecks,
   MapPin,
+  PackageSearch,
   Plus,
   Radio,
   RadioTower,
@@ -52,6 +55,9 @@ export const KIND_ICON: Record<RefKind, LucideIcon> = {
   terminal: Smartphone,
   station: RadioTower,
   talkgroup: Radio,
+  checklist: ListChecks,
+  request: PackageSearch,
+  shift: CalendarRange,
 };
 
 export const hueStyle = (kind: RefKind) =>

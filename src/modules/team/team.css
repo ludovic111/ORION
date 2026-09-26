@@ -467,3 +467,9 @@ button.team-cell-name:hover {
     margin-left: 0;
   }
 }
+
+/* Three views: the switch scrolls on a narrow phone rather than overflow. */
+.team-view {
+  max-width: 100%;
+  overflow-x: auto;
+}

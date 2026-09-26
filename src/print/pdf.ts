@@ -470,3 +470,52 @@ export async function labelsPdf(journal: Journal, origin: string) {
   drawFooters(doc, `${journal.title} · étiquettes radio`);
   return doc.output("blob");
 }
+
+/** Presence badges: 21 per A4 page, name, function and QR code. */
+export async function badgesPdf(
+  journal: Journal,
+  badges: { name: string; line: string; sub: string; code: string }[],
+) {
+  if (!badges.length) throw new Error("Aucun badge.");
+  const doc = await pdfDocument();
+  const cols = 3,
+    rows = 7,
+    w = 60,
+    h = 36,
+    left = (PAGE.w - cols * w) / 2,
+    top = 18;
+  badges.forEach((badge, i) => {
+    const slot = i % (cols * rows);
+    if (i && slot === 0) doc.addPage();
+    const x = left + (slot % cols) * w;
+    const y = top + Math.floor(slot / cols) * h;
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.1);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.rect(x, y, w, h);
+    doc.setLineDashPattern([], 0);
+    const matrix = qrMatrix(badge.code);
+    const size = 28,
+      cell = size / matrix.length;
+    doc.setFillColor(...INK);
+    matrix.forEach((line, r) =>
+      line.forEach((dark, c) => {
+        if (dark) doc.rect(x + 4 + c * cell, y + 4 + r * cell, cell, cell, "F");
+      }),
+    );
+    font(doc, 6, true, MUTED);
+    doc.text("orion aic · PRÉSENCE", x + 35, y + 8, { charSpace: 0.3 });
+    font(doc, 10, true);
+    doc.text(doc.splitTextToSize(badge.name, 23).slice(0, 2), x + 35, y + 14);
+    font(doc, 7, false, MUTED);
+    doc.text(
+      doc
+        .splitTextToSize([badge.line, badge.sub].filter(Boolean).join("\n"), 23)
+        .slice(0, 4),
+      x + 35,
+      y + 24,
+    );
+  });
+  drawFooters(doc, `${journal.title} · badges de présence`);
+  return doc.output("blob");
+}

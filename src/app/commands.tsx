@@ -6,6 +6,8 @@ import {
   History,
   Inbox,
   Lightbulb,
+  ListChecks,
+  Megaphone,
   Moon,
   Plus,
   Presentation,
@@ -14,6 +16,7 @@ import {
   Snowflake,
   Sun,
   Tv,
+  UsersRound,
   Wifi,
   Palette as Swatch,
 } from "lucide-react";
@@ -81,6 +84,34 @@ export function buildCommands({
       icon: <Download size={16} />,
       run: () => exportCenter(),
       keywords: "archive pdf excel word powerpoint pptx imprimer",
+    },
+    {
+      id: "checklist",
+      label: "Démarrer une liste de contrôle",
+      icon: <ListChecks size={16} />,
+      run: () => {
+        go("checklists");
+        setFocus("checklist:new" as Ref);
+      },
+      keywords:
+        "crue black-out canicule séisme tempête abc recherche évacués ouverture pc",
+    },
+    {
+      id: "resource-request",
+      label: "Nouvelle demande de moyens",
+      icon: <Megaphone size={16} />,
+      run: () => {
+        go("resources");
+        setFocus("request:new" as Ref);
+      },
+      keywords: "moyens renfort matériel demandé accordé arrivé",
+    },
+    {
+      id: "handover",
+      label: "Relève : que s’est-il passé depuis…",
+      icon: <UsersRound size={16} />,
+      run: () => open({ kind: "dialog", name: "handover" }),
+      keywords: "résumé relève depuis passation",
     },
     {
       id: "time-machine",
