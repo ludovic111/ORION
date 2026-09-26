@@ -2,13 +2,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   decrypt,
   deriveKey,
-  encrypt,
-  type Encrypted,
+  encryptVault,
   type VaultKey,
 } from "../../shared/crypto";
-import { workspaceSchema, type Workspace } from "../../shared/journal";
+import {
+  packWorkspace,
+  workspaceSchema,
+  type Workspace,
+} from "../../shared/journal";
+import { localNode, setLocalNode } from "../../shared/hlc";
 import { stampWorkspace } from "../../shared/sync";
-import { deleteVault, readVault, writeVault } from "./storage";
+import {
+  deleteVault,
+  readVault,
+  writeVault,
+  type StoredVault,
+} from "./storage";
+/** The session keeps the id of this post in its stamps across reloads. */
+function withNode(value: Workspace): Workspace {
+  if (value.node) {
+    setLocalNode(value.node);
+    return value;
+  }
+  return { ...value, node: localNode() };
+}
+/** Compressed, encrypted; images once (see packWorkspace). */
+const sealVault = (value: Workspace, key: VaultKey) =>
+  encryptVault(packWorkspace(value), key);
 async function acquireWriter(): Promise<() => void> {
   if (!navigator.locks)
     throw new Error(
@@ -63,7 +83,7 @@ export function useWorkspace() {
     return ids;
   }, []);
   const [vaultKey, setVaultKey] = useState<VaultKey | null>(null);
-  const [stored, setStored] = useState<Encrypted | null>(null);
+  const [stored, setStored] = useState<StoredVault | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveState, setSaveState] = useState<
     "temporary" | "saving" | "saved" | "error"
@@ -91,7 +111,7 @@ export function useWorkspace() {
       queue.current = queue.current
         .catch(() => {})
         .then(async () => {
-          const ciphertext = await encrypt(workspace, vaultKey);
+          const ciphertext = await sealVault(workspace, vaultKey);
           await writeVault(ciphertext);
           saved.current = workspace;
           setStored(ciphertext);
@@ -125,12 +145,12 @@ export function useWorkspace() {
     return () => window.removeEventListener("beforeunload", before);
   }, [vaultKey]);
   const start = useCallback((value: Workspace) => {
-    setRaw(workspaceSchema.parse(value));
+    setRaw(withNode(workspaceSchema.parse(value)));
     setSaveState("temporary");
     setError("");
   }, []);
   async function startProtected(value: Workspace, password: string) {
-    const parsed = workspaceSchema.parse(value);
+    const parsed = withNode(workspaceSchema.parse(value));
     const release = await acquireWriter();
     try {
       if (await readVault())
@@ -138,7 +158,7 @@ export function useWorkspace() {
           "Une session de reprise existe déjà. Reprenez-la ou exportez-la avant de créer une autre session protégée.",
         );
       const key = await deriveKey(password);
-      const ciphertext = await encrypt(parsed, key);
+      const ciphertext = await sealVault(parsed, key);
       await writeVault(ciphertext);
       writer.current = release;
       saved.current = parsed;
@@ -163,7 +183,7 @@ export function useWorkspace() {
       const key = await deriveKey(password);
       const value = latest.current;
       if (!value) throw new Error("Aucun espace à sauvegarder.");
-      const ciphertext = await encrypt(value, key);
+      const ciphertext = await sealVault(value, key);
       await writeVault(ciphertext);
       writer.current = release;
       saved.current = value;
@@ -182,7 +202,9 @@ export function useWorkspace() {
       const data = await readVault();
       if (!data) throw new Error("Aucun espace local enregistré.");
       const { value, vault } = await decrypt(data, password);
-      const parsed = workspaceSchema.parse(value);
+      // Older sessions are brought up to date by the schema (stamps, images
+      // kept once, message numbers).
+      const parsed = withNode(workspaceSchema.parse(value));
       writer.current = release;
       saved.current = parsed;
       setVaultKey(vault);
@@ -202,7 +224,7 @@ export function useWorkspace() {
     await queue.current;
     if (vaultKey && latest.current && latest.current !== saved.current) {
       const snapshot = latest.current;
-      const ciphertext = await encrypt(snapshot, vaultKey);
+      const ciphertext = await sealVault(snapshot, vaultKey);
       await writeVault(ciphertext);
       saved.current = snapshot;
       setStored(ciphertext);

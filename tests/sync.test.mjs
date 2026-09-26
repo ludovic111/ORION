@@ -7,6 +7,7 @@ import {
   emptyFields,
   journalSchema,
   newJournal,
+  numberLabel,
   reviseEntry,
 } from "../shared/journal.ts";
 import { removeRecords, upsert } from "../shared/ops.ts";
@@ -44,7 +45,7 @@ const resource = (name, status = "Disponible") => ({
   notes: "",
 });
 
-test("two posts adding entries converge, the oldest entry keeps a disputed number", async () => {
+test("two posts adding entries converge, the oldest entry keeps the bare number", async () => {
   const base = change(undefined, newJournal("Crue"), 0);
   const a = addEntry(base, fields("Poste A"), "A");
   await new Promise((r) => setTimeout(r, 5));
@@ -54,10 +55,12 @@ test("two posts adding entries converge, the oldest entry keeps a disputed numbe
   const ab = mergeJournal(a, b);
   const ba = mergeJournal(b, a);
   assert.equal(await digest(ab), await digest(ba));
-  const numbers = Object.fromEntries(
-    ab.entries.map((e) => [current(e).message, e.number]),
+  const labels = Object.fromEntries(
+    ab.entries.map((e) => [current(e).message, numberLabel(e)]),
   );
-  assert.deepEqual(numbers, { "Poste A": 1, "Poste B": 2 });
+  // Numbers are never changed: the later entry is told apart by a suffix.
+  assert.equal(labels["Poste A"], "#001");
+  assert.match(labels["Poste B"], /^#001·[A-Z]$/);
   assert.equal(await digest(mergeJournal(ab, ab)), await digest(ab));
 });
 

@@ -17,8 +17,17 @@ import {
   settingsSchema,
   type Collection,
 } from "./ops.ts";
-import type { HistoryEvent } from "./events.ts";
+import {
+  COMPACT_FROM,
+  MAX_HISTORY,
+  capHistory,
+  thinHistory,
+  type HistoryEvent,
+} from "./events.ts";
 import type { Module } from "./links.ts";
+import { internState, resolveState } from "./blobs.ts";
+import { canonicalStamp, later, nodeOf, tick } from "./hlc.ts";
+import { nextStamp } from "./stamps.ts";
 
 export type { HistoryEvent } from "./events.ts";
 
@@ -176,10 +185,15 @@ const ms = (iso: string) => {
   return Number.isNaN(t) ? 0 : t;
 };
 
-/** Order of two events of the same record: the later (then higher) wins. */
+const keyOf = (e: HistoryEvent) => e.hlc ?? canonicalStamp(e.at);
+/**
+ * Order of two events of the same record: the later stamp (hybrid logical
+ * clock, or time for events before 2.1), then the higher revision, wins.
+ */
 function newer(a: HistoryEvent, b: HistoryEvent) {
-  const d = ms(a.at) - ms(b.at);
-  if (d) return d > 0;
+  const ka = keyOf(a);
+  const kb = keyOf(b);
+  if (ka !== kb) return ka > kb;
   if (a.rev !== b.rev) return a.rev > b.rev;
   return a.id > b.id;
 }
@@ -215,7 +229,20 @@ export type Change = {
   prior: unknown;
   /** State after the change (null: removed). */
   item: unknown;
+  /** Stamp of the record before the change ("" for a new record). */
+  base?: string;
 };
+
+/** Watermark of the compaction for a history of this size at `at`. */
+function watermark(size: number, at: string): string | undefined {
+  if (size <= COMPACT_FROM) return undefined;
+  const hour = 3_600_000;
+  // A large history keeps every version of the last day; beyond the limit,
+  // of the last hour only.
+  const keep = size > MAX_HISTORY ? hour : 24 * hour;
+  const t = Math.floor((ms(at) - keep) / hour) * hour;
+  return t > 0 ? new Date(t).toISOString() : undefined;
+}
 
 const knownAt = (value: unknown, fallback: string): string => {
   const v = (value ?? {}) as Record<string, unknown>;
@@ -239,10 +266,26 @@ export function appendHistory(
   changes: Change[],
   at: string,
   by: string,
+  stamp = "",
 ): Journal {
   const tracked = changes.filter((c) => !UNTRACKED.has(c.scope));
   if (!tracked.length) return journal;
-  const history = [...journal.history];
+  // Baselines take the stamp of the change, the change the next one: both
+  // are new for the peers, the baseline stays older than the change.
+  const hlc = stamp ? tick(stamp, at, nodeOf(stamp) || undefined) : undefined;
+  const baselineHlc = stamp || undefined;
+  let blobs = journal.blobs;
+  const intern = (scope: string, state: unknown) => {
+    const fresh: Record<string, string> = {};
+    const out = internState(scope, state, fresh);
+    for (const [k, v] of Object.entries(fresh))
+      if (blobs[k] === undefined) {
+        if (blobs === journal.blobs) blobs = { ...journal.blobs };
+        blobs[k] = v;
+      }
+    return out;
+  };
+  let history = [...journal.history];
   const index = new Map(latestIndex(journal.history));
   const position = new Map<string, number>();
   const find = (id: string) => {
@@ -272,9 +315,10 @@ export function appendHistory(
         action: "create",
         scope: c.scope,
         target: c.target,
-        state: c.prior,
+        state: intern(c.scope, c.prior),
         rev: 0,
         note: "État connu avant le début de l’historique",
+        ...(baselineHlc ? { hlc: baselineHlc } : {}),
       };
       push(baseline);
       last = baseline;
@@ -292,14 +336,17 @@ export function appendHistory(
         state: null,
         rev: 0,
         note: "",
+        ...(hlc ? { hlc } : {}),
+        ...(c.base !== undefined ? { base: c.base } : {}),
       });
       changed = true;
       continue;
     }
+    const state = intern(c.scope, c.item);
     if (
       last &&
       last.action !== "remove" &&
-      stableStringify(last.state) === stableStringify(c.item)
+      stableStringify(last.state) === stableStringify(state)
     )
       continue;
     const alive = !!last && last.action !== "remove";
@@ -318,8 +365,9 @@ export function appendHistory(
         const folded: HistoryEvent = {
           ...last!,
           at,
-          state: c.item,
+          state,
           rev: last!.rev + 1,
+          ...(hlc ? { hlc } : {}),
         };
         history[i] = folded;
         index.set(c.target, folded);
@@ -334,15 +382,28 @@ export function appendHistory(
       action: alive ? "update" : "create",
       scope: c.scope,
       target: c.target,
-      state: c.item,
+      state,
       rev: 0,
       note: "",
+      ...(hlc ? { hlc } : {}),
+      ...(c.base !== undefined ? { base: c.base } : {}),
     });
     changed = true;
   }
   if (!changed) return journal;
+  // Compaction: large histories are thinned before a watermark that only
+  // moves forward (merged as a maximum, see shared/events.ts).
+  let sync = journal.sync;
+  const mark = watermark(history.length, at);
+  if (mark) {
+    const compacted = later(sync.compacted, canonicalStamp(mark));
+    if (compacted !== sync.compacted) sync = { ...sync, compacted };
+    const thinned = thinHistory(history, compacted);
+    if (thinned !== history) history = thinned;
+  }
+  if (history.length > MAX_HISTORY) history = capHistory(history);
   indexes.set(history, index);
-  return { ...journal, history };
+  return { ...journal, history, sync, blobs };
 }
 
 /** Union of two histories. Commutative and idempotent. */
@@ -459,9 +520,9 @@ export function journalAt(journal: Journal, at: string | number): Journal {
     safeParse: (v: unknown) => { success: boolean; data?: unknown };
   };
   const parser =
-    (schema: Checker) =>
+    (schema: Checker, scope = "") =>
     (v: unknown): { id: string } | null => {
-      const r = schema.safeParse(v);
+      const r = schema.safeParse(resolveState(scope, v, journal.blobs));
       return r.success ? (r.data as { id: string }) : null;
     };
   const created = (v: unknown) =>
@@ -475,7 +536,7 @@ export function journalAt(journal: Journal, at: string | number): Journal {
     (ops as Record<string, unknown>)[c] = rebuild(
       `ops.${c}`,
       journal.ops[c] as { id: string }[],
-      parser(RECORD_SCHEMAS[c] as Checker),
+      parser(RECORD_SCHEMAS[c] as Checker, `ops.${c}`),
       created,
     );
   }
@@ -706,7 +767,7 @@ export function restoreState(
     const c = item.scope.slice(4) as Collection;
     if (!COLLECTIONS.includes(c)) throw new Error("Élément inconnu.");
     const parsed = RECORD_SCHEMAS[c].safeParse({
-      ...(item.state as object),
+      ...(resolveState(item.scope, item.state, journal.blobs) as object),
       updatedAt: now,
     });
     if (!parsed.success)
@@ -758,6 +819,7 @@ export function restoreState(
     );
   const index = latestIndex(journal.history);
   const last = index.get(item.target);
+  const blobs = { ...journal.blobs };
   const event: HistoryEvent = {
     id: crypto.randomUUID(),
     at: now,
@@ -765,11 +827,13 @@ export function restoreState(
     action: last && last.action !== "remove" ? "update" : "create",
     scope: item.scope,
     target: item.target,
-    state,
+    state: internState(item.scope, state, blobs),
     rev: 0,
     note,
+    hlc: nextStamp(journal, now),
+    base: journal.sync.clock[item.target] ?? "",
   };
-  return { ...next, history: [...journal.history, event] };
+  return { ...next, blobs, history: [...journal.history, event] };
 }
 
 /** Current fields of an entry at a time, if it existed. */

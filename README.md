@@ -95,16 +95,17 @@ Sans compte ni base de données : chaque poste garde une copie complète de la s
 
 1. Poste A : menu opérateur → **Synchronisation** → **Créer un code de session** (format `ABCD-EFGH-JKMN-PQRS`). Un QR code et un lien s’affichent.
 2. Poste B : page d’accueil → **Rejoindre** → saisir le code (ou scanner le QR) et son nom. La session arrive, puis tout reste synchronisé en direct : journal, messages, carte, moyens, équipe, radio, référentiels…
-3. La puce en haut indique `Seul`, `3 postes` (avec qui travaille sur quel module) ou `Reconnexion`.
+3. La puce en haut indique `Seul`, `3 postes` (avec qui travaille sur quel module), `Reconnexion` ou `Recharger` (un poste utilise une autre version d’orion aic). Un chiffre à côté signale des fusions à voir (Réglages → Synchronisation → Fusions entre postes).
 
-| Question                              | Réponse                                                                                                                                                                                                                                               |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Où passent les données ?              | Par le relais du site (`/sync`), **chiffrées de bout en bout** (AES-256-GCM, clé dérivée du code). Le relais ne voit que des messages illisibles et ne garde rien.                                                                                    |
-| Et sans internet ?                    | Mode réseau local : sur un ordinateur du poste de conduite, `npm run lan` sert l’application en HTTPS sur le Wi-Fi / réseau ; les autres postes ouvrent l’adresse affichée.                                                                           |
-| Un poste perd la connexion ?          | Il continue à travailler ; à la reconnexion, les postes comparent leurs empreintes et se remettent à jour.                                                                                                                                            |
-| Deux postes modifient la même chose ? | Journal : les deux versions sont gardées dans l’historique. Autres éléments : la modification la plus récente l’emporte ; une suppression l’emporte sur une modification plus ancienne. Deux entrées avec le même numéro : la plus ancienne le garde. |
-| Bluetooth ?                           | Les navigateurs ne permettent pas ce mode d’échange ; le Wi-Fi local (`npm run lan`) le remplace.                                                                                                                                                     |
-| Sécurité du code ?                    | Le code est un mot de passe : il donne accès à toute la session. Le transmettre sur place ou par un canal sûr.                                                                                                                                        |
+| Question                              | Réponse                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Où passent les données ?              | Par le relais du site (`/sync`), **chiffrées de bout en bout** (AES-256-GCM, clé dérivée du code). Le relais ne voit que des messages illisibles et ne garde rien.                                                                                                                                      |
+| Et sans internet ?                    | Mode réseau local : sur un ordinateur du poste de conduite, `npm run lan` sert l’application en HTTPS sur le Wi-Fi / réseau ; les autres postes ouvrent l’adresse affichée.                                                                                                                             |
+| Un poste perd la connexion ?          | Il continue à travailler et garde ses changements ; à la reconnexion, il les envoie, puis les postes comparent leurs empreintes et s’échangent seulement ce qui manque à chacun.                                                                                                                        |
+| Deux postes modifient la même chose ? | Journal : les deux versions sont gardées. Autres éléments : la modification faite en dernier l’emporte, dans l’ordre réel des événements et non selon l’horloge des postes ; une suppression l’emporte sur une modification antérieure. Les cas simultanés sont listés dans Réglages → Synchronisation. |
+| Deux entrées avec le même numéro ?    | Deux postes ont saisi au même moment : aucune n’est renumérotée. La première garde `#007`, l’autre devient `#007·B` (lettre propre au poste). Un numéro affiché ou imprimé ne change jamais en silence. Idem pour les messages (`M013·B`).                                                              |
+| Bluetooth ?                           | Les navigateurs ne permettent pas ce mode d’échange ; le Wi-Fi local (`npm run lan`) le remplace.                                                                                                                                                                                                       |
+| Sécurité du code ?                    | Le code est un mot de passe : il donne accès à toute la session. Le transmettre sur place ou par un canal sûr.                                                                                                                                                                                          |
 
 Les réglages du poste (thème, modules affichés, impression automatique) restent propres à chaque poste.
 
@@ -437,11 +438,11 @@ Les anciens exports `orion-export-v1` (ORION 0.3) sont reconnus : seules les ent
 
 - Les noms d’opérateur sont déclaratifs ; l’historique n’est pas une signature électronique.
 - Le code de session donne accès à toute la session ; un poste retiré garde sa copie.
-- La résolution des conflits suppose des postes à l’heure.
+- Les conflits sont résolus dans l’ordre réel des événements (horloge logique hybride) : un poste en retard de quelques minutes ne perd plus ses modifications. Une heure très fausse (des heures d’écart) reste à corriger : elle s’affiche dans les heures des versions.
 - Le plan radio documente le réseau ; il ne pilote pas les terminaux. Les numéros de groupes et RFSI réels viennent du plan de flotte cantonal. Ceux de la démonstration sont fictifs.
 - Effacer les données du navigateur efface la sauvegarde locale. Une sauvegarde locale n’est pas une archive.
 - Pas de pièces jointes binaires : noter leur référence.
-- Limites techniques : 10 000 entrées par journal, 500 versions par entrée, message de 12 000 caractères, 1 000 terminaux, 20 000 messages, 5 000 objets de carte, import de 32 Mo, 24 Mo par message de synchronisation.
+- Limites techniques : 10 000 entrées par journal, 500 versions par entrée, message de 12 000 caractères, 1 000 terminaux, 20 000 messages, 5 000 objets de carte, import de 32 Mo. Les messages de synchronisation sont découpés en parts de 192 Ko (96 Mo compressés au plus par message).
 
 ## Installation et hébergement
 
@@ -495,7 +496,7 @@ npm run lan           # réseau local en HTTPS
 
 La CI GitHub (`.github/workflows`) exécute format, typecheck, tests, build, `npm audit` et le build Docker à chaque push. Guide du kit d’interface pour écrire un module : [docs/UI.md](docs/UI.md).
 
-Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion, plan radio, chiffrement, CSV/TSV, formats bureautiques, exports, serveur statique, **fusion de synchronisation** (convergence, numéros disputés, versions, suppressions, journaux retirés), **liens** explicites et implicites, **relais WebSocket** (salles, grands messages, refus), échange chiffré de bout en bout entre deux postes, **historique** (enregistrement, regroupement, fusion commutative, machine à remonter le temps, restauration), **formats géographiques** (aller-retour GeoJSON / KML / GPX), **exports** (dossier, formats bureautiques, agenda, contacts, empreintes), **présentations** (diapositives, PowerPoint et ODP bien formés).
+Tests couverts : modèle et révisions, suppression et numérotation, entrées liées et fil, clôture par quittance, relance d’échéance, modèles, batteries, QR et scan, rapport de situation, quittance de remise, fusion, plan radio, chiffrement, CSV/TSV, formats bureautiques, exports, serveur statique, **fusion de synchronisation** (propriétés commutative, associative et idempotente sur des postes aléatoires, horloges décalées de 5 minutes, numéros partagés et références, messages numérotés à la réception, journaux retirés puis réimportés, différences = tout, protocole avec pertes de messages), **coffre local** (compression, anciens coffres, taille), **images** gardées une fois et compaction de l’historique, **liens** explicites et implicites, **relais WebSocket** (salles, envoi à un seul poste, limites par adresse, trames trop grandes, poste qui ne lit pas, protocole 1 refusé), échange chiffré de bout en bout entre deux postes, **historique** (enregistrement, regroupement, fusion commutative, machine à remonter le temps, restauration), **formats géographiques** (aller-retour GeoJSON / KML / GPX), **exports** (dossier, formats bureautiques, agenda, contacts, empreintes), **présentations** (diapositives, PowerPoint et ODP bien formés).
 
 ## Structure du code
 
@@ -505,15 +506,20 @@ shared/            Modèle validé, sans dépendance au navigateur
   ops.ts           Modules : messages, postes, personnes, moyens, contacts, carte, agenda,
                    renseignements, météo, liens, référentiels
   links.ts         Éléments, liens explicites et implicites, voisins, recherche
-  sync.ts          Horodatage des changements, fusion de synchronisation, empreintes
-  events.ts        Schéma d’un changement (historique)
+  sync.ts          Horodatage des changements, fusion de synchronisation, parts
+                   manquantes (sliceJournal), empreintes, conflits
+  hlc.ts stamps.ts Horloge logique hybride, horodatages et vecteurs de version
+  protocol.ts      Décisions du protocole de synchronisation (hello, différences)
+  blobs.ts hash.ts Images gardées une fois (SHA-256)
+  tolerant.ts      Lecture des données d’une version plus récente
+  events.ts        Schéma d’un changement (historique), compaction
   history.ts       Traçabilité : enregistrement, fusion, machine à remonter le temps,
                    comparaison de versions, restauration
-  room.ts          Code de session, clé et salle, enveloppes chiffrées
+  room.ts          Code de session, clé et salle (PBKDF2 + HKDF), trames chiffrées en parts
   radio.ts         Groupes, noms d’appel, terminaux, remises, contrôles, fusion radio
   workflow.ts      Entrées liées et fil, clôture par quittance, relance d’échéance, modèles
   interchange.ts   CSV/TSV, import JSON et ancien format, HTML, texte
-  crypto.ts        Enveloppe chiffrée AES-GCM / PBKDF2
+  crypto.ts        Enveloppe chiffrée AES-GCM / PBKDF2, compressée (version 2)
   coordinates.ts   Conversion MN95 ↔ WGS84 (formules swisstopo)
 src/
   App.tsx          Coque : dock, barre, palette ⌘K, dialogues, session, synchronisation
@@ -527,7 +533,7 @@ src/
   present/         Mode présentation, affichage mural, vue orateur, annotations,
                    PowerPoint / ODP / PDF / HTML animés
   ui/              Kit : champs standardisés, fiche générique, liens, fond papier
-  sync/            Synchronisation en direct (useSync)
+  sync/            Synchronisation en direct (useSync), fusions à signaler (ConflictPanel)
   journal/ radio/  Journal, réseau radio
   print/           Fiches, quittances, rapport, étiquettes, formules : aperçu A4, PDF
   styles.css theme.css motion.css atelier.css

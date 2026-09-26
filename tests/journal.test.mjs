@@ -118,7 +118,7 @@ test("unknown archive versions and fields fail closed", () => {
     }),
   );
 });
-test("duplicate entry identities, numbers and revisions are rejected", () => {
+test("duplicate entry identities and revisions are rejected; shared numbers get a suffix", () => {
   const value = journal(),
     e = value.entries[0];
   assert.equal(
@@ -126,13 +126,21 @@ test("duplicate entry identities, numbers and revisions are rejected", () => {
       .success,
     false,
   );
-  assert.equal(
-    journalSchema.safeParse({
-      ...value,
-      entries: [e, { ...e, id: crypto.randomUUID() }],
-    }).success,
-    false,
+  // Two posts may give the same number at the same time: both keep it and
+  // the later one is told apart by a suffix, never renumbered.
+  const twin = {
+    ...e,
+    id: crypto.randomUUID(),
+    createdAt: new Date(Date.parse(e.createdAt) + 1000).toISOString(),
+    revisions: e.revisions.map((r) => ({ ...r, id: crypto.randomUUID() })),
+  };
+  const shared = journalSchema.parse({ ...value, entries: [e, twin] });
+  assert.deepEqual(
+    shared.entries.map((x) => x.number),
+    [1, 1],
   );
+  assert.equal(shared.entries[0].suffix, undefined);
+  assert.match(shared.entries[1].suffix, /^[A-Z]{1,3}$/);
   assert.equal(
     journalSchema.safeParse({
       ...value,

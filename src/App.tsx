@@ -501,6 +501,7 @@ export default function App() {
             ops: combined.ops,
             sync: combined.sync,
             history: combined.history,
+            blobs: combined.blobs,
           })
         )
           return;

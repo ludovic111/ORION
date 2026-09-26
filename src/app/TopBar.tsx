@@ -76,22 +76,29 @@ export function TopBar({
       </button>
       <div className="bar-status">
         <button
-          className={`status-chip ${sync.status === "live" ? "live" : sync.status === "retrying" ? "warn" : ""}`}
+          className={`status-chip ${sync.status === "live" ? "live" : sync.status === "retrying" || sync.status === "outdated" ? "warn" : ""}`}
           onClick={onSync}
           title={
             sync.status === "off"
               ? "Synchronisation désactivée : partager la session avec d’autres postes"
-              : `Synchronisation ${sync.status === "live" ? "active" : "en reconnexion"} · ${sync.relayCount} autre(s) poste(s)`
+              : sync.status === "outdated"
+                ? sync.error
+                : `Synchronisation ${sync.status === "live" ? "active" : "en reconnexion"} · ${sync.relayCount} autre(s) poste(s)${sync.conflictCount ? ` · ${sync.conflictCount} fusion(s) à voir` : ""}`
           }
         >
           <span className={`radar ${sync.status === "live" ? "" : "idle"}`} />
           <span className="status-text">
             {sync.status === "off"
               ? "Seul"
-              : sync.status === "live"
-                ? `${sync.relayCount + 1} poste${sync.relayCount ? "s" : ""}`
-                : "Reconnexion"}
+              : sync.status === "outdated"
+                ? "Recharger"
+                : sync.status === "live"
+                  ? `${sync.relayCount + 1} poste${sync.relayCount ? "s" : ""}`
+                  : "Reconnexion"}
           </span>
+          {sync.conflictCount > 0 && (
+            <span className="mono">· {sync.conflictCount}</span>
+          )}
           {peersShown.length > 0 && (
             <span className="avatars">
               {peersShown.map((p) => (

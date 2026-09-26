@@ -4,7 +4,13 @@ import { upsert, type Message } from "../../../shared/ops";
 import { ref } from "../../../shared/links";
 import { useApp } from "../../app/context";
 import { intakeSheet } from "../../print/sheet";
-import { entryFrom, mLabel, numbering, type Status } from "./model";
+import {
+  entryFrom,
+  mLabel,
+  messageLabelsOf,
+  numbering,
+  type Status,
+} from "./model";
 
 /** Every operation on a message, with its toast. */
 export function useMessageActions() {
@@ -29,7 +35,8 @@ export function useMessageActions() {
     }
   }
 
-  const label = (m: Message) => mLabel(numbers.get(m.id));
+  const labels = useMemo(() => messageLabelsOf(journal), [journal]);
+  const label = (m: Message) => mLabel(labels.get(m.id) ?? numbers.get(m.id));
 
   return {
     numbers,
@@ -76,7 +83,9 @@ export function useMessageActions() {
       print({
         kind: "forms",
         journal,
-        sheets: list.map((m) => intakeSheet(m, numbers.get(m.id) ?? 0)),
+        sheets: list.map((m) =>
+          intakeSheet(m, labels.get(m.id) ?? numbers.get(m.id) ?? 0),
+        ),
         title: list.length > 1 ? "Formules de message" : "Formule de message",
         name: list.length > 1 ? "messages" : `message-${label(list[0])}`,
       });

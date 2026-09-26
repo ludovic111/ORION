@@ -6,7 +6,7 @@ import {
   type Journal,
 } from "./journal.ts";
 import { activeAssignment, callsignKey } from "./radio.ts";
-import { referencedNumbers } from "./workflow.ts";
+import { referencedEntries } from "./workflow.ts";
 import { nowIso, type Link, type Ops, type RefKind } from "./ops.ts";
 
 // Every item of a journal can be referred to as "kind:id". Links are either
@@ -443,18 +443,11 @@ export function edges(journal: Journal): Edge[] {
       add(l.a as Ref, l.b as Ref, l.label, l.id);
 
   // Entries citing other entries (#003).
-  const byNumber = new Map(journal.entries.map((e) => [e.number, e]));
   for (const e of journal.entries)
-    for (const n of referencedNumbers(current(e))) {
-      const target = byNumber.get(n);
-      if (target) add(ref("entry", e.id), ref("entry", target.id), "suite de");
-    }
+    for (const target of referencedEntries(journal.entries, e))
+      add(ref("entry", e.id), ref("entry", target.id), "suite de");
   for (const m of o.messages)
-    if (
-      m.entryId &&
-      byNumber.size &&
-      journal.entries.some((e) => e.id === m.entryId)
-    )
+    if (m.entryId && journal.entries.some((e) => e.id === m.entryId))
       add(ref("message", m.id), ref("entry", m.entryId), "inscrit au journal");
   for (const m of o.members)
     if (m.cellId && o.cells.some((c) => c.id === m.cellId))
