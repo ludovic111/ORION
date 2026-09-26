@@ -411,6 +411,9 @@ export function deleteEntry(
         at: now(),
         by: author,
         reason: reason.trim(),
+        // Keeps its place among entries sharing its number (labels).
+        createdAt: entry.createdAt,
+        ...(entry.node ? { node: entry.node } : {}),
       },
     ],
   });
@@ -632,7 +635,7 @@ export const createdKey = (at: string | undefined) =>
   at ? canonicalStamp(at) : "";
 
 /** Entry suffixes of a journal (derived from entries and deletions). */
-function assignSuffixes(j: JournalData): JournalData {
+export function assignSuffixes(j: JournalData): JournalData {
   const numbers = new Set<number>();
   let collision = false;
   for (const e of j.entries) {

@@ -3,6 +3,7 @@ import {
   journalSchema,
   nodeOr,
   numberLabel,
+  assignSuffixes,
   suffixes,
   workspaceSchema,
   type Deletion,
@@ -172,8 +173,13 @@ function stampEntries(
       ...(entry?.node ? { node: entry.node } : {}),
     };
   });
+  // A deletion now dated may change which entry keeps a shared number.
+  const stamped = changed ? { ...next, entries, deleted } : next;
   return {
-    journal: changed ? { ...next, entries, deleted } : next,
+    journal:
+      deleted !== next.deleted && deleted.some((d, i) => d !== next.deleted[i])
+        ? (assignSuffixes(stamped) as Journal)
+        : stamped,
     last: cursor,
   };
 }

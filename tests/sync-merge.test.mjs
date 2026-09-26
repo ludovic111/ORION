@@ -636,3 +636,14 @@ test("stamps written before 2.1 still merge", async () => {
     await digest(mergeJournal(legacy, next)),
   );
 });
+
+test("a deletion keeps the creation of its entry, so shared numbers keep their labels", () => {
+  const p = post("node0000");
+  let j = p.change(undefined, newJournal("Crue"));
+  j = p.change(j, addEntry(j, fields("Première"), "A"));
+  const entry = j.entries[0];
+  const next = p.change(j, deleteEntry(j, entry.id, "A", "Erreur"));
+  const d = next.deleted.find((x) => x.id === entry.id);
+  assert.equal(d.createdAt, entry.createdAt);
+  assert.equal(d.node, entry.node);
+});

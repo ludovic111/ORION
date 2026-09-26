@@ -250,6 +250,7 @@ test("deleting an entry keeps a trace, never reuses its number and requires a re
       at: "",
       by: "Bravo",
       reason: "Saisie en double",
+      createdAt: second.createdAt,
     },
   );
   assert.ok(!JSON.stringify(value).includes("Deuxième"));
