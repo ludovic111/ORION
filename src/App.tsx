@@ -66,6 +66,11 @@ import { Contacts } from "./modules/contacts/Contacts";
 import { Weather } from "./modules/weather/Weather";
 import { Agenda } from "./modules/agenda/Agenda";
 import { Docs } from "./modules/docs/Docs";
+import { MyTasks } from "./modules/tasks/MyTasks";
+import { Orders } from "./modules/orders/Orders";
+import { ConductLayer } from "./post/ConductLayer";
+import { identityOf } from "./post/roles";
+import { taskBadge } from "../shared/diffusion";
 import { TimeBar } from "./timeline/TimeBar";
 import { usePastJournal } from "./timeline/replay";
 import { edges as allEdges, items as allItems } from "../shared/links";
@@ -316,9 +321,7 @@ export default function App() {
     });
     return [...seen.values()].slice(0, 400);
   }, [journal]);
-  useEffect(() => {
-    document.title = late.length ? `(${late.length}) orion aic` : "orion aic";
-  }, [late.length]);
+  // The page title (count of what needs attention) is set by ConductLayer.
 
   // ---------- Navigation ----------
   const go = useCallback(
@@ -738,6 +741,13 @@ export default function App() {
           badges={{
             journal: { value: late.length },
             messages: { value: unread, tone: "accent" },
+            tasks: {
+              value: taskBadge(
+                journal,
+                identityOf(journal, workspace.author),
+                minute,
+              ),
+            },
           }}
         />
         <div className="app-main">
@@ -798,6 +808,7 @@ export default function App() {
                 )}
               </div>
             )}
+            <ConductLayer />
             <div
               className="module reveal"
               key={`${module}-${journal.id}`}
@@ -914,6 +925,10 @@ export default function App() {
                   <NetworkModule />
                 ) : module === "trace" ? (
                   <Trace />
+                ) : module === "tasks" ? (
+                  <MyTasks />
+                ) : module === "orders" ? (
+                  <Orders />
                 ) : (
                   <Docs topic={docsTopic} />
                 )}

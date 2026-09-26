@@ -86,6 +86,9 @@ export const fullScope = (): ExportScope => ({
 /** Collections owned by each part. */
 const OWNED: Partial<Record<SectionId, Collection[]>> = {
   situation: ["facts", "boards", "snapshots"],
+  // Orders, diffusions and their receipts, assignments (shared/conduct.ts).
+  // Liaisons (their code) and what crossed them stay out of exports.
+  missions: ["orders", "broadcasts", "acks", "assignments"],
   messages: ["messages"],
   map: ["places", "maps", "symbols"],
   resources: ["resources"],

@@ -1,0 +1,303 @@
+/* Conduct features: receipts banner, dialogs, Mes tâches, Ordres. */
+
+/* Receipts to give: a ruled strip above the module, no flash, no pulse. */
+.conduct-inbox {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  color: var(--text);
+}
+.conduct-inbox header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+.conduct-inbox header strong {
+  font-weight: 500;
+}
+.conduct-inbox ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.conduct-inbox li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.conduct-inbox li.urgent .conduct-inbox-title {
+  color: var(--crit);
+}
+.conduct-inbox-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  flex: 1 1 260px;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font-weight: 400;
+  white-space: normal;
+}
+.conduct-inbox-main .mono {
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.conduct-inbox-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.conduct-inbox-main small {
+  grid-column: 2;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.conduct-inbox-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Dialogs */
+.conduct-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.conduct-add input {
+  flex: 1;
+  min-width: 0;
+}
+.conduct-target {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.conduct-picker {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+}
+.conduct-picker > button {
+  justify-self: start;
+}
+
+/* Rows shared by Mes tâches and Ordres */
+.conduct-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line-2);
+}
+.conduct-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.conduct-row .when {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-2);
+  padding-top: 2px;
+}
+.conduct-row.late .when {
+  color: var(--crit);
+  font-weight: 500;
+}
+.conduct-row .what {
+  min-width: 0;
+}
+.conduct-row .what > button {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  display: inline;
+  line-height: 1.45;
+}
+.conduct-row .what > button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.conduct-row .what small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.conduct-row .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.conduct-kind {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 400;
+}
+.conduct-section {
+  margin-top: 32px;
+}
+.conduct-section > h2 {
+  margin: 0 0 12px;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.conduct-section > p.muted {
+  margin: -6px 0 12px;
+}
+.conduct-me {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+.conduct-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Recipients of a diffusion: one line each, the word says the state. */
+.receipts {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.receipts li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.receipts li small {
+  grid-column: 1 / -1;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.receipts .state {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.receipts .state.ok {
+  color: var(--ok);
+}
+.receipts .state.late {
+  color: var(--crit);
+  font-weight: 500;
+}
+
+/* Order editor */
+.order-chapter {
+  margin: 0 0 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2);
+}
+.order-chapter > h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 500;
+}
+.order-chapter > h3 span {
+  font-family: var(--mono);
+  color: var(--text-2);
+  font-size: 14px;
+}
+.order-mission {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.order-mission-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.order-view p {
+  white-space: pre-wrap;
+  margin: 0 0 8px;
+}
+.order-view dt {
+  margin-top: 10px;
+}
+.order-view dd {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+}
+.liaison-card {
+  display: grid;
+  gap: 10px;
+}
+.liaison-code {
+  font-family: var(--mono);
+  font-size: 22px;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 720px) {
+  .conduct-row {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .conduct-row .row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .conduct-me {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .conduct-inbox-actions {
+    width: 100%;
+  }
+}
+
+.conduct-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}

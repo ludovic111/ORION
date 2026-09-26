@@ -9,10 +9,12 @@ import {
   Inbox,
   LayoutList,
   Link2,
+  Megaphone,
   MapPin,
   Plus,
   Radio,
   RadioTower,
+  ScrollText,
   Search,
   Smartphone,
   Thermometer,
@@ -52,6 +54,8 @@ export const KIND_ICON: Record<RefKind, LucideIcon> = {
   terminal: Smartphone,
   station: RadioTower,
   talkgroup: Radio,
+  order: ScrollText,
+  broadcast: Megaphone,
 };
 
 export const hueStyle = (kind: RefKind) =>

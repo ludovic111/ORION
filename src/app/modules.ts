@@ -8,9 +8,11 @@ import {
   Inbox,
   KanbanSquare,
   LifeBuoy,
+  ListChecks,
   Map,
   Network,
   Radio,
+  ScrollText,
   Truck,
   Users,
   type LucideIcon,
@@ -71,6 +73,26 @@ export const MODULES: ModuleInfo[] = [
     hue: 30,
     group: 0,
     description: "Tableau des missions, demandes et points à suivre, par état.",
+  },
+  {
+    id: "tasks",
+    label: "Mes tâches",
+    short: "Mes tâches",
+    icon: ListChecks,
+    hue: 140,
+    group: 0,
+    description:
+      "Ce qui est attribué à la fonction de ce poste ou à son opérateur, le plus en retard d’abord.",
+  },
+  {
+    id: "orders",
+    label: "Ordres et diffusions",
+    short: "Ordres",
+    icon: ScrollText,
+    hue: 18,
+    group: 0,
+    description:
+      "Ordres en cinq points, diffusions avec accusé de lecture, liaison avec l’autre PC.",
   },
   {
     id: "map",

@@ -38,6 +38,7 @@ import {
   Table,
   Ui,
 } from "./kit";
+import { CONDUCT_TOPICS } from "./conduct";
 
 export type Level = "short" | "guide" | "full";
 export type TopicGroup = "start" | "modules" | "together" | "reference";
@@ -1025,6 +1026,7 @@ export const TOPICS: Topic[] = [
       </>
     ),
   },
+  ...CONDUCT_TOPICS.filter((t) => t.group === "modules"),
   {
     id: "map",
     group: "modules",
@@ -2197,6 +2199,7 @@ export const TOPICS: Topic[] = [
       </>
     ),
   },
+  ...CONDUCT_TOPICS.filter((t) => t.group === "together"),
   {
     id: "print",
     group: "together",

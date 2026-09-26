@@ -64,6 +64,12 @@ const {
 | `help(topic)`               | Ouvre l’aide sur un sujet (id de module ou sujet de `Docs`).                                                                                                                                   |
 | `prefs`                     | Réglages du poste : mode (`theme`), thèmes de couleur (`lightPalette`, `darkPalette`), modules masqués, impression automatique (`autoPrint`, `autoPrintRemote`, `autoPrintMessages`).          |
 
+### Conduite (fonctions, diffusions, alertes)
+
+- `usePost()` (`src/post/store.ts`) : fonction, cellule et alertes de ce poste ; `useIdentity(journal, author)` (`src/post/roles.ts`) pour savoir à qui s’adresse une diffusion ou une tâche.
+- `openDiffusion({ title, target, recipients, ack })`, `openAssign({ target })`, `openLiaisonMessage()` (`src/post/bus.ts`) : n’importe quel écran ouvre le dialogue « Diffuser », « Attribuer » ou « Message à l’autre PC ». Le bouton « Diffuser » d’une fiche passe simplement `target: "entry:<id>"`.
+- `RecipientsField` (`src/post/dialogs.tsx`) : fonctions, cellules, PC en liaison et « Tous » en un clic, plus texte libre.
+
 ## Composants
 
 | Fichier             | Composants                                                                                                                              |

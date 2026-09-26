@@ -6,6 +6,8 @@ import {
   History,
   Inbox,
   Lightbulb,
+  Megaphone,
+  ScrollText,
   Moon,
   Plus,
   Presentation,
@@ -68,6 +70,26 @@ export function buildCommands({
         setFocus("message:new" as Ref);
       },
       keywords: "réception synthèse",
+    },
+    {
+      id: "new-order",
+      label: "Nouvel ordre",
+      icon: <ScrollText size={16} />,
+      run: () => {
+        go("orders");
+        setFocus("order:new" as Ref);
+      },
+      keywords: "ordre engagement complémentaire intention missions",
+    },
+    {
+      id: "new-broadcast",
+      label: "Diffuser avec accusé de lecture",
+      icon: <Megaphone size={16} />,
+      run: () => {
+        go("orders");
+        setFocus("broadcast:new" as Ref);
+      },
+      keywords: "diffusion lu compris quittance destinataires",
     },
     {
       id: "report",
