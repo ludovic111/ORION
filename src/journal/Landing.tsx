@@ -9,7 +9,7 @@ import {
   Wifi,
 } from "lucide-react";
 import type { Journal } from "../../shared/journal";
-import { normalizeCode, validCode } from "../../shared/room";
+import { codeProblem, normalizeCode, validCode } from "../../shared/room";
 import type { SyncStatus } from "../sync/useSync";
 import { Brand } from "../ui/Mark";
 import { JournalSetup } from "./JournalSetup";
@@ -250,7 +250,7 @@ export function Landing({
                     e.preventDefault();
                     setFailure("");
                     if (!validCode(code)) {
-                      setFailure("Code incomplet : 4 groupes de 4 caractères.");
+                      setFailure(codeProblem(code));
                       return;
                     }
                     if (protect && secret !== repeat) {

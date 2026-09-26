@@ -18,6 +18,7 @@ import {
 import { DEFAULT_LISTS } from "../../shared/ops";
 import {
   joinUrl,
+  codeProblem,
   newRoomCode,
   normalizeCode,
   validCode,
@@ -31,6 +32,7 @@ import { ContactCard } from "./contact";
 import { MODULES, moduleInfo } from "./modules";
 import { DARK_PALETTES, LIGHT_PALETTES, type Palette } from "./palettes";
 import type { useSync } from "../sync/useSync";
+import { ConflictPanel } from "../sync/ConflictPanel";
 
 export type SettingsTab = "post" | "lists" | "sync" | "session" | "contact";
 
@@ -499,11 +501,13 @@ function SyncSettings({
                 <dd>
                   {sync.status === "live"
                     ? "Connecté"
-                    : sync.status === "retrying"
-                      ? "Reconnexion…"
-                      : sync.status === "connecting"
-                        ? "Connexion…"
-                        : "Arrêté"}
+                    : sync.status === "outdated"
+                      ? "Version différente : rechargez la page"
+                      : sync.status === "retrying"
+                        ? "Reconnexion…"
+                        : sync.status === "connecting"
+                          ? "Connexion…"
+                          : "Arrêté"}
                 </dd>
               </div>
               <div>
@@ -573,9 +577,21 @@ function SyncSettings({
               onChange={(v) => setTyped(normalizeCode(v))}
               placeholder="ABCD-EFGH-JKMN-PQRS"
             />
+            {typed && codeProblem(typed) && (
+              <p className="hint warn">{codeProblem(typed)}</p>
+            )}
             <button disabled={!validCode(typed) || !secure}>Rejoindre</button>
           </form>
         </div>
+      )}
+      {room && (
+        <section className="stack" style={{ gap: 10 }}>
+          <span className="label">
+            Fusions entre postes
+            {sync.conflictCount > 0 ? ` · ${sync.conflictCount} à voir` : ""}
+          </span>
+          <ConflictPanel sync={sync} />
+        </section>
       )}
       <details>
         <summary>Sans internet : réseau local (Wi-Fi ou câble)</summary>

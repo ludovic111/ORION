@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BLOB_REF, DATA_IMAGE } from "./blobs.ts";
 
 // Everything an AIC cell keeps next to the journal: message intake, team,
 // resources, contacts, map, rhythm, key facts, weather and the links between
@@ -67,6 +68,15 @@ export const messageSchema = z
     handledBy: text(120),
     notes: text(4000),
     tags: z.array(text(60).min(1)).max(20),
+    // Number given at reception (M013), never changed afterwards. Two posts
+    // receiving at the same time may give the same number: both keep it
+    // and the labels tell them apart (M013, M013·B), see messageLabels().
+    number: z.number().int().positive().optional(),
+    // Post that received the message (shared/hlc.ts), for that label.
+    node: z
+      .string()
+      .regex(/^[0-9a-z]{8}$/)
+      .optional(),
   })
   .strict();
 
@@ -189,10 +199,12 @@ export const symbolSchema = z
     ...record,
     name: text(120).min(1),
     group: text(80),
+    // Data URL, or "blob:<sha256>" when stored or transmitted: the image
+    // itself is kept once in journal.blobs (shared/blobs.ts).
     image: z
       .string()
       .max(600_000)
-      .regex(/^data:image\/(png|svg\+xml|jpeg|webp);base64,[A-Za-z0-9+/=]+$/),
+      .refine((v) => DATA_IMAGE.test(v) || BLOB_REF.test(v), "Image invalide."),
   })
   .strict();
 

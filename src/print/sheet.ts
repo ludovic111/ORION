@@ -299,12 +299,19 @@ const talkgroupName = (radio: Radio, id: string) => {
 export const printedAt = () => dateTime(new Date().toISOString());
 
 /** Standard A4 message form (formule de message) for the intake. */
-export function intakeSheet(message: Message, number: number): FormSheet {
+export function intakeSheet(
+  message: Message,
+  number: number | string,
+): FormSheet {
   const urgent = message.priority === "Urgent";
   return {
     kind: "Formule de message",
     idLabel: "Message",
-    number: `M${String(number).padStart(3, "0")}`,
+    // A label ("013·B") when two posts gave the same number.
+    number:
+      typeof number === "string"
+        ? `M${number}`
+        : `M${String(number).padStart(3, "0")}`,
     boxes: [
       { label: "Priorité", value: message.priority, alert: urgent },
       { label: "Catégorie", value: or(message.category) },

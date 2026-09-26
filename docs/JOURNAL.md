@@ -30,7 +30,7 @@ Les numéros de groupes et RFSI réels viennent du plan de flotte cantonal (OCPP
 | Ne pas confondre fait et réception | Trois temps distincts : événement, réception, enregistrement automatique              |
 | Apprécier une information          | Confirmation déclarée, canal et source ; aucune fiabilité calculée par IA             |
 | Documenter la conduite             | Nature décision/mission/demande/quittance, mesure, responsable, échéance, état        |
-| Retrouver une entrée               | Numéro stable, recherche insensible aux accents, filtres et chronologie               |
+| Retrouver une entrée               | Numéro stable entre postes, recherche insensible aux accents, filtres et chronologie  |
 | Corriger sans effacer              | Nouvelle version avec auteur, motif et date, historique consultable                   |
 | Passer la relève                   | Points ouverts et échéances calculés ; relève rédigée et consignée par l’opérateur    |
 | Travailler sur un autre PC         | Archive chiffrée réimportable, aperçu, doublons et conflits explicités                |
@@ -40,6 +40,16 @@ Les numéros de groupes et RFSI réels viennent du plan de flotte cantonal (OCPP
 | Plan du réseau radio               | Noms d’appel, groupe principal et alternative, sur le réseau, dernier contrôle        |
 
 Le formulaire est volontairement progressif : message, heure, type et émetteur visibles ; source/localisation, suites et observations se déplient. Les références et notes permettent de consigner les détails d’intervention non couverts par des champs normalisés. Les pièces jointes binaires ne sont pas incluses : leur référence peut être notée et les fichiers conservés dans le système autorisé de l’organisation.
+
+## Numérotation entre postes
+
+Règle : **un numéro affiché ou imprimé ne change jamais en silence**, et la fusion donne le même résultat quel que soit l’ordre d’arrivée des postes.
+
+- **Entrées.** Le numéro est donné à la création (le plus haut numéro jamais utilisé, suppressions comprises, + 1) et n’est plus jamais modifié : la fusion ne renumérote plus. Deux postes qui saisissent au même moment peuvent donner le même numéro : les deux entrées le gardent. L’entrée créée la première (puis le plus petit identifiant) garde le libellé nu `#007` ; chaque autre reçoit un suffixe dérivé du poste qui l’a créée (`#007·K`, lettres sans I ni O, deux lettres si deux postes tombent sur la même). Le suffixe est calculé de la même façon sur tous les postes à partir de l’ensemble des entrées et des suppressions (`suffixes()` dans `shared/journal.ts`) : une entrée arrivée plus tard ne change pas le libellé d’une entrée plus ancienne, et une entrée supprimée garde sa place (sa trace conserve sa date de création et son poste), si bien que les libellés restants ne bougent pas. Seul cas où un libellé change : une entrée créée hors ligne plus tôt arrive après coup ; il est alors signalé dans Réglages → Synchronisation → Fusions entre postes.
+- **Messages.** Le numéro `M013` est donné à la réception (le plus haut numéro jamais donné, messages retirés compris, + 1), gardé dans le message et imprimé tel quel. Supprimer ou antidater un message ne renumérote plus les autres. Deux messages reçus au même moment sur deux postes : `M013` et `M013·B`, selon la même règle (`messageLabels()` dans `shared/sync.ts`). Les messages d’avant 2.1 reçoivent, à la première lecture, le numéro qu’ils affichaient (rang par heure de réception).
+- **Références.** « Suite de #007 » est résolu à l’écriture : chaque version d’entrée garde les identifiants des entrées citées (`refs`). Le fil des entrées, les liens et l’offre « clore #007 » d’une quittance désignent donc toujours l’entrée voulue, même après une collision de numéros. Pour citer une entrée à suffixe, écrire son libellé complet (`#007·K`). Les versions d’avant 2.1 sont lues par leur texte.
+- **Import d’un fichier dans le journal.** Les entrées ajoutées prennent les numéros suivants du journal (numérotation locale, comme avant). Une trace de suppression venant du fichier garde son numéro s’il est libre, sinon prend le suivant : une trace ne porte jamais le numéro d’une entrée vivante.
+- **Versions.** Une entrée garde au plus 500 versions : la première (telle que saisie) et les 499 dernières.
 
 ## Limites et migration
 

@@ -8,6 +8,7 @@ import {
   Printer,
 } from "lucide-react";
 import { time } from "../../../shared/journal";
+import { localNode } from "../../../shared/hlc";
 import {
   MESSAGE_PRIORITIES,
   emptyMessage,
@@ -28,6 +29,7 @@ import {
 import {
   SKELETONS,
   mLabel,
+  nextMessageNumber,
   numbering,
   partyOptions,
   type Draft,
@@ -131,6 +133,9 @@ export function Capture({
       createdAt: at,
       updatedAt: at,
       by: author,
+      // Given now, printed now, never changed.
+      number: nextMessageNumber(journal),
+      node: localNode(),
     };
     try {
       updateOps((ops) => upsert(ops, "messages", message, author));

@@ -10,6 +10,8 @@ import {
   MESSAGE_STATUSES,
   type Message,
 } from "../../../shared/ops";
+import { messageHighWater } from "../../../shared/journal";
+import { messageLabels } from "../../../shared/sync";
 
 export type Status = (typeof MESSAGE_STATUSES)[number];
 export type Priority = (typeof MESSAGE_PRIORITIES)[number];
@@ -40,18 +42,39 @@ export const STATUS_HINT: Record<Status, string> = {
   Classé: "Sans suite au journal",
 };
 
-export const mLabel = (n: number | undefined) =>
-  n ? `M${String(n).padStart(3, "0")}` : "M—";
+/** "M013", or a label from messageLabels() ("013·B" → "M013·B"). */
+export const mLabel = (n: number | string | undefined) =>
+  typeof n === "string" && n
+    ? `M${n}`
+    : typeof n === "number" && n
+      ? `M${String(n).padStart(3, "0")}`
+      : "M—";
 
-/** 1-based number of each message, in the order of reception. */
+/**
+ * Number of each message: given at reception and never changed (deleting
+ * or back-dating a message does not renumber the others). A message not
+ * numbered yet gets the number it will receive.
+ */
 export function numbering(messages: Message[]) {
-  const sorted = [...messages].sort(
-    (a, b) =>
-      Date.parse(a.receivedAt) - Date.parse(b.receivedAt) ||
-      a.createdAt.localeCompare(b.createdAt),
-  );
-  return new Map(sorted.map((m, i) => [m.id, i + 1]));
+  let top = Math.max(0, ...messages.map((m) => m.number ?? 0));
+  const pending = messages
+    .filter((m) => !m.number)
+    .sort(
+      (a, b) =>
+        Date.parse(a.receivedAt) - Date.parse(b.receivedAt) ||
+        a.createdAt.localeCompare(b.createdAt) ||
+        a.id.localeCompare(b.id),
+    );
+  const next = new Map(pending.map((m) => [m.id, ++top]));
+  return new Map(messages.map((m) => [m.id, m.number ?? next.get(m.id)!]));
 }
+
+/** Number for a message received now on this post (never given before). */
+export const nextMessageNumber = (journal: Journal) =>
+  messageHighWater(journal) + 1;
+
+/** Labels of the messages ("013", "013·B" when two posts gave 013). */
+export const messageLabelsOf = (journal: Journal) => messageLabels(journal);
 
 const norm = (s: string) =>
   s

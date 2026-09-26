@@ -1,5 +1,9 @@
-import type { Encrypted } from "../../shared/crypto";
+import type { Encrypted, VaultRecord } from "../../shared/crypto";
+// The name stays: sessions saved by earlier versions open from the same
+// database. The vault holds one record, "workspace": a VaultRecord (2.1,
+// compressed, raw bytes) or an Encrypted envelope written before 2.1.
 const DATABASE = "orion-journal-v1";
+export type StoredVault = Encrypted | VaultRecord;
 async function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE, 1);
@@ -27,19 +31,22 @@ async function transaction<T>(
     };
     tx.onabort = tx.onerror = () => {
       db.close();
+      const quota = (tx.error ?? request.error)?.name === "QuotaExceededError";
       reject(
         new Error(
-          "Sauvegarde locale impossible. Exportez une copie avant de quitter.",
+          quota
+            ? "Espace de stockage du navigateur plein : la sauvegarde locale a échoué. Exportez une copie, puis libérez de l’espace (anciens journaux, images)."
+            : "Sauvegarde locale impossible. Exportez une copie avant de quitter.",
         ),
       );
     };
   });
 }
 export const readVault = () =>
-  transaction<Encrypted | undefined>("readonly", (store) =>
+  transaction<StoredVault | undefined>("readonly", (store) =>
     store.get("workspace"),
   );
-export const writeVault = (value: Encrypted) =>
+export const writeVault = (value: StoredVault) =>
   transaction("readwrite", (store) => store.put(value, "workspace"));
 export const deleteVault = () =>
   transaction("readwrite", (store) => store.delete("workspace"));
